@@ -40,8 +40,7 @@ function PVDesignPageContent() {
     
     if (selectedLead) {
       updateDimensioning({
-        lead: selectedLead,
-        customer: selectedLead, // Manter compatibilidade
+        customer: selectedLead,
       });
       
       toast({

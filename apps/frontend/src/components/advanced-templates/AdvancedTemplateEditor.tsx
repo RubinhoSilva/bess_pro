@@ -271,7 +271,7 @@ export function AdvancedTemplateEditor({
                         <div className="flex items-center space-x-2">
                           <Switch
                             checked={editorTemplate.isDefault || false}
-                            onCheckedChange={(checked) => updateTemplate({ isDefault: checked })}
+                            onCheckedChange={(checked: boolean) => updateTemplate({ isDefault: checked })}
                           />
                           <label className="text-sm font-medium text-gray-700">
                             Template padrão para esta categoria

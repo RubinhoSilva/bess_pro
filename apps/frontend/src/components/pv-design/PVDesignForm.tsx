@@ -333,7 +333,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
             </h1>
           </div>
           <p className="text-lg text-gray-600 dark:text-slate-300 max-w-3xl mx-auto">
-            {currentDimensioning.dimensioningName || currentDimensioning.lead?.name || 'Selecione um lead para dimensionar o sistema solar.'}
+            {currentDimensioning.dimensioningName || currentDimensioning.customer?.name || 'Selecione um lead para dimensionar o sistema solar.'}
           </p>
         </motion.div>
 
@@ -352,7 +352,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
             <CustomerDataForm 
               formData={currentDimensioning} 
               onFormChange={handleFormChange}
-              isLeadLocked={!!currentDimensioning.lead && !!currentDimensioning.lead.type && currentDimensioning.lead.type === 'lead'}
+              isLeadLocked={!!currentDimensioning.customer && !!currentDimensioning.customer.type && currentDimensioning.customer.type === 'lead'}
             />
             <LocationForm 
               formData={currentDimensioning} 
@@ -417,7 +417,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           <div className="relative">
             <Button 
               onClick={saveDimensioning} 
-              disabled={isSaving || !currentDimensioning.lead || !currentDimensioning.dimensioningName?.trim()}
+              disabled={isSaving || !currentDimensioning.customer || !currentDimensioning.dimensioningName?.trim()}
               variant="outline" 
               className="text-blue-600 dark:text-blue-400 border-blue-500 hover:bg-blue-500/20 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50"
             >
@@ -435,13 +435,13 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
             </Button>
             
             {/* Mostrar requisitos quando botão estiver desabilitado */}
-            {(!currentDimensioning.lead || !currentDimensioning.dimensioningName?.trim()) && !isSaving && (
+            {(!currentDimensioning.customer || !currentDimensioning.dimensioningName?.trim()) && !isSaving && (
               <div className="absolute top-full left-0 mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg shadow-lg z-10 min-w-64">
                 <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
                   Para salvar, preencha:
                 </p>
                 <ul className="text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
-                  {!currentDimensioning.lead && (
+                  {!currentDimensioning.customer && (
                     <li className="flex items-center gap-2">
                       <div className="w-1 h-1 bg-yellow-500 rounded-full"></div>
                       Lead selecionado

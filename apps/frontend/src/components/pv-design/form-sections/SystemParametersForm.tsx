@@ -68,7 +68,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
     }
 
     // Then check API modules
-    const selectedModule = solarModules.modules?.find(m => m.id === moduleId);
+    const selectedModule = solarModules.modules?.find((m: any) => m.id === moduleId);
     if (selectedModule) {
       onFormChange('moduloSelecionado', moduleId);
       onFormChange('potenciaModulo', selectedModule.potenciaNominal);
@@ -99,7 +99,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
     }
 
     // Then check API inverters
-    const selectedInverter = inverters.inverters?.find(i => i.id === inverterId);
+    const selectedInverter = inverters.inverters?.find((i: any) => i.id === inverterId);
     if (selectedInverter) {
       onFormChange('inversorSelecionado', inverterId);
       onFormChange('potenciaInversor', selectedInverter.potenciaSaidaCA);
@@ -174,7 +174,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                   ))}
                   
                   {/* API modules */}
-                  {solarModules.modules?.map(module => (
+                  {solarModules.modules?.map((module: any) => (
                     <SelectItem key={module.id} value={module.id}>
                       {module.fabricante} {module.modelo} - {module.potenciaNominal}W
                     </SelectItem>
@@ -293,7 +293,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                   ))}
                   
                   {/* API inverters */}
-                  {inverters.inverters?.map(inverter => (
+                  {inverters.inverters?.map((inverter: any) => (
                     <SelectItem key={inverter.id} value={inverter.id}>
                       {inverter.fabricante} {inverter.modelo} - {(inverter.potenciaSaidaCA/1000).toFixed(1)}kW
                     </SelectItem>
