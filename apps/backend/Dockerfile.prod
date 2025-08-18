@@ -23,9 +23,11 @@ COPY package*.json ./
 COPY apps/backend/package*.json ./apps/backend/
 RUN npm ci
 
-# Copy source code
+# Copy source code and config files
 COPY apps/backend/src ./apps/backend/src
 COPY apps/backend/tsconfig.json ./apps/backend/
+COPY tsconfig.base.json ./
+COPY packages/ ./packages/
 
 # Build the application with increased heap size
 RUN cd apps/backend && NODE_OPTIONS="--max-old-space-size=2048" npm run build
