@@ -2,9 +2,18 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 // Configuração base da API
-// Conectando diretamente ao backend em localhost:8010
+const getApiBaseUrl = () => {
+  // Em produção, usa o domínio da API
+  if (import.meta.env.PROD) {
+    return 'https://api.besspro.vizad.com.br/api/v1';
+  }
+  
+  // Em desenvolvimento, usa localhost
+  return 'http://localhost:8010/api/v1';
+};
+
 const api = axios.create({
-  baseURL: 'http://localhost:8010/api/v1',
+  baseURL: getApiBaseUrl(),
   timeout: 30000,
 });
 
