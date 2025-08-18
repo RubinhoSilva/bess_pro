@@ -11,7 +11,7 @@ COPY package*.json ./
 COPY apps/backend/package*.json ./apps/backend/
 
 # Install dependencies
-RUN npm ci --only=production --ignore-scripts
+RUN npm install --only=production --ignore-scripts
 
 # Build stage
 FROM --platform=linux/arm64 node:20-alpine AS builder
@@ -21,7 +21,7 @@ WORKDIR /app
 # Copy package files and install all dependencies
 COPY package*.json ./
 COPY apps/backend/package*.json ./apps/backend/
-RUN npm ci
+RUN npm install
 
 # Copy source code and config files
 COPY apps/backend/src ./apps/backend/src
