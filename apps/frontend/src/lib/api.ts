@@ -3,8 +3,12 @@ import toast from 'react-hot-toast';
 
 // Configuração base da API
 const getApiBaseUrl = () => {
-  // Em produção, usa o domínio da API
-  if (import.meta.env.PROD) {
+  // Verifica múltiplas condições para detectar produção
+  const isProduction = import.meta.env.PROD || 
+                      import.meta.env.MODE === 'production' || 
+                      window.location.hostname !== 'localhost';
+  
+  if (isProduction) {
     return 'https://api.besspro.vizad.com.br/api/v1';
   }
   
