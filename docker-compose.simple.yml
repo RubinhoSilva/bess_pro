@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # Backend - API na porta 8010
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile.prod
+      platforms:
+        - linux/arm64
+    container_name: bess-pro-backend
+    restart: unless-stopped
+    ports:
+      - "8010:8010"
+    environment:
+      - NODE_ENV=production
+      - PORT=8010
+      - MONGODB_URI=mongodb://mongodb:27017/bess-pro
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - bess-pro-network
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+
+  # Frontend - Arquivos estáticos na porta 3000  
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile.simple
+      platforms:
+        - linux/arm64
+    container_name: bess-pro-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"  # Host porta 3000 → Container porta 80
+    networks:
+      - bess-pro-network
+
+  # MongoDB
+  mongodb:
+    image: mongo:7.0
+    platform: linux/arm64
+    container_name: bess-pro-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=bess-pro
+    networks:
+      - bess-pro-network
+
+  # Redis
+  redis:
+    image: redis:7.2-alpine
+    platform: linux/arm64
+    container_name: bess-pro-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - bess-pro-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  bess-pro-network:
+    driver: bridge
