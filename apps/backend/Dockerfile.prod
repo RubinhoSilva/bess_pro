@@ -32,6 +32,9 @@ COPY packages/ ./packages/
 # Build the application with increased heap size
 RUN cd apps/backend && NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
+# Copy path resolver to dist folder
+RUN cp apps/backend/src/register-paths.js apps/backend/dist/
+
 # Production stage
 FROM --platform=linux/arm64 node:20-alpine AS production
 

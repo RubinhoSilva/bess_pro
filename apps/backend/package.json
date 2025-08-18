@@ -8,7 +8,7 @@
     "dev:docker": "nodemon --exec \"ts-node -r tsconfig-paths/register --project tsconfig.docker.json\" src/index.ts",
     "build": "tsc",
     "build:docker": "tsc --project tsconfig.docker.json",
-    "start": "node -r tsconfig-paths/register dist/index.js",
+    "start": "node -r ./dist/register-paths.js dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
