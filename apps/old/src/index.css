@@ -1,0 +1,206 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import 'leaflet/dist/leaflet.css';
+
+:root {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 217.2 91.2% 59.8%;
+  --primary-foreground: 222.2 84% 4.9%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 224.3 76.3% 94.1%;
+  --radius: 0.75rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  font-family: 'Inter', sans-serif;
+  color: hsl(var(--foreground));
+  min-height: 100vh;
+}
+
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 217.2 91.2% 59.8%;
+  --primary-foreground: 222.2 84% 4.9%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 224.3 76.3% 94.1%;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--secondary));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+  border-radius: 9999px;
+  border: 3px solid hsl(var(--secondary));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+
+/* Aurora Background */
+.aurora-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(ellipse at 20% 20%, hsla(217, 91%, 59%, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 30%, hsla(262, 83%, 58%, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, hsla(185, 100%, 40%, 0.1) 0%, transparent 50%);
+  animation: aurora-animation 20s infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes aurora-animation {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(20px, 40px) scale(1.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-20px, -40px) scale(1);
+    opacity: 1;
+  }
+}
+
+/* 3D Viewer Compass */
+.compass-wrapper {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.compass-wrapper > div {
+  pointer-events: auto;
+}
+
+/* Proposal Styles */
+.proposal-page {
+  @apply min-h-screen w-full break-after-page;
+}
+
+.proposal-title {
+  @apply text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 pb-2 border-b-2 border-slate-700;
+}
+
+.proposal-subtitle {
+  @apply text-xl font-semibold text-slate-200;
+}
+
+.financial-card {
+  @apply bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-center flex flex-col items-center justify-center gap-2;
+}
+.financial-card span {
+  @apply text-sm font-medium text-slate-300;
+}
+.financial-card p {
+  @apply text-xl font-bold text-white;
+}
+
+.payment-card {
+  @apply bg-slate-800/50 border border-slate-700 rounded-lg p-6;
+}
+
+.proposal-footer {
+  @apply text-center text-xs text-slate-500 pt-8 mt-auto;
+}
+
+
+/* Print styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .proposal-document {
+    background: white !important;
+    color: black !important;
+  }
+
+  .proposal-page {
+    background: white !important;
+  }
+
+  .proposal-title {
+    color: black !important;
+    background: none !important;
+    border-color: #ddd !important;
+  }
+
+  .proposal-subtitle, .text-white, .text-slate-100, .text-slate-200, .text-slate-300 {
+    color: black !important;
+  }
+
+  .text-slate-400, .text-slate-500 {
+    color: #555 !important;
+  }
+
+  .financial-card, .payment-card, .bg-slate-800\/50 {
+    background: #f8f9fa !important;
+    border-color: #eee !important;
+  }
+
+  .border-slate-700 {
+    border-color: #ddd !important;
+  }
+
+  .recharts-text {
+    fill: #333 !important;
+  }
+
+  .recharts-legend-item-text {
+    color: #333 !important;
+  }
+}

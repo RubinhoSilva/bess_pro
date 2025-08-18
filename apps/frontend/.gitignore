@@ -1,0 +1,19 @@
+# Frontend specific overrides
+# Most rules are inherited from root .gitignore
+
+# Next.js specific
+.next/
+out/
+
+# Vite specific  
+dist-ssr/
+
+# Storybook
+storybook-static/
+
+# Playwright
+test-results/
+playwright-report/
+
+# VS Code extensions (allow)
+!.vscode/extensions.json

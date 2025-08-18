@@ -1,0 +1,317 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '@/lib/api';
+import toast from 'react-hot-toast';
+
+// Types
+export interface SolarModule {
+  id: string;
+  fabricante: string;
+  modelo: string;
+  potenciaNominal: number;
+  larguraMm?: number;
+  alturaMm?: number;
+  espessuraMm?: number;
+  vmpp?: number;
+  impp?: number;
+  voc?: number;
+  isc?: number;
+  tipoCelula?: string;
+  eficiencia?: number;
+  numeroCelulas?: number;
+  tempCoefPmax?: number;
+  tempCoefVoc?: number;
+  tempCoefIsc?: number;
+  pesoKg?: number;
+  datasheetUrl?: string;
+  certificacoes?: string[];
+  garantiaAnos?: number;
+  tolerancia?: string;
+  areaM2?: number;
+  densidadePotencia?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Inverter {
+  id: string;
+  fabricante: string;
+  modelo: string;
+  potenciaSaidaCA: number;
+  tipoRede: string;
+  potenciaFvMax?: number;
+  tensaoCcMax?: number;
+  numeroMppt?: number;
+  stringsPorMppt?: number;
+  faixaMppt?: string;
+  correnteEntradaMax?: number;
+  potenciaAparenteMax?: number;
+  correnteSaidaMax?: number;
+  tensaoSaidaNominal?: string;
+  frequenciaNominal?: number;
+  eficienciaMax?: number;
+  eficienciaEuropeia?: number;
+  eficienciaMppt?: number;
+  protecoes?: string[];
+  certificacoes?: string[];
+  grauProtecao?: string;
+  dimensoes?: {
+    larguraMm: number;
+    alturaMm: number;
+    profundidadeMm: number;
+  };
+  pesoKg?: number;
+  temperaturaOperacao?: string;
+  garantiaAnos?: number;
+  datasheetUrl?: string;
+  precoReferencia?: number;
+  maxModulosSuportados?: number;
+  maxStringsTotal?: number;
+  tipoFase?: 'monofásico' | 'bifásico' | 'trifásico' | 'unknown';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SolarModuleFilters {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  fabricante?: string;
+  tipoCelula?: string;
+  potenciaMin?: number;
+  potenciaMax?: number;
+}
+
+export interface InverterFilters {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  fabricante?: string;
+  tipoRede?: string;
+  potenciaMin?: number;
+  potenciaMax?: number;
+  moduleReferencePower?: number;
+}
+
+export interface SolarModuleInput {
+  fabricante: string;
+  modelo: string;
+  potenciaNominal: number;
+  larguraMm?: number;
+  alturaMm?: number;
+  espessuraMm?: number;
+  vmpp?: number;
+  impp?: number;
+  voc?: number;
+  isc?: number;
+  tipoCelula?: string;
+  eficiencia?: number;
+  numeroCelulas?: number;
+  tempCoefPmax?: number;
+  tempCoefVoc?: number;
+  tempCoefIsc?: number;
+  pesoKg?: number;
+  datasheetUrl?: string;
+  certificacoes?: string[];
+  garantiaAnos?: number;
+  tolerancia?: string;
+}
+
+export interface InverterInput {
+  fabricante: string;
+  modelo: string;
+  potenciaSaidaCA: number;
+  tipoRede: string;
+  potenciaFvMax?: number;
+  tensaoCcMax?: number;
+  numeroMppt?: number;
+  stringsPorMppt?: number;
+  faixaMppt?: string;
+  correnteEntradaMax?: number;
+  potenciaAparenteMax?: number;
+  correnteSaidaMax?: number;
+  tensaoSaidaNominal?: string;
+  frequenciaNominal?: number;
+  eficienciaMax?: number;
+  eficienciaEuropeia?: number;
+  eficienciaMppt?: number;
+  protecoes?: string[];
+  certificacoes?: string[];
+  grauProtecao?: string;
+  dimensoes?: {
+    larguraMm: number;
+    alturaMm: number;
+    profundidadeMm: number;
+  };
+  pesoKg?: number;
+  temperaturaOperacao?: string;
+  garantiaAnos?: number;
+  datasheetUrl?: string;
+  precoReferencia?: number;
+}
+
+// API Functions
+const solarModuleApi = {
+  async getModules(filters: SolarModuleFilters = {}) {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.append(key, value.toString());
+      }
+    });
+    
+    const response = await api.get(`/solar-modules?${params.toString()}`);
+    return response.data.data; // API returns { success: true, data: {...} }
+  },
+
+  async createModule(data: SolarModuleInput) {
+    const response = await api.post('/solar-modules', data);
+    return response.data.data; // API returns { success: true, data: {...} }
+  },
+
+  async updateModule(id: string, data: Partial<SolarModuleInput>) {
+    const response = await api.put(`/solar-modules/${id}`, data);
+    return response.data.data; // API returns { success: true, data: {...} }
+  },
+
+  async deleteModule(id: string) {
+    await api.delete(`/solar-modules/${id}`);
+  }
+};
+
+const inverterApi = {
+  async getInverters(filters: InverterFilters = {}) {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.append(key, value.toString());
+      }
+    });
+    
+    const response = await api.get(`/inverters?${params.toString()}`);
+    return response.data.data; // API returns { success: true, data: {...} }
+  },
+
+  async createInverter(data: InverterInput) {
+    const response = await api.post('/inverters', data);
+    return response.data.data; // API returns { success: true, data: {...} }
+  },
+
+  async updateInverter(id: string, data: Partial<InverterInput>) {
+    const response = await api.put(`/inverters/${id}`, data);
+    return response.data.data; // API returns { success: true, data: {...} }
+  },
+
+  async deleteInverter(id: string) {
+    await api.delete(`/inverters/${id}`);
+  }
+};
+
+// Solar Module Hooks
+export function useSolarModules(filters: SolarModuleFilters = {}) {
+  return useQuery({
+    queryKey: ['solar-modules', filters],
+    queryFn: () => solarModuleApi.getModules(filters),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useCreateSolarModule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: SolarModuleInput) => solarModuleApi.createModule(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['solar-modules'] });
+      toast.success('Módulo solar criado com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao criar módulo: ${error.response?.data?.message || error.message}`);
+    }
+  });
+}
+
+export function useUpdateSolarModule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string } & Partial<SolarModuleInput>) => 
+      solarModuleApi.updateModule(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['solar-modules'] });
+      toast.success('Módulo solar atualizado com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao atualizar módulo: ${error.response?.data?.message || error.message}`);
+    }
+  });
+}
+
+export function useDeleteSolarModule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => solarModuleApi.deleteModule(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['solar-modules'] });
+      toast.success('Módulo solar excluído com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao excluir módulo: ${error.response?.data?.message || error.message}`);
+    }
+  });
+}
+
+// Inverter Hooks
+export function useInverters(filters: InverterFilters = {}) {
+  return useQuery({
+    queryKey: ['inverters', filters],
+    queryFn: () => inverterApi.getInverters(filters),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useCreateInverter() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: InverterInput) => inverterApi.createInverter(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inverters'] });
+      toast.success('Inversor criado com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao criar inversor: ${error.response?.data?.message || error.message}`);
+    }
+  });
+}
+
+export function useUpdateInverter() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string } & Partial<InverterInput>) => 
+      inverterApi.updateInverter(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inverters'] });
+      toast.success('Inversor atualizado com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao atualizar inversor: ${error.response?.data?.message || error.message}`);
+    }
+  });
+}
+
+export function useDeleteInverter() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => inverterApi.deleteInverter(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inverters'] });
+      toast.success('Inversor excluído com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao excluir inversor: ${error.response?.data?.message || error.message}`);
+    }
+  });
+}

@@ -1,0 +1,595 @@
+import React, { useState } from 'react';
+import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger, 
+  DialogFooter, 
+  DialogDescription 
+} from '@/components/ui/dialog';
+import { PlusCircle, Edit, Trash2, Package, Unplug, Loader2, Search } from 'lucide-react';
+import { 
+  useSolarModules, 
+  useCreateSolarModule, 
+  useUpdateSolarModule, 
+  useDeleteSolarModule,
+  useInverters,
+  useCreateInverter,
+  useUpdateInverter,
+  useDeleteInverter,
+  type SolarModule,
+  type Inverter,
+  type SolarModuleInput,
+  type InverterInput
+} from '@/hooks/equipment-hooks';
+
+interface EquipmentManagerProps {
+  onUpdate?: () => void;
+}
+
+export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) => {
+  const { toast } = useToast();
+  
+  // State
+  const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false);
+  const [isInverterDialogOpen, setIsInverterDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Current editing items
+  const [currentModule, setCurrentModule] = useState<SolarModule | null>(null);
+  const [currentInverter, setCurrentInverter] = useState<Inverter | null>(null);
+  
+  // Form states
+  const [moduleForm, setModuleForm] = useState<SolarModuleInput>({
+    fabricante: '', 
+    modelo: '', 
+    potenciaNominal: 0
+  });
+  
+  const [inverterForm, setInverterForm] = useState<InverterInput>({
+    fabricante: '',
+    modelo: '', 
+    potenciaSaidaCA: 0, 
+    tipoRede: ''
+  });
+  
+  // API Hooks
+  const { data: modulesData, isLoading: loadingModules } = useSolarModules({ search: searchTerm, pageSize: 50 });
+  const { data: invertersData, isLoading: loadingInverters } = useInverters({ search: searchTerm, pageSize: 50 });
+  
+  const createModuleMutation = useCreateSolarModule();
+  const updateModuleMutation = useUpdateSolarModule();
+  const deleteModuleMutation = useDeleteSolarModule();
+  
+  const createInverterMutation = useCreateInverter();
+  const updateInverterMutation = useUpdateInverter();
+  const deleteInverterMutation = useDeleteInverter();
+  
+  const modules = modulesData?.modules || [];
+  const inverters = invertersData?.inverters || [];
+
+  // Handlers
+  const handleSaveModule = async () => {
+    if (!moduleForm.modelo || !moduleForm.fabricante || moduleForm.potenciaNominal <= 0) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Campos obrigatórios', 
+        description: 'Fabricante, Modelo e Potência são obrigatórios.' 
+      });
+      return;
+    }
+    
+    try {
+      if (currentModule) {
+        await updateModuleMutation.mutateAsync({ id: currentModule.id, ...moduleForm });
+      } else {
+        await createModuleMutation.mutateAsync(moduleForm);
+      }
+      
+      setIsModuleDialogOpen(false);
+      setCurrentModule(null);
+      setModuleForm({ fabricante: '', modelo: '', potenciaNominal: 0 });
+      onUpdate?.();
+    } catch (error) {
+      // Error handling is done in the hooks with toast
+    }
+  };
+
+  const handleSaveInverter = async () => {
+    if (!inverterForm.fabricante || !inverterForm.modelo || inverterForm.potenciaSaidaCA <= 0) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Campos obrigatórios', 
+        description: 'Fabricante, Modelo e Potência Nominal de Saída (CA) são obrigatórios.'
+      });
+      return;
+    }
+    
+    try {
+      if (currentInverter) {
+        await updateInverterMutation.mutateAsync({ id: currentInverter.id, ...inverterForm });
+        toast({ title: 'Inversor atualizado com sucesso!' });
+      } else {
+        await createInverterMutation.mutateAsync(inverterForm);
+        toast({ title: 'Inversor criado com sucesso!' });
+      }
+      
+      setIsInverterDialogOpen(false);
+      setCurrentInverter(null);
+      setInverterForm({ fabricante: '', modelo: '', potenciaSaidaCA: 0, tipoRede: '' });
+      onUpdate?.();
+    } catch (error) {
+      const errorMessage = (error as any)?.response?.data?.message || (error as any)?.message || 'Verifique os dados e tente novamente.';
+      toast({ 
+        variant: 'destructive',
+        title: 'Erro ao salvar inversor', 
+        description: errorMessage
+      });
+    }
+  };
+
+  const handleDeleteModule = async (id: string) => {
+    try {
+      await deleteModuleMutation.mutateAsync(id);
+      toast({ title: 'Módulo excluído.' });
+      onUpdate?.();
+    } catch (error) {
+      toast({ 
+        variant: 'destructive',
+        title: 'Erro ao excluir módulo', 
+        description: 'Tente novamente.' 
+      });
+    }
+  };
+
+  const handleDeleteInverter = async (id: string) => {
+    try {
+      await deleteInverterMutation.mutateAsync(id);
+      toast({ title: 'Inversor excluído.' });
+      onUpdate?.();
+    } catch (error) {
+      toast({ 
+        variant: 'destructive',
+        title: 'Erro ao excluir inversor', 
+        description: 'Tente novamente.' 
+      });
+    }
+  };
+
+  const handleEditModule = (module: SolarModule) => {
+    setCurrentModule(module);
+    setModuleForm({
+      fabricante: module.fabricante,
+      modelo: module.modelo,
+      potenciaNominal: module.potenciaNominal,
+      larguraMm: module.larguraMm,
+      alturaMm: module.alturaMm,
+      espessuraMm: module.espessuraMm,
+      vmpp: module.vmpp,
+      impp: module.impp,
+      voc: module.voc,
+      isc: module.isc,
+      tipoCelula: module.tipoCelula,
+      eficiencia: module.eficiencia,
+      numeroCelulas: module.numeroCelulas,
+      tempCoefPmax: module.tempCoefPmax,
+      tempCoefVoc: module.tempCoefVoc,
+      tempCoefIsc: module.tempCoefIsc,
+      pesoKg: module.pesoKg,
+      datasheetUrl: module.datasheetUrl,
+      certificacoes: module.certificacoes,
+      garantiaAnos: module.garantiaAnos,
+      tolerancia: module.tolerancia
+    });
+    setIsModuleDialogOpen(true);
+  };
+
+  const handleEditInverter = (inverter: Inverter) => {
+    setCurrentInverter(inverter);
+    setInverterForm({
+      fabricante: inverter.fabricante,
+      modelo: inverter.modelo,
+      potenciaSaidaCA: inverter.potenciaSaidaCA,
+      tipoRede: inverter.tipoRede,
+      potenciaFvMax: inverter.potenciaFvMax,
+      tensaoCcMax: inverter.tensaoCcMax,
+      numeroMppt: inverter.numeroMppt,
+      stringsPorMppt: inverter.stringsPorMppt,
+      faixaMppt: inverter.faixaMppt,
+      correnteEntradaMax: inverter.correnteEntradaMax,
+      potenciaAparenteMax: inverter.potenciaAparenteMax,
+      correnteSaidaMax: inverter.correnteSaidaMax,
+      tensaoSaidaNominal: inverter.tensaoSaidaNominal,
+      frequenciaNominal: inverter.frequenciaNominal,
+      eficienciaMax: inverter.eficienciaMax,
+      eficienciaEuropeia: inverter.eficienciaEuropeia,
+      eficienciaMppt: inverter.eficienciaMppt,
+      protecoes: inverter.protecoes,
+      certificacoes: inverter.certificacoes,
+      grauProtecao: inverter.grauProtecao,
+      dimensoes: inverter.dimensoes,
+      pesoKg: inverter.pesoKg,
+      temperaturaOperacao: inverter.temperaturaOperacao,
+      garantiaAnos: inverter.garantiaAnos,
+      datasheetUrl: inverter.datasheetUrl,
+      precoReferencia: inverter.precoReferencia
+    });
+    setIsInverterDialogOpen(true);
+  };
+
+  const handleNewModule = () => {
+    setCurrentModule(null);
+    setModuleForm({ fabricante: '', modelo: '', potenciaNominal: 0 });
+    setIsModuleDialogOpen(true);
+  };
+
+  const handleNewInverter = () => {
+    setCurrentInverter(null);
+    setInverterForm({ fabricante: '', modelo: '', potenciaSaidaCA: 0, tipoRede: '' });
+    setIsInverterDialogOpen(true);
+  };
+
+  const isLoading = loadingModules || loadingInverters ||
+                   createModuleMutation.isPending || updateModuleMutation.isPending || 
+                   createInverterMutation.isPending || updateInverterMutation.isPending;
+
+  return (
+    <div data-testid="equipment-manager">
+      {/* Search */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Buscar equipamentos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+        <Card className="bg-muted/50 border-border">
+          <CardHeader>
+            <CardTitle className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5" /> Módulos Solares ({modules.length})
+              </div>
+              <Button 
+                size="sm" 
+                onClick={handleNewModule}
+                data-action="add-module"
+              >
+                <PlusCircle className="w-4 h-4 mr-2" /> Adicionar
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-64 overflow-y-auto">
+            {isLoading ? (
+              <div className="flex justify-center p-4">
+                <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+            ) : modules.length === 0 ? (
+              <p className="text-slate-400 text-center py-4">Nenhum módulo cadastrado</p>
+            ) : (
+              modules.map((module: any) => (
+                <div key={module.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                  <div>
+                    <span className="font-medium">{module.fabricante} {module.modelo}</span>
+                    <span className="text-sm text-slate-400 ml-2">({module.potenciaNominal}W)</span>
+                    {module.tipoCelula && (
+                      <span className="text-xs text-slate-500 block">{module.tipoCelula}</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleEditModule(module)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-red-500" 
+                      onClick={() => handleDeleteModule(module.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-muted/50 border-border">
+          <CardHeader>
+            <CardTitle className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Unplug className="w-5 h-5" /> Inversores ({inverters.length})
+              </div>
+              <Button 
+                size="sm" 
+                onClick={handleNewInverter}
+                data-action="add-inverter"
+              >
+                <PlusCircle className="w-4 h-4 mr-2" /> Adicionar
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-64 overflow-y-auto">
+            {isLoading ? (
+              <div className="flex justify-center p-4">
+                <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+            ) : inverters.length === 0 ? (
+              <p className="text-slate-400 text-center py-4">Nenhum inversor cadastrado</p>
+            ) : (
+              inverters.map((inverter: any) => (
+                <div key={inverter.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                  <div>
+                    <span className="font-medium">{inverter.fabricante} {inverter.modelo}</span>
+                    <span className="text-sm text-slate-400 ml-2">({inverter.potenciaSaidaCA}W)</span>
+                    {inverter.tipoRede && (
+                      <span className="text-xs text-slate-500 block">{inverter.tipoRede}</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleEditInverter(inverter)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-red-500" 
+                      onClick={() => handleDeleteInverter(inverter.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Dialog para Módulos */}
+      <Dialog open={isModuleDialogOpen} onOpenChange={setIsModuleDialogOpen}>
+        <DialogContent className="bg-background border-border max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{currentModule?.id ? 'Editar' : 'Adicionar'} Módulo Fotovoltaico</DialogTitle>
+            <DialogDescription>Insira os parâmetros técnicos ou extraia de um datasheet.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Fabricante *</Label>
+                <Input 
+                  value={moduleForm.fabricante || ''} 
+                  onChange={e => setModuleForm(prev => ({ ...prev, fabricante: e.target.value }))} 
+                  className="bg-background border-border" 
+                  placeholder="Ex: Canadian Solar"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Modelo *</Label>
+                <Input 
+                  value={moduleForm.modelo || ''} 
+                  onChange={e => setModuleForm(prev => ({ ...prev, modelo: e.target.value }))} 
+                  className="bg-background border-border" 
+                  placeholder="Ex: CS3W-400MS"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Potência Nominal (W) *</Label>
+                <Input 
+                  type="number" 
+                  value={moduleForm.potenciaNominal || ''} 
+                  onChange={e => setModuleForm(prev => ({ ...prev, potenciaNominal: parseFloat(e.target.value) || 0 }))} 
+                  className="bg-background border-border" 
+                  placeholder="400"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Largura (mm)</Label>
+                <Input 
+                  type="number" 
+                  value={moduleForm.larguraMm || ''} 
+                  onChange={e => setModuleForm(prev => ({ ...prev, larguraMm: parseFloat(e.target.value) || undefined }))} 
+                  className="bg-background border-border" 
+                  placeholder="2000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Altura (mm)</Label>
+                <Input 
+                  type="number" 
+                  value={moduleForm.alturaMm || ''} 
+                  onChange={e => setModuleForm(prev => ({ ...prev, alturaMm: parseFloat(e.target.value) || undefined }))} 
+                  className="bg-background border-border" 
+                  placeholder="1000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo de Célula</Label>
+                <Input 
+                  value={moduleForm.tipoCelula || ''} 
+                  onChange={e => setModuleForm(prev => ({ ...prev, tipoCelula: e.target.value }))} 
+                  className="bg-background border-border" 
+                  placeholder="Monocristalino"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Eficiência (%)</Label>
+                <Input 
+                  type="number" 
+                  step="0.1"
+                  value={moduleForm.eficiencia || ''} 
+                  onChange={e => setModuleForm(prev => ({ ...prev, eficiencia: parseFloat(e.target.value) || undefined }))} 
+                  className="bg-background border-border" 
+                  placeholder="21.5"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Vmpp (V)</Label>
+                <Input 
+                  type="number" 
+                  step="0.1"
+                  value={moduleForm.vmpp || ''} 
+                  onChange={e => setModuleForm(prev => ({ ...prev, vmpp: parseFloat(e.target.value) || undefined }))} 
+                  className="bg-background border-border" 
+                  placeholder="40.5"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Impp (A)</Label>
+                <Input 
+                  type="number" 
+                  step="0.1"
+                  value={moduleForm.impp || ''} 
+                  onChange={e => setModuleForm(prev => ({ ...prev, impp: parseFloat(e.target.value) || undefined }))} 
+                  className="bg-background border-border" 
+                  placeholder="9.88"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSaveModule} disabled={isLoading}>
+              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} 
+              Salvar Módulo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Inversores */}
+      <Dialog open={isInverterDialogOpen} onOpenChange={setIsInverterDialogOpen}>
+        <DialogContent className="bg-background border-border max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{currentInverter?.id ? 'Editar' : 'Adicionar'} Inversor</DialogTitle>
+            <DialogDescription>Insira os parâmetros técnicos do inversor.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Fabricante *</Label>
+                <Input 
+                  value={inverterForm.fabricante || ''} 
+                  onChange={e => setInverterForm(prev => ({ ...prev, fabricante: e.target.value }))} 
+                  className="bg-background border-border" 
+                  placeholder="Ex: Fronius"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Modelo *</Label>
+                <Input 
+                  value={inverterForm.modelo || ''} 
+                  onChange={e => setInverterForm(prev => ({ ...prev, modelo: e.target.value }))} 
+                  className="bg-background border-border" 
+                  placeholder="Ex: Primo 8.2-1"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold text-primary mb-3 border-b border-border pb-2">
+                Características Principais
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Potência Nominal CA (W) *</Label>
+                  <Input 
+                    type="number" 
+                    value={inverterForm.potenciaSaidaCA || ''} 
+                    onChange={e => setInverterForm(prev => ({ ...prev, potenciaSaidaCA: parseFloat(e.target.value) || 0 }))} 
+                    className="bg-background border-border" 
+                    placeholder="8200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tipo de Rede *</Label>
+                  <Select
+                    value={inverterForm.tipoRede || ''}
+                    onValueChange={value => setInverterForm(prev => ({ ...prev, tipoRede: value }))}
+                  >
+                    <SelectTrigger className="bg-background border-border">
+                      <SelectValue placeholder="Selecione o tipo de rede" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monofasico-220v">Monofásico 220V</SelectItem>
+                      <SelectItem value="bifasico-220v">Bifásico 220V</SelectItem>
+                      <SelectItem value="trifasico-220v">Trifásico 220V</SelectItem>
+                      <SelectItem value="trifasico-380v">Trifásico 380V</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Potência FV Máx (W)</Label>
+                  <Input 
+                    type="number" 
+                    value={inverterForm.potenciaFvMax || ''} 
+                    onChange={e => setInverterForm(prev => ({ ...prev, potenciaFvMax: parseFloat(e.target.value) || undefined }))} 
+                    className="bg-background border-border" 
+                    placeholder="12300"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tensão CC Máx (V)</Label>
+                  <Input 
+                    type="number" 
+                    value={inverterForm.tensaoCcMax || ''} 
+                    onChange={e => setInverterForm(prev => ({ ...prev, tensaoCcMax: parseFloat(e.target.value) || undefined }))} 
+                    className="bg-background border-border" 
+                    placeholder="1000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Número de MPPTs</Label>
+                  <Input 
+                    type="number" 
+                    value={inverterForm.numeroMppt || ''} 
+                    onChange={e => setInverterForm(prev => ({ ...prev, numeroMppt: parseFloat(e.target.value) || undefined }))} 
+                    className="bg-background border-border" 
+                    placeholder="2"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Eficiência Máx (%)</Label>
+                  <Input 
+                    type="number" 
+                    step="0.1"
+                    value={inverterForm.eficienciaMax || ''} 
+                    onChange={e => setInverterForm(prev => ({ ...prev, eficienciaMax: parseFloat(e.target.value) || undefined }))} 
+                    className="bg-background border-border" 
+                    placeholder="97.1"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSaveInverter} disabled={isLoading}>
+              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} 
+              Salvar Inversor
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};

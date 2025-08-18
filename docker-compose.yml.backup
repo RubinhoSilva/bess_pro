@@ -1,0 +1,80 @@
+services:
+  mongodb:
+    image: mongo:7-jammy
+    container_name: bess-pro-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: bess123456
+      MONGO_INITDB_DATABASE: bess-pro
+    volumes:
+      - mongodb_data:/data/db
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - bess-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: bess-pro-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes --requirepass redis123456
+    volumes:
+      - redis_data:/data
+    networks:
+      - bess-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: ./apps/backend/Dockerfile.simple
+    container_name: bess-pro-backend
+    restart: unless-stopped
+    ports:
+      - "8010:5000"  # 👈 MUDANÇA: Externa 8010, interna 5000
+    environment:
+      NODE_ENV: development
+      PORT: 5000  # Porta interna continua 5000
+      MONGODB_URI: mongodb://admin:bess123456@mongodb:27017/bess-pro?authSource=admin
+      REDIS_URL: redis://:redis123456@redis:6379
+      JWT_SECRET: dev-jwt-secret-super-secure-change-in-production
+      JWT_REFRESH_SECRET: dev-refresh-secret-super-secure-change-in-production
+    volumes:
+      - ./apps/backend:/app/apps/backend
+      - ./packages/shared:/app/packages/shared
+      - /app/apps/backend/node_modules
+    networks:
+      - bess-network
+    depends_on:
+      - mongodb
+      - redis
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./apps/frontend/Dockerfile.simple
+    container_name: bess-pro-frontend
+    restart: unless-stopped
+    ports:
+      - "3003:3000"
+    environment:
+      VITE_API_URL: http://localhost:8010/api/v1  # 👈 MUDANÇA: Apontar para 8010
+    volumes:
+      - ./apps/frontend:/app/apps/frontend
+      - ./packages/shared:/app/packages/shared
+      - /app/apps/frontend/node_modules
+    networks:
+      - bess-network
+    depends_on:
+      - backend
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  bess-network:
+    driver: bridge

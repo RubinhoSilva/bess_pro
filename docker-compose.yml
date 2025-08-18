@@ -1,0 +1,104 @@
+services:
+  mongodb:
+    image: mongo:7-jammy
+    container_name: bess-pro-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: bess123456
+      MONGO_INITDB_DATABASE: bess-pro
+    volumes:
+      - mongodb_data:/data/db
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - bess-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: bess-pro-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes --requirepass redis123456
+    volumes:
+      - redis_data:/data
+    networks:
+      - bess-network
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: bess-pro-mailpit
+    restart: unless-stopped
+    ports:
+      - "1026:1025"  # SMTP port
+      - "8026:8025"  # Web UI port
+    networks:
+      - bess-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: ./apps/backend/Dockerfile
+      target: development
+    container_name: bess-pro-backend
+    restart: unless-stopped
+    ports:
+      - "8010:5000"
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      MONGODB_URI: mongodb://admin:bess123456@mongodb:27017/bess-pro?authSource=admin
+      REDIS_URL: redis://:redis123456@redis:6379
+      JWT_SECRET: dev-jwt-secret-super-secure-change-in-production
+      JWT_REFRESH_SECRET: dev-refresh-secret-super-secure-change-in-production
+      CORS_ORIGIN: http://localhost:3003
+      EMAIL_PROVIDER: nodemailer
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: 1025
+      EMAIL_SECURE: false
+      EMAIL_USER: ""
+      EMAIL_PASS: ""
+      EMAIL_FROM: noreply@besspro.dev
+    volumes:
+      - ./apps/backend:/app/backend
+      - ./packages/shared:/app/shared
+      - ./tsconfig.base.json:/app/tsconfig.base.json
+      - /app/backend/node_modules
+    networks:
+      - bess-network
+    depends_on:
+      - mongodb
+      - redis
+      - mailpit
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./apps/frontend/Dockerfile
+    container_name: bess-pro-frontend
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    environment:
+      VITE_API_URL: http://localhost:8010/api/v1
+    volumes:
+      - ./apps/frontend:/app
+      - ./packages/shared:/app/shared
+      - ./tsconfig.base.json:/app/tsconfig.base.json
+      - node_modules_frontend:/app/node_modules
+    networks:
+      - bess-network
+    depends_on:
+      - backend
+
+volumes:
+  mongodb_data:
+  redis_data:
+  node_modules_frontend:
+  node_modules_shared:
+
+networks:
+  bess-network:
+    driver: bridge

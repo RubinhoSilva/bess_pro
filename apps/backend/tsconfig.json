@@ -1,0 +1,29 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2020",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["*"],
+      "@/application/*": ["application/*"],
+      "@/domain/*": ["domain/*"],
+      "@/infrastructure/*": ["infrastructure/*"],
+      "@/presentation/*": ["presentation/*"],
+      "@/shared/*": ["shared/*"],
+      "@/config/*": ["config/*"]
+    },
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "tests"],
+  "references": [
+    { "path": "../../packages/shared" }
+  ]
+}
