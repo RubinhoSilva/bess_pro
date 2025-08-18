@@ -13,5 +13,17 @@ export default defineConfig({
   server: {
     port: 3003,
     host: true
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          utils: ['axios', 'date-fns'],
+          ui: ['lucide-react', 'clsx']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
   }
 })
