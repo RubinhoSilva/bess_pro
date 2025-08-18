@@ -26,14 +26,12 @@ RUN npm ci
 # Copy source code and config files
 COPY apps/backend/src ./apps/backend/src
 COPY apps/backend/tsconfig.json ./apps/backend/
+COPY apps/backend/tsconfig-alias.json ./apps/backend/
 COPY tsconfig.base.json ./
 COPY packages/ ./packages/
 
-# Build the application with increased heap size
+# Build the application with increased heap size and resolve aliases
 RUN cd apps/backend && NODE_OPTIONS="--max-old-space-size=2048" npm run build
-
-# Copy path resolver to dist folder
-RUN cp apps/backend/src/register-paths.js apps/backend/dist/
 
 # Production stage
 FROM --platform=linux/arm64 node:20-alpine AS production
