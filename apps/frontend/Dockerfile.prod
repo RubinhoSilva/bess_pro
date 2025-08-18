@@ -23,8 +23,8 @@ RUN npm ci
 # Copy source code
 COPY apps/frontend ./apps/frontend
 
-# Build the application
-RUN cd apps/frontend && npm run build
+# Build the application with increased heap size
+RUN cd apps/frontend && NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
 # Production stage with Nginx ARM64
 FROM --platform=linux/arm64 nginx:alpine AS production
