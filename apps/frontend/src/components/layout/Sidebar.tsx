@@ -61,7 +61,10 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
   };
 
   // Verificar se o usuário é super admin (acesso ao menu admin)
-  const isSuperAdmin = user?.role === 'super_admin';
+  const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'admin';
+  
+  // Debug: Log user role para investigar problema do menu admin
+  console.log('User role:', user?.role, 'isSuperAdmin:', isSuperAdmin);
   
   // Verificar se o usuário pode gerenciar seu próprio team
   const canManageTeam = user?.role === 'team_owner' || user?.role === 'admin';

@@ -20,9 +20,9 @@ const ResultCard: React.FC<ResultCardProps> = ({
   isPositive 
 }) => {
   const getValueColor = () => {
-    if (isPositive === true) return 'text-green-600';
-    if (isPositive === false) return 'text-red-600';
-    return 'text-gray-800';
+    if (isPositive === true) return 'text-green-600 dark:text-green-400';
+    if (isPositive === false) return 'text-red-600 dark:text-red-400';
+    return 'text-gray-800 dark:text-gray-100';
   };
 
   return (
@@ -32,12 +32,12 @@ const ResultCard: React.FC<ResultCardProps> = ({
       transition={{ duration: 0.5, delay: delay * 0.1 }}
       className="h-full"
     >
-      <Card className="bg-white border border-gray-200 text-center h-full flex flex-col justify-center shadow-lg hover:shadow-xl transition-shadow">
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-center h-full flex flex-col justify-center shadow-lg hover:shadow-xl transition-shadow">
         <CardHeader className="pb-2 pt-4">
-          <div className="mx-auto bg-gray-100 p-3 rounded-full w-fit mb-2">
+          <div className="mx-auto bg-gray-100 dark:bg-gray-700 p-3 rounded-full w-fit mb-2">
             {icon}
           </div>
-          <CardTitle className="text-sm sm:text-base text-gray-600 font-medium">
+          <CardTitle className="text-sm sm:text-base text-gray-600 dark:text-gray-300 font-medium">
             {title}
           </CardTitle>
         </CardHeader>
@@ -45,7 +45,7 @@ const ResultCard: React.FC<ResultCardProps> = ({
           <p className={`text-xl sm:text-2xl font-bold ${getValueColor()}`}>
             {value} 
             {unit && (
-              <span className="text-lg text-gray-500 ml-1">{unit}</span>
+              <span className="text-lg text-gray-500 dark:text-gray-400 ml-1">{unit}</span>
             )}
           </p>
         </CardContent>

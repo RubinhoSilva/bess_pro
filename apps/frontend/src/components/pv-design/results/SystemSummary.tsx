@@ -16,10 +16,10 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ results }) => {
   const { potenciaPico, numeroModulos, areaEstimada, geracaoEstimadaAnual } = results;
 
   return (
-    <Card className="bg-white border border-gray-200 shadow-lg">
+    <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
       <CardHeader>
-        <CardTitle className="text-gray-800 flex items-center gap-2">
-          <Calculator className="w-5 h-5 text-blue-500" />
+        <CardTitle className="text-gray-800 dark:text-gray-100 flex items-center gap-2">
+          <Calculator className="w-5 h-5 text-blue-500 dark:text-blue-400" />
           Resumo do Sistema
         </CardTitle>
       </CardHeader>
