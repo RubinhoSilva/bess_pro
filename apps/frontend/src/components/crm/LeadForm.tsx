@@ -131,8 +131,9 @@ export const LeadForm: React.FC<LeadFormProps> = ({
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+    <div className="max-h-[80vh] overflow-y-auto pr-2">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -444,5 +445,6 @@ export const LeadForm: React.FC<LeadFormProps> = ({
         </div>
       </form>
     </Form>
+    </div>
   );
 };
