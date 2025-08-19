@@ -153,11 +153,14 @@ export default function DashboardHomePage() {
           </div>
           
           <div className="flex items-center gap-3 mt-4 md:mt-0">
-            <Button variant="outline">
+            <Button 
+              variant="outline"
+              onClick={() => navigate('/dashboard/leads')}
+            >
               <Calendar className="mr-2 h-4 w-4" />
               Agendar reunião
             </Button>
-            <Button>
+            <Button onClick={() => navigate('/dashboard/projects/new')}>
               <Plus className="mr-2 h-4 w-4" />
               Novo projeto
             </Button>

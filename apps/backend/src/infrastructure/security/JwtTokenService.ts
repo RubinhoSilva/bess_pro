@@ -141,10 +141,10 @@ export class JwtTokenService implements ITokenService {
         throw new AuthError(ErrorCodes.TOKEN_INVALID, 'Refresh token foi revogado', 401);
       }
 
-      // Revogar o refresh token usado
-      if (decoded.jti) {
-        this.revokeToken(decoded.jti, decoded.exp * 1000, 'refresh_token_used');
-      }
+      // Não revogar o refresh token para permitir múltiplas sessões ativas
+      // if (decoded.jti) {
+      //   this.revokeToken(decoded.jti, decoded.exp * 1000, 'refresh_token_used');
+      // }
 
       // Gerar novo access token
       return this.generateAccessToken({
