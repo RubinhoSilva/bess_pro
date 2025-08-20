@@ -49,7 +49,6 @@ export {
   LocalFileStorageService,
   
   // External APIs
-  GoogleSolarApiService,
   PvgisApiService,
   PaymentGatewayService,
   
