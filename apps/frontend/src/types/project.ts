@@ -143,6 +143,7 @@ export interface ProjectSummary {
   projectName: string;
   projectType: ProjectType;
   address: string;
+  createdAt?: string;
   savedAt: string;
   hasLocation: boolean;
   hasLead: boolean;

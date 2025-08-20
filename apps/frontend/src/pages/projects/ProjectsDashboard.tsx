@@ -93,7 +93,7 @@ const ProjectsDashboard: React.FC = () => {
   
   const { data: clients = [] } = useClients();
 
-  // Filtrar e agrupar projetos por ano/mês
+  // Filtrar e organizar projetos por ano → mês de criação
   const filteredAndGroupedProjects = useMemo(() => {
     let filtered = projects;
 
@@ -117,9 +117,9 @@ const ProjectsDashboard: React.FC = () => {
       );
     }
 
-    // Agrupar por ano e mês
+    // Agrupar por ano e mês de criação
     const grouped = filtered.reduce((acc, project) => {
-      const date = new Date(project.savedAt);
+      const date = new Date(project.createdAt || project.savedAt);
       const year = date.getFullYear();
       const month = date.getMonth();
       const monthNames = [
@@ -158,7 +158,10 @@ const ProjectsDashboard: React.FC = () => {
         .sort((a, b) => b.localeCompare(a))
         .map(monthKey => ({
           key: monthKey,
-          ...grouped[yearKey].months[monthKey]
+          ...grouped[yearKey].months[monthKey],
+          projects: grouped[yearKey].months[monthKey].projects.sort((a, b) => 
+            new Date(b.createdAt || b.savedAt).getTime() - new Date(a.createdAt || a.savedAt).getTime()
+          )
         }))
     }));
   }, [projects, activeTab, debouncedSearchTerm]);
@@ -651,7 +654,7 @@ const ProjectsDashboard: React.FC = () => {
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                       <Calendar className="w-4 h-4" />
-                                      <span>Criado em {formatDate(project.savedAt)}</span>
+                                      <span>Criado em {formatDate(project.createdAt || project.savedAt)}</span>
                                     </div>
                                   </div>
 
