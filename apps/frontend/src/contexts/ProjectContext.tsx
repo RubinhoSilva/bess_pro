@@ -71,7 +71,6 @@ const getInitialFormData = (): ProjectData => ({
   
   cableSizing: [],
   modelo3dUrl: '',
-  googleSolarData: null,
   irradiacaoMensal: Array(12).fill(4.5),
 });
 

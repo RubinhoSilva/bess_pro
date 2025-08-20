@@ -58,10 +58,6 @@ export interface AppConfig {
     };
   };
   externalApis: {
-    googleSolar?: {
-      apiKey: string;
-      baseUrl: string;
-    };
     pvgis: {
       baseUrl: string;
     };
@@ -142,10 +138,6 @@ export function loadConfig(): AppConfig {
       },
     },
     externalApis: {
-      googleSolar: {
-        apiKey: process.env.GOOGLE_SOLAR_API_KEY || '',
-        baseUrl: process.env.GOOGLE_SOLAR_BASE_URL || 'https://solar.googleapis.com/v1',
-      },
       pvgis: {
         baseUrl: process.env.PVGIS_BASE_URL || 'https://re.jrc.ec.europa.eu/api/v5_2',
       },

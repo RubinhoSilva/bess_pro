@@ -1,17 +1,22 @@
 import React from 'react';
-import SolarLocationAnalyzer from '@/components/solar-analysis/SolarLocationAnalyzer';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function SolarAnalysisPage() {
-  const handleAnalysisComplete = (data: any) => {
-    console.log('Solar Analysis Complete:', data);
-    
-    // Aqui pode salvar os dados no contexto ou estado global
-    // para uso em outros componentes do sistema
-  };
-
   return (
-    <div className="min-h-screen bg-background">
-      <SolarLocationAnalyzer onAnalysisComplete={handleAnalysisComplete} />
+    <div className="min-h-screen bg-background p-4">
+      <div className="container mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle>Análise Solar</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              A análise solar agora está integrada ao dimensionamento PV utilizando apenas o PVGIS.
+              Use a ferramenta de dimensionamento PV para realizar análises solares completas.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

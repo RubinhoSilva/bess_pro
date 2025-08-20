@@ -27,7 +27,6 @@ import { JwtTokenService } from '../security/JwtTokenService';
 import { NodemailerEmailService } from '../email/NodemailerEmailService';
 import { LocalFileStorageService } from '../storage/LocalFileStorageService';
 import { S3FileStorageService } from '../storage/S3FileStorageService';
-import { GoogleSolarApiService } from '../external-apis/GoogleSolarApiService';
 import { PvgisApiService } from '../external-apis/PvgisApiService';
 import { PaymentGatewayService } from '../external-apis/PaymentGatewayService';
 
@@ -231,16 +230,6 @@ export class ContainerSetup {
     }
 
     // External API Services (Singletons)
-    container.registerFactory(ServiceTokens.GOOGLE_SOLAR_API_SERVICE, () => {
-      return new GoogleSolarApiService({
-        apiKey: config.externalApis.googleSolar?.apiKey || process.env.GOOGLE_SOLAR_API_KEY || '',
-        baseUrl: config.externalApis.googleSolar?.baseUrl || 'https://solar.googleapis.com/v1',
-        cacheConfig: {
-          ttlMinutes: 60,
-          maxCacheSize: 100
-        }
-      });
-    }, true);
     container.register(ServiceTokens.PVGIS_API_SERVICE, PvgisApiService, true);
     container.register(ServiceTokens.PAYMENT_GATEWAY_SERVICE, PaymentGatewayService, true);
 
@@ -786,7 +775,7 @@ export class ContainerSetup {
     // Use Cases - Solar Analysis
     container.registerFactory(ServiceTokens.AnalyzeSolarPotentialUseCase, () => {
       return new AnalyzeSolarPotentialUseCase(
-        container.resolve(ServiceTokens.GOOGLE_SOLAR_API_SERVICE)
+        container.resolve(ServiceTokens.PVGIS_API_SERVICE)
       );
     });
 

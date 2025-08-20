@@ -71,7 +71,6 @@ export interface ProjectData {
   // Additional data
   cableSizing?: any[];
   modelo3dUrl?: string;
-  googleSolarData?: any;
   irradiacaoMensal?: number[];
   
   // Advanced solar calculation fields

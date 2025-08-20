@@ -1,161 +1,96 @@
 import { Result } from '../../common/Result';
-
-// Simple logger implementation
-class Logger {
-  private static instance: Logger;
-  
-  static getInstance(): Logger {
-    if (!Logger.instance) {
-      Logger.instance = new Logger();
-    }
-    return Logger.instance;
-  }
-  
-  info(message: string, ...args: any[]): void {
-    console.log(`[INFO] ${message}`, ...args);
-  }
-  
-  error(message: string, error?: any): void {
-    console.error(`[ERROR] ${message}`, error);
-  }
-  
-  debug(message: string, ...args: any[]): void {
-    if (process.env.NODE_ENV === 'development') {
-      console.debug(`[DEBUG] ${message}`, ...args);
-    }
-  }
-  
-  warn(message: string, ...args: any[]): void {
-    console.warn(`[WARN] ${message}`, ...args);
-  }
-}
-import { GoogleSolarApiService, SolarAnalysisResult, BuildingInsights } from '../../../infrastructure/external-apis/GoogleSolarApiService';
+import { PvgisApiService } from '../../../infrastructure/external-apis/PvgisApiService';
 
 interface AnalyzeSolarPotentialRequest {
   latitude: number;
   longitude: number;
-  monthlyEnergyBill?: number;
-  panelWattage?: number;
-  systemEfficiency?: number;
-  includeImageryData?: boolean;
+  systemSizeKw?: number;
+  tilt?: number;
+  azimuth?: number;
 }
 
 interface AnalyzeSolarPotentialResponse {
-  buildingInsights: BuildingInsights;
-  analysis: SolarAnalysisResult;
-  imageryUrls?: {
-    rgb: string;
-    dsm: string;
-    mask: string;
-    annualFlux: string;
+  irradianceData: {
+    monthly: number[];
+    annual: number;
+  };
+  optimalTilt: number;
+  estimatedGeneration: {
+    monthly: number[];
+    annual: number;
+  };
+  losses: {
+    system: number;
+    angular: number;
+    temperature: number;
+    total: number;
   };
   metadata: {
     analysisDate: Date;
-    dataSource: 'google-solar-api';
-    imageQuality: 'HIGH' | 'MEDIUM' | 'LOW';
-    cacheHit: boolean;
+    dataSource: 'pvgis';
+    location: {
+      latitude: number;
+      longitude: number;
+    };
   };
 }
 
 export class AnalyzeSolarPotentialUseCase {
-  private logger = Logger.getInstance();
-
-  constructor(
-    private googleSolarService: GoogleSolarApiService
-  ) {}
+  constructor(private pvgisApiService: PvgisApiService) {}
 
   async execute(request: AnalyzeSolarPotentialRequest): Promise<Result<AnalyzeSolarPotentialResponse>> {
     try {
-      this.logger.info(`Analyzing solar potential for location: ${request.latitude}, ${request.longitude}`);
+      const { latitude, longitude, systemSizeKw = 1, tilt = 30, azimuth = 180 } = request;
 
-      // Validate coordinates
-      if (!this.isValidCoordinate(request.latitude, request.longitude)) {
-        return Result.failure('Coordenadas inválidas fornecidas');
-      }
+      // Get PVGIS data
+      const pvgisResponse = await this.pvgisApiService.getPVEstimation({
+        location: { latitude, longitude },
+        peakpower: systemSizeKw,
+        angle: tilt,
+        aspect: azimuth
+      });
 
-      // Get building insights
-      const buildingResult = await this.googleSolarService.getBuildingInsights(
-        request.latitude,
-        request.longitude,
-        'MEDIUM'
-      );
+      // Get optimal inclination
+      const optimalData = await this.pvgisApiService.getOptimalInclination({
+        latitude,
+        longitude
+      });
 
-      if (!buildingResult.isSuccess) {
-        return Result.failure(`Falha ao obter insights do edifício: ${buildingResult.error}`);
-      }
+      // Convert PVGIS data to our format
+      const monthlyIrradiance = pvgisResponse.outputs.monthly.map(month => month.H_sun);
+      const monthlyGeneration = pvgisResponse.outputs.monthly.map(month => month.E_m);
+      const annualGeneration = pvgisResponse.outputs.totals.E_y;
+      const annualIrradiance = monthlyIrradiance.reduce((sum, month) => sum + month, 0);
 
-      const buildingInsights = buildingResult.value;
-
-      // Perform comprehensive solar analysis
-      const analysisResult = await this.googleSolarService.performSolarAnalysis(
-        request.latitude,
-        request.longitude,
-        {
-          monthlyBill: request.monthlyEnergyBill,
-          panelWattage: request.panelWattage,
-          systemEfficiency: request.systemEfficiency
-        }
-      );
-
-      if (!analysisResult.isSuccess) {
-        return Result.failure(`Falha na análise solar: ${analysisResult.error}`);
-      }
-
-      const analysis = analysisResult.value;
-
-      // Get imagery data if requested
-      let imageryUrls: AnalyzeSolarPotentialResponse['imageryUrls'];
-      
-      if (request.includeImageryData) {
-        const dataLayersResult = await this.googleSolarService.getDataLayers(
-          request.latitude,
-          request.longitude,
-          100,
-          'FULL_LAYERS'
-        );
-
-        if (dataLayersResult.isSuccess && dataLayersResult.value) {
-          const layers = dataLayersResult.value;
-          imageryUrls = {
-            rgb: layers.rgbUrl,
-            dsm: layers.dsmUrl,
-            mask: layers.maskUrl,
-            annualFlux: layers.annualFluxUrl
-          };
-        }
-      }
-
-      // Prepare response
       const response: AnalyzeSolarPotentialResponse = {
-        buildingInsights: buildingResult.value!,
-        analysis: analysisResult.value!,
-        imageryUrls,
+        irradianceData: {
+          monthly: monthlyIrradiance,
+          annual: annualIrradiance
+        },
+        optimalTilt: optimalData.optimalInclination,
+        estimatedGeneration: {
+          monthly: monthlyGeneration,
+          annual: annualGeneration
+        },
+        losses: {
+          system: 14, // Default system losses
+          angular: 3,
+          temperature: 8,
+          total: 25
+        },
         metadata: {
           analysisDate: new Date(),
-          dataSource: 'google-solar-api',
-          imageQuality: buildingResult.value!.imageryQuality,
-          cacheHit: false // Would need cache hit tracking
+          dataSource: 'pvgis',
+          location: {
+            latitude,
+            longitude
+          }
         }
       };
 
-      this.logger.info(`Solar analysis completed successfully. Viability score: ${analysisResult.value!.viabilityScore}%`);
-
       return Result.success(response);
-
     } catch (error: any) {
-      const message = `Erro inesperado na análise de potencial solar: ${error.message}`;
-      this.logger.error(message, error);
-      return Result.failure(message);
+      return Result.failure(`Erro na análise solar: ${error.message}`);
     }
-  }
-
-  private isValidCoordinate(lat: number, lng: number): boolean {
-    return (
-      typeof lat === 'number' &&
-      typeof lng === 'number' &&
-      lat >= -90 && lat <= 90 &&
-      lng >= -180 && lng <= 180 &&
-      !isNaN(lat) && !isNaN(lng)
-    );
   }
 }

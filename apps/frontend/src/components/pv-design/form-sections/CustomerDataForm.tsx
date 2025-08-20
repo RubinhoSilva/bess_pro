@@ -401,8 +401,19 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   id="tarifaEnergiaB" 
                   type="number" 
                   step="0.01" 
-                  value={formData.tarifaEnergiaB || ''} 
-                  onChange={(e) => onFormChange('tarifaEnergiaB', parseFloat(e.target.value) || 0)}
+                  value={formData.tarifaEnergiaB?.toString() || ''} 
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Permitir números decimais incluindo valores que começam com 0
+                    if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                      onFormChange('tarifaEnergiaB', value === '' ? '' : value);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Converter para número apenas quando o usuário sair do campo
+                    const value = e.target.value;
+                    onFormChange('tarifaEnergiaB', value === '' ? 0 : parseFloat(value) || 0);
+                  }}
                   placeholder="Ex: 0.85"
                   className="bg-background border-border text-foreground"
                 />
@@ -436,8 +447,17 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                     id="tarifaEnergiaPontaA" 
                     type="number" 
                     step="0.01" 
-                    value={formData.tarifaEnergiaPontaA || ''} 
-                    onChange={(e) => onFormChange('tarifaEnergiaPontaA', parseFloat(e.target.value) || 0)}
+                    value={formData.tarifaEnergiaPontaA?.toString() || ''} 
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                        onFormChange('tarifaEnergiaPontaA', value === '' ? '' : value);
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value;
+                      onFormChange('tarifaEnergiaPontaA', value === '' ? 0 : parseFloat(value) || 0);
+                    }}
                     placeholder="Ex: 1.20"
                     className="bg-background border-border text-foreground"
                   />
@@ -448,8 +468,17 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                     id="tarifaEnergiaForaPontaA" 
                     type="number" 
                     step="0.01" 
-                    value={formData.tarifaEnergiaForaPontaA || ''} 
-                    onChange={(e) => onFormChange('tarifaEnergiaForaPontaA', parseFloat(e.target.value) || 0)}
+                    value={formData.tarifaEnergiaForaPontaA?.toString() || ''} 
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                        onFormChange('tarifaEnergiaForaPontaA', value === '' ? '' : value);
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value;
+                      onFormChange('tarifaEnergiaForaPontaA', value === '' ? 0 : parseFloat(value) || 0);
+                    }}
                     placeholder="Ex: 0.65"
                     className="bg-background border-border text-foreground"
                   />

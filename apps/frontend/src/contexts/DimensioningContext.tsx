@@ -111,7 +111,6 @@ interface DimensioningData {
   
   // Dados adicionais
   modelo3dUrl?: string;
-  googleSolarData?: any;
   
   // Dados 3D
   mountingAreas?: MountingArea[];

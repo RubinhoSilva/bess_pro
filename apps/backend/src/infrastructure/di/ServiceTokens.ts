@@ -27,7 +27,6 @@ export const ServiceTokens = {
   KANBAN_COLUMN_SEEDER_SERVICE: 'KanbanColumnSeederService',
 
   // External APIs
-  GOOGLE_SOLAR_API_SERVICE: 'GoogleSolarApiService',
   PVGIS_API_SERVICE: 'PvgisApiService',
   PAYMENT_GATEWAY_SERVICE: 'PaymentGatewayService',
 

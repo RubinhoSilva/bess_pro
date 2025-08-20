@@ -126,7 +126,6 @@ export default function ProjectForm({ onSuccess, onCancel, initialData, project,
           financingInterest: 1.49,
           cableSizing: [],
           modelo3dUrl: '',
-          googleSolarData: null,
           irradiacaoMensal: Array(12).fill(4.5),
         },
       };

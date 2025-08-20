@@ -16,7 +16,6 @@ import { UserModel } from "./database/mongodb/schemas/UserSchema";
 import { ServiceTokens } from "./di/ServiceTokens";
 import { NodemailerEmailService } from "./email/NodemailerEmailService";
 import { SendGridEmailService } from "./email/SendGridEmailService";
-import { GoogleSolarApiService } from "./external-apis/GoogleSolarApiService";
 import { PaymentGatewayService } from "./external-apis/PaymentGatewayService";
 import { PvgisApiService } from "./external-apis/PvgisApiService";
 import { BcryptPasswordHashService } from "./security/BcryptPasswordHashService";

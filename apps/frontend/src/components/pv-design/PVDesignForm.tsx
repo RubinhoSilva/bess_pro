@@ -20,7 +20,6 @@ import FinancialForm from './form-sections/FinancialForm';
 import PaymentConditionsForm from './form-sections/PaymentConditionsForm';
 import EconomicParametersForm from './form-sections/EconomicParametersForm';
 // import CableSizingForm from './form-sections/CableSizingForm'; // Temporariamente desabilitado
-import SolarAPIIntegration from './form-sections/SolarAPIIntegration';
 import IntelligentSizingModal from './intelligent-sizing/IntelligentSizingModal';
 import ValidationPanel from './validation/ValidationPanel';
 import BackupManager from './backup/BackupManager';
@@ -372,10 +371,6 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
               onFormChange={handleFormChange} 
             />
             */}
-            <SolarAPIIntegration 
-              formData={currentDimensioning} 
-              onFormChange={handleFormChange} 
-            />
           </div>
 
           <div className="space-y-8">

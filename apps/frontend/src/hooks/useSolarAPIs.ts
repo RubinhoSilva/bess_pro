@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
-import { getGoogleSolarAPI, type Location, type SolarPotentialResponse } from '@/services/GoogleSolarAPI';
-import { getPVGISAPI, type PVGISResponse } from '@/services/PVGISAPI';
+import { getPVGISAPI, type PVGISResponse, type Location } from '@/services/PVGISAPI';
 import { useToast } from '@/components/ui/use-toast';
 
 export interface SolarAnalysisResult {
@@ -22,9 +21,8 @@ export interface SolarAnalysisResult {
     total: number;
   };
   qualidade: 'excellent' | 'good' | 'fair' | 'poor';
-  fonte: 'google' | 'pvgis' | 'combined';
+  fonte: 'pvgis';
   dadosOriginais?: {
-    google?: SolarPotentialResponse;
     pvgis?: PVGISResponse;
   };
 }
@@ -32,17 +30,7 @@ export interface SolarAnalysisResult {
 interface UseSolarAPIsReturn {
   isLoading: boolean;
   error: string | null;
-  analyzeWithGoogle: (location: Location, options?: {
-    apiKey: string;
-    systemSizeKw?: number;
-  }) => Promise<SolarAnalysisResult | null>;
   analyzeWithPVGIS: (location: Location, options?: {
-    systemSizeKw?: number;
-    tilt?: number;
-    azimuth?: number;
-  }) => Promise<SolarAnalysisResult | null>;
-  analyzeCombined: (location: Location, options?: {
-    googleApiKey?: string;
     systemSizeKw?: number;
     tilt?: number;
     azimuth?: number;
@@ -60,86 +48,6 @@ export const useSolarAPIs = (): UseSolarAPIsReturn => {
   const { toast } = useToast();
 
   const clearError = () => setError(null);
-
-  const analyzeWithGoogle = useCallback(async (
-    location: Location,
-    options: { apiKey: string; systemSizeKw?: number } = { apiKey: '' }
-  ): Promise<SolarAnalysisResult | null> => {
-    if (!options.apiKey) {
-      setError('Google API key é necessária');
-      toast({
-        variant: "destructive",
-        title: "API Key necessária",
-        description: "Forneça uma API key do Google Solar válida."
-      });
-      return null;
-    }
-
-    setIsLoading(true);
-    clearError();
-
-    try {
-      const googleAPI = getGoogleSolarAPI(options.apiKey);
-      const systemSizeKw = options.systemSizeKw || 10;
-
-      const [buildingInsights, solarPotential] = await Promise.all([
-        googleAPI.getBuildingInsights({ location, requiredQuality: 'HIGH' }),
-        googleAPI.getSolarPotential({
-          location,
-          radiusMeters: 50,
-          panelCapacityWatts: 550
-        })
-      ]);
-
-      const systemFormat = googleAPI.convertToSystemFormat(solarPotential, location);
-      const productionEstimates = googleAPI.calculateProductionEstimates(solarPotential, systemSizeKw);
-
-      // Estimar qualidade baseada nas horas de sol
-      let qualidade: 'excellent' | 'good' | 'fair' | 'poor' = 'poor';
-      if (productionEstimates.sunshineHoursPerYear >= 2500) qualidade = 'excellent';
-      else if (productionEstimates.sunshineHoursPerYear >= 2000) qualidade = 'good';
-      else if (productionEstimates.sunshineHoursPerYear >= 1500) qualidade = 'fair';
-
-      const result: SolarAnalysisResult = {
-        location,
-        irradiacaoMensal: systemFormat.irradiacaoMensal,
-        irradiacaoAnual: systemFormat.irradiacaoMensal.reduce((sum, month) => sum + (month * 30), 0),
-        orientacaoOtima: systemFormat.orientacao,
-        producaoEstimada: {
-          mensal: productionEstimates.monthlyProductionKwh,
-          anual: productionEstimates.annualProductionKwh
-        },
-        perdas: {
-          sombreamento: 5, // Estimativa baseada no Google Solar
-          total: 15
-        },
-        qualidade,
-        fonte: 'google',
-        dadosOriginais: {
-          google: solarPotential
-        }
-      };
-
-      toast({
-        title: "Análise Google Solar concluída!",
-        description: `Potencial: ${qualidade === 'excellent' ? 'Excelente' : qualidade === 'good' ? 'Bom' : qualidade === 'fair' ? 'Regular' : 'Ruim'}`
-      });
-
-      return result;
-
-    } catch (err: any) {
-      const errorMessage = `Erro Google Solar: ${err.message}`;
-      setError(errorMessage);
-      toast({
-        variant: "destructive",
-        title: "Erro na análise",
-        description: errorMessage
-      });
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
 
   const analyzeWithPVGIS = useCallback(async (
     location: Location,
@@ -214,103 +122,6 @@ export const useSolarAPIs = (): UseSolarAPIsReturn => {
     }
   }, [toast]);
 
-  const analyzeCombined = useCallback(async (
-    location: Location,
-    options: {
-      googleApiKey?: string;
-      systemSizeKw?: number;
-      tilt?: number;
-      azimuth?: number;
-    } = {}
-  ): Promise<SolarAnalysisResult | null> => {
-    setIsLoading(true);
-    clearError();
-
-    try {
-      const systemSizeKw = options.systemSizeKw || 10;
-      const tilt = options.tilt || 30;
-      const azimuth = options.azimuth || 180;
-
-      // Sempre obter dados PVGIS (gratuito)
-      const pvgisResult = await analyzeWithPVGIS(location, {
-        systemSizeKw,
-        tilt,
-        azimuth
-      });
-
-      if (!pvgisResult) {
-        throw new Error('Não foi possível obter dados PVGIS');
-      }
-
-      let combinedResult = pvgisResult;
-
-      // Se houver API key do Google, combinar os dados
-      if (options.googleApiKey) {
-        try {
-          const googleResult = await analyzeWithGoogle(location, {
-            apiKey: options.googleApiKey,
-            systemSizeKw
-          });
-
-          if (googleResult) {
-            // Combinar os melhores dados de ambas as fontes
-            combinedResult = {
-              location,
-              irradiacaoMensal: googleResult.irradiacaoMensal, // Google tem dados mais precisos de irradiação
-              irradiacaoAnual: googleResult.irradiacaoAnual,
-              orientacaoOtima: googleResult.orientacaoOtima.inclinacao > 0 
-                ? googleResult.orientacaoOtima 
-                : pvgisResult.orientacaoOtima, // Usar Google se disponível
-              producaoEstimada: {
-                mensal: googleResult.producaoEstimada.mensal,
-                anual: googleResult.producaoEstimada.anual
-              },
-              perdas: {
-                ...pvgisResult.perdas, // PVGIS tem dados mais detalhados de perdas
-                sombreamento: googleResult.perdas.sombreamento || pvgisResult.perdas.sombreamento
-              },
-              qualidade: googleResult.qualidade, // Google tem melhor análise de qualidade
-              fonte: 'combined',
-              dadosOriginais: {
-                google: googleResult.dadosOriginais?.google,
-                pvgis: pvgisResult.dadosOriginais?.pvgis
-              }
-            };
-          }
-        } catch (googleError) {
-          console.warn('Google Solar não disponível, usando apenas PVGIS:', googleError);
-          toast({
-            title: "Usando apenas PVGIS",
-            description: "Google Solar não disponível, análise realizada com PVGIS."
-          });
-        }
-      }
-
-      combinedResult.fonte = options.googleApiKey && combinedResult.dadosOriginais?.google 
-        ? 'combined' 
-        : 'pvgis';
-
-      toast({
-        title: "Análise combinada concluída!",
-        description: `Fonte: ${combinedResult.fonte === 'combined' ? 'Google + PVGIS' : 'PVGIS'}`
-      });
-
-      return combinedResult;
-
-    } catch (err: any) {
-      const errorMessage = `Erro na análise combinada: ${err.message}`;
-      setError(errorMessage);
-      toast({
-        variant: "destructive",
-        title: "Erro na análise",
-        description: errorMessage
-      });
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [analyzeWithGoogle, analyzeWithPVGIS, toast]);
-
   const getOptimalOrientation = useCallback(async (location: Location) => {
     setIsLoading(true);
     clearError();
@@ -336,9 +147,7 @@ export const useSolarAPIs = (): UseSolarAPIsReturn => {
   return {
     isLoading,
     error,
-    analyzeWithGoogle,
     analyzeWithPVGIS,
-    analyzeCombined,
     getOptimalOrientation
   };
 };
