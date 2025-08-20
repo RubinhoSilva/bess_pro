@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import toast from 'react-hot-toast';
 import axios from 'axios';
 
 export interface Customer {
@@ -184,19 +184,14 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
   const [isDimensioningLoaded, setIsDimensioningLoaded] = useState(false);
   const [dimensioningId, setDimensioningId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  
-  const { toast } = useToast();
 
   const loadDimensioning = useCallback((data: DimensioningData) => {
     setCurrentDimensioning(data);
     setDimensioningId(data.id || null);
     setIsDimensioningLoaded(true);
     
-    toast({
-      title: "Dimensionamento carregado",
-      description: `"${data.dimensioningName}" carregado com sucesso.`,
-    });
-  }, [toast]);
+    toast.success(`Dimensionamento "${data.dimensioningName}" carregado com sucesso.`);
+  }, []);
 
   const updateDimensioning = useCallback((updates: Partial<DimensioningData>) => {
     setCurrentDimensioning(prev => ({ ...prev, ...updates }));
@@ -225,11 +220,8 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     setCurrentDimensioning(newDimensioning);
     setIsDimensioningLoaded(true);
     
-    toast({
-      title: "Novo dimensionamento criado",
-      description: `Dimensionamento criado para ${customerData.name}`,
-    });
-  }, [toast]);
+    toast.success(`Novo dimensionamento criado para ${customerData.name}`);
+  }, []);
 
   const saveDimensioning = useCallback(async () => {
     console.log('🔧 Iniciando salvamento do dimensionamento...', {
@@ -239,20 +231,12 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     });
 
     if (!currentDimensioning.dimensioningName?.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Nome obrigatório",
-        description: "Por favor, insira um nome para o dimensionamento.",
-      });
+      toast.error("Nome obrigatório: Por favor, insira um nome para o dimensionamento.");
       return;
     }
 
     if (!currentDimensioning.customer) {
-      toast({
-        variant: "destructive", 
-        title: "Cliente obrigatório",
-        description: "Por favor, selecione um cliente para o dimensionamento.",
-      });
+      toast.error("Cliente obrigatório: Por favor, selecione um cliente para o dimensionamento.");
       return;
     }
 
@@ -303,9 +287,9 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
           updatedAt: response.data.data.updatedAt
         }));
         
-        toast({
-          title: "Dimensionamento salvo",
-          description: "Dimensionamento criado com sucesso!",
+        toast.success("Dimensionamento salvo com sucesso!", {
+          duration: 4000,
+          position: 'top-right',
         });
       } else {
         // Atualizar dimensionamento existente
@@ -316,9 +300,9 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
           updatedAt: response.data.data.updatedAt
         }));
         
-        toast({
-          title: "Dimensionamento atualizado", 
-          description: "Alterações salvas com sucesso!",
+        toast.success("Dimensionamento atualizado com sucesso!", {
+          duration: 4000,
+          position: 'top-right',
         });
       }
     } catch (error: any) {
@@ -334,15 +318,14 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
         errorMessage = "Erro interno do servidor. Tente novamente.";
       }
       
-      toast({
-        variant: "destructive",
-        title: "Erro ao salvar",
-        description: errorMessage,
+      toast.error(`Erro ao salvar: ${errorMessage}`, {
+        duration: 5000,
+        position: 'top-right',
       });
     } finally {
       setIsSaving(false);
     }
-  }, [currentDimensioning, dimensioningId, toast]);
+  }, [currentDimensioning, dimensioningId]);
 
   const contextValue: DimensioningContextType = {
     currentDimensioning,

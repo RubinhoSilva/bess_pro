@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { User, Search, Loader2 } from 'lucide-react';
 import { useClients } from '@/hooks/client-hooks';
 import { apiClient } from '@/lib/api';
+import { formatCurrency, parseCurrency, formatCurrencyAsYouType, parseCurrencyAsYouType } from '@/lib/formatters';
 
 interface CustomerDataFormProps {
   formData: any;
@@ -20,7 +21,31 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [initialLeads, setInitialLeads] = useState<any[]>([]);
+  const [displayValues, setDisplayValues] = useState<Record<string, string>>({});
   
+  // Funções para formatação monetária
+  const handleCurrencyChange = (field: string, value: string) => {
+    // Formata o valor em tempo real conforme digita
+    const formattedValue = formatCurrencyAsYouType(value);
+    
+    // Atualiza o valor exibido
+    setDisplayValues(prev => ({ ...prev, [field]: formattedValue }));
+    
+    // Converte para número e salva no formData
+    const numericValue = parseCurrencyAsYouType(formattedValue);
+    onFormChange(field, numericValue);
+  };
+
+  const getDisplayValue = (field: string) => {
+    // Prioriza o valor sendo digitado, senão usa o valor formatado do formData
+    if (displayValues[field] !== undefined) {
+      return displayValues[field];
+    }
+    if (formData[field]) {
+      return formatCurrency(formData[field]);
+    }
+    return '';
+  };
 
   // Usar dados reais dos hooks
   const { data: clientsData } = useClients({ pageSize: 100 }); // Buscar mais clientes para busca
@@ -62,6 +87,20 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
   useEffect(() => {
     loadInitialLeads();
   }, [loadInitialLeads]);
+
+  // Sincroniza displayValues quando formData muda externamente
+  useEffect(() => {
+    const newDisplayValues: Record<string, string> = {};
+    ['tarifaEnergiaB', 'custoFioB', 'tarifaEnergiaPontaA', 'tarifaEnergiaForaPontaA'].forEach(field => {
+      if (formData[field] && displayValues[field] === undefined) {
+        newDisplayValues[field] = formatCurrency(formData[field]);
+      }
+    });
+    
+    if (Object.keys(newDisplayValues).length > 0) {
+      setDisplayValues(prev => ({ ...prev, ...newDisplayValues }));
+    }
+  }, [formData, displayValues]);
 
   const performSearch = useCallback(async () => {
     if (searchTerm.length < 2) {
@@ -399,22 +438,10 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                 <Label htmlFor="tarifaEnergiaB" className="text-foreground">Tarifa de Energia (R$/kWh)</Label>
                 <Input 
                   id="tarifaEnergiaB" 
-                  type="number" 
-                  step="0.01" 
-                  value={formData.tarifaEnergiaB?.toString() || ''} 
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Permitir números decimais incluindo valores que começam com 0
-                    if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
-                      onFormChange('tarifaEnergiaB', value === '' ? '' : value);
-                    }
-                  }}
-                  onBlur={(e) => {
-                    // Converter para número apenas quando o usuário sair do campo
-                    const value = e.target.value;
-                    onFormChange('tarifaEnergiaB', value === '' ? 0 : parseFloat(value) || 0);
-                  }}
-                  placeholder="Ex: 0.85"
+                  type="text"
+                  value={getDisplayValue('tarifaEnergiaB')} 
+                  onChange={(e) => handleCurrencyChange('tarifaEnergiaB', e.target.value)}
+                  placeholder="R$ 0,00"
                   className="bg-background border-border text-foreground"
                 />
               </div>
@@ -422,11 +449,10 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                 <Label htmlFor="custoFioB" className="text-foreground">Custo Fio B (R$/kWh)</Label>
                 <Input 
                   id="custoFioB" 
-                  type="number" 
-                  step="0.01" 
-                  value={formData.custoFioB || ''} 
-                  onChange={(e) => onFormChange('custoFioB', parseFloat(e.target.value) || 0)}
-                  placeholder="Ex: 0.30"
+                  type="text"
+                  value={getDisplayValue('custoFioB')} 
+                  onChange={(e) => handleCurrencyChange('custoFioB', e.target.value)}
+                  placeholder="R$ 0,00"
                   className="bg-background border-border text-foreground"
                 />
               </div>
@@ -445,20 +471,10 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   <Label htmlFor="tarifaEnergiaPontaA" className="text-foreground">Tarifa Ponta (R$/kWh)</Label>
                   <Input 
                     id="tarifaEnergiaPontaA" 
-                    type="number" 
-                    step="0.01" 
-                    value={formData.tarifaEnergiaPontaA?.toString() || ''} 
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
-                        onFormChange('tarifaEnergiaPontaA', value === '' ? '' : value);
-                      }
-                    }}
-                    onBlur={(e) => {
-                      const value = e.target.value;
-                      onFormChange('tarifaEnergiaPontaA', value === '' ? 0 : parseFloat(value) || 0);
-                    }}
-                    placeholder="Ex: 1.20"
+                    type="text"
+                    value={getDisplayValue('tarifaEnergiaPontaA')} 
+                    onChange={(e) => handleCurrencyChange('tarifaEnergiaPontaA', e.target.value)}
+                    placeholder="R$ 0,00"
                     className="bg-background border-border text-foreground"
                   />
                 </div>
@@ -466,20 +482,10 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   <Label htmlFor="tarifaEnergiaForaPontaA" className="text-foreground">Tarifa Fora Ponta (R$/kWh)</Label>
                   <Input 
                     id="tarifaEnergiaForaPontaA" 
-                    type="number" 
-                    step="0.01" 
-                    value={formData.tarifaEnergiaForaPontaA?.toString() || ''} 
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
-                        onFormChange('tarifaEnergiaForaPontaA', value === '' ? '' : value);
-                      }
-                    }}
-                    onBlur={(e) => {
-                      const value = e.target.value;
-                      onFormChange('tarifaEnergiaForaPontaA', value === '' ? 0 : parseFloat(value) || 0);
-                    }}
-                    placeholder="Ex: 0.65"
+                    type="text"
+                    value={getDisplayValue('tarifaEnergiaForaPontaA')} 
+                    onChange={(e) => handleCurrencyChange('tarifaEnergiaForaPontaA', e.target.value)}
+                    placeholder="R$ 0,00"
                     className="bg-background border-border text-foreground"
                   />
                 </div>

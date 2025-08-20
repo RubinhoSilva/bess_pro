@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
+import toast from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Map, Loader2, MapPin, Download, AlertCircle } from 'lucide-react';
 import MapSelector from './MapSelector';
+import MonthlyIrradiationDisplay from './MonthlyIrradiationDisplay';
 import { fetchPVGISDataWithCache, isLocationInBrazil, formatMonthlyData, PVGISLocation } from '@/lib/pvgisService';
 
 interface PVGISIntegrationProps {
@@ -18,12 +19,17 @@ interface PVGISIntegrationProps {
 }
 
 const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({ onDataReceived }) => {
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<PVGISLocation | null>(null);
   const [manualLat, setManualLat] = useState('');
   const [manualLng, setManualLng] = useState('');
+  const [irradiationData, setIrradiationData] = useState<{
+    irradiacaoMensal: number[];
+    latitude: number;
+    longitude: number;
+    cidade: string;
+  } | null>(null);
 
   const handleLocationSelect = async (location: { lat: number; lng: number }) => {
     setIsMapOpen(false);
@@ -42,20 +48,12 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({ onDataReceived }) =
     const lng = parseFloat(manualLng);
 
     if (isNaN(lat) || isNaN(lng)) {
-      toast({
-        variant: "destructive",
-        title: "Coordenadas inválidas",
-        description: "Por favor, insira coordenadas válidas.",
-      });
+      toast.error("Coordenadas inválidas: Por favor, insira coordenadas válidas.");
       return;
     }
 
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      toast({
-        variant: "destructive",
-        title: "Coordenadas fora de range",
-        description: "Latitude deve estar entre -90 e 90, longitude entre -180 e 180.",
-      });
+      toast.error("Coordenadas fora de range: Latitude deve estar entre -90 e 90, longitude entre -180 e 180.");
       return;
     }
 
@@ -66,11 +64,7 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({ onDataReceived }) =
 
   const fetchIrradiationData = async (location: PVGISLocation) => {
     if (!isLocationInBrazil(location)) {
-      toast({
-        variant: "destructive",
-        title: "Localização fora do Brasil",
-        description: "Por favor, selecione uma localização dentro do território brasileiro.",
-      });
+      toast.error("Localização fora do Brasil: Por favor, selecione uma localização dentro do território brasileiro.");
       return;
     }
 
@@ -81,24 +75,29 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({ onDataReceived }) =
       
       const formattedCity = `Lat: ${pvgisData.inputs.location.latitude.toFixed(4)}, Lon: ${pvgisData.inputs.location.longitude.toFixed(4)}`;
       
-      onDataReceived({
+      const data = {
         irradiacaoMensal: pvgisData.outputs.monthly_radiation,
         latitude: pvgisData.inputs.location.latitude,
         longitude: pvgisData.inputs.location.longitude,
         cidade: formattedCity,
-      });
+      };
+      
+      // Armazenar dados para exibição
+      setIrradiationData(data);
+      
+      // Enviar dados para o componente pai
+      onDataReceived(data);
 
-      toast({
-        title: 'Dados obtidos com sucesso!',
-        description: `Dados de irradiação solar importados do PVGIS para ${formattedCity}.`,
+      toast.success(`Dados de irradiação solar importados do PVGIS para ${formattedCity}`, {
+        duration: 4000,
+        position: 'top-right',
       });
 
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido';
-      toast({
-        variant: "destructive",
-        title: "Erro ao obter dados PVGIS",
-        description: message,
+      toast.error(`Erro ao obter dados PVGIS: ${message}`, {
+        duration: 5000,
+        position: 'top-right',
       });
     } finally {
       setIsLoading(false);
@@ -205,6 +204,20 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({ onDataReceived }) =
           </div>
         </div>
       </div>
+
+      {/* Exibir dados de irradiação mensal quando disponíveis */}
+      {irradiationData && (
+        <div className="mt-6">
+          <MonthlyIrradiationDisplay
+            irradiacaoMensal={irradiationData.irradiacaoMensal}
+            location={{
+              latitude: irradiationData.latitude,
+              longitude: irradiationData.longitude,
+              cidade: irradiationData.cidade
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -230,7 +230,15 @@ export class ContainerSetup {
     }
 
     // External API Services (Singletons)
-    container.register(ServiceTokens.PVGIS_API_SERVICE, PvgisApiService, true);
+    container.registerFactory(ServiceTokens.PVGIS_API_SERVICE, () => {
+      return new PvgisApiService({
+        baseUrl: config.externalApis.pvgis.baseUrl,
+        defaultParams: {
+          outputformat: 'json',
+          browser: 1
+        }
+      });
+    }, true);
     container.register(ServiceTokens.PAYMENT_GATEWAY_SERVICE, PaymentGatewayService, true);
 
     // Domain Services (Singletons)
