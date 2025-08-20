@@ -154,7 +154,7 @@ export function useSessionWarning() {
   };
 }
 
-// Hook para monitorar múltiplas abas/janelas
+// Hook para monitorar múltiplas abas/janelas - Permitindo múltiplas sessões
 export function useMultiTabSync() {
   const { logout, isAuthenticated } = useAuth();
 
@@ -162,22 +162,24 @@ export function useMultiTabSync() {
     if (!isAuthenticated) return;
 
     const handleStorageChange = (e: StorageEvent) => {
-      // Se o token foi removido em outra aba, fazer logout
-      if (e.key === 'auth-token' && !e.newValue && e.oldValue) {
-        logout();
-        toast.error('Você foi desconectado em outra aba.');
-      }
+      // Comentado: Não fazer logout automático quando token é removido em outra aba
+      // Permite múltiplas sessões independentes
+      // if (e.key === 'auth-token' && !e.newValue && e.oldValue) {
+      //   logout();
+      //   toast.error('Você foi desconectado em outra aba.');
+      // }
     };
 
     const handleVisibilityChange = () => {
-      // Quando a aba se torna visível, verificar se ainda está autenticado
-      if (!document.hidden && isAuthenticated) {
-        const token = localStorage.getItem('auth-token') || sessionStorage.getItem('auth-token');
-        if (!token) {
-          logout();
-          toast.error('Sua sessão expirou.');
-        }
-      }
+      // Comentado: Não verificar token ao mudar visibilidade
+      // Permite que cada aba/janela mantenha sua própria sessão
+      // if (!document.hidden && isAuthenticated) {
+      //   const token = localStorage.getItem('auth-token') || sessionStorage.getItem('auth-token');
+      //   if (!token) {
+      //     logout();
+      //     toast.error('Sua sessão expirou.');
+      //   }
+      // }
     };
 
     window.addEventListener('storage', handleStorageChange);

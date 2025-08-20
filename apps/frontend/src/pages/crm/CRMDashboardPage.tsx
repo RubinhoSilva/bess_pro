@@ -7,19 +7,29 @@ import {
   List, 
   RefreshCw,
   Download,
-  Settings
+  Settings,
+  Plus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { Button } from '../../components/ui/button';
 import { CRMAnalyticsDashboard } from '../../components/crm/CRMAnalyticsDashboard';
-import { Lead } from '../../types/lead';
+import { Lead, CreateLeadRequest } from '../../types/lead';
 import { leadsApi } from '../../lib/api/leads';
+import { LeadForm } from '../../components/crm/LeadForm';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '../../components/ui/dialog';
 
 const CRMDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchLeads = async () => {
     try {
@@ -37,6 +47,27 @@ const CRMDashboardPage: React.FC = () => {
   useEffect(() => {
     fetchLeads();
   }, []);
+
+  const handleCreateLead = async (leadData: CreateLeadRequest) => {
+    try {
+      setIsSubmitting(true);
+      await leadsApi.createLead(leadData);
+      setIsDialogOpen(false);
+      await fetchLeads(); // Recarregar leads
+      toast.success('Lead criado com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao criar lead:', error);
+      
+      // O interceptor do axios já mostra o toast para erros 409 (conflito)
+      // Só mostrar toast genérico se não for um erro conhecido
+      if (error.response?.status !== 409) {
+        const message = error.response?.data?.error?.message || 'Erro ao criar lead. Tente novamente.';
+        toast.error(message);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const exportReport = () => {
     // Criar relatório simples em CSV
@@ -110,6 +141,14 @@ const CRMDashboardPage: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-3 mt-4 md:mt-0">
+          <Button
+            onClick={() => setIsDialogOpen(true)}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Lead
+          </Button>
+          
           <Button
             variant="outline"
             onClick={fetchLeads}
@@ -190,6 +229,20 @@ const CRMDashboardPage: React.FC = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* Modal de Novo Lead */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Criar Novo Lead</DialogTitle>
+          </DialogHeader>
+          <LeadForm
+            onSubmit={handleCreateLead}
+            onCancel={() => setIsDialogOpen(false)}
+            isLoading={isSubmitting}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

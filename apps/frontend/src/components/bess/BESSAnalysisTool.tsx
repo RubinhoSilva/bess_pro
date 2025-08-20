@@ -207,9 +207,9 @@ const BESSAnalysisTool: React.FC<BESSAnalysisToolProps> = ({ onComplete, preSele
             >
               <div className="max-w-2xl mx-auto">
                 <CustomerDataForm 
-                  formData={{ lead: selectedLead }} 
+                  formData={{ customer: selectedLead, lead: selectedLead }} 
                   onFormChange={(field: string, value: any) => {
-                    if (field === 'lead' && value) {
+                    if ((field === 'lead' || field === 'customer') && value) {
                       handleLeadSelection(value);
                     }
                   }}

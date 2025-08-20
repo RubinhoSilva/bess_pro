@@ -133,7 +133,14 @@ export const LeadForm: React.FC<LeadFormProps> = ({
   return (
     <div className="max-h-[80vh] overflow-y-auto pr-2">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit(handleSubmit)(e);
+          }} 
+          className="space-y-6"
+        >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -430,7 +437,11 @@ export const LeadForm: React.FC<LeadFormProps> = ({
           <Button 
             type="button" 
             variant="outline" 
-            onClick={onCancel}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onCancel();
+            }}
             disabled={isLoading}
           >
             Cancelar
@@ -438,6 +449,9 @@ export const LeadForm: React.FC<LeadFormProps> = ({
           <Button 
             type="submit" 
             disabled={isLoading}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {lead ? 'Atualizar' : 'Criar'} Lead

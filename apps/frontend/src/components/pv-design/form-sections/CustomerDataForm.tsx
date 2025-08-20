@@ -30,7 +30,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
   const { data: clientsData } = useClients({ pageSize: 100 }); // Buscar mais clientes para busca
 
   const performSearch = useCallback(async () => {
-    if (searchTerm.length < 3) {
+    if (searchTerm.length < 2) {
       setSearchResults([]);
       return;
     }
@@ -41,44 +41,69 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
       const results: any[] = [];
       const searchLower = searchTerm.toLowerCase();
       
-      // Buscar leads via API
+      // Buscar leads via API com tratamento de erro melhorado
       try {
-        const leadsResponse = await apiClient.leads.list({ searchTerm });
-        if (leadsResponse.data?.data?.leads) {
-          leadsResponse.data.data.leads.forEach((lead: any) => {
-            results.push({
-              ...lead,
-              type: 'lead',
-              displayName: lead.name,
-              displayInfo: lead.email || lead.company || 'Lead'
-            });
+        const leadsResponse = await apiClient.leads.list({ 
+          searchTerm: searchTerm.trim(),
+          pageSize: 20 
+        });
+        
+        // console.log('Response structure:', leadsResponse.data);
+        
+        // Tentar diferentes estruturas de resposta
+        let leadsData = null;
+        if (leadsResponse?.data?.data?.leads) {
+          leadsData = leadsResponse.data.data.leads;
+        } else if (leadsResponse?.data?.data && Array.isArray(leadsResponse.data.data)) {
+          leadsData = leadsResponse.data.data;
+        } else if (leadsResponse?.data && Array.isArray(leadsResponse.data)) {
+          leadsData = leadsResponse.data;
+        }
+        
+        if (leadsData && Array.isArray(leadsData)) {
+          leadsData.forEach((lead: any) => {
+            if (lead && lead.name && lead.id) {
+              results.push({
+                ...lead,
+                type: 'lead',
+                displayName: lead.name,
+                displayInfo: lead.email || lead.company || 'Lead'
+              });
+            }
           });
         }
       } catch (error) {
         console.warn('Erro ao buscar leads:', error);
+        // Não interromper a busca se leads falharem
       }
 
-      // Buscar clientes dos dados já carregados
-      if (clientsData?.clients) {
+      // Buscar clientes dos dados já carregados com validação melhorada
+      if (clientsData?.clients && Array.isArray(clientsData.clients)) {
         clientsData.clients.forEach((client: any) => {
-          if (
-            client.name.toLowerCase().includes(searchLower) ||
-            client.email.toLowerCase().includes(searchLower) ||
-            (client.company && client.company.toLowerCase().includes(searchLower))
-          ) {
-            results.push({
-              ...client,
-              type: 'client',
-              displayName: client.name,
-              displayInfo: client.email || client.company || 'Cliente'
-            });
+          try {
+            if (client && client.name && client.id) {
+              const nameMatch = client.name.toLowerCase().includes(searchLower);
+              const emailMatch = client.email && client.email.toLowerCase().includes(searchLower);
+              const companyMatch = client.company && client.company.toLowerCase().includes(searchLower);
+              
+              if (nameMatch || emailMatch || companyMatch) {
+                results.push({
+                  ...client,
+                  type: 'client',
+                  displayName: client.name,
+                  displayInfo: client.email || client.company || 'Cliente'
+                });
+              }
+            }
+          } catch (clientError) {
+            console.warn('Erro ao processar cliente:', clientError);
           }
         });
       }
 
       setSearchResults(results);
     } catch (error) {
-      console.error('Erro na busca:', error);
+      console.error('Erro crítico na busca:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -101,17 +126,13 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
         pageSize: 20
       });
 
-      console.log('Project search response:', response.data);
-
       if (response.data?.data?.projects) {
-        console.log('Projects found:', response.data.data.projects);
         setProjectSearchResults(response.data.data.projects.map((project: any) => ({
           ...project,
           displayName: project.projectName || project.name,
           displayInfo: `Cliente: ${project.leadName || 'N/A'} | Tipo: ${project.projectType}`
         })));
       } else {
-        console.log('No projects in response structure');
         setProjectSearchResults([]);
       }
     } catch (error) {
@@ -152,62 +173,83 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
   }, [formData.project, formData.projectName]);
 
   const handleSelectCustomer = (customer: any) => {
-    // Priorizar lead sobre customer
-    if (customer.type === 'lead') {
-      onFormChange('lead', {
-        id: customer.id,
-        name: customer.displayName,
-        email: customer.email,
-        phone: customer.phone,
-        company: customer.company,
-        address: customer.address,
-        type: customer.type
-      });
-      // Manter compatibilidade com customer para não quebrar código existente
-      onFormChange('customer', {
-        id: customer.id,
-        name: customer.displayName,
-        email: customer.email,
-        phone: customer.phone,
-        company: customer.company,
-        address: customer.address,
-        type: customer.type
-      });
-    } else {
-      onFormChange('customer', {
-        id: customer.id,
-        name: customer.displayName,
-        email: customer.email,
-        phone: customer.phone,
-        company: customer.company,
-        address: customer.address,
-        type: customer.type
-      });
-      // Limpar lead se um cliente foi selecionado
-      onFormChange('lead', null);
-    }
-    
-    // Definir grupo tarifário baseado no tipo do cliente
-    if (customer.clientType === 'industrial' || customer.clientType === 'commercial') {
-      onFormChange('grupoTarifario', 'A');
-    } else {
-      onFormChange('grupoTarifario', 'B');
-    }
+    try {
+      // Validar se o cliente possui dados necessários
+      if (!customer || !customer.id || !customer.displayName) {
+        // console.error('Cliente inválido selecionado:', customer);
+        return;
+      }
 
-    setSearchTerm(customer.displayName);
-    setIsDropdownOpen(false);
+      // Priorizar lead sobre customer
+      if (customer.type === 'lead') {
+        onFormChange('lead', {
+          id: customer.id,
+          name: customer.displayName,
+          email: customer.email || '',
+          phone: customer.phone || '',
+          company: customer.company || '',
+          address: customer.address || '',
+          type: customer.type
+        });
+        // Manter compatibilidade com customer para não quebrar código existente
+        onFormChange('customer', {
+          id: customer.id,
+          name: customer.displayName,
+          email: customer.email || '',
+          phone: customer.phone || '',
+          company: customer.company || '',
+          address: customer.address || '',
+          type: customer.type
+        });
+      } else {
+        onFormChange('customer', {
+          id: customer.id,
+          name: customer.displayName,
+          email: customer.email || '',
+          phone: customer.phone || '',
+          company: customer.company || '',
+          address: customer.address || '',
+          type: customer.type
+        });
+        // Limpar lead se um cliente foi selecionado
+        onFormChange('lead', null);
+      }
+      
+      // Definir grupo tarifário baseado no tipo do cliente
+      if (customer.clientType === 'industrial' || customer.clientType === 'commercial') {
+        onFormChange('grupoTarifario', 'A');
+      } else {
+        onFormChange('grupoTarifario', 'B');
+      }
+
+      setSearchTerm(customer.displayName);
+      setIsDropdownOpen(false);
+    } catch (error) {
+      // console.error('Erro ao selecionar cliente:', error);
+      // Manter dropdown aberto em caso de erro
+    }
   };
 
   // Função para selecionar projeto
   const handleSelectProject = (project: any) => {
-    onFormChange('project', {
-      id: project.id,
-      name: project.displayName
-    });
-    onFormChange('projectName', project.displayName);
-    
-    setProjectSearchTerm(project.displayName);
-    setIsProjectDropdownOpen(false);
+    try {
+      if (!project || !project.id || !project.displayName) {
+        // console.error('Projeto inválido selecionado:', project);
+        return;
+      }
+
+      onFormChange('project', {
+        id: project.id,
+        name: project.displayName
+      });
+      onFormChange('projectName', project.displayName);
+      
+      setProjectSearchTerm(project.displayName);
+      setIsProjectDropdownOpen(false);
+    } catch (error) {
+      // console.error('Erro ao selecionar projeto:', error);
+      // Manter dropdown aberto em caso de erro
+    }
   };
 
   return (
@@ -246,7 +288,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
             />
           </div>
           
-          {!isLeadLocked && isDropdownOpen && (searchTerm.length > 2 || isSearching) && (
+          {!isLeadLocked && isDropdownOpen && (searchTerm.length > 1 || isSearching) && (
             <div className="absolute z-10 w-full bg-background border border-border rounded-md mt-1 max-h-48 overflow-y-auto shadow-lg">
               {isSearching ? (
                 <div className="p-2 flex items-center justify-center text-muted-foreground">
@@ -254,28 +296,40 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   Buscando...
                 </div>
               ) : searchResults.length > 0 ? (
-                searchResults.map(result => (
-                  <div
-                    key={`${result.type}-${result.id}`}
-                    className="p-2 hover:bg-accent cursor-pointer border-b border-border last:border-b-0"
-                    onMouseDown={() => handleSelectCustomer(result)}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-semibold text-foreground">{result.displayName}</p>
-                        <p className="text-xs text-muted-foreground">{result.displayInfo}</p>
+                searchResults.map((result, index) => {
+                  // Validação de segurança para cada resultado
+                  if (!result || !result.id || !result.displayName) {
+                    // console.warn('Resultado inválido ignorado:', result);
+                    return null;
+                  }
+                  
+                  return (
+                    <div
+                      key={`${result.type || 'unknown'}-${result.id}-${index}`}
+                      className="p-2 hover:bg-accent cursor-pointer border-b border-border last:border-b-0"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSelectCustomer(result);
+                      }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-semibold text-foreground">{result.displayName}</p>
+                          <p className="text-xs text-muted-foreground">{result.displayInfo || 'Sem informações'}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          result.type === 'client' 
+                            ? 'bg-blue-500/20 text-blue-400' 
+                            : 'bg-green-500/20 text-green-400'
+                        }`}>
+                          {result.type === 'client' ? 'Cliente' : 'Lead'}
+                        </span>
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        result.type === 'client' 
-                          ? 'bg-blue-500/20 text-blue-400' 
-                          : 'bg-green-500/20 text-green-400'
-                      }`}>
-                        {result.type === 'client' ? 'Cliente' : 'Lead'}
-                      </span>
                     </div>
-                  </div>
-                ))
-              ) : searchTerm.length > 2 ? (
+                  );
+                }).filter(Boolean)
+              ) : searchTerm.length > 1 ? (
                 <div className="p-2 text-center text-muted-foreground">
                   Nenhum cliente ou lead encontrado.
                 </div>
@@ -287,8 +341,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
         {/* Campo de seleção de projeto */}
         <div className="space-y-2 relative">
           <Label htmlFor="project-search" className="text-foreground flex items-center gap-2">
-            Selecionar Projeto
-            <span className="text-red-500 text-sm">*</span>
+            Selecionar Projeto (Opcional)
           </Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -321,23 +374,35 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   Buscando projetos...
                 </div>
               ) : projectSearchResults.length > 0 ? (
-                projectSearchResults.map(project => (
-                  <div
-                    key={project.id}
-                    className="p-2 hover:bg-accent cursor-pointer border-b border-border last:border-b-0"
-                    onMouseDown={() => handleSelectProject(project)}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-semibold text-foreground">{project.displayName}</p>
-                        <p className="text-xs text-muted-foreground">{project.displayInfo}</p>
+                projectSearchResults.map((project, index) => {
+                  // Validação de segurança para cada projeto
+                  if (!project || !project.id || !project.displayName) {
+                    // console.warn('Projeto inválido ignorado:', project);
+                    return null;
+                  }
+                  
+                  return (
+                    <div
+                      key={`project-${project.id}-${index}`}
+                      className="p-2 hover:bg-accent cursor-pointer border-b border-border last:border-b-0"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSelectProject(project);
+                      }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-semibold text-foreground">{project.displayName}</p>
+                          <p className="text-xs text-muted-foreground">{project.displayInfo || 'Sem informações'}</p>
+                        </div>
+                        <span className="text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-400">
+                          Projeto
+                        </span>
                       </div>
-                      <span className="text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-400">
-                        Projeto
-                      </span>
                     </div>
-                  </div>
-                ))
+                  );
+                }).filter(Boolean)
               ) : projectSearchTerm.length > 1 ? (
                 <div className="p-2 text-center text-muted-foreground">
                   <div className="text-sm mb-1">Nenhum projeto encontrado.</div>
@@ -347,7 +412,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
             </div>
           )}
           <p className="text-xs text-muted-foreground">
-            <span className="text-red-600 dark:text-red-400">*Obrigatório</span> - Selecione um projeto existente ou crie um novo.
+            Selecione um projeto existente ou crie um novo.
           </p>
         </div>
 

@@ -168,29 +168,17 @@ export class EnhancedLoginUseCase {
 
   private async manageActiveTokens(userId: any, deviceInfo?: string, ipAddress?: string, userAgent?: string): Promise<void> {
     try {
-      // Se for o mesmo dispositivo, revogar tokens antigos deste dispositivo
-      if (deviceInfo && ipAddress && userAgent) {
-        const existingTokens = await this.refreshTokenRepository.findByUserIdAndDevice(
-          userId,
-          deviceInfo,
-          ipAddress,
-          userAgent
-        );
+      // Permitir múltiplas sessões: não revogar tokens do mesmo dispositivo
+      // Apenas limpar tokens expirados para manter a limpeza da base
+      await this.refreshTokenRepository.deleteExpiredTokens();
 
-        if (existingTokens.length > 0) {
-          for (const token of existingTokens) {
-            await this.refreshTokenRepository.revokeToken(token.getToken());
-          }
-        }
-      }
-
-      // Limitar total de tokens ativos (máximo 5 dispositivos diferentes)
+      // Limitar total de tokens ativos (aumentando para 20 sessões simultâneas)
       const activeTokens = await this.refreshTokenRepository.findActiveByUserId(userId);
-      if (activeTokens.length > 5) {
-        // Manter apenas os 5 mais recentes
+      if (activeTokens.length > 20) {
+        // Manter apenas os 20 mais recentes (permitir múltiplas sessões ativas)
         const tokensToRevoke = activeTokens
           .sort((a, b) => b.getCreatedAt().getTime() - a.getCreatedAt().getTime())
-          .slice(5);
+          .slice(20);
 
         for (const token of tokensToRevoke) {
           await this.refreshTokenRepository.revokeToken(token.getToken());

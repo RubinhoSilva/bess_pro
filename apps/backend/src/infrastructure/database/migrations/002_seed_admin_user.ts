@@ -2,8 +2,6 @@ import { UserModel } from '../mongodb/schemas/UserSchema';
 import bcrypt from 'bcryptjs';
 
 export async function seedAdminUser(): Promise<void> {
-  console.log('Seeding admin user...');
-
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@gmail.com';
   const adminExists = await UserModel.findOne({ email: adminEmail });
   
@@ -19,8 +17,17 @@ export async function seedAdminUser(): Promise<void> {
     });
 
     await adminUser.save();
-    console.log('✅ Admin user created');
   } else {
-    console.log('ℹ️ Admin user already exists');
+    // SEMPRE garantir que o admin@gmail.com tenha role super_admin
+    if (adminExists.role !== 'super_admin') {
+      await UserModel.updateOne(
+        { email: adminEmail },
+        { 
+          role: 'super_admin',
+          name: 'Administrador',
+          company: 'BESS Pro'
+        }
+      );
+    }
   }
 }

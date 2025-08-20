@@ -269,9 +269,15 @@ const LeadsPage = () => {
       setIsDialogOpen(false);
       setSelectedLead(null);
       fetchLeads();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar lead:', error);
-      toast.error('Erro ao salvar lead');
+      
+      // O interceptor do axios já mostra o toast para erros 409 (conflito)
+      // Só mostrar toast genérico se não for um erro conhecido
+      if (error.response?.status !== 409) {
+        const message = error.response?.data?.error?.message || 'Erro ao salvar lead';
+        toast.error(message);
+      }
     } finally {
       setIsSubmitting(false);
     }

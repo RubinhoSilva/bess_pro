@@ -63,6 +63,12 @@ api.interceptors.response.use(
       });
     }
 
+    // Handle conflict errors (409) - like duplicate email
+    if (error.response?.status === 409) {
+      const message = error.response.data?.error?.message || 'Conflito de dados';
+      toast.error(message);
+    }
+
     return Promise.reject(error);
   }
 );

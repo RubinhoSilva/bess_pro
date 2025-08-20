@@ -127,8 +127,8 @@ const EnergyBillComponent: React.FC<{
 
       {/* Resumo */}
       {bill.consumoMensal.some(val => val > 0) && (
-        <div className="bg-blue-50 p-3 rounded border border-blue-200">
-          <div className="text-sm space-y-1">
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-200 dark:border-blue-700">
+          <div className="text-sm space-y-1 text-gray-800 dark:text-gray-200">
             <div className="flex justify-between">
               <span>Total Anual:</span>
               <span className="font-semibold">{bill.consumoMensal.reduce((a, b) => a + b, 0).toFixed(0)} kWh</span>
@@ -227,28 +227,28 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
 
         {/* Resumo Total */}
         {totalAnualConsumption > 0 && (
-          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-            <h4 className="font-semibold text-green-800 mb-3">Resumo Total do Consumo</h4>
+          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-700">
+            <h4 className="font-semibold text-green-800 dark:text-green-200 mb-3">Resumo Total do Consumo</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="text-center">
-                <div className="text-green-600 font-medium">Total Anual</div>
-                <div className="text-xl font-bold text-green-800">{totalAnualConsumption.toFixed(0)}</div>
-                <div className="text-xs text-green-600">kWh/ano</div>
+                <div className="text-green-600 dark:text-green-400 font-medium">Total Anual</div>
+                <div className="text-xl font-bold text-green-800 dark:text-green-200">{totalAnualConsumption.toFixed(0)}</div>
+                <div className="text-xs text-green-600 dark:text-green-400">kWh/ano</div>
               </div>
               <div className="text-center">
-                <div className="text-green-600 font-medium">Média Mensal</div>
-                <div className="text-xl font-bold text-green-800">{(totalAnualConsumption / 12).toFixed(0)}</div>
-                <div className="text-xs text-green-600">kWh/mês</div>
+                <div className="text-green-600 dark:text-green-400 font-medium">Média Mensal</div>
+                <div className="text-xl font-bold text-green-800 dark:text-green-200">{(totalAnualConsumption / 12).toFixed(0)}</div>
+                <div className="text-xs text-green-600 dark:text-green-400">kWh/mês</div>
               </div>
               <div className="text-center">
-                <div className="text-green-600 font-medium">Média Diária</div>
-                <div className="text-xl font-bold text-green-800">{(totalAnualConsumption / 365).toFixed(0)}</div>
-                <div className="text-xs text-green-600">kWh/dia</div>
+                <div className="text-green-600 dark:text-green-400 font-medium">Média Diária</div>
+                <div className="text-xl font-bold text-green-800 dark:text-green-200">{(totalAnualConsumption / 365).toFixed(0)}</div>
+                <div className="text-xs text-green-600 dark:text-green-400">kWh/dia</div>
               </div>
               <div className="text-center">
-                <div className="text-green-600 font-medium">Pico Mensal</div>
-                <div className="text-xl font-bold text-green-800">{Math.max(...monthlyTotals).toFixed(0)}</div>
-                <div className="text-xs text-green-600">kWh/mês</div>
+                <div className="text-green-600 dark:text-green-400 font-medium">Pico Mensal</div>
+                <div className="text-xl font-bold text-green-800 dark:text-green-200">{Math.max(...monthlyTotals).toFixed(0)}</div>
+                <div className="text-xs text-green-600 dark:text-green-400">kWh/mês</div>
               </div>
             </div>
           </div>

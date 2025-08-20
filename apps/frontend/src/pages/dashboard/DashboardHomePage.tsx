@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -193,19 +193,6 @@ export default function DashboardHomePage() {
             </p>
           </div>
           
-          <div className="flex items-center gap-3 mt-4 md:mt-0">
-            <Button 
-              variant="outline"
-              onClick={() => navigate('/dashboard/leads')}
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              Agendar reunião
-            </Button>
-            <Button onClick={() => navigate('/dashboard/projects/new')}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo projeto
-            </Button>
-          </div>
         </div>
       </motion.div>
 

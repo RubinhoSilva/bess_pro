@@ -48,7 +48,6 @@ export class AuthMiddleware {
 
         next();
       } catch (error) {
-        console.error('Authentication error:', error);
         res.status(401).json({
           success: false,
           error: {

@@ -162,9 +162,9 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
             </div>
 
             {/* Resumo do Investimento */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h4 className="font-semibold text-blue-800 mb-2">Resumo do Investimento</h4>
-              <div className="space-y-1 text-sm">
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+              <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Resumo do Investimento</h4>
+              <div className="space-y-1 text-sm text-gray-800 dark:text-gray-200">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
                   <span>{formatCurrency((formData.custoEquipamento || 0) + (formData.custoMateriais || 0) + (formData.custoMaoDeObra || 0))}</span>
@@ -173,9 +173,9 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                   <span>BDI ({formData.bdi || 0}%):</span>
                   <span>{formatCurrency(((formData.custoEquipamento || 0) + (formData.custoMateriais || 0) + (formData.custoMaoDeObra || 0)) * (formData.bdi || 0) / 100)}</span>
                 </div>
-                <div className="flex justify-between font-bold text-lg border-t pt-1">
+                <div className="flex justify-between font-bold text-lg border-t border-gray-300 dark:border-gray-600 pt-1">
                   <span>Total:</span>
-                  <span className="text-blue-800">{formatCurrency(totalInvestment)}</span>
+                  <span className="text-blue-800 dark:text-blue-300">{formatCurrency(totalInvestment)}</span>
                 </div>
               </div>
             </div>

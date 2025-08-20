@@ -93,8 +93,8 @@ const ProjectsDashboard: React.FC = () => {
   
   const { data: clients = [] } = useClients();
 
-  // Filtrar e buscar projetos
-  const filteredProjects = useMemo(() => {
+  // Filtrar e agrupar projetos por ano/mês
+  const filteredAndGroupedProjects = useMemo(() => {
     let filtered = projects;
 
     // Filtrar por tipo
@@ -117,7 +117,50 @@ const ProjectsDashboard: React.FC = () => {
       );
     }
 
-    return filtered;
+    // Agrupar por ano e mês
+    const grouped = filtered.reduce((acc, project) => {
+      const date = new Date(project.savedAt);
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const monthNames = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+      ];
+      
+      const yearKey = year.toString();
+      const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
+      const monthLabel = `${monthNames[month]} ${year}`;
+
+      if (!acc[yearKey]) {
+        acc[yearKey] = {
+          year,
+          months: {}
+        };
+      }
+
+      if (!acc[yearKey].months[monthKey]) {
+        acc[yearKey].months[monthKey] = {
+          monthLabel,
+          projects: []
+        };
+      }
+
+      acc[yearKey].months[monthKey].projects.push(project);
+      return acc;
+    }, {} as Record<string, { year: number; months: Record<string, { monthLabel: string; projects: any[] }> }>);
+
+    // Ordenar por ano (mais recente primeiro) e por mês (mais recente primeiro)
+    const sortedYears = Object.keys(grouped).sort((a, b) => parseInt(b) - parseInt(a));
+    
+    return sortedYears.map(yearKey => ({
+      ...grouped[yearKey],
+      months: Object.keys(grouped[yearKey].months)
+        .sort((a, b) => b.localeCompare(a))
+        .map(monthKey => ({
+          key: monthKey,
+          ...grouped[yearKey].months[monthKey]
+        }))
+    }));
   }, [projects, activeTab, debouncedSearchTerm]);
 
   // Estatísticas
@@ -454,7 +497,7 @@ const ProjectsDashboard: React.FC = () => {
         </div>
 
         {/* Projects Grid */}
-        <div className="space-y-4">
+        <div className="space-y-8">
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
@@ -471,7 +514,8 @@ const ProjectsDashboard: React.FC = () => {
                 </Card>
               ))}
             </div>
-          ) : filteredProjects.length === 0 ? (
+          ) : filteredAndGroupedProjects.length === 0 || 
+              filteredAndGroupedProjects.every(year => year.months.every(month => month.projects.length === 0)) ? (
             <Card>
               <CardContent className="py-12 text-center">
                 {debouncedSearchTerm ? (
@@ -498,132 +542,170 @@ const ProjectsDashboard: React.FC = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className={
-              viewMode === 'grid' 
-                ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" 
-                : "space-y-4"
-            }>
+            <div className="space-y-8">
               <AnimatePresence>
-                {filteredProjects.map((project) => (
+                {filteredAndGroupedProjects.map((yearGroup) => (
                   <motion.div
-                    key={project.id}
-                    layout
+                    key={yearGroup.year}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
+                    className="space-y-6"
                   >
-                    <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer">
-                      <CardContent className="p-6">
-                        {/* Header */}
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-muted">
-                              {getProjectTypeIcon(project.projectType)}
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors">
-                                {project.projectName}
-                              </h3>
-                              <Badge variant="secondary" className="text-xs mt-1">
-                                {getProjectTypeName(project.projectType)}
-                              </Badge>
-                            </div>
-                          </div>
-                          
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleOpenProject(project.id)}>
-                                <Eye className="w-4 h-4 mr-2" />
-                                Visualizar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDuplicateProject(project.id)}>
-                                <Copy className="w-4 h-4 mr-2" />
-                                Duplicar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleGenerateProposal(project.id)}>
-                                <FileText className="w-4 h-4 mr-2" />
-                                Gerar Proposta
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="text-red-600"
-                                onClick={() => handleDeleteProject(project.id)}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                    {/* Year Header */}
+                    <div className="flex items-center gap-4">
+                      <div className="bg-primary/10 rounded-lg px-4 py-2">
+                        <h2 className="text-2xl font-bold text-primary">{yearGroup.year}</h2>
+                      </div>
+                      <div className="flex-1 h-px bg-border"></div>
+                      <Badge variant="outline" className="text-sm">
+                        {yearGroup.months.reduce((total, month) => total + month.projects.length, 0)} projetos
+                      </Badge>
+                    </div>
+
+                    {/* Months */}
+                    {yearGroup.months.map((monthGroup) => (
+                      <div key={monthGroup.key} className="space-y-4">
+                        {/* Month Header */}
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-lg font-semibold text-foreground">{monthGroup.monthLabel}</h3>
+                          <Badge variant="secondary" className="text-xs">
+                            {monthGroup.projects.length} {monthGroup.projects.length === 1 ? 'projeto' : 'projetos'}
+                          </Badge>
                         </div>
 
-                        {/* Location and Date */}
-                        <div className="space-y-2 mb-4">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <MapPin className="w-4 h-4" />
-                            <span className="truncate">{project.address}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="w-4 h-4" />
-                            <span>Criado em {formatDate(project.savedAt)}</span>
-                          </div>
+                        {/* Projects Grid for this month */}
+                        <div className={
+                          viewMode === 'grid' 
+                            ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" 
+                            : "space-y-4"
+                        }>
+                          {monthGroup.projects.map((project) => (
+                            <motion.div
+                              key={project.id}
+                              layout
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer">
+                                <CardContent className="p-6">
+                                  {/* Header */}
+                                  <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="p-2 rounded-lg bg-muted">
+                                        {getProjectTypeIcon(project.projectType)}
+                                      </div>
+                                      <div>
+                                        <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors">
+                                          {project.projectName}
+                                        </h3>
+                                        <Badge variant="secondary" className="text-xs mt-1">
+                                          {getProjectTypeName(project.projectType)}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                    
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                          <MoreVertical className="w-4 h-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => handleOpenProject(project.id)}>
+                                          <Eye className="w-4 h-4 mr-2" />
+                                          Visualizar
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleDuplicateProject(project.id)}>
+                                          <Copy className="w-4 h-4 mr-2" />
+                                          Duplicar
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleGenerateProposal(project.id)}>
+                                          <FileText className="w-4 h-4 mr-2" />
+                                          Gerar Proposta
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem 
+                                          className="text-red-600"
+                                          onClick={() => handleDeleteProject(project.id)}
+                                        >
+                                          <Trash2 className="w-4 h-4 mr-2" />
+                                          Excluir
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+
+                                  {/* Location and Date */}
+                                  <div className="space-y-2 mb-4">
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <MapPin className="w-4 h-4" />
+                                      <span className="truncate">{project.address}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <Calendar className="w-4 h-4" />
+                                      <span>Criado em {formatDate(project.savedAt)}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Analysis Stats */}
+                                  <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div className="bg-muted/50 rounded-lg p-3 text-center">
+                                      <div className="flex items-center justify-center gap-1 mb-1">
+                                        <Sun className="w-4 h-4 text-yellow-500" />
+                                        <span className="text-xs font-medium">PV</span>
+                                      </div>
+                                      <div className="text-2xl font-bold text-foreground">
+                                        {project.totalPVDimensionings}
+                                      </div>
+                                      {project.lastPVStatus && (
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                          {project.lastPVStatus === 'approved' ? '✅ Aprovado' : 
+                                           project.lastPVStatus === 'calculated' ? '📊 Calculado' : '📝 Rascunho'}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="bg-muted/50 rounded-lg p-3 text-center">
+                                      <div className="flex items-center justify-center gap-1 mb-1">
+                                        <Battery className="w-4 h-4 text-green-500" />
+                                        <span className="text-xs font-medium">BESS</span>
+                                      </div>
+                                      <div className="text-2xl font-bold text-foreground">
+                                        {project.totalBESSAnalyses}
+                                      </div>
+                                      {project.lastBESSStatus && (
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                          {project.lastBESSStatus === 'approved' ? '✅ Aprovado' : 
+                                           project.lastBESSStatus === 'simulated' ? '🔄 Simulado' : '📝 Rascunho'}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Action Button */}
+                                  <Button 
+                                    variant="outline" 
+                                    className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                                    onClick={() => handleOpenProject(project.id)}
+                                  >
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    Abrir Projeto
+                                  </Button>
+                                </CardContent>
+                              </Card>
+                            </motion.div>
+                          ))}
                         </div>
-
-                        {/* Analysis Stats */}
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="bg-muted/50 rounded-lg p-3 text-center">
-                            <div className="flex items-center justify-center gap-1 mb-1">
-                              <Sun className="w-4 h-4 text-yellow-500" />
-                              <span className="text-xs font-medium">PV</span>
-                            </div>
-                            <div className="text-2xl font-bold text-foreground">
-                              {project.totalPVDimensionings}
-                            </div>
-                            {project.lastPVStatus && (
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {project.lastPVStatus === 'approved' ? '✅ Aprovado' : 
-                                 project.lastPVStatus === 'calculated' ? '📊 Calculado' : '📝 Rascunho'}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="bg-muted/50 rounded-lg p-3 text-center">
-                            <div className="flex items-center justify-center gap-1 mb-1">
-                              <Battery className="w-4 h-4 text-green-500" />
-                              <span className="text-xs font-medium">BESS</span>
-                            </div>
-                            <div className="text-2xl font-bold text-foreground">
-                              {project.totalBESSAnalyses}
-                            </div>
-                            {project.lastBESSStatus && (
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {project.lastBESSStatus === 'approved' ? '✅ Aprovado' : 
-                                 project.lastBESSStatus === 'simulated' ? '🔄 Simulado' : '📝 Rascunho'}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Action Button */}
-                        <Button 
-                          variant="outline" 
-                          className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                          onClick={() => handleOpenProject(project.id)}
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          Abrir Projeto
-                        </Button>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    ))}
                   </motion.div>
                 ))}
               </AnimatePresence>
