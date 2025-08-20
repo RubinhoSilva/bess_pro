@@ -17,7 +17,7 @@ import LeadDetailPage from './pages/crm/LeadDetailPage'
 import CRMDashboardPage from './pages/crm/CRMDashboardPage'
 import ClientsPage from './pages/clients/ClientsPage'
 import ProjectsDashboard from './pages/projects/ProjectsDashboard'
-import CreateProjectPage from './pages/projects/CreateProjectPage'
+// import CreateProjectPage from './pages/projects/CreateProjectPage' // Removido
 import PVDesignPage from './pages/tools/PVDesignPage'
 import EquipmentPage from './pages/equipment/EquipmentPage'
 import BESSAnalysisPage from './pages/tools/BESSAnalysisPage'
@@ -81,7 +81,7 @@ function App() {
                   <Route path="services" element={<DashboardHomePage />} />
                   <Route path="overview" element={<DashboardPage />} />
                   <Route path="projects" element={<ProjectsDashboard />} />
-                  <Route path="projects/new" element={<CreateProjectPage />} />
+                  {/* <Route path="projects/new" element={<CreateProjectPage />} /> */}
                   <Route path="pv-design" element={<PVDesignPage />} />
                   <Route path="bess-analysis" element={<BESSAnalysisPage />} />
                   <Route path="solar-analysis" element={<SolarAnalysisPage />} />

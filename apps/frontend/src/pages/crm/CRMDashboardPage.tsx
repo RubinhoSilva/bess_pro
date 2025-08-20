@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 
 import { Button } from '../../components/ui/button';
 import { CRMAnalyticsDashboard } from '../../components/crm/CRMAnalyticsDashboard';
-import { Lead, CreateLeadRequest } from '../../types/lead';
+import { Lead, CreateLeadRequest, UpdateLeadRequest } from '../../types/lead';
 import { leadsApi } from '../../lib/api/leads';
 import { LeadForm } from '../../components/crm/LeadForm';
 import {
@@ -48,10 +48,10 @@ const CRMDashboardPage: React.FC = () => {
     fetchLeads();
   }, []);
 
-  const handleCreateLead = async (leadData: CreateLeadRequest) => {
+  const handleCreateLead = async (leadData: CreateLeadRequest | UpdateLeadRequest) => {
     try {
       setIsSubmitting(true);
-      await leadsApi.createLead(leadData);
+      await leadsApi.createLead(leadData as CreateLeadRequest);
       setIsDialogOpen(false);
       await fetchLeads(); // Recarregar leads
       toast.success('Lead criado com sucesso!');
