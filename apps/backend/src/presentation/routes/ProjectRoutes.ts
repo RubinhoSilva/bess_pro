@@ -19,6 +19,12 @@ export class ProjectRoutes {
       projectController.create.bind(projectController)
     );
 
+    router.get('/by-date',
+      ValidationMiddleware.validateProjectFilters(),
+      ValidationMiddleware.handleValidationErrors(),
+      projectController.listByDate.bind(projectController)
+    );
+
     router.get('/',
       ValidationMiddleware.validatePagination(),
       ValidationMiddleware.validateProjectFilters(),

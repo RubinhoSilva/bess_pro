@@ -16,11 +16,15 @@ export class ProjectController extends BaseController {
       const userId = this.extractUserId(req);
       const { projectName, projectType, address, leadId, projectData } = req.body;
 
+      // Validar leadId obrigatório
+      if (!leadId) {
+        return this.badRequest(res, 'Lead é obrigatório para criar dimensionamento');
+      }
 
       const useCase = this.container.resolve<CreateProjectUseCase>(ServiceTokens.CREATE_PROJECT_USE_CASE);
       
       const result = await useCase.execute({
-        projectName,
+        projectName, // Agora é o nome do dimensionamento
         projectType,
         userId,
         address,
@@ -28,15 +32,14 @@ export class ProjectController extends BaseController {
         projectData,
       });
 
-
       if (result.isSuccess) {
         return this.created(res, result.value);
       }
 
       return this.handleResult(res, result);
     } catch (error) {
-      console.error('Create project error:', error);
-      return this.internalServerError(res, 'Erro ao criar projeto');
+      console.error('Create dimensioning error:', error);
+      return this.internalServerError(res, 'Erro ao criar dimensionamento');
     }
   }
 
@@ -96,7 +99,6 @@ export class ProjectController extends BaseController {
       const { page, pageSize } = this.extractPagination(req);
       const { projectType, hasLocation, hasLead, searchTerm } = req.query;
 
-
       const useCase = this.container.resolve<GetProjectListUseCase>(ServiceTokens.GET_PROJECT_LIST_USE_CASE);
       
       const result = await useCase.execute({
@@ -109,15 +111,83 @@ export class ProjectController extends BaseController {
         pageSize,
       });
 
-
       if (result.isSuccess) {
         return this.ok(res, result.value);
       }
 
       return this.handleResult(res, result);
     } catch (error) {
-      console.error('List projects error:', error);
-      return this.internalServerError(res, 'Erro ao listar projetos');
+      console.error('List dimensionings error:', error);
+      return this.internalServerError(res, 'Erro ao listar dimensionamentos');
+    }
+  }
+
+  async listByDate(req: Request, res: Response): Promise<Response> {
+    try {
+      const userId = this.extractUserId(req);
+      const { projectType, searchTerm } = req.query;
+
+      const useCase = this.container.resolve<GetProjectListUseCase>(ServiceTokens.GET_PROJECT_LIST_USE_CASE);
+      
+      // Buscar todos os dimensionamentos sem paginação para agrupar por data
+      const result = await useCase.execute({
+        userId,
+        projectType: projectType as 'pv' | 'bess',
+        searchTerm: searchTerm as string,
+        page: 1,
+        pageSize: 1000, // Limite alto para pegar todos
+      });
+
+      if (result.isSuccess && result.value) {
+        // Agrupar por ano → mês
+        const dimensioningsByDate: Record<string, Record<string, any[]>> = {};
+        
+        result.value.projects.forEach(project => {
+          const savedAt = new Date(project.savedAt);
+          const year = savedAt.getFullYear().toString();
+          const month = savedAt.toLocaleDateString('pt-BR', { month: 'long' });
+          
+          if (!dimensioningsByDate[year]) {
+            dimensioningsByDate[year] = {};
+          }
+          
+          if (!dimensioningsByDate[year][month]) {
+            dimensioningsByDate[year][month] = [];
+          }
+          
+          dimensioningsByDate[year][month].push(project);
+        });
+
+        // Ordenar por data (mais recente primeiro)
+        const sortedYears = Object.keys(dimensioningsByDate).sort((a, b) => parseInt(b) - parseInt(a));
+        const organized = sortedYears.reduce((acc, year) => {
+          const months = dimensioningsByDate[year];
+          const sortedMonths = Object.keys(months).sort((a, b) => {
+            const monthA = new Date(`01 ${a} ${year}`).getMonth();
+            const monthB = new Date(`01 ${b} ${year}`).getMonth();
+            return monthB - monthA;
+          });
+          
+          acc[year] = sortedMonths.reduce((monthAcc, month) => {
+            monthAcc[month] = months[month].sort((a, b) => 
+              new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
+            );
+            return monthAcc;
+          }, {} as Record<string, any[]>);
+          
+          return acc;
+        }, {} as Record<string, Record<string, any[]>>);
+
+        return this.ok(res, {
+          dimensioningsByDate: organized,
+          totalCount: result.value.total
+        });
+      }
+
+      return this.handleResult(res, result);
+    } catch (error) {
+      console.error('List dimensionings by date error:', error);
+      return this.internalServerError(res, 'Erro ao listar dimensionamentos por data');
     }
   }
 
