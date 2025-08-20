@@ -178,14 +178,14 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
   // Análise de potência por faixa (kWp) - baseado nos filtrados (excluindo potência zerada)
   const leadsWithPower = filteredLeads.filter(lead => lead.powerKwp && lead.powerKwp > 0);
   const powerRanges = {
-    'Até 5 kWp': leadsWithPower.filter(lead => lead.powerKwp <= 5).length,
-    '5-15 kWp': leadsWithPower.filter(lead => lead.powerKwp > 5 && lead.powerKwp <= 15).length,
-    '15-50 kWp': leadsWithPower.filter(lead => lead.powerKwp > 15 && lead.powerKwp <= 50).length,
-    'Acima de 50 kWp': leadsWithPower.filter(lead => lead.powerKwp > 50).length,
+    'Até 5 kWp': leadsWithPower.filter(lead => lead.powerKwp! <= 5).length,
+    '5-15 kWp': leadsWithPower.filter(lead => lead.powerKwp! > 5 && lead.powerKwp! <= 15).length,
+    '15-50 kWp': leadsWithPower.filter(lead => lead.powerKwp! > 15 && lead.powerKwp! <= 50).length,
+    'Acima de 50 kWp': leadsWithPower.filter(lead => lead.powerKwp! > 50).length,
   };
 
   // Total de potência (kWp) - baseado nos filtrados (excluindo potência zerada)
-  const totalPowerKwp = leadsWithPower.reduce((sum, lead) => sum + lead.powerKwp, 0);
+  const totalPowerKwp = leadsWithPower.reduce((sum, lead) => sum + lead.powerKwp!, 0);
   const averagePowerKwp = leadsWithPower.length > 0 ? totalPowerKwp / leadsWithPower.length : 0;
 
   // Análise temporal - últimos 12 meses (baseado nos filtrados)
