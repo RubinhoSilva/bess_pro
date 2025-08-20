@@ -41,28 +41,6 @@ import { CRMAnalyticsDashboard } from '../../components/crm/CRMAnalyticsDashboar
 import { useLeads } from '../../hooks/lead-hooks';
 import { useProjects } from '../../hooks/project-hooks';
 
-// Mock data for charts
-const monthlyProjectsData = [
-  { month: 'Jan', projects: 12, revenue: 480000 },
-  { month: 'Fev', projects: 19, revenue: 760000 },
-  { month: 'Mar', projects: 15, revenue: 600000 },
-  { month: 'Abr', projects: 22, revenue: 880000 },
-  { month: 'Mai', projects: 28, revenue: 1120000 },
-  { month: 'Jun', projects: 25, revenue: 1000000 },
-];
-
-const projectTypeData = [
-  { name: 'Solar PV', value: 45, color: '#f59e0b' },
-  { name: 'BESS', value: 30, color: '#10b981' },
-  { name: 'Híbrido', value: 25, color: '#3b82f6' },
-];
-
-const recentActivity = [
-  { id: 1, action: 'Projeto criado', project: 'Sistema 50kWp - Indústria XYZ', time: '2 min', type: 'create' },
-  { id: 2, action: 'Análise BESS', project: 'Armazenamento 100kWh', time: '15 min', type: 'analysis' },
-  { id: 3, action: 'Cliente adicionado', project: 'Empresa ABC Ltda', time: '1h', type: 'client' },
-  { id: 4, action: 'Proposta enviada', project: 'Sistema Residencial 10kWp', time: '2h', type: 'proposal' },
-];
 
 
 export default function DashboardHomePage() {
@@ -76,7 +54,7 @@ export default function DashboardHomePage() {
   const allLeads = Array.isArray(leadsResponse) ? leadsResponse : (leadsResponse?.leads || []);
   const allProjects = Array.isArray(projectsResponse) ? projectsResponse : (projectsResponse?.projects || []);
   
-  // Calculate real statistics
+  // Calculate real statistics and chart data
   const realStats = useMemo(() => {
     const activeProjects = allProjects?.filter(project => !project.isDeleted) || [];
     const totalLeads = allLeads?.length || 0;
@@ -103,6 +81,86 @@ export default function DashboardHomePage() {
       revenueGrowth: totalRevenue > 0 ? '+15%' : '0%'
     };
   }, [allProjects, allLeads]);
+
+  // Generate real chart data from projects
+  const chartData = useMemo(() => {
+    const activeProjects = allProjects?.filter(project => !project.isDeleted) || [];
+    
+    // Calculate monthly projects data (last 6 months)
+    const monthlyProjectsData = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const monthProjects = activeProjects.filter(project => {
+        const projectDate = new Date(project.createdAt || project.savedAt);
+        return projectDate.getMonth() === date.getMonth() && 
+               projectDate.getFullYear() === date.getFullYear();
+      });
+      
+      const monthRevenue = monthProjects.reduce((sum, project) => {
+        return sum + (project.projectData?.custoEquipamento || 0);
+      }, 0);
+      
+      monthlyProjectsData.push({
+        month: date.toLocaleDateString('pt-BR', { month: 'short' }),
+        projects: monthProjects.length,
+        revenue: monthRevenue
+      });
+    }
+    
+    // Calculate project type distribution
+    const projectTypeStats = {
+      PV: activeProjects.filter(p => p.projectType === 'pv').length,
+      BESS: activeProjects.filter(p => p.projectType === 'bess').length,
+      HYBRID: activeProjects.filter(p => p.projectType === 'hybrid').length,
+    };
+    
+    const totalProjects = activeProjects.length;
+    const projectTypeData = [
+      { 
+        name: 'Solar PV', 
+        value: totalProjects > 0 ? Math.round((projectTypeStats.PV / totalProjects) * 100) : 0, 
+        color: '#f59e0b' 
+      },
+      { 
+        name: 'BESS', 
+        value: totalProjects > 0 ? Math.round((projectTypeStats.BESS / totalProjects) * 100) : 0, 
+        color: '#10b981' 
+      },
+      { 
+        name: 'Híbrido', 
+        value: totalProjects > 0 ? Math.round((projectTypeStats.HYBRID / totalProjects) * 100) : 0, 
+        color: '#3b82f6' 
+      },
+    ];
+    
+    // Generate recent activity from real projects (last 4)
+    const recentProjects = activeProjects
+      .sort((a, b) => new Date(b.createdAt || b.savedAt).getTime() - new Date(a.createdAt || a.savedAt).getTime())
+      .slice(0, 4);
+    
+    const recentActivity = recentProjects.map((project, index) => {
+      const timeDiff = Math.floor((Date.now() - new Date(project.createdAt || project.savedAt).getTime()) / (1000 * 60));
+      let timeStr = '';
+      if (timeDiff < 60) timeStr = `${timeDiff} min`;
+      else if (timeDiff < 1440) timeStr = `${Math.floor(timeDiff / 60)}h`;
+      else timeStr = `${Math.floor(timeDiff / 1440)}d`;
+      
+      return {
+        id: index + 1,
+        action: 'Projeto criado',
+        project: project.projectName,
+        time: timeStr,
+        type: 'create'
+      };
+    });
+    
+    return {
+      monthlyProjectsData,
+      projectTypeData,
+      recentActivity
+    };
+  }, [allProjects]);
   
   // Update stats with real data
   const stats = [
@@ -269,7 +327,7 @@ export default function DashboardHomePage() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyProjectsData}>
+                <BarChart data={chartData.monthlyProjectsData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
@@ -295,7 +353,7 @@ export default function DashboardHomePage() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={monthlyProjectsData}>
+                <AreaChart data={chartData.monthlyProjectsData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
@@ -331,7 +389,7 @@ export default function DashboardHomePage() {
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={projectTypeData}
+                    data={chartData.projectTypeData}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -339,7 +397,7 @@ export default function DashboardHomePage() {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {projectTypeData.map((entry, index) => (
+                    {chartData.projectTypeData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -347,7 +405,7 @@ export default function DashboardHomePage() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex justify-center gap-6 mt-4">
-                {projectTypeData.map((entry) => (
+                {chartData.projectTypeData.map((entry) => (
                   <div key={entry.name} className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: entry.color }} />
                     <span className="text-sm text-gray-600 dark:text-gray-400">{entry.name}</span>
@@ -372,7 +430,7 @@ export default function DashboardHomePage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentActivity.map((activity) => (
+                {chartData.recentActivity.length > 0 ? chartData.recentActivity.map((activity) => (
                   <div key={activity.id} className="flex items-start gap-3">
                     <div className={`p-2 rounded-full ${
                       activity.type === 'create' ? 'bg-blue-100' :
@@ -391,7 +449,15 @@ export default function DashboardHomePage() {
                     </div>
                     <span className="text-xs text-gray-400 dark:text-gray-500">{activity.time}</span>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <div className="flex flex-col items-center gap-2">
+                      <Clock className="h-8 w-8" />
+                      <p>Nenhuma atividade recente</p>
+                      <p className="text-xs">Crie seu primeiro projeto para ver atividades aqui</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

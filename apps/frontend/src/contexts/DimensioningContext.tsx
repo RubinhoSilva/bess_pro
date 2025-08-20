@@ -233,6 +233,12 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
   }, [toast]);
 
   const saveDimensioning = useCallback(async () => {
+    console.log('🔧 Iniciando salvamento do dimensionamento...', {
+      dimensioningName: currentDimensioning.dimensioningName,
+      customer: currentDimensioning.customer,
+      dimensioningId
+    });
+
     if (!currentDimensioning.dimensioningName?.trim()) {
       toast({
         variant: "destructive",
@@ -251,33 +257,27 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
       return;
     }
 
-    if (!currentDimensioning.project && !currentDimensioning.projectName?.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Projeto obrigatório", 
-        description: "Por favor, selecione um projeto ou informe o nome para criar um novo.",
-      });
-      return;
-    }
+    // Validação removida: projeto não é mais obrigatório
+    // O dimensionamento será salvo diretamente com o nome informado
 
     setIsSaving(true);
+    console.log('💾 Definindo isSaving como true...');
     
     try {
-      // Preparar dados para a API
+      // Preparar dados para a API - agora usando o nome do dimensionamento como nome do projeto
       const projectData = {
-        projectName: currentDimensioning.projectName || currentDimensioning.dimensioningName,
+        projectName: currentDimensioning.dimensioningName, // Usar sempre o nome do dimensionamento
         projectType: 'pv', // Corrigido: deve ser lowercase
-        // Usar customerId ou leadId baseado no tipo do customer
-        ...(currentDimensioning.customer?.type === 'client' 
-          ? { customerId: currentDimensioning.customer.id }
-          : { leadId: currentDimensioning.customer?.id }
-        ),
+        // Usar leadId obrigatório (já validado acima)
+        leadId: currentDimensioning.customer?.id,
         address: currentDimensioning.endereco || currentDimensioning.cidade || currentDimensioning.estado || '',
         projectData: {
           ...currentDimensioning,
           dimensioningName: currentDimensioning.dimensioningName
         }
       };
+
+      console.log('📋 Dados preparados para envio:', projectData);
 
       // Configurar headers com token de autenticação
       const token = localStorage.getItem('auth-token') || sessionStorage.getItem('auth-token');
@@ -289,28 +289,28 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
       };
 
       let response: any;
-      if (!currentDimensioning.project?.id && !dimensioningId) {
-        // Criar novo projeto
+      if (!dimensioningId) {
+        // Criar novo dimensionamento (projeto)
+        console.log('🚀 Enviando POST para criar novo dimensionamento...');
         response = await axios.post('http://localhost:8010/api/v1/projects', projectData, config);
+        console.log('✅ Resposta recebida:', response.data);
         
         const projectId = response.data.data.id;
         setDimensioningId(projectId);
         setCurrentDimensioning(prev => ({
           ...prev,
-          project: { id: projectId, name: projectData.projectName },
           id: projectId,
           createdAt: response.data.data.createdAt,
           updatedAt: response.data.data.updatedAt
         }));
         
         toast({
-          title: "Projeto criado",
-          description: "Novo projeto e dimensionamento criados com sucesso!",
+          title: "Dimensionamento salvo",
+          description: "Dimensionamento criado com sucesso!",
         });
       } else {
-        // Atualizar projeto existente
-        const projectId = currentDimensioning.project?.id || dimensioningId;
-        response = await axios.put(`http://localhost:8010/api/v1/projects/${projectId}`, projectData, config);
+        // Atualizar dimensionamento existente
+        response = await axios.put(`http://localhost:8010/api/v1/projects/${dimensioningId}`, projectData, config);
         
         setCurrentDimensioning(prev => ({
           ...prev,
@@ -318,7 +318,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
         }));
         
         toast({
-          title: "Projeto atualizado", 
+          title: "Dimensionamento atualizado", 
           description: "Alterações salvas com sucesso!",
         });
       }

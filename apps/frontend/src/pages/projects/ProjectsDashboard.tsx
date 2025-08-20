@@ -78,16 +78,26 @@ const ProjectsDashboard: React.FC = () => {
   
   const projects = projectsData?.projects || [];
 
-  // Estatísticas dos projetos
+  // Estatísticas dos dimensionamentos e análises
   const getProjectStats = () => {
     const total = projects.length;
-    const totalPVDimensionings = 0; // TODO: implementar quando API estiver pronta
-    const totalBESSAnalyses = 0; // TODO: implementar quando API estiver pronta
+    const totalPVDimensionings = projects.reduce((sum, project) => sum + (project.totalPVDimensionings || 0), 0);
+    const totalBESSAnalyses = projects.reduce((sum, project) => sum + (project.totalBESSAnalyses || 0), 0);
+    
+    // Calcular itens criados este mês
+    const thisMonth = new Date();
+    const thisMonthProjects = projects.filter(project => {
+      const projectDate = new Date(project.createdAt || project.savedAt);
+      return projectDate.getMonth() === thisMonth.getMonth() && 
+             projectDate.getFullYear() === thisMonth.getFullYear();
+    });
+    const thisMonthTotal = thisMonthProjects.length;
+    
     return {
-      totalProjects: total,
+      totalProjects: totalPVDimensionings + totalBESSAnalyses, // Total de dimensionamentos + análises
       totalPVDimensionings,
       totalBESSAnalyses,
-      avgAnalysesPerProject: 0
+      avgAnalysesPerProject: thisMonthTotal // Usando para mostrar "Este Mês"
     };
   };
   
@@ -355,10 +365,10 @@ const ProjectsDashboard: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
-              Dashboard de Projetos
+              Dimensionamentos e Análises
             </h1>
             <p className="text-muted-foreground mt-1">
-              Gerencie todos os seus projetos de energia renovável
+              Organize seus dimensionamentos PV e análises BESS por data de criação
             </p>
           </div>
           
@@ -383,29 +393,22 @@ const ProjectsDashboard: React.FC = () => {
               </Button>
             </div>
 
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Novo Projeto
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Criar Novo Projeto</DialogTitle>
-                  <DialogDescription>
-                    Configure as informações básicas do seu novo projeto
-                  </DialogDescription>
-                </DialogHeader>
-                <ProjectForm
-                  onSuccess={() => {
-                    setIsCreateDialogOpen(false);
-                    // Refresh projects data
-                  }}
-                  onCancel={() => setIsCreateDialogOpen(false)}
-                />
-              </DialogContent>
-            </Dialog>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => window.location.href = '/dashboard/pv-design'} 
+                className="gap-2"
+              >
+                <Sun className="w-4 h-4" />
+                Dimensionamento PV
+              </Button>
+              <Button 
+                onClick={() => window.location.href = '/dashboard/bess-analysis'} 
+                className="gap-2 bg-green-600 hover:bg-green-700"
+              >
+                <Battery className="w-4 h-4" />
+                Análise BESS
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -415,7 +418,7 @@ const ProjectsDashboard: React.FC = () => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total de Projetos</p>
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total de Itens</p>
                   <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{stats.totalProjects}</p>
                 </div>
                 <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
@@ -457,8 +460,8 @@ const ProjectsDashboard: React.FC = () => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Média por Projeto</p>
-                  <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{stats.avgAnalysesPerProject.toFixed(1)}</p>
+                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Este Mês</p>
+                  <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{stats.avgAnalysesPerProject.toFixed(0)}</p>
                 </div>
                 <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
                   <BarChart3 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
@@ -473,7 +476,7 @@ const ProjectsDashboard: React.FC = () => {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar projetos por nome ou endereço..."
+              placeholder="Buscar dimensionamentos por nome ou cliente..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -524,22 +527,28 @@ const ProjectsDashboard: React.FC = () => {
                 {debouncedSearchTerm ? (
                   <>
                     <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">Nenhum projeto encontrado</h3>
+                    <h3 className="text-lg font-semibold mb-2">Nenhum dimensionamento encontrado</h3>
                     <p className="text-muted-foreground">
-                      Tente usar termos de busca diferentes ou criar um novo projeto.
+                      Tente usar termos de busca diferentes ou criar um novo dimensionamento.
                     </p>
                   </>
                 ) : (
                   <>
                     <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">Nenhum projeto ainda</h3>
+                    <h3 className="text-lg font-semibold mb-2">Nenhum dimensionamento ainda</h3>
                     <p className="text-muted-foreground mb-6">
-                      Comece criando seu primeiro projeto de energia renovável.
+                      Comece criando seu primeiro dimensionamento PV ou análise BESS.
                     </p>
-                    <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
-                      <Plus className="w-4 h-4" />
-                      Criar Primeiro Projeto
-                    </Button>
+                    <div className="flex gap-3 justify-center">
+                      <Button onClick={() => window.location.href = '/dashboard/pv-design'} className="gap-2">
+                        <Sun className="w-4 h-4" />
+                        Dimensionamento PV
+                      </Button>
+                      <Button onClick={() => window.location.href = '/dashboard/bess-analysis'} className="gap-2 bg-green-600 hover:bg-green-700">
+                        <Battery className="w-4 h-4" />
+                        Análise BESS
+                      </Button>
+                    </div>
                   </>
                 )}
               </CardContent>

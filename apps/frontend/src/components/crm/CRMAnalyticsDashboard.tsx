@@ -175,17 +175,18 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
     undefined: filteredLeads.filter(lead => !lead.clientType).length,
   };
 
-  // Análise de potência por faixa (kWp) - baseado nos filtrados
+  // Análise de potência por faixa (kWp) - baseado nos filtrados (excluindo potência zerada)
+  const leadsWithPower = filteredLeads.filter(lead => lead.powerKwp && lead.powerKwp > 0);
   const powerRanges = {
-    'Até 5 kWp': filteredLeads.filter(lead => (lead.powerKwp || 0) <= 5).length,
-    '5-15 kWp': filteredLeads.filter(lead => (lead.powerKwp || 0) > 5 && (lead.powerKwp || 0) <= 15).length,
-    '15-50 kWp': filteredLeads.filter(lead => (lead.powerKwp || 0) > 15 && (lead.powerKwp || 0) <= 50).length,
-    'Acima de 50 kWp': filteredLeads.filter(lead => (lead.powerKwp || 0) > 50).length,
+    'Até 5 kWp': leadsWithPower.filter(lead => lead.powerKwp <= 5).length,
+    '5-15 kWp': leadsWithPower.filter(lead => lead.powerKwp > 5 && lead.powerKwp <= 15).length,
+    '15-50 kWp': leadsWithPower.filter(lead => lead.powerKwp > 15 && lead.powerKwp <= 50).length,
+    'Acima de 50 kWp': leadsWithPower.filter(lead => lead.powerKwp > 50).length,
   };
 
-  // Total de potência (kWp) - baseado nos filtrados
-  const totalPowerKwp = filteredLeads.reduce((sum, lead) => sum + (lead.powerKwp || 0), 0);
-  const averagePowerKwp = totalLeads > 0 ? totalPowerKwp / totalLeads : 0;
+  // Total de potência (kWp) - baseado nos filtrados (excluindo potência zerada)
+  const totalPowerKwp = leadsWithPower.reduce((sum, lead) => sum + lead.powerKwp, 0);
+  const averagePowerKwp = leadsWithPower.length > 0 ? totalPowerKwp / leadsWithPower.length : 0;
 
   // Análise temporal - últimos 12 meses (baseado nos filtrados)
   const monthlyData = [];
@@ -343,41 +344,63 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {totalPowerKwp.toFixed(1)} kWp
+          {leadsWithPower.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <div className="flex flex-col items-center gap-2">
+                <Zap className="h-8 w-8" />
+                <p>Nenhum lead com potência definida</p>
+                <p className="text-xs">Adicione potência (kWp) aos seus leads para ver análises</p>
               </div>
-              <p className="text-xs text-muted-foreground">Total</p>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {averagePowerKwp.toFixed(1)} kWp
-              </div>
-              <p className="text-xs text-muted-foreground">Média</p>
-            </div>
-          </div>
-          
-          <div className="space-y-3">
-            {Object.entries(powerRanges).map(([range, count]) => {
-              const percentage = totalLeads > 0 ? (count / totalLeads) * 100 : 0;
-              
-              return (
-                <div key={range} className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">{range}</span>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline">{count}</Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {percentage.toFixed(1)}%
-                      </span>
-                    </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {totalPowerKwp.toFixed(1)} kWp
                   </div>
-                  <Progress value={percentage} className="h-2" />
+                  <p className="text-xs text-muted-foreground">Total</p>
                 </div>
-              );
-            })}
-          </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {averagePowerKwp.toFixed(1)} kWp
+                  </div>
+                  <p className="text-xs text-muted-foreground">Média</p>
+                </div>
+              </div>
+              
+              {leadsWithPower.length < totalLeads && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-yellow-800">
+                    📊 Analisando {leadsWithPower.length} de {totalLeads} leads (apenas com potência definida)
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+          
+          {leadsWithPower.length > 0 && (
+            <div className="space-y-3">
+              {Object.entries(powerRanges).map(([range, count]) => {
+                const percentage = leadsWithPower.length > 0 ? (count / leadsWithPower.length) * 100 : 0;
+                
+                return (
+                  <div key={range} className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">{range}</span>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline">{count}</Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {percentage.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                    <Progress value={percentage} className="h-2" />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 

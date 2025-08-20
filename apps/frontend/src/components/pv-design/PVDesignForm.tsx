@@ -416,7 +416,14 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           
           <div className="relative">
             <Button 
-              onClick={saveDimensioning} 
+              onClick={() => {
+                console.log('🔘 Botão Salvar clicado!', {
+                  isSaving,
+                  customer: currentDimensioning.customer,
+                  dimensioningName: currentDimensioning.dimensioningName
+                });
+                saveDimensioning();
+              }} 
               disabled={isSaving || !currentDimensioning.customer || !currentDimensioning.dimensioningName?.trim()}
               variant="outline" 
               className="text-blue-600 dark:text-blue-400 border-blue-500 hover:bg-blue-500/20 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50"

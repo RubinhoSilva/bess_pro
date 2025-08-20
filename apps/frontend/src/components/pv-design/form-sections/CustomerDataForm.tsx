@@ -19,19 +19,53 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [initialLeads, setInitialLeads] = useState<any[]>([]);
   
-  // Estados para busca de projetos
-  const [projectSearchTerm, setProjectSearchTerm] = useState('');
-  const [projectSearchResults, setProjectSearchResults] = useState<any[]>([]);
-  const [isProjectSearching, setIsProjectSearching] = useState(false);
-  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
 
   // Usar dados reais dos hooks
   const { data: clientsData } = useClients({ pageSize: 100 }); // Buscar mais clientes para busca
 
+  // Função para carregar os primeiros 5 leads
+  const loadInitialLeads = useCallback(async () => {
+    try {
+      const leadsResponse = await apiClient.leads.list({ 
+        pageSize: 5 
+      });
+      
+      let leadsData = null;
+      if (leadsResponse?.data?.data?.leads) {
+        leadsData = leadsResponse.data.data.leads;
+      } else if (leadsResponse?.data?.data && Array.isArray(leadsResponse.data.data)) {
+        leadsData = leadsResponse.data.data;
+      } else if (leadsResponse?.data && Array.isArray(leadsResponse.data)) {
+        leadsData = leadsResponse.data;
+      }
+      
+      if (leadsData && Array.isArray(leadsData)) {
+        const formattedLeads = leadsData
+          .filter(lead => lead && lead.name && lead.id)
+          .map(lead => ({
+            ...lead,
+            type: 'lead',
+            displayName: lead.name,
+            displayInfo: lead.email || lead.company || 'Lead'
+          }));
+        setInitialLeads(formattedLeads);
+      }
+    } catch (error) {
+      console.warn('Erro ao carregar leads iniciais:', error);
+      setInitialLeads([]);
+    }
+  }, []);
+
+  // Carregar leads iniciais na montagem do componente
+  useEffect(() => {
+    loadInitialLeads();
+  }, [loadInitialLeads]);
+
   const performSearch = useCallback(async () => {
     if (searchTerm.length < 2) {
-      setSearchResults([]);
+      setSearchResults(initialLeads);
       return;
     }
 
@@ -108,40 +142,8 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
     } finally {
       setIsSearching(false);
     }
-  }, [searchTerm, clientsData?.clients]);
+  }, [searchTerm, clientsData?.clients, initialLeads]);
 
-  // Função para buscar projetos
-  const performProjectSearch = useCallback(async () => {
-    if (projectSearchTerm.length < 2) {
-      setProjectSearchResults([]);
-      return;
-    }
-
-    setIsProjectSearching(true);
-
-    try {
-      // Buscar projetos via API (removendo filtro de tipo para mostrar todos os projetos)
-      const response = await apiClient.projects.list({
-        searchTerm: projectSearchTerm,
-        pageSize: 20
-      });
-
-      if (response.data?.data?.projects) {
-        setProjectSearchResults(response.data.data.projects.map((project: any) => ({
-          ...project,
-          displayName: project.projectName || project.name,
-          displayInfo: `Cliente: ${project.leadName || 'N/A'} | Tipo: ${project.projectType}`
-        })));
-      } else {
-        setProjectSearchResults([]);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar projetos:', error);
-      setProjectSearchResults([]);
-    } finally {
-      setIsProjectSearching(false);
-    }
-  }, [projectSearchTerm]);
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -150,13 +152,6 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
     return () => clearTimeout(debounce);
   }, [performSearch]);
 
-  // Debounce para busca de projetos
-  useEffect(() => {
-    const debounce = setTimeout(() => {
-      performProjectSearch();
-    }, 300);
-    return () => clearTimeout(debounce);
-  }, [performProjectSearch]);
 
   useEffect(() => {
     if (formData.customer?.name) {
@@ -164,13 +159,6 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
     }
   }, [formData.customer]);
 
-  useEffect(() => {
-    if (formData.project?.name) {
-      setProjectSearchTerm(formData.project.name);
-    } else if (formData.projectName) {
-      setProjectSearchTerm(formData.projectName);
-    }
-  }, [formData.project, formData.projectName]);
 
   const handleSelectCustomer = (customer: any) => {
     try {
@@ -230,27 +218,6 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
     }
   };
 
-  // Função para selecionar projeto
-  const handleSelectProject = (project: any) => {
-    try {
-      if (!project || !project.id || !project.displayName) {
-        // console.error('Projeto inválido selecionado:', project);
-        return;
-      }
-
-      onFormChange('project', {
-        id: project.id,
-        name: project.displayName
-      });
-      onFormChange('projectName', project.displayName);
-      
-      setProjectSearchTerm(project.displayName);
-      setIsProjectDropdownOpen(false);
-    } catch (error) {
-      // console.error('Erro ao selecionar projeto:', error);
-      // Manter dropdown aberto em caso de erro
-    }
-  };
 
   return (
     <Card className="glass">
@@ -279,7 +246,15 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   setIsDropdownOpen(true);
                 }
               }}
-              onFocus={() => !isLeadLocked && setIsDropdownOpen(true)}
+              onFocus={() => {
+                if (!isLeadLocked) {
+                  setIsDropdownOpen(true);
+                  // Se não há termo de busca, mostrar leads iniciais
+                  if (searchTerm.length < 2) {
+                    setSearchResults(initialLeads);
+                  }
+                }
+              }}
               onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
               className={`pl-10 bg-background border-border text-foreground ${
                 isLeadLocked ? 'cursor-not-allowed opacity-75 bg-gray-50 dark:bg-gray-800' : ''
@@ -288,7 +263,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
             />
           </div>
           
-          {!isLeadLocked && isDropdownOpen && (searchTerm.length > 1 || isSearching) && (
+          {!isLeadLocked && isDropdownOpen && (
             <div className="absolute z-10 w-full bg-background border border-border rounded-md mt-1 max-h-48 overflow-y-auto shadow-lg">
               {isSearching ? (
                 <div className="p-2 flex items-center justify-center text-muted-foreground">
@@ -296,125 +271,62 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   Buscando...
                 </div>
               ) : searchResults.length > 0 ? (
-                searchResults.map((result, index) => {
-                  // Validação de segurança para cada resultado
-                  if (!result || !result.id || !result.displayName) {
-                    // console.warn('Resultado inválido ignorado:', result);
-                    return null;
-                  }
-                  
-                  return (
-                    <div
-                      key={`${result.type || 'unknown'}-${result.id}-${index}`}
-                      className="p-2 hover:bg-accent cursor-pointer border-b border-border last:border-b-0"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleSelectCustomer(result);
-                      }}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-semibold text-foreground">{result.displayName}</p>
-                          <p className="text-xs text-muted-foreground">{result.displayInfo || 'Sem informações'}</p>
-                        </div>
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          result.type === 'client' 
-                            ? 'bg-blue-500/20 text-blue-400' 
-                            : 'bg-green-500/20 text-green-400'
-                        }`}>
-                          {result.type === 'client' ? 'Cliente' : 'Lead'}
-                        </span>
-                      </div>
+                <>
+                  {searchTerm.length < 2 && (
+                    <div className="p-2 bg-blue-50 dark:bg-blue-900/20 border-b border-border">
+                      <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                        📋 Leads recentes (escolha um ou digite para buscar)
+                      </p>
                     </div>
-                  );
-                }).filter(Boolean)
+                  )}
+                  {searchResults.map((result, index) => {
+                    // Validação de segurança para cada resultado
+                    if (!result || !result.id || !result.displayName) {
+                      // console.warn('Resultado inválido ignorado:', result);
+                      return null;
+                    }
+                    
+                    return (
+                      <div
+                        key={`${result.type || 'unknown'}-${result.id}-${index}`}
+                        className="p-2 hover:bg-accent cursor-pointer border-b border-border last:border-b-0"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleSelectCustomer(result);
+                        }}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="font-semibold text-foreground">{result.displayName}</p>
+                            <p className="text-xs text-muted-foreground">{result.displayInfo || 'Sem informações'}</p>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            result.type === 'client' 
+                              ? 'bg-blue-500/20 text-blue-400' 
+                              : 'bg-green-500/20 text-green-400'
+                          }`}>
+                            {result.type === 'client' ? 'Cliente' : 'Lead'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }).filter(Boolean)}
+                </>
               ) : searchTerm.length > 1 ? (
                 <div className="p-2 text-center text-muted-foreground">
                   Nenhum cliente ou lead encontrado.
                 </div>
-              ) : null}
-            </div>
-          )}
-        </div>
-
-        {/* Campo de seleção de projeto */}
-        <div className="space-y-2 relative">
-          <Label htmlFor="project-search" className="text-foreground flex items-center gap-2">
-            Selecionar Projeto (Opcional)
-          </Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <Input
-              id="project-search"
-              type="text"
-              placeholder="Buscar projeto existente ou criar novo..."
-              value={projectSearchTerm}
-              onChange={(e) => {
-                setProjectSearchTerm(e.target.value);
-                setIsProjectDropdownOpen(true);
-                onFormChange('projectName', e.target.value);
-              }}
-              onFocus={() => setIsProjectDropdownOpen(true)}
-              onBlur={() => setTimeout(() => setIsProjectDropdownOpen(false), 200)}
-              className={`pl-10 bg-background border-border text-foreground ${
-                !formData.project 
-                  ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
-                  : 'border-green-300 focus:border-green-500 focus:ring-green-200'
-              }`}
-            />
-          </div>
-
-          {/* Dropdown de resultados de projetos */}
-          {isProjectDropdownOpen && (projectSearchTerm.length > 1 || isProjectSearching) && (
-            <div className="absolute z-10 w-full bg-background border border-border rounded-md mt-1 max-h-48 overflow-y-auto shadow-lg">
-              {isProjectSearching ? (
-                <div className="p-2 flex items-center justify-center text-muted-foreground">
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> 
-                  Buscando projetos...
-                </div>
-              ) : projectSearchResults.length > 0 ? (
-                projectSearchResults.map((project, index) => {
-                  // Validação de segurança para cada projeto
-                  if (!project || !project.id || !project.displayName) {
-                    // console.warn('Projeto inválido ignorado:', project);
-                    return null;
-                  }
-                  
-                  return (
-                    <div
-                      key={`project-${project.id}-${index}`}
-                      className="p-2 hover:bg-accent cursor-pointer border-b border-border last:border-b-0"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleSelectProject(project);
-                      }}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-semibold text-foreground">{project.displayName}</p>
-                          <p className="text-xs text-muted-foreground">{project.displayInfo || 'Sem informações'}</p>
-                        </div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-400">
-                          Projeto
-                        </span>
-                      </div>
-                    </div>
-                  );
-                }).filter(Boolean)
-              ) : projectSearchTerm.length > 1 ? (
+              ) : initialLeads.length === 0 ? (
                 <div className="p-2 text-center text-muted-foreground">
-                  <div className="text-sm mb-1">Nenhum projeto encontrado.</div>
-                  <div className="text-xs text-blue-400">Será criado um novo projeto com este nome.</div>
+                  <div className="text-sm mb-1">Nenhum lead encontrado</div>
+                  <div className="text-xs text-blue-400">Crie leads no CRM primeiro</div>
                 </div>
               ) : null}
             </div>
           )}
-          <p className="text-xs text-muted-foreground">
-            Selecione um projeto existente ou crie um novo.
-          </p>
         </div>
+
 
         {/* Campo para nome do dimensionamento */}
         <div className="space-y-2">
