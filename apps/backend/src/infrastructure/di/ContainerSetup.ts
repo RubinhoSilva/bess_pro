@@ -231,13 +231,16 @@ export class ContainerSetup {
 
     // External API Services (Singletons)
     container.registerFactory(ServiceTokens.PVGIS_API_SERVICE, () => {
-      return new PvgisApiService({
-        baseUrl: config.externalApis.pvgis.baseUrl,
+      const pvgisConfig = {
+        baseUrl: config.externalApis.pvgis.baseUrl || 'https://re.jrc.ec.europa.eu/api/v5_2',
         defaultParams: {
           outputformat: 'json',
           browser: 1
         }
-      });
+      };
+      
+      console.log('🔧 PvgisApiService config:', { baseUrl: pvgisConfig.baseUrl });
+      return new PvgisApiService(pvgisConfig);
     }, true);
     container.register(ServiceTokens.PAYMENT_GATEWAY_SERVICE, PaymentGatewayService, true);
 
