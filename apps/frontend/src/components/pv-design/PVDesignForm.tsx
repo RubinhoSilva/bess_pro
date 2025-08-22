@@ -16,6 +16,7 @@ import ConsumptionForm from './form-sections/ConsumptionForm';
 import LocationForm from './form-sections/LocationForm';
 import SystemParametersForm from './form-sections/SystemParametersForm';
 import EquipmentSelectionForm from './form-sections/EquipmentSelectionForm';
+import SystemSummary from './form-sections/SystemSummary';
 import FinancialForm from './form-sections/FinancialForm';
 import PaymentConditionsForm from './form-sections/PaymentConditionsForm';
 import EconomicParametersForm from './form-sections/EconomicParametersForm';
@@ -377,6 +378,9 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
             <ConsumptionForm 
               formData={currentDimensioning} 
               onFormChange={handleFormChange} 
+            />
+            <SystemSummary 
+              formData={currentDimensioning}
             />
             <FinancialForm 
               formData={currentDimensioning} 
