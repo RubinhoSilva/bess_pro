@@ -16,30 +16,41 @@ interface SystemSummaryProps {
 }
 
 const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' }) => {
-  // Verificar se temos dados suficientes para mostrar o resumo
-  const hasCalculationData = formData.numeroModulos || formData.potenciaPico;
+  // Sempre mostrar o resumo se há dados de consumo (incluindo os dados padrão)
   const hasConsumptionData = formData.energyBills && formData.energyBills.length > 0;
   
-  if (!hasCalculationData && !hasConsumptionData) {
-    return null; // Não mostrar se não há dados suficientes
+  if (!hasConsumptionData) {
+    return null; // Só esconder se realmente não há nenhum dado de consumo
   }
 
-  // Cálculos do sistema
-  const numeroModulos = formData.numeroModulos || 0;
-  const potenciaModulo = formData.potenciaModulo || 550; // W
-  const potenciaPico = formData.potenciaPico || (numeroModulos * potenciaModulo) / 1000; // kWp
-  
-  // Cálculo estimado de área (considerando ~2.5m² por módulo)
-  const areaEstimada = numeroModulos * 2.5;
-  
   // Consumo total anual
   const consumoTotalAnual = formData.energyBills?.reduce((acc: number, bill: any) => {
     return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
   }, 0) || 0;
-  
-  // Geração estimada anual (simplificada - pode ser melhorada com dados PVGIS)
-  const irradiacaoMediaAnual = formData.irradiacaoMensal?.reduce((a: number, b: number) => a + b, 0) / 12 || 5;
+
+  // Cálculos do sistema
+  const potenciaModulo = formData.potenciaModulo || 550; // W
+  const irradiacaoMediaAnual = formData.irradiacaoMensal?.reduce((a: number, b: number) => a + b, 0) / 12 || 4.5;
   const eficienciaSistema = (formData.eficienciaSistema || 85) / 100;
+  
+  // Se não há número de módulos definido, calcular baseado no consumo
+  let numeroModulos = formData.numeroModulos || 0;
+  let potenciaPico = formData.potenciaPico || 0;
+  
+  if (numeroModulos === 0 && consumoTotalAnual > 0) {
+    // Cálculo automático baseado no consumo
+    const consumoMedioDiario = consumoTotalAnual / 365;
+    potenciaPico = consumoMedioDiario / (irradiacaoMediaAnual * eficienciaSistema);
+    numeroModulos = Math.ceil((potenciaPico * 1000) / potenciaModulo);
+    potenciaPico = (numeroModulos * potenciaModulo) / 1000; // Ajustar com número real de módulos
+  } else if (numeroModulos > 0) {
+    potenciaPico = (numeroModulos * potenciaModulo) / 1000;
+  }
+  
+  // Cálculo estimado de área (considerando ~2.5m² por módulo)
+  const areaEstimada = numeroModulos * 2.5;
+  
+  // Geração estimada anual
   const geracaoEstimadaAnual = potenciaPico * irradiacaoMediaAnual * 365 * eficienciaSistema;
   
   // Inversor selecionado

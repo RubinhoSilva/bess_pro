@@ -109,7 +109,7 @@ const MonthlyIrradiationDisplay: React.FC<MonthlyIrradiationDisplayProps> = ({
         </div>
 
         {/* Gráfico de Barras Mensal */}
-        <div className="space-y-3">
+        <div className="space-y-3 mt-6">
           <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
             <Calendar className="w-4 h-4" />
             Irradiação Mensal (kWh/m²/dia)
