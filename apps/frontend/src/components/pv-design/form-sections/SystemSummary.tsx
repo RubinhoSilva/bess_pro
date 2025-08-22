@@ -7,11 +7,8 @@ import {
   Sun, 
   Calculator, 
   Wrench, 
-  DollarSign,
-  TrendingUp,
-  Info
+  TrendingUp
 } from 'lucide-react';
-import { formatCurrency } from '@/lib/formatters';
 
 interface SystemSummaryProps {
   formData: any;
@@ -50,11 +47,6 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' 
   const potenciaInversor = inversorSelecionado?.power || formData.potenciaInversor;
   const modeloInversor = inversorSelecionado?.name || formData.modeloInversor;
 
-  // Estimativas de custo baseadas na potência
-  const custoEstimadoPorKw = 4000; // R$ por kWp (valor médio de mercado)
-  const custoEquipamentoEstimado = potenciaPico * custoEstimadoPorKw;
-  const custoMaoDeObraEstimado = custoEquipamentoEstimado * 0.25; // 25% do custo dos equipamentos
-  const custoMateriaisEstimado = custoEquipamentoEstimado * 0.15; // 15% para materiais complementares
 
   return (
     <Card className={`glass border-orange-400/30 ${className}`}>
@@ -113,68 +105,6 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' 
           </div>
         </div>
 
-        <Separator className="bg-border/50" />
-
-        {/* Estimativas de Custo */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-orange-300 flex items-center gap-2">
-            <DollarSign className="w-4 h-4" />
-            Estimativas de Custo (Base para Orçamento)
-          </h4>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="bg-muted/20 p-3 rounded-lg border border-border/50">
-              <p className="text-sm text-muted-foreground mb-1">Equipamentos</p>
-              <p className="text-lg font-semibold text-foreground">{formatCurrency(custoEquipamentoEstimado)}</p>
-              <p className="text-xs text-muted-foreground">Módulos + Inversor + String Box</p>
-            </div>
-            
-            <div className="bg-muted/20 p-3 rounded-lg border border-border/50">
-              <p className="text-sm text-muted-foreground mb-1">Mão de Obra</p>
-              <p className="text-lg font-semibold text-foreground">{formatCurrency(custoMaoDeObraEstimado)}</p>
-              <p className="text-xs text-muted-foreground">Instalação + Comissionamento</p>
-            </div>
-            
-            <div className="bg-muted/20 p-3 rounded-lg border border-border/50">
-              <p className="text-sm text-muted-foreground mb-1">Materiais</p>
-              <p className="text-lg font-semibold text-foreground">{formatCurrency(custoMateriaisEstimado)}</p>
-              <p className="text-xs text-muted-foreground">Estruturas + Cabeamento + Misc</p>
-            </div>
-          </div>
-          
-          <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 p-4 rounded-lg border border-orange-400/30">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-orange-300 mb-1">Custo Total Estimado</p>
-                <p className="text-2xl font-bold text-orange-100">
-                  {formatCurrency(custoEquipamentoEstimado + custoMaoDeObraEstimado + custoMateriaisEstimado)}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-orange-300">Por kWp</p>
-                <p className="text-lg font-semibold text-orange-200">
-                  {formatCurrency(custoEstimadoPorKw)}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Informação sobre as estimativas */}
-        <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3">
-          <div className="flex items-start gap-2">
-            <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-            <div className="text-xs text-blue-300">
-              <p className="font-medium mb-1">Sobre as estimativas:</p>
-              <ul className="space-y-1 text-blue-200">
-                <li>• Os valores são estimativas baseadas no mercado atual</li>
-                <li>• Ajuste os custos reais nos campos "Parâmetros Financeiros" abaixo</li>
-                <li>• Considere variações regionais e especificidades do projeto</li>
-                <li>• Inclua impostos, licenças e outros custos específicos</li>
-              </ul>
-            </div>
-          </div>
-        </div>
 
         {/* Cobertura do Consumo */}
         {consumoTotalAnual > 0 && (
