@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { LatLng } from 'leaflet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MapPin, Search } from 'lucide-react';
+import { MapPin, Search, Locate } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
 // Fix para ícones do Leaflet no Vite
@@ -63,7 +63,61 @@ const MapSelector: React.FC<MapSelectorProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLocatingUser, setIsLocatingUser] = useState(false);
+  const [currentMapCenter, setCurrentMapCenter] = useState(initialPosition);
   const mapRef = useRef<any>(null);
+
+  // Função para obter localização atual do usuário
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      console.warn('Geolocation não é suportada neste navegador');
+      return;
+    }
+
+    setIsLocatingUser(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const newPosition = new LatLng(latitude, longitude);
+        
+        // Atualizar posições
+        setMarkerPosition(newPosition);
+        setCurrentMapCenter({ lat: latitude, lng: longitude });
+        
+        // Obter endereço da localização atual
+        const address = await getAddressFromCoordinates(latitude, longitude);
+        const coordinatesText = `Latitude: ${latitude.toFixed(4)}, Longitude: ${longitude.toFixed(4)}`;
+        
+        setPosition({ lat: latitude, lng: longitude, address });
+        setSearchQuery(coordinatesText);
+        setSearchResults([]);
+        
+        // Centralizar mapa na nova posição
+        if (mapRef.current) {
+          mapRef.current.setView(newPosition, 15);
+        }
+        
+        setIsLocatingUser(false);
+      },
+      (error) => {
+        console.error('Erro ao obter localização:', error);
+        setIsLocatingUser(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000 // 5 minutos
+      }
+    );
+  };
+
+  // Detectar localização automaticamente quando o componente for montado
+  useEffect(() => {
+    // Só detectar se não tem posição inicial definida
+    if (!initialPosition || (initialPosition.lat === -14.235004 && initialPosition.lng === -51.92528)) {
+      getCurrentLocation();
+    }
+  }, []);
 
   // Função para buscar endereços
   const searchLocation = async (query: string) => {
@@ -150,20 +204,37 @@ const MapSelector: React.FC<MapSelectorProps> = ({
     <div className={`w-full flex flex-col ${className}`}>
       {/* Barra de Busca */}
       <div className="mb-4 relative">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar endereço, cidade ou CEP..."
-            className="pl-10 pr-10"
-          />
-          {isSearching && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-            </div>
-          )}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar endereço, cidade ou CEP..."
+              className="pl-10 pr-10"
+            />
+            {isSearching && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+              </div>
+            )}
+          </div>
+          
+          <Button
+            onClick={getCurrentLocation}
+            disabled={isLocatingUser}
+            variant="outline"
+            size="sm"
+            className="border-green-400 text-green-400 hover:bg-green-400/10 min-w-[44px]"
+            title="Usar minha localização atual"
+          >
+            {isLocatingUser ? (
+              <div className="animate-spin h-4 w-4 border-2 border-green-500 border-t-transparent rounded-full"></div>
+            ) : (
+              <Locate className="w-4 h-4" />
+            )}
+          </Button>
         </div>
         
         {/* Resultados da Busca */}
@@ -196,8 +267,8 @@ const MapSelector: React.FC<MapSelectorProps> = ({
         style={{ height: height, minHeight: '300px' }}
       >
         <MapContainer
-          center={[initialPosition.lat, initialPosition.lng]}
-          zoom={6}
+          center={[currentMapCenter.lat, currentMapCenter.lng]}
+          zoom={position ? 15 : 6}
           style={{ height: '100%', width: '100%' }}
           ref={mapRef}
         >
