@@ -230,6 +230,12 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
       dimensioningId
     });
 
+    // Detectar ambiente automaticamente
+    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const baseUrl = isDevelopment 
+      ? 'http://localhost:8010/api/v1'
+      : '/api/v1';
+
     if (!currentDimensioning.dimensioningName?.trim()) {
       toast.error("Nome obrigatório: Por favor, insira um nome para o dimensionamento.");
       return;
@@ -275,7 +281,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
       if (!dimensioningId) {
         // Criar novo dimensionamento (projeto)
         console.log('🚀 Enviando POST para criar novo dimensionamento...');
-        response = await axios.post('http://localhost:8010/api/v1/projects', projectData, config);
+        response = await axios.post(`${baseUrl}/projects`, projectData, config);
         console.log('✅ Resposta recebida:', response.data);
         
         const projectId = response.data.data.id;
@@ -293,7 +299,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
         });
       } else {
         // Atualizar dimensionamento existente
-        response = await axios.put(`http://localhost:8010/api/v1/projects/${dimensioningId}`, projectData, config);
+        response = await axios.put(`${baseUrl}/projects/${dimensioningId}`, projectData, config);
         
         setCurrentDimensioning(prev => ({
           ...prev,

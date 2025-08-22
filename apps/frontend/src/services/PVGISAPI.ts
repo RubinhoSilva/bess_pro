@@ -149,7 +149,12 @@ interface PVGISDailyRadiationResponse {
 }
 
 export class PVGISAPI {
-  private baseURL = 'http://localhost:8010/api/v1/irradiation/pvgis';
+  private baseURL = (() => {
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  return isDevelopment 
+    ? 'http://localhost:8010/api/v1/irradiation/pvgis'
+    : '/api/v1/irradiation/pvgis';
+})();
 
   /**
    * Obtém estimativas de produção fotovoltaica

@@ -37,8 +37,11 @@ export interface PVGISResponse {
 export const fetchPVGISData = async (location: PVGISLocation): Promise<PVGISResponse> => {
   const { latitude, longitude } = location;
   
-  // Usar proxy do backend em vez da API direta  
-  const baseUrl = 'http://localhost:8010/api/v1/irradiation/pvgis';
+  // Detectar ambiente automaticamente
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const baseUrl = isDevelopment 
+    ? 'http://localhost:8010/api/v1/irradiation/pvgis'
+    : `/api/v1/irradiation/pvgis`;
   
   const params = new URLSearchParams({
     lat: latitude.toString(),
