@@ -43,17 +43,7 @@ export default function EconomicParametersForm({ formData, onFormChange }: Econo
             />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="vidaUtil">Vida Útil do Sistema (anos)</Label>
-            <Input 
-              id="vidaUtil" 
-              type="number" 
-              value={formData.vidaUtil || 25} 
-              onChange={(e) => onFormChange('vidaUtil', parseInt(e.target.value) || 25)} 
-              className="bg-background border-border text-foreground" 
-            />
-          </div>
+        <div className="grid grid-cols-1 gap-4">
           <div className="space-y-2">
             <Label htmlFor="custoFioB">Custo Fio B (R$/kWh)</Label>
             <Input 
