@@ -19,7 +19,6 @@ import EquipmentSelectionForm from './form-sections/EquipmentSelectionForm';
 import SystemSummary from './form-sections/SystemSummary';
 import FinancialForm from './form-sections/FinancialForm';
 import PaymentConditionsForm from './form-sections/PaymentConditionsForm';
-import EconomicParametersForm from './form-sections/EconomicParametersForm';
 // import CableSizingForm from './form-sections/CableSizingForm'; // Temporariamente desabilitado
 import IntelligentSizingModal from './intelligent-sizing/IntelligentSizingModal';
 import ValidationPanel from './validation/ValidationPanel';
@@ -386,10 +385,6 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
               formData={currentDimensioning} 
               onFormChange={handleFormChange} 
               totalInvestment={totalInvestment} 
-            />
-            <EconomicParametersForm 
-              formData={currentDimensioning} 
-              onFormChange={handleFormChange} 
             />
             <PaymentConditionsForm 
               formData={currentDimensioning} 
