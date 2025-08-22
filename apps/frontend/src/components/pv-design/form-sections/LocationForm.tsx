@@ -299,11 +299,11 @@ const LocationForm: React.FC<LocationFormProps> = ({ formData, onFormChange }) =
                       Selecionar no Mapa
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-4xl w-full h-[80vh] p-0">
-                    <DialogHeader className="p-6 pb-4">
+                  <DialogContent className="max-w-4xl w-full h-[80vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-6 pb-4 flex-shrink-0">
                       <DialogTitle>Selecionar Localização no Mapa</DialogTitle>
                     </DialogHeader>
-                    <div className="px-6 pb-6 h-full">
+                    <div className="flex-grow overflow-y-auto px-6 pb-6">
                       <MapSelector
                         onSelect={handleMapLocationSelect}
                         initialPosition={

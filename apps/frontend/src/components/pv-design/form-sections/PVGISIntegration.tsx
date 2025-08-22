@@ -134,11 +134,11 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({ onDataReceived }) =
                 {isLoading ? 'Obtendo dados...' : 'Selecionar no Mapa'}
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
-              <DialogHeader className="p-4 border-b">
+            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
+              <DialogHeader className="p-4 border-b flex-shrink-0">
                 <DialogTitle>Selecione a Localização do Projeto</DialogTitle>
               </DialogHeader>
-              <div className="flex-grow">
+              <div className="flex-grow overflow-y-auto p-4">
                 <MapSelector onSelect={handleLocationSelect} />
               </div>
             </DialogContent>
