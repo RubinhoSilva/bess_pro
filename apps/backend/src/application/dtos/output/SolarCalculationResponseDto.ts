@@ -25,4 +25,6 @@ export interface SolarCalculationResponseDto {
   co2Savings: number;
   orientationLoss: number;
   financialAnalysis?: FinancialAnalysisDto;
+  calculationLogs?: string[];
+  _rawLogs?: any[];
 }

@@ -5,7 +5,6 @@ import { FileText, ArrowRight, ArrowLeft } from 'lucide-react';
 import SystemSummary from './SystemSummary';
 import { FinancialSummary } from './FinancialSummary';
 import { GenerationChart } from './GenerationChart';
-import { CableSizingResult } from './CableSizingResult';
 import { PaybackChart } from './PaybackChart';
 import { EconomyProjectionChart } from './EconomyProjectionChart';
 import { InvestmentChart } from './InvestmentChart';
@@ -32,13 +31,6 @@ interface PVResultsDashboardProps {
       custoComFV: number;
     }>;
     geracaoEstimadaMensal: number[];
-    cableSizingResults?: Array<{
-      inverterName: string;
-      correnteProjeto: number;
-      secaoMinimaCalculada: number;
-      quedaTensaoPercentual: number;
-      isQuedaTensaoOk: boolean;
-    }>;
     selectedModule?: any;
     selectedInverters?: any[];
     // Advanced analysis results
@@ -189,9 +181,6 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
               <div className="lg:col-span-3">
                 <GenerationChart results={results} />
-              </div>
-              <div className="lg:col-span-2">
-                <CableSizingResult results={results} />
               </div>
             </div>
           </Section>

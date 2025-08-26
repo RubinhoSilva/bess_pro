@@ -66,7 +66,7 @@ const projectSchema = new Schema<ProjectDocument>({
 });
 
 // Indexes
-projectSchema.index({ userId: 1, projectName: 1 }, { unique: true });
+projectSchema.index({ userId: 1, projectName: 1 }); // Removido unique: true para permitir nomes duplicados
 projectSchema.index({ userId: 1, projectType: 1 });
 projectSchema.index({ userId: 1, savedAt: -1 });
 projectSchema.index({ leadId: 1 });

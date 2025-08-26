@@ -13,7 +13,8 @@
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
     "clean": "rm -rf dist",
-    "seed:equipment": "ts-node -r tsconfig-paths/register src/infrastructure/cli/seedEquipment.ts"
+    "seed:equipment": "ts-node -r tsconfig-paths/register src/infrastructure/cli/seedEquipment.ts",
+    "fix:project-index": "ts-node -r tsconfig-paths/register src/scripts/fix-project-name-index.ts"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.5",

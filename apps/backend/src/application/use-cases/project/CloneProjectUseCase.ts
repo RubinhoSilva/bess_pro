@@ -30,12 +30,8 @@ export class CloneProjectUseCase implements IUseCase<CloneProjectCommand, Result
         return Result.failure('Você não tem permissão para clonar este projeto');
       }
 
-      // Verificar se já existe um projeto com o novo nome
+      // Permitir nomes duplicados para projetos clonados
       const userIdObj = UserId.create(userId);
-      const projectNameExists = await this.projectRepository.projectNameExists(newProjectName, userIdObj);
-      if (projectNameExists) {
-        return Result.failure('Já existe um projeto com este nome');
-      }
 
       // Criar uma cópia do projeto usando o método de domínio
       const clonedProject = Project.create({

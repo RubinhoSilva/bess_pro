@@ -13,6 +13,13 @@ export class CalculationRoutes {
     // All routes require authentication
     router.use(authMiddleware.authenticate());
 
+    // Endpoint independente de projeto - NOVO
+    router.post('/solar-system',
+      ValidationMiddleware.handleValidationErrors(),
+      calculationController.calculateSolarSystemStandalone.bind(calculationController)
+    );
+
+    // Mantendo endpoints antigos para compatibilidade (caso ainda sejam usados)
     router.post('/projects/:projectId/solar-system',
       ValidationMiddleware.validateProjectId(),
       ValidationMiddleware.handleValidationErrors(),

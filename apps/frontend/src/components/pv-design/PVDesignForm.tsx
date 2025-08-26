@@ -6,11 +6,12 @@ import { Sun, BarChart, FilePlus } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
 import { useDimensioning } from '@/contexts/DimensioningContext';
 import { ProjectType } from '@/types/project';
-import { calculateCableSizingForInverter } from '@/lib/cableSizing';
 import { calculateAdvancedFinancials } from '@/lib/financialCalculations';
 import { AdvancedSolarCalculator, SolarCalculationOptions } from '@/lib/solarCalculations';
 import { AdvancedFinancialAnalyzer, AdvancedFinancialInput } from '@/lib/advancedFinancialAnalysis';
 import { NotificationManager } from '@/lib/notificationSystem';
+import { CalculationLogDisplayer } from '@/lib/calculationLogger';
+import { BackendCalculationService, shouldUseBackendCalculations } from '@/lib/backendCalculations';
 import CustomerDataForm from './form-sections/CustomerDataForm';
 import ConsumptionForm from './form-sections/ConsumptionForm';
 import LocationForm from './form-sections/LocationForm';
@@ -19,8 +20,6 @@ import EquipmentSelectionForm from './form-sections/EquipmentSelectionForm';
 import SystemSummary from './form-sections/SystemSummary';
 import FinancialForm from './form-sections/FinancialForm';
 import PaymentConditionsForm from './form-sections/PaymentConditionsForm';
-// import CableSizingForm from './form-sections/CableSizingForm'; // Temporariamente desabilitado
-import IntelligentSizingModal from './intelligent-sizing/IntelligentSizingModal';
 import ValidationPanel from './validation/ValidationPanel';
 import BackupManager from './backup/BackupManager';
 
@@ -36,6 +35,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
     currentDimensioning, 
     updateDimensioning, 
     saveDimensioning,
+    dimensioningId,
     createNewDimensioning,
     isSaving
   } = useDimensioning();
@@ -47,10 +47,6 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
     updateDimensioning({ [field]: value });
   };
 
-  const handleApplyConfiguration = (configuration: any) => {
-    // Aplicar múltiplos campos de uma vez
-    updateDimensioning(configuration);
-  };
 
   const handleRestoreBackup = (restoredData: any) => {
     updateDimensioning(restoredData);
@@ -83,11 +79,24 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
   }, [currentDimensioning.custoEquipamento, currentDimensioning.custoMateriais, currentDimensioning.custoMaoDeObra, currentDimensioning.bdi]);
 
   const handleCalculate = () => {
+    console.log('🚀 === INICIANDO CÁLCULO DE DIMENSIONAMENTO ===');
+    console.log('📊 Dados de entrada:', {
+      cliente: currentDimensioning.customer?.name,
+      projeto: currentDimensioning.dimensioningName,
+      irradiacao: currentDimensioning.irradiacaoMensal,
+      potenciaModulo: currentDimensioning.potenciaModulo,
+      eficiencia: currentDimensioning.eficienciaSistema,
+      numeroModulos: currentDimensioning.numeroModulos,
+      energyBills: currentDimensioning.energyBills?.length
+    });
+    
     setIsCalculating(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
         // Validação básica
+        console.log('🔍 Executando validações básicas...');
         if (!currentDimensioning.irradiacaoMensal || currentDimensioning.irradiacaoMensal.length !== 12) {
+          console.error('❌ Validação falhou: Dados de irradiação mensal ausentes');
           toast({ 
             variant: "destructive", 
             title: "Dados incompletos", 
@@ -98,8 +107,19 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         }
 
         const irradiacaoMediaAnual = currentDimensioning.irradiacaoMensal.reduce((a: number, b: number) => a + b, 0) / 12;
+        console.log('☀️ Irradiação média anual calculada:', {
+          valores: currentDimensioning.irradiacaoMensal,
+          soma: currentDimensioning.irradiacaoMensal.reduce((a: number, b: number) => a + b, 0),
+          media: irradiacaoMediaAnual,
+          operacao: 'soma / 12'
+        });
         
         if (irradiacaoMediaAnual <= 0 || !currentDimensioning.potenciaModulo || currentDimensioning.potenciaModulo <= 0) {
+          console.error('❌ Validação falhou:', {
+            irradiacaoMediaAnual,
+            potenciaModulo: currentDimensioning.potenciaModulo,
+            motivo: 'Valores devem ser maiores que zero'
+          });
           toast({ 
             variant: "destructive", 
             title: "Valores inválidos", 
@@ -110,40 +130,98 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         }
 
         // Cálculo do consumo total mensal
+        console.log('🔢 === CÁLCULO DO CONSUMO MENSAL (FORM) ===');
         const totalConsumoMensal = currentDimensioning.energyBills?.reduce((acc: number[], bill: any) => {
+          console.log(`📊 Processando conta: ${bill.name}`, {
+            consumoMensal: bill.consumoMensal,
+            operacao: 'Soma mensal por mês'
+          });
           bill.consumoMensal.forEach((consumo: number, index: number) => {
-            acc[index] = (acc[index] || 0) + consumo;
+            const valorAnterior = acc[index] || 0;
+            acc[index] = valorAnterior + consumo;
+            console.log(`   Mês ${index + 1}: ${valorAnterior} + ${consumo} = ${acc[index]} kWh`);
           });
           return acc;
         }, Array(12).fill(0)) || Array(12).fill(0);
+        
+        console.log('⚡ Consumo total mensal calculado:', {
+          valores: totalConsumoMensal,
+          total_anual: totalConsumoMensal.reduce((a, b) => a + b, 0),
+          operacao: 'soma de todas as contas por mês'
+        });
 
         // Cálculo da potência e número de módulos
+        console.log('🔢 === DIMENSIONAMENTO DO SISTEMA (FORM) ===');
         let potenciaPico: number;
         let numeroModulos: number;
         const consumoTotalAnual = totalConsumoMensal.reduce((a: number, b: number) => a + b, 0);
+        console.log(`📈 Consumo total anual: ${totalConsumoMensal.join(' + ')} = ${consumoTotalAnual} kWh/ano`);
 
         // Verifica se há equipamentos selecionados da API (usar dados simulados por enquanto)
         const selectedModules: any[] = [];
         const selectedInverters = currentDimensioning.inverters || [];
 
         if (selectedModules.length > 0) {
+          console.log('🔌 Usando equipamentos selecionados da API');
           // Usar equipamentos selecionados da API
           numeroModulos = selectedModules.reduce((total: number, module: any) => total + module.quantity, 0);
           // Para calcular potência, precisaríamos buscar os dados dos módulos da API
           // Por enquanto, mantemos compatibilidade com o sistema legado
           const modulePower = currentDimensioning.potenciaModulo || 550;
           potenciaPico = (numeroModulos * modulePower) / 1000;
+          console.log('⚙️ Cálculo com equipamentos selecionados:', {
+            numeroModulos,
+            potenciaUnitaria: modulePower,
+            potenciaPico,
+            operacao: `(${numeroModulos} × ${modulePower}) ÷ 1000`
+          });
         } else if (currentDimensioning.numeroModulos && currentDimensioning.numeroModulos > 0) {
           numeroModulos = currentDimensioning.numeroModulos;
-          potenciaPico = (numeroModulos * currentDimensioning.potenciaModulo) / 1000;
+          console.log(`🔧 Modo: Número de módulos fixo = ${numeroModulos} módulos`);
+          
+          const potenciaModuloKW = currentDimensioning.potenciaModulo / 1000;
+          potenciaPico = numeroModulos * potenciaModuloKW;
+          console.log(`⚡ Potência pico: ${numeroModulos} módulos × ${currentDimensioning.potenciaModulo}W ÷ 1000 = ${potenciaPico.toFixed(2)} kWp`);
         } else {
+          console.log('🔧 Modo: Dimensionamento automático baseado no consumo');
+          
           const consumoMedioDiario = consumoTotalAnual / 365;
-          potenciaPico = (consumoMedioDiario / (irradiacaoMediaAnual * (currentDimensioning.eficienciaSistema || 85) / 100));
-          numeroModulos = Math.ceil((potenciaPico * 1000) / currentDimensioning.potenciaModulo);
+          console.log(`📅 Consumo médio diário: ${consumoTotalAnual} ÷ 365 = ${consumoMedioDiario.toFixed(2)} kWh/dia`);
+          
+          const eficienciaDecimal = (currentDimensioning.eficienciaSistema || 85) / 100;
+          const irradiacaoEfetiva = irradiacaoMediaAnual * eficienciaDecimal;
+          console.log(`☀️ Irradiação efetiva: ${irradiacaoMediaAnual.toFixed(2)} × ${eficienciaDecimal} = ${irradiacaoEfetiva.toFixed(2)} kWh/m²/dia`);
+          
+          potenciaPico = consumoMedioDiario / irradiacaoEfetiva;
+          console.log(`⚡ Potência pico: ${consumoMedioDiario.toFixed(2)} ÷ ${irradiacaoEfetiva.toFixed(2)} = ${potenciaPico.toFixed(2)} kWp`);
+          
+          const potenciaW = potenciaPico * 1000;
+          numeroModulos = Math.ceil(potenciaW / currentDimensioning.potenciaModulo);
+          console.log(`🔢 Número de módulos: ceil(${potenciaW.toFixed(0)}W ÷ ${currentDimensioning.potenciaModulo}W) = ${numeroModulos} módulos`);
+          
+          // Recalcular potência real com número inteiro de módulos
+          const potenciaReal = (numeroModulos * currentDimensioning.potenciaModulo) / 1000;
+          console.log(`⚡ Potência real: ${numeroModulos} × ${currentDimensioning.potenciaModulo}W ÷ 1000 = ${potenciaReal.toFixed(2)} kWp`);
+          potenciaPico = potenciaReal;
+          
+          console.log('⚙️ Cálculo automático:', {
+            consumoMedioDiario,
+            operacao_potencia: `${consumoMedioDiario} ÷ (${irradiacaoMediaAnual} × ${eficienciaDecimal})`,
+            potenciaPico_calculada: potenciaPico,
+            operacao_modulos: `ceil((${potenciaPico} × 1000) ÷ ${currentDimensioning.potenciaModulo})`,
+            numeroModulos_final: numeroModulos
+          });
         }
 
         // Cálculos avançados de geração usando o AdvancedSolarCalculator
         const areaEstimada = numeroModulos * 2.5;
+        console.log('📐 Área estimada calculada:', {
+          numeroModulos,
+          fator: 2.5,
+          areaEstimada,
+          operacao: `${numeroModulos} × 2.5`,
+          unidade: 'm²'
+        });
         
         // Configurar dados para cálculo avançado
         const solarOptions: SolarCalculationOptions = {
@@ -162,6 +240,14 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         };
 
         // Calcular resultados detalhados
+        console.log('🔢 === CÁLCULOS SOLARES AVANÇADOS (FORM) ===');
+        console.log('📍 Parâmetros para cálculo solar:', {
+          potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
+          localizacao: solarOptions.location,
+          irradiacaoMensal: (solarOptions as any).irradiationData,
+          parametrosSistema: (solarOptions as any).systemParams
+        });
+
         const advancedResults = AdvancedSolarCalculator.calculateDetailedSolar(
           potenciaPico,
           solarOptions
@@ -171,17 +257,62 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         const geracaoEstimadaMensal = advancedResults.geracaoEstimada.mensal;
         const geracaoEstimadaAnual = advancedResults.geracaoEstimada.anual;
 
+        console.log('☀️ === RESULTADOS DE GERAÇÃO (FORM) ===');
+        console.log('📊 Geração mensal calculada:');
+        geracaoEstimadaMensal.forEach((geracao, index) => {
+          const irradiacao = currentDimensioning.irradiacaoMensal[index];
+          const eficiencia = (currentDimensioning.eficienciaSistema || 85) / 100;
+          const diasMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][index];
+          console.log(`   Mês ${index + 1}: ${potenciaPico.toFixed(2)} kWp × ${irradiacao} kWh/m²/dia × ${diasMes} dias × ${eficiencia} = ${geracao.toFixed(0)} kWh`);
+        });
+        console.log(`📈 Geração anual total: ${geracaoEstimadaMensal.map(g => g.toFixed(0)).join(' + ')} = ${geracaoEstimadaAnual.toFixed(0)} kWh/ano`);
+
         // Cálculos financeiros básicos (manter compatibilidade)
-        const financialResults = calculateAdvancedFinancials({
+        console.log('🔢 === CÁLCULOS FINANCEIROS (FORM) ===');
+        const tarifaB = currentDimensioning.tarifaEnergiaB || 0.8;
+        const custoFioB = currentDimensioning.custoFioB || (tarifaB * 0.3);
+        console.log('💰 Parâmetros tarifários:', {
+          tarifaEnergiaB: `R$ ${tarifaB.toFixed(4)}/kWh`,
+          custoFioB: `R$ ${custoFioB.toFixed(4)}/kWh`,
+          investimentoTotal: `R$ ${totalInvestment.toLocaleString('pt-BR')}`,
+          vidaUtil: `${currentDimensioning.vidaUtil || 25} anos`,
+          inflacaoEnergia: `${currentDimensioning.inflacaoEnergia || 4.5}%`,
+          taxaDesconto: `${currentDimensioning.taxaDesconto || 8.0}%`
+        });
+
+        const parametrosFinanceiros = {
           totalInvestment,
           geracaoEstimadaMensal,
           consumoMensal: totalConsumoMensal,
-          tarifaEnergiaB: currentDimensioning.tarifaEnergiaB || 0.8,
-          custoFioB: currentDimensioning.custoFioB || (currentDimensioning.tarifaEnergiaB || 0.8) * 0.3,
+          tarifaEnergiaB: tarifaB,
+          custoFioB: custoFioB,
           vidaUtil: currentDimensioning.vidaUtil || 25,
           inflacaoEnergia: currentDimensioning.inflacaoEnergia || 4.5,
           taxaDesconto: currentDimensioning.taxaDesconto || 8.0,
-        });
+        };
+        
+        console.log('💵 === PARÂMETROS FINANCEIROS DETALHADOS ===');
+        console.log(`💰 Investimento total: R$ ${totalInvestment.toLocaleString('pt-BR')}`);
+        console.log(`⚡ Tarifa energia (Grupo B): R$ ${(parametrosFinanceiros.tarifaEnergiaB).toFixed(4)}/kWh`);
+        console.log(`🔌 Custo do fio B: R$ ${(parametrosFinanceiros.custoFioB).toFixed(4)}/kWh`);
+        console.log(`⏳ Vida útil do sistema: ${parametrosFinanceiros.vidaUtil} anos`);
+        console.log(`📈 Inflação energia: ${parametrosFinanceiros.inflacaoEnergia}% ao ano`);
+        console.log(`📊 Taxa de desconto: ${parametrosFinanceiros.taxaDesconto}% ao ano`);
+        
+        // Cálculos derivados dos parâmetros
+        const tarifaEfetiva = parametrosFinanceiros.tarifaEnergiaB - parametrosFinanceiros.custoFioB;
+        console.log(`💡 Tarifa efetiva (energia - fio B): R$ ${tarifaEfetiva.toFixed(4)}/kWh`);
+        
+        const financialResults = calculateAdvancedFinancials(parametrosFinanceiros);
+        console.log('📊 === RESULTADOS FINANCEIROS CALCULADOS ===');
+        if (financialResults) {
+          console.log(`💰 Payback calculado: ${(financialResults.payback || 0).toFixed(2)} anos`);
+          console.log(`📈 VPL calculado: R$ ${(financialResults.vpl || 0).toLocaleString('pt-BR')}`);
+          console.log(`📊 TIR calculada: ${((financialResults.tir || 0) * 100).toFixed(2)}%`);
+          console.log(`💵 Economia anual calculada: R$ ${((financialResults as any).economiaAnual || 0).toLocaleString('pt-BR')}`);
+        } else {
+          console.log('⚠️ Nenhum resultado financeiro calculado');
+        }
 
         // Análise financeira avançada
         const advancedFinancialInput: AdvancedFinancialInput = {
@@ -202,35 +333,8 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         const advancedFinancialResults = AdvancedFinancialAnalyzer.calculateAdvancedFinancials(advancedFinancialInput);
         const scenarioAnalysis = AdvancedFinancialAnalyzer.analyzeScenarios(advancedFinancialInput);
 
-        // Cálculos de dimensionamento de cabos - Comentado temporariamente
-        const cableSizingResults: any[] = [];
-        /* Dimensionamento de circuitos CA desabilitado temporariamente
-        if (currentDimensioning.cableSizing && currentDimensioning.cableSizing.length > 0) {
-          currentDimensioning.cableSizing.forEach((cableConfig: any, index: number) => {
-            // Em produção real, buscaria a potência do inversor da base de dados
-            // Para demo, usa potência estimada baseada no sistema
-            const inverterPower = potenciaPico / (currentDimensioning.cableSizing?.length || 1);
-            
-            const result = calculateCableSizingForInverter({
-              inverterPower,
-              tipoLigacao: cableConfig.tipoLigacao,
-              tensaoCA: cableConfig.tensaoCA,
-              tipoCabo: cableConfig.tipoCabo,
-              distanciaCircuito: cableConfig.distanciaCircuito,
-              metodoInstalacao: cableConfig.metodoInstalacao,
-            });
 
-            if (!result.error) {
-              cableSizingResults.push({
-                inverterName: `Inversor ${index + 1}`,
-                ...result
-              });
-            }
-          });
-        }
-        */
-
-        const results = {
+        let results = {
           formData: currentDimensioning,
           potenciaPico,
           numeroModulos,
@@ -239,7 +343,6 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           geracaoEstimadaMensal,
           consumoTotalAnual,
           totalInvestment,
-          cableSizingResults,
           // Resultados avançados de irradiação solar
           advancedSolar: {
             irradiacaoMensal: advancedResults.irradiacaoMensal,
@@ -257,6 +360,121 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           // Resultados financeiros básicos (compatibilidade)
           ...financialResults,
         };
+
+        console.log('✅ === CÁLCULO FINALIZADO COM SUCESSO ===');
+        console.log('📈 Resumo dos resultados:', {
+          potencia_pico: potenciaPico,
+          numero_modulos: numeroModulos,
+          area_estimada: areaEstimada,
+          geracao_anual: geracaoEstimadaAnual,
+          investimento_total: totalInvestment,
+          payback: financialResults.payback,
+          vpl: financialResults.vpl,
+          tir: financialResults.tir
+        });
+
+        // Log: Finalizando todos os cálculos
+        console.log('✅ === TODOS OS CÁLCULOS FINALIZADOS ===');
+        console.log('🎯 Resultados finais completos:', {
+          potenciaPico: `${(potenciaPico || 0).toFixed(2)} kWp`,
+          numeroModulos: numeroModulos || 0,
+          areaEstimada: `${(areaEstimada || 0).toFixed(2)} m²`, 
+          geracaoAnual: `${(geracaoEstimadaAnual || 0).toFixed(0)} kWh/ano`,
+          investimentoTotal: `R$ ${(totalInvestment || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`,
+          payback: `${(financialResults?.payback || 0).toFixed(1)} anos`,
+          vpl: `R$ ${(financialResults?.vpl || 0).toLocaleString('pt-BR')}`,
+          tir: `${((financialResults?.tir || 0) * 100).toFixed(2)}%`,
+          economiaAnual: `R$ ${((financialResults as any)?.economiaAnual || 0).toLocaleString('pt-BR')}`,
+          co2Evitado: `${((advancedResults as any)?.co2Savings || 0).toFixed(0)} kg/ano`
+        });
+        
+        console.log('🔍 Detalhes técnicos completos:', {
+          irradiacaoMedia: `${(irradiacaoMediaAnual || 0).toFixed(2)} kWh/m²/dia`,
+          hsol: `${((advancedResults as any)?.hsol || 0).toFixed(2)} horas`,
+          pr: `${((advancedResults as any)?.pr || 0).toFixed(3)}`,
+          fatorCapacidade: `${((advancedResults as any)?.capacityFactor || 0).toFixed(1)}%`,
+          consumoTotal: `${(consumoTotalAnual || 0).toFixed(0)} kWh/ano`,
+          autossuficiencia: `${(((geracaoEstimadaAnual||0)/(consumoTotalAnual||1))*100).toFixed(1)}%`
+        });
+        
+        console.log('💰 === ANÁLISE FINANCEIRA DETALHADA ===');
+        console.log(`💵 Investimento inicial: R$ ${(totalInvestment || 0).toLocaleString('pt-BR')}`);
+        console.log(`📈 Economia anual: R$ ${((financialResults as any)?.economiaAnual || 0).toLocaleString('pt-BR')}`);
+        console.log(`📅 Economia mensal: R$ ${(((financialResults as any)?.economiaAnual || 0)/12).toLocaleString('pt-BR')} (economia anual ÷ 12)`);
+        console.log(`⏱️ Payback simples: ${(financialResults?.payback || 0).toFixed(1)} anos`);
+        console.log(`📊 VPL (25 anos): R$ ${(financialResults?.vpl || 0).toLocaleString('pt-BR')}`);
+        console.log(`📈 TIR: ${((financialResults?.tir || 0) * 100).toFixed(2)}%`);
+        console.log(`💰 Economia total (25 anos): R$ ${(((financialResults as any)?.economiaAnual || 0) * 25).toLocaleString('pt-BR')} (economia anual × 25)`);
+        
+        // Cálculos adicionais do resumo financeiro
+        const economiaAnual = ((financialResults as any)?.economiaAnual || 0);
+        const paybackMeses = (financialResults?.payback || 0) * 12;
+        const roiAnual = totalInvestment > 0 ? (economiaAnual / totalInvestment) * 100 : 0;
+        
+        console.log('🔢 === CÁLCULOS DO RESUMO FINANCEIRO ===');
+        console.log(`⏰ Payback em meses: ${paybackMeses.toFixed(1)} meses (${(financialResults?.payback || 0).toFixed(1)} anos × 12)`);
+        console.log(`📊 ROI anual: ${roiAnual.toFixed(2)}% (economia anual ÷ investimento × 100)`);
+        console.log(`💡 Economia por kWh gerado: R$ ${(geracaoEstimadaAnual > 0 ? economiaAnual / geracaoEstimadaAnual : 0).toFixed(3)}/kWh`);
+        console.log(`🏠 Economia mensal por R$ investido: R$ ${(totalInvestment > 0 ? (economiaAnual/12) / (totalInvestment/1000) : 0).toFixed(2)} por R$ 1.000 investidos`);
+        
+        // Tentar integração com backend se habilitado
+        if (shouldUseBackendCalculations()) {
+          try {
+            console.log('🌐 === INTEGRAÇÃO COM BACKEND (FORM - SEM PROJETO) ===');
+            
+            const backendParams = {
+              systemParams: {
+                potenciaNominal: potenciaPico,
+                eficiencia: currentDimensioning.eficienciaSistema || 85,
+                perdas: 5,
+                inclinacao: 23,
+                orientacao: 180,
+                area: areaEstimada
+              },
+              irradiationData: {
+                monthly: currentDimensioning.irradiacaoMensal,
+                annual: currentDimensioning.irradiacaoMensal.reduce((a, b) => a + b, 0)
+              },
+              coordinates: {
+                latitude: currentDimensioning.latitude || -23.5505,
+                longitude: currentDimensioning.longitude || -46.6333
+              },
+              financialParams: {
+                totalInvestment,
+                geracaoEstimadaMensal,
+                consumoMensal: totalConsumoMensal,
+                tarifaEnergiaB: currentDimensioning.tarifaEnergiaB || 0.8,
+                custoFioB: currentDimensioning.custoFioB || 0.3,
+                vidaUtil: currentDimensioning.vidaUtil || 25,
+                inflacaoEnergia: currentDimensioning.inflacaoEnergia || 4.5,
+                taxaDesconto: currentDimensioning.taxaDesconto || 8.0
+              }
+            };
+            
+            console.log('📤 Enviando para backend (standalone):', backendParams);
+            
+            const enhancedResults = await BackendCalculationService.enhanceWithBackendCalculations(
+              '', // Não precisa mais de projectId
+              results,
+              backendParams
+            );
+            
+            // Mesclar resultados se disponíveis
+            if (enhancedResults && enhancedResults !== results) {
+              console.log('✅ === RESULTADOS DO BACKEND RECEBIDOS ===');
+              console.log('🔄 Mesclando resultados frontend + backend...');
+              results = enhancedResults;
+            }
+            
+            console.log('🌐 === FIM INTEGRAÇÃO BACKEND ===');
+          } catch (error) {
+            console.log('⚠️ Erro na integração backend (usando frontend):', error);
+          }
+        } else {
+          console.log('ℹ️ Backend desabilitado - usando apenas frontend');
+        }
+        
+        console.log('📊 === FORM: DIMENSIONAMENTO CONCLUÍDO ===');
 
         onCalculationComplete(results);
         
@@ -300,7 +518,6 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
       bdi: 25,
       tarifaEnergiaB: 0.75,
       custoFioB: 0.30,
-      // cableSizing: [], // Desabilitado temporariamente
       inverters: [{
         id: crypto.randomUUID(),
         selectedInverterId: '',
@@ -459,11 +676,6 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
             )}
           </div>
           
-          
-          <IntelligentSizingModal 
-            formData={currentDimensioning}
-            onApplyConfiguration={handleApplyConfiguration}
-          />
 
           {/* Backup Manager - em posição destacada */}
           <div className="w-full max-w-4xl mx-auto mb-8">

@@ -1,4 +1,5 @@
 import { Coordinates } from "../value-objects/Coordinates";
+import { CalculationLogger } from "./CalculationLogger";
 
 export interface IrradiationData {
   monthly: number[];
@@ -21,27 +22,64 @@ export class SolarCalculationService {
   static calculateMonthlyGeneration(
     systemParams: SolarSystemParams,
     irradiationData: IrradiationData,
-    coordinates: Coordinates
+    coordinates: Coordinates,
+    logger?: CalculationLogger
   ): number[] {
     const { potenciaNominal, eficiencia, perdas } = systemParams;
     
+    logger?.info('Solar', 'Iniciando cálculo de geração mensal', {
+      potenciaNominal,
+      eficiencia,
+      perdas,
+      latitude: coordinates.getLatitude(),
+      longitude: coordinates.getLongitude(),
+      irradiacaoMensal: irradiationData.monthly
+    });
+    
     // Fator de correção baseado na localização (simplificado)
     const latitudeFactor = this.getLatitudeFactor(coordinates.getLatitude());
+    logger?.calculation('Solar', 'Fator de correção por latitude calculado', 
+      `getLatitudeFactor(${coordinates.getLatitude()})`, { latitudeFactor });
     
     // Eficiência do sistema considerando perdas
     const systemEfficiency = (eficiencia / 100) * (1 - perdas / 100);
+    logger?.calculation('Solar', 'Eficiência do sistema calculada', 
+      `(${eficiencia} / 100) × (1 - ${perdas} / 100)`, { systemEfficiency });
     
-    return irradiationData.monthly.map(irradiation => {
+    const monthlyGeneration = irradiationData.monthly.map((irradiation, index) => {
       // Geração = Potência × Irradiação × Eficiência × Fator de correção
-      return potenciaNominal * irradiation * systemEfficiency * latitudeFactor * 30; // 30 dias médio
+      const generation = potenciaNominal * irradiation * systemEfficiency * latitudeFactor * 30; // 30 dias médio
+      logger?.calculation('Solar', `Geração do mês ${index + 1}`, 
+        `${potenciaNominal} × ${irradiation} × ${systemEfficiency} × ${latitudeFactor} × 30`, 
+        { mes: index + 1, irradiation, generation });
+      return generation;
     });
+
+    logger?.result('Solar', 'Geração mensal calculada', { 
+      monthlyGeneration,
+      totalAnual: monthlyGeneration.reduce((a, b) => a + b, 0)
+    });
+    
+    return monthlyGeneration;
   }
 
   /**
    * Calcula a geração anual total
    */
-  static calculateAnnualGeneration(monthlyGeneration: number[]): number {
-    return monthlyGeneration.reduce((sum, monthly) => sum + monthly, 0);
+  static calculateAnnualGeneration(monthlyGeneration: number[], logger?: CalculationLogger): number {
+    logger?.info('Solar', 'Calculando geração anual total', { monthlyGeneration });
+    
+    const annualGeneration = monthlyGeneration.reduce((sum, monthly) => sum + monthly, 0);
+    
+    logger?.calculation('Solar', 'Geração anual total calculada', 
+      `soma(${monthlyGeneration.join(' + ')})`, { annualGeneration });
+    
+    logger?.result('Solar', 'Geração anual finalizada', { 
+      annualGeneration,
+      unidade: 'kWh/ano'
+    });
+    
+    return annualGeneration;
   }
 
   /**

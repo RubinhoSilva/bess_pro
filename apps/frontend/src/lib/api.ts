@@ -167,6 +167,11 @@ export const apiClient = {
 
   // Calculations
   calculations: {
+    // NOVO: Endpoint standalone sem projeto
+    solarSystemStandalone: (data: any) =>
+      api.post(`/calculations/solar-system`, data),
+    
+    // Endpoints legados (mantidos para compatibilidade)
     solarSystem: (projectId: string, data: any) =>
       api.post(`/calculations/projects/${projectId}/solar-system`, data),
     

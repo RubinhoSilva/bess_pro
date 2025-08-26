@@ -54,32 +54,6 @@ const stats = [
   },
 ];
 
-const recentProjects = [
-  {
-    id: 1,
-    name: 'Sistema Residencial 10kWp',
-    client: 'João Silva',
-    status: 'Em andamento',
-    progress: 75,
-    value: 'R$ 45.000',
-  },
-  {
-    id: 2,
-    name: 'Fazenda Solar 100kWp',
-    client: 'Agropecuária Santos',
-    status: 'Proposta',
-    progress: 25,
-    value: 'R$ 350.000',
-  },
-  {
-    id: 3,
-    name: 'Indústria 500kWp',
-    client: 'MetalTech Ltda',
-    status: 'Instalação',
-    progress: 90,
-    value: 'R$ 1.200.000',
-  },
-];
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -176,102 +150,49 @@ export default function DashboardPage() {
         ))}
       </motion.div>
 
-      {/* Projects Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Projects */}
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Projetos Recentes</CardTitle>
-              <CardDescription>
-                Últimos projetos em andamento
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recentProjects.map((project) => (
-                  <div
-                    key={project.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex-1">
-                      <h4 className="font-medium">{project.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {project.client}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="flex-1 bg-muted rounded-full h-2">
-                          <div
-                            className="bg-primary h-2 rounded-full transition-all"
-                            style={{ width: `${project.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {project.progress}%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-right ml-4">
-                      <p className="font-medium">{project.value}</p>
-                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
-                        {project.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <Button variant="outline" className="w-full mt-4">
-                Ver todos os projetos
+      {/* Quick Actions */}
+      <motion.div variants={itemVariants}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Ações Rápidas</CardTitle>
+            <CardDescription>
+              Acesse rapidamente as principais funcionalidades
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="outline" className="h-20 flex-col">
+                <BarChart3 className="h-6 w-6 mb-2" />
+                <span className="text-sm">Novo Projeto</span>
               </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Quick Actions */}
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Ações Rápidas</CardTitle>
-              <CardDescription>
-                Acesse rapidamente as principais funcionalidades
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" className="h-20 flex-col">
-                  <BarChart3 className="h-6 w-6 mb-2" />
-                  <span className="text-sm">Novo Projeto</span>
-                </Button>
-                
-                <Button variant="outline" className="h-20 flex-col">
-                  <Users className="h-6 w-6 mb-2" />
-                  <span className="text-sm">Adicionar Lead</span>
-                </Button>
-                
-                <Button variant="outline" className="h-20 flex-col">
-                  <Zap className="h-6 w-6 mb-2" />
-                  <span className="text-sm">Upload 3D</span>
-                </Button>
-                
-                <Button variant="outline" className="h-20 flex-col">
-                  <TrendingUp className="h-6 w-6 mb-2" />
-                  <span className="text-sm">Relatórios</span>
-                </Button>
-              </div>
               
-              <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border">
-                <h4 className="font-medium text-blue-900 mb-2">
-                  💡 Dica do dia
-                </h4>
-                <p className="text-sm text-blue-700">
-                  Use a análise 3D para aumentar a precisão dos seus orçamentos em até 15%
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+              <Button variant="outline" className="h-20 flex-col">
+                <Users className="h-6 w-6 mb-2" />
+                <span className="text-sm">Adicionar Lead</span>
+              </Button>
+              
+              <Button variant="outline" className="h-20 flex-col">
+                <Zap className="h-6 w-6 mb-2" />
+                <span className="text-sm">Upload 3D</span>
+              </Button>
+              
+              <Button variant="outline" className="h-20 flex-col">
+                <TrendingUp className="h-6 w-6 mb-2" />
+                <span className="text-sm">Relatórios</span>
+              </Button>
+            </div>
+            
+            <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border">
+              <h4 className="font-medium text-blue-900 mb-2">
+                💡 Dica do dia
+              </h4>
+              <p className="text-sm text-blue-700">
+                Use a análise 3D para aumentar a precisão dos seus orçamentos em até 15%
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </motion.div>
   );
 }

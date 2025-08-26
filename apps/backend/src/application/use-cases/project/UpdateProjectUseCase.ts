@@ -36,17 +36,7 @@ export class UpdateProjectUseCase implements IUseCase<UpdateProjectCommand, Resu
 
       // Atualizar dados
       if (command.projectName) {
-        // Verificar se novo nome já existe
-        const nameExists = await this.projectRepository.projectNameExists(
-          command.projectName,
-          userId,
-          projectId
-        );
-
-        if (nameExists) {
-          return Result.failure('Já existe um projeto com este nome');
-        }
-
+        // Permitir nomes duplicados para projetos
         project.updateProjectName(command.projectName);
       }
 

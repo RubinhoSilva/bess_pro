@@ -1,5 +1,6 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useTheme, getChartColors } from '@/hooks/use-theme';
 
 interface GenerationChartProps {
   results: {
@@ -14,6 +15,8 @@ interface GenerationChartProps {
 
 export const GenerationChart: React.FC<GenerationChartProps> = ({ results }) => {
   const { geracaoEstimadaMensal, formData } = results;
+  const { isDark } = useTheme();
+  const colors = getChartColors(isDark);
   const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
   const totalConsumoMensal = formData.energyBills.reduce((acc, bill) => {
@@ -33,29 +36,36 @@ export const GenerationChart: React.FC<GenerationChartProps> = ({ results }) => 
     <div className="w-full h-80">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} barGap={8}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-          <XAxis dataKey="name" stroke="#9ca3af" />
+          <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
+          <XAxis 
+            dataKey="name" 
+            stroke={colors.axis}
+            tick={{ fill: colors.axis }}
+          />
           <YAxis 
-            stroke="#9ca3af" 
-            label={{ value: 'kWh', angle: -90, position: 'insideLeft', fill: '#9ca3af' }} 
+            stroke={colors.axis}
+            tick={{ fill: colors.axis }}
+            label={{ value: 'kWh', angle: -90, position: 'insideLeft', fill: colors.axis }} 
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: 'rgba(30, 41, 59, 0.9)',
-              borderColor: 'rgba(255, 255, 255, 0.2)',
-              color: '#fff',
+              backgroundColor: colors.tooltip.background,
+              borderColor: colors.tooltip.border,
+              color: colors.tooltip.text,
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
             }}
           />
-          <Legend wrapperStyle={{ color: '#fff' }} />
+          <Legend wrapperStyle={{ color: colors.legend }} />
           <Bar 
             dataKey="Consumo (kWh)" 
-            fill="#3b82f6" 
+            fill={isDark ? "#3b82f6" : "#2563eb"} 
             name="Consumo" 
             radius={[4, 4, 0, 0]} 
           />
           <Bar 
             dataKey="Geração (kWh)" 
-            fill="#f59e0b" 
+            fill={isDark ? "#f59e0b" : "#d97706"} 
             name="Geração" 
             radius={[4, 4, 0, 0]} 
           />

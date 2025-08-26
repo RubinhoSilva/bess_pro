@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { useTheme, getChartColors } from '@/hooks/use-theme';
 
 interface InvestmentChartProps {
   results: {
@@ -14,7 +15,12 @@ interface InvestmentChartProps {
 
 export const InvestmentChart: React.FC<InvestmentChartProps> = ({ results }) => {
   const { formData } = results;
-  const COLORS = ['#3b82f6', '#10b981', '#f97316'];
+  const { isDark } = useTheme();
+  const colors = getChartColors(isDark);
+  
+  const COLORS = isDark 
+    ? ['#3b82f6', '#10b981', '#f97316'] 
+    : ['#2563eb', '#059669', '#ea580c'];
 
   const data = [
     { name: 'Equipamentos', value: formData.custoEquipamento },
@@ -25,7 +31,7 @@ export const InvestmentChart: React.FC<InvestmentChartProps> = ({ results }) => 
   return (
     <Card className="bg-white dark:bg-slate-800/50 border-gray-300 dark:border-slate-700 h-full print:border-gray-200 print:shadow-none">
       <CardHeader>
-        <CardTitle className="text-white print:text-black">Composição do Investimento</CardTitle>
+        <CardTitle className="text-gray-800 dark:text-slate-200 print:text-black">Composição do Investimento</CardTitle>
         <CardDescription className="text-gray-600 dark:text-slate-300 print:text-gray-600">
           Distribuição dos custos (sem BDI).
         </CardDescription>
@@ -58,7 +64,20 @@ export const InvestmentChart: React.FC<InvestmentChartProps> = ({ results }) => 
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Legend />
+            <Tooltip 
+              formatter={(value) => value.toLocaleString('pt-BR', { 
+                style: 'currency', 
+                currency: 'BRL' 
+              })}
+              contentStyle={{
+                backgroundColor: colors.tooltip.background,
+                borderColor: colors.tooltip.border,
+                color: colors.tooltip.text,
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+              }}
+            />
+            <Legend wrapperStyle={{ color: colors.legend }} />
           </PieChart>
         </ResponsiveContainer>
       </CardContent>

@@ -98,6 +98,9 @@
       "Bash(git branch:*)"
     ],
     "deny": [],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "/Users/rubensfilho/Desktop/Workspace"
+    ]
   }
 }

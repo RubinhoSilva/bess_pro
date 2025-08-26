@@ -37,7 +37,7 @@ const MetricCard: React.FC<{
   icon: React.ReactNode;
   color?: string;
 }> = ({ title, value, subtitle, icon, color = "from-blue-500 to-indigo-500" }) => (
-  <div className="bg-white dark:bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
+  <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
     <div className="flex items-center justify-between">
       <div className="flex-1">
         <p className="text-sm font-medium text-gray-600 dark:text-slate-300">{title}</p>
@@ -63,7 +63,7 @@ const MonthlyChart: React.FC<{
   const maxValue = Math.max(...data);
   
   return (
-    <div className="bg-white dark:bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
+    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
       <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{label}</h4>
       <div className="space-y-3">
         {data.map((value, index) => (
@@ -96,7 +96,7 @@ const LossesBreakdown: React.FC<{ perdas: any }> = ({ perdas }) => {
   ];
 
   return (
-    <div className="bg-white dark:bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
+    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
       <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         Análise de Perdas do Sistema
       </h4>
@@ -205,7 +205,7 @@ export const AdvancedSolarAnalysis: React.FC<AdvancedSolarAnalysisProps> = ({ re
       </div>
 
       {/* Monthly Generation vs Irradiation */}
-      <div className="bg-white dark:bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
         <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Geração Mensal vs Irradiação
         </h4>

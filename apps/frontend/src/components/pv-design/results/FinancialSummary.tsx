@@ -31,7 +31,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({ results }) =
   return (
     <Card className="bg-white dark:bg-slate-800/50 border-gray-300 dark:border-slate-700 print:border-gray-200 print:shadow-none">
       <CardHeader>
-        <CardTitle className="text-white print:text-black">Resumo Financeiro</CardTitle>
+        <CardTitle className="text-gray-800 dark:text-slate-200 print:text-black">Resumo Financeiro</CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         <ResultCard

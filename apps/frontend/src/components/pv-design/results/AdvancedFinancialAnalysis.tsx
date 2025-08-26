@@ -66,7 +66,7 @@ const FinancialMetricCard: React.FC<{
   };
 
   return (
-    <div className="bg-white dark:bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
+    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-600 dark:text-slate-300">{title}</p>
@@ -89,7 +89,7 @@ const CashFlowChart: React.FC<{ cashFlow: any[] }> = ({ cashFlow }) => {
   const range = maxValue - minValue;
 
   return (
-    <div className="bg-white dark:bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
+    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
       <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         Fluxo de Caixa Projetado (25 anos)
       </h4>
@@ -157,7 +157,7 @@ const CashFlowChart: React.FC<{ cashFlow: any[] }> = ({ cashFlow }) => {
 
 const SensitivityAnalysis: React.FC<{ sensibilidade: any }> = ({ sensibilidade }) => {
   return (
-    <div className="bg-white dark:bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
+    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
       <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         Análise de Sensibilidade do VPL
       </h4>
@@ -240,7 +240,7 @@ const ScenarioComparison: React.FC<{ scenarios: any }> = ({ scenarios }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
+    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
       <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         Comparação de Cenários
       </h4>
@@ -434,7 +434,7 @@ export const AdvancedFinancialAnalysis: React.FC<AdvancedFinancialAnalysisProps>
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <CashFlowChart cashFlow={advancedFinancial.cashFlow.slice(0, 10)} />
-            <div className="bg-white dark:bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Resumo da Análise Financeira
               </h4>

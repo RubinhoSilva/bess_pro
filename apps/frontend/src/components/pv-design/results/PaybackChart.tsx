@@ -1,5 +1,6 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
+import { useTheme, getChartColors } from '@/hooks/use-theme';
 
 interface PaybackChartProps {
   results: {
@@ -12,6 +13,8 @@ interface PaybackChartProps {
 
 export const PaybackChart: React.FC<PaybackChartProps> = ({ results }) => {
   const { fluxoCaixa } = results;
+  const { isDark } = useTheme();
+  const colors = getChartColors(isDark);
 
   const chartData = fluxoCaixa.map((item, index) => ({
     ...item,
@@ -22,11 +25,12 @@ export const PaybackChart: React.FC<PaybackChartProps> = ({ results }) => {
     <div className="w-full h-80">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+          <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
           <XAxis 
             dataKey="ano" 
-            label={{ value: 'Anos', position: 'insideBottom', offset: -5, fill: '#9ca3af' }} 
-            stroke="#9ca3af" 
+            label={{ value: 'Anos', position: 'insideBottom', offset: -5, fill: colors.axis }} 
+            stroke={colors.axis}
+            tick={{ fill: colors.axis }}
           />
           <YAxis
             tickFormatter={(value) => value.toLocaleString('pt-BR', { 
@@ -34,7 +38,8 @@ export const PaybackChart: React.FC<PaybackChartProps> = ({ results }) => {
               currency: 'BRL', 
               notation: 'compact' 
             })}
-            stroke="#9ca3af"
+            stroke={colors.axis}
+            tick={{ fill: colors.axis }}
           />
           <Tooltip
             formatter={(value, name) => [
@@ -42,15 +47,24 @@ export const PaybackChart: React.FC<PaybackChartProps> = ({ results }) => {
               name
             ]}
             contentStyle={{
-              backgroundColor: 'rgba(30, 41, 59, 0.9)',
-              borderColor: 'rgba(255, 255, 255, 0.2)',
+              backgroundColor: colors.tooltip.background,
+              borderColor: colors.tooltip.border,
+              color: colors.tooltip.text,
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
             }}
           />
-          <Legend wrapperStyle={{ color: '#fff' }} />
-          <ReferenceLine y={0} stroke="#e5e7eb" strokeDasharray="3 3" />
+          <Legend wrapperStyle={{ color: colors.legend }} />
+          <ReferenceLine y={0} stroke={isDark ? "#64748b" : "#9ca3af"} strokeDasharray="3 3" />
           <Bar dataKey="fluxoAcumulado" name="Fluxo de Caixa Acumulado">
             {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.fluxoAcumulado >= 0 ? '#22c55e' : '#ef4444'} />
+              <Cell 
+                key={`cell-${index}`} 
+                fill={entry.fluxoAcumulado >= 0 
+                  ? (isDark ? '#22c55e' : '#16a34a') 
+                  : (isDark ? '#ef4444' : '#dc2626')
+                } 
+              />
             ))}
           </Bar>
         </BarChart>

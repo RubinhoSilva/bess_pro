@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Sun, BarChart, FilePlus } from 'lucide-react';
+import { ArrowLeft, Sun, BarChart, FilePlus, Layers } from 'lucide-react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
 import { DimensioningProvider, useDimensioning } from '@/contexts/DimensioningContext';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import PVDesignForm from '../../components/pv-design/PVDesignForm';
+import SolarSizingWizard from '../../components/pv-design/wizard/SolarSizingWizard';
 import { PVResultsDashboard } from '../../components/pv-design/results/PVResultsDashboard';
 import { apiClient } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
-type ViewType = 'form' | 'results';
+type ViewType = 'wizard' | 'form' | 'results';
 
 // Componente interno que tem acesso ao DimensioningContext
 function PVDesignPageContent() {
-  const [currentView, setCurrentView] = useState<ViewType>('form');
+  const [currentView, setCurrentView] = useState<ViewType>('wizard');
   const [calculationResults, setCalculationResults] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -164,8 +165,21 @@ function PVDesignPageContent() {
   };
 
   const handleNewProject = () => {
-    // Reset calculation results and go back to form
+    // Reset calculation results and go back to wizard
     setCalculationResults(null);
+    setCurrentView('wizard');
+  };
+
+  const handleWizardComplete = (results: any) => {
+    setCalculationResults(results);
+    setCurrentView('results');
+  };
+
+  const handleBackToWizard = () => {
+    setCurrentView('wizard');
+  };
+
+  const handleSwitchToForm = () => {
     setCurrentView('form');
   };
 
@@ -182,7 +196,29 @@ function PVDesignPageContent() {
           Voltar ao Dashboard
         </Button>
         
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          {/* Switch between wizard and classic form */}
+          {(currentView === 'wizard' || currentView === 'form') && (
+            <Button 
+              variant="outline" 
+              onClick={currentView === 'wizard' ? handleSwitchToForm : handleBackToWizard}
+              className="text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+            >
+              {currentView === 'wizard' ? (
+                <>
+                  <Layers className="w-4 h-4 mr-2" />
+                  Formulário Clássico
+                </>
+              ) : (
+                <>
+                  <Sun className="w-4 h-4 mr-2" />
+                  Assistente por Passos
+                </>
+              )}
+            </Button>
+          )}
+          <ThemeToggle />
+        </div>
       </div>
 
       {isLoading ? (
@@ -194,6 +230,21 @@ function PVDesignPageContent() {
         </div>
       ) : (
         <AnimatePresence mode="wait">
+          {currentView === 'wizard' && (
+            <motion.div
+              key="wizard"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5 }}
+            >
+              <SolarSizingWizard 
+                onComplete={handleWizardComplete}
+                onBack={handleBackToWizard}
+              />
+            </motion.div>
+          )}
+
           {currentView === 'form' && (
             <motion.div
               key="form"
@@ -219,7 +270,7 @@ function PVDesignPageContent() {
             >
               <PVResultsDashboard 
                 results={calculationResults}
-                onBackToForm={handleBackToForm}
+                onBackToForm={handleBackToWizard}
                 onNewCalculation={handleNewProject}
               />
             </motion.div>

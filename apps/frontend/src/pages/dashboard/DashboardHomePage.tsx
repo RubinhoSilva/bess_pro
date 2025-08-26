@@ -13,7 +13,6 @@ import {
   Battery,
   Sun,
   MapPin,
-  Clock,
   Settings,
 } from 'lucide-react';
 import {
@@ -134,31 +133,9 @@ export default function DashboardHomePage() {
       },
     ];
     
-    // Generate recent activity from real projects (last 4)
-    const recentProjects = activeProjects
-      .sort((a, b) => new Date(b.createdAt || b.savedAt).getTime() - new Date(a.createdAt || a.savedAt).getTime())
-      .slice(0, 4);
-    
-    const recentActivity = recentProjects.map((project, index) => {
-      const timeDiff = Math.floor((Date.now() - new Date(project.createdAt || project.savedAt).getTime()) / (1000 * 60));
-      let timeStr = '';
-      if (timeDiff < 60) timeStr = `${timeDiff} min`;
-      else if (timeDiff < 1440) timeStr = `${Math.floor(timeDiff / 60)}h`;
-      else timeStr = `${Math.floor(timeDiff / 1440)}d`;
-      
-      return {
-        id: index + 1,
-        action: 'Projeto criado',
-        project: project.projectName,
-        time: timeStr,
-        type: 'create'
-      };
-    });
-    
     return {
       monthlyProjectsData,
-      projectTypeData,
-      recentActivity
+      projectTypeData
     };
   }, [allProjects]);
   
@@ -416,52 +393,6 @@ export default function DashboardHomePage() {
           </Card>
         </motion.div>
 
-        {/* Recent Activity */}
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Atividade Recente
-              </CardTitle>
-              <CardDescription>
-                Últimas ações na plataforma
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {chartData.recentActivity.length > 0 ? chartData.recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3">
-                    <div className={`p-2 rounded-full ${
-                      activity.type === 'create' ? 'bg-blue-100' :
-                      activity.type === 'analysis' ? 'bg-green-100' :
-                      activity.type === 'client' ? 'bg-purple-100' :
-                      'bg-yellow-100'
-                    }`}>
-                      {activity.type === 'create' && <Plus className="h-4 w-4 text-blue-600" />}
-                      {activity.type === 'analysis' && <Battery className="h-4 w-4 text-green-600" />}
-                      {activity.type === 'client' && <Users className="h-4 w-4 text-purple-600" />}
-                      {activity.type === 'proposal' && <MapPin className="h-4 w-4 text-yellow-600" />}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">{activity.action}</p>
-                      <p className="text-sm text-muted-foreground">{activity.project}</p>
-                    </div>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">{activity.time}</span>
-                  </div>
-                )) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <div className="flex flex-col items-center gap-2">
-                      <Clock className="h-8 w-8" />
-                      <p>Nenhuma atividade recente</p>
-                      <p className="text-xs">Crie seu primeiro projeto para ver atividades aqui</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
       </div>
 
       {/* CRM Analytics Section with Filters */}

@@ -4,6 +4,7 @@ import { CalculateSolarSystemCommand } from "@/application/dtos/input/calculatio
 import { SolarCalculationResponseDto } from "@/application/dtos/output/SolarCalculationResponseDto";
 import { IProjectRepository, IUserRepository } from "@/domain/repositories";
 import { UserPermissionService, SolarCalculationService, FinancialAnalysisService, AreaCalculationService } from "@/domain/services";
+import { CalculationLogger } from "@/domain/services/CalculationLogger";
 import { ProjectId } from "@/domain/value-objects/ProjectId";
 import { UserId } from "@/domain/value-objects/UserId";
 
@@ -14,7 +15,10 @@ export class CalculateSolarSystemUseCase implements IUseCase<CalculateSolarSyste
   ) {}
 
   async execute(command: CalculateSolarSystemCommand): Promise<Result<SolarCalculationResponseDto>> {
+    const logger = new CalculationLogger(`solar-calc-${Date.now()}`);
+    
     try {
+      logger.info('Sistema', 'Iniciando cálculo do sistema solar', { projectId: command.projectId, userId: command.userId });
       // Buscar projeto
       const projectId = ProjectId.create(command.projectId);
       const project = await this.projectRepository.findById(projectId.getValue());
@@ -38,13 +42,16 @@ export class CalculateSolarSystemUseCase implements IUseCase<CalculateSolarSyste
       }
 
       // Realizar cálculos
+      logger.info('Cálculos', 'Iniciando cálculos de geração solar');
+      
       const monthlyGeneration = SolarCalculationService.calculateMonthlyGeneration(
         command.systemParams,
         command.irradiationData,
-        coordinates
+        coordinates,
+        logger
       );
 
-      const annualGeneration = SolarCalculationService.calculateAnnualGeneration(monthlyGeneration);
+      const annualGeneration = SolarCalculationService.calculateAnnualGeneration(monthlyGeneration, logger);
 
       const optimalModuleCount = SolarCalculationService.calculateOptimalModuleCount(
         command.systemParams.potenciaNominal,
@@ -78,6 +85,13 @@ export class CalculateSolarSystemUseCase implements IUseCase<CalculateSolarSyste
         financialAnalysis = FinancialAnalysisService.calculateAdvancedFinancials(financialData);
       }
 
+      logger.result('Sistema', 'Cálculos finalizados com sucesso', {
+        monthlyGeneration,
+        annualGeneration,
+        optimalModuleCount,
+        co2Savings
+      });
+
       return Result.success({
         monthlyGeneration,
         annualGeneration,
@@ -85,6 +99,8 @@ export class CalculateSolarSystemUseCase implements IUseCase<CalculateSolarSyste
         co2Savings,
         orientationLoss,
         financialAnalysis,
+        calculationLogs: logger.getLogsForConsole(),
+        _rawLogs: logger.getLogs() // Para debug interno
       });
     } catch (error: any) {
       return Result.failure(`Erro ao calcular sistema: ${error.message}`);

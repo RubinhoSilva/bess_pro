@@ -44,15 +44,8 @@ export class CreateProjectUseCase implements IUseCase<CreateProjectCommand, Resu
         return Result.failure('Usuário não tem permissão para criar este tipo de projeto');
       }
 
-      // Verificar se nome de dimensionamento já existe
-      const nameExists = await this.projectRepository.projectNameExists(
-        command.projectName,
-        userId
-      );
-
-      if (nameExists) {
-        return Result.failure('Já existe um dimensionamento com este nome');
-      }
+      // Permitir nomes duplicados para dimensionamentos/projetos
+      // Removida validação de nome único para maior flexibilidade
 
       // Validar lead obrigatório
       const lead = await this.leadRepository.findById(command.leadId);

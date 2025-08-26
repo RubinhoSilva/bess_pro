@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useTheme, getChartColors } from '@/hooks/use-theme';
 
 interface AnnualSavingsChartProps {
   results: {
@@ -16,6 +17,8 @@ interface AnnualSavingsChartProps {
 
 export const AnnualSavingsChart: React.FC<AnnualSavingsChartProps> = ({ results }) => {
   const { fluxoCaixa, formData } = results;
+  const { isDark } = useTheme();
+  const colors = getChartColors(isDark);
 
   const chartData = fluxoCaixa.filter(item => item.ano > 0).map(item => ({
     ano: item.ano,
@@ -23,9 +26,9 @@ export const AnnualSavingsChart: React.FC<AnnualSavingsChartProps> = ({ results 
   }));
 
   return (
-    <Card className="bg-white dark:bg-slate-800/50 border-gray-300 dark:border-slate-700 print:border-gray-200 print:shadow-none">
+    <Card className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 shadow-lg print:border-gray-200 print:shadow-none">
       <CardHeader>
-        <CardTitle className="text-white print:text-black">Projeção de Economia Anual</CardTitle>
+        <CardTitle className="text-gray-800 dark:text-slate-200 print:text-black">Projeção de Economia Anual</CardTitle>
         <CardDescription className="text-gray-600 dark:text-slate-300 print:text-gray-600">
           Economia com energia ao longo de {formData.vidaUtil} anos (considerando inflação energética).
         </CardDescription>
@@ -33,11 +36,12 @@ export const AnnualSavingsChart: React.FC<AnnualSavingsChartProps> = ({ results 
       <CardContent>
         <ResponsiveContainer width="100%" height={400}>
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+            <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
             <XAxis 
               dataKey="ano" 
-              label={{ value: 'Anos', position: 'insideBottom', offset: -5 }} 
-              stroke="#9ca3af" 
+              label={{ value: 'Anos', position: 'insideBottom', offset: -5, fill: colors.axis }} 
+              stroke={colors.axis}
+              tick={{ fill: colors.axis }}
             />
             <YAxis
               tickFormatter={(value) => value.toLocaleString('pt-BR', { 
@@ -45,7 +49,8 @@ export const AnnualSavingsChart: React.FC<AnnualSavingsChartProps> = ({ results 
                 currency: 'BRL', 
                 notation: 'compact' 
               })}
-              stroke="#9ca3af"
+              stroke={colors.axis}
+              tick={{ fill: colors.axis }}
             />
             <Tooltip
               formatter={(value) => value.toLocaleString('pt-BR', { 
@@ -53,15 +58,18 @@ export const AnnualSavingsChart: React.FC<AnnualSavingsChartProps> = ({ results 
                 currency: 'BRL' 
               })}
               contentStyle={{
-                backgroundColor: 'rgba(30, 41, 59, 0.9)',
-                borderColor: 'rgba(255, 255, 255, 0.2)',
+                backgroundColor: colors.tooltip.background,
+                borderColor: colors.tooltip.border,
+                color: colors.tooltip.text,
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
               }}
             />
-            <Legend />
+            <Legend wrapperStyle={{ color: colors.legend }} />
             <Line 
               type="monotone" 
               dataKey="economia" 
-              stroke="#84cc16" 
+              stroke={isDark ? "#84cc16" : "#65a30d"} 
               strokeWidth={3} 
               name="Economia Anual" 
               dot={false} 
