@@ -134,6 +134,15 @@ export class ClientRoutes {
       clientController.convertLeadToClient.bind(clientController)
     );
 
+    // Rota para reverter cliente para lead
+    router.post(
+      '/revert-to-lead/:id',
+      authMiddleware.authenticate(),
+      idValidation,
+      ValidationMiddleware.handleValidationErrors(),
+      clientController.revertClientToLead.bind(clientController)
+    );
+
     return router;
     
     } catch (error) {

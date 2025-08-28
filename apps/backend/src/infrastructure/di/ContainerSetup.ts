@@ -115,6 +115,7 @@ import { GetClientDetailsUseCase } from '../../application/use-cases/client/GetC
 import { UpdateClientUseCase } from '../../application/use-cases/client/UpdateClientUseCase';
 import { DeleteClientUseCase } from '../../application/use-cases/client/DeleteClientUseCase';
 import { ConvertLeadToClientUseCase } from '../../application/use-cases/client/ConvertLeadToClientUseCase';
+import { RevertClientToLeadUseCase } from '../../application/use-cases/client/RevertClientToLeadUseCase';
 
 // Use Cases - Team
 import { CreateTeamUseCase } from '../../application/use-cases/team/CreateTeamUseCase';
@@ -686,6 +687,13 @@ export class ContainerSetup {
       );
     });
 
+    container.registerFactory(ServiceTokens.RevertClientToLeadUseCase, () => {
+      return new RevertClientToLeadUseCase(
+        container.resolve(ServiceTokens.ClientRepository),
+        container.resolve(ServiceTokens.LeadRepository)
+      );
+    });
+
     // Controllers
     container.registerFactory('LeadInteractionController', () => {
       return new LeadInteractionController(
@@ -703,7 +711,8 @@ export class ContainerSetup {
         container.resolve(ServiceTokens.GetClientDetailsUseCase),
         container.resolve(ServiceTokens.UpdateClientUseCase),
         container.resolve(ServiceTokens.DeleteClientUseCase),
-        container.resolve(ServiceTokens.ConvertLeadToClientUseCase)
+        container.resolve(ServiceTokens.ConvertLeadToClientUseCase),
+        container.resolve(ServiceTokens.RevertClientToLeadUseCase)
       );
     });
 

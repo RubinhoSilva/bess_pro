@@ -200,6 +200,8 @@ export const apiClient = {
     delete: (id: string) => api.delete(`/clients/${id}`),
     
     convertLead: (leadId: string) => api.post(`/clients/convert-lead/${leadId}`),
+    
+    revertToLead: (clientId: string) => api.post(`/clients/revert-to-lead/${clientId}`),
   },
 
   // Calculations

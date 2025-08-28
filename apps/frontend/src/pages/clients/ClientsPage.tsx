@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Edit, Trash2, MoreHorizontal, Users, Building, MapPin, Phone, Mail, Bell } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, MoreHorizontal, Users, Building, MapPin, Phone, Mail, Bell, RotateCcw } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -7,7 +7,7 @@ import { Badge } from '../../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
-import { useClients, useDeleteClient } from '../../hooks/client-hooks';
+import { useClients, useDeleteClient, useRevertClientToLead } from '../../hooks/client-hooks';
 import { ClientForm } from '../../components/clients/ClientForm';
 import { Client, ClientStatus, ClientType } from '../../types/client';
 import { useDebounce } from '../../hooks/use-debounce';
@@ -30,10 +30,19 @@ export default function ClientsPage() {
   });
 
   const deleteClientMutation = useDeleteClient();
+  const revertClientToLeadMutation = useRevertClientToLead();
 
   const handleDeleteClient = async (clientId: string) => {
     try {
       await deleteClientMutation.mutateAsync(clientId);
+    } catch (error) {
+      // Error handling is done in the mutation hook
+    }
+  };
+
+  const handleRevertToLead = async (clientId: string) => {
+    try {
+      await revertClientToLeadMutation.mutateAsync(clientId);
     } catch (error) {
       // Error handling is done in the mutation hook
     }
@@ -283,6 +292,36 @@ export default function ClientsPage() {
                           <Bell className="mr-2 h-4 w-4" />
                           Criar Alerta
                         </DropdownMenuItem>
+                        {client.tags?.includes('convertido-de-lead') && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <RotateCcw className="mr-2 h-4 w-4" />
+                                Reverter para Lead
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Reverter Cliente para Lead</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja reverter "{client.name}" para lead? Esta ação irá:
+                                  <br />• Excluir o cliente
+                                  <br />• Criar um novo lead com os dados do cliente
+                                  <br />• Esta ação não pode ser desfeita
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleRevertToLead(client.id)}
+                                  className="bg-orange-600 hover:bg-orange-700"
+                                >
+                                  Reverter para Lead
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>

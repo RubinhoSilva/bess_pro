@@ -6,6 +6,7 @@ import { GetClientDetailsUseCase } from '../../application/use-cases/client/GetC
 import { UpdateClientUseCase } from '../../application/use-cases/client/UpdateClientUseCase';
 import { DeleteClientUseCase } from '../../application/use-cases/client/DeleteClientUseCase';
 import { ConvertLeadToClientUseCase } from '../../application/use-cases/client/ConvertLeadToClientUseCase';
+import { RevertClientToLeadUseCase } from '../../application/use-cases/client/RevertClientToLeadUseCase';
 
 export class ClientController extends BaseController {
   constructor(
@@ -14,7 +15,8 @@ export class ClientController extends BaseController {
     private getClientDetailsUseCase: GetClientDetailsUseCase,
     private updateClientUseCase: UpdateClientUseCase,
     private deleteClientUseCase: DeleteClientUseCase,
-    private convertLeadToClientUseCase: ConvertLeadToClientUseCase
+    private convertLeadToClientUseCase: ConvertLeadToClientUseCase,
+    private revertClientToLeadUseCase: RevertClientToLeadUseCase
   ) {
     super();
   }
@@ -106,6 +108,21 @@ export class ClientController extends BaseController {
       const leadId = req.params.leadId;
       
       const result = await this.convertLeadToClientUseCase.execute({ leadId }, userId);
+      return this.handleResult(res, result);
+    } catch (error: any) {
+      if (error.message === 'Usuário não autenticado') {
+        return this.unauthorized(res);
+      }
+      return this.internalServerError(res, error.message);
+    }
+  }
+
+  async revertClientToLead(req: Request, res: Response): Promise<Response> {
+    try {
+      const userId = this.extractUserId(req);
+      const clientId = req.params.id;
+      
+      const result = await this.revertClientToLeadUseCase.execute({ clientId }, userId);
       return this.handleResult(res, result);
     } catch (error: any) {
       if (error.message === 'Usuário não autenticado') {

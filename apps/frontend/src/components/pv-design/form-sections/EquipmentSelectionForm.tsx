@@ -130,40 +130,19 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
 
   const compatibility = getCompatibilityStatus();
 
+  // Não renderizar se não há equipamentos selecionados
+  if (selectedModules.length === 0 && selectedInverters.length === 0) {
+    return null;
+  }
+
   return (
     <TooltipProvider>
       <Card className="bg-card border border-border shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-800">
-            <Package className="w-5 h-5 text-blue-500" />
-            Seleção de Equipamentos
-          </CardTitle>
-          <p className="text-gray-600 text-sm">
-            Selecione os equipamentos da sua biblioteca para o dimensionamento
-          </p>
-        </CardHeader>
-        
         <CardContent className="space-y-6">
           {/* Módulos Solares */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-                <Package className="w-5 h-5" />
-                Módulos Fotovoltaicos
-              </h3>
-              <Button 
-                type="button" 
-                onClick={handleAddModule} 
-                variant="outline" 
-                size="sm"
-                disabled={loadingModules}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Adicionar
-              </Button>
-            </div>
-
-            {selectedModules.map((module) => {
+          {selectedModules.length > 0 && (
+            <div className="space-y-4">
+              {selectedModules.map((module) => {
               const moduleData = solarModules.find((m: any) => m.id === module.moduleId);
               return (
                 <div key={module.id} className="p-4 border border-gray-200 rounded-lg">
@@ -221,29 +200,14 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
                   )}
                 </div>
               );
-            })}
-          </div>
+              })}
+            </div>
+          )}
 
           {/* Inversores */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-                <Unplug className="w-5 h-5" />
-                Inversores
-              </h3>
-              <Button 
-                type="button" 
-                onClick={handleAddInverter} 
-                variant="outline" 
-                size="sm"
-                disabled={loadingInverters}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Adicionar
-              </Button>
-            </div>
-
-            {selectedInverters.map((inverter) => {
+          {selectedInverters.length > 0 && (
+            <div className="space-y-4">
+              {selectedInverters.map((inverter) => {
               const inverterData = inverters.find((i: any) => i.id === inverter.inverterId);
               return (
                 <div key={inverter.id} className="p-4 border border-gray-200 rounded-lg">
@@ -301,8 +265,9 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
                   )}
                 </div>
               );
-            })}
-          </div>
+              })}
+            </div>
+          )}
 
           {/* Resumo de Compatibilidade */}
           {compatibility && (

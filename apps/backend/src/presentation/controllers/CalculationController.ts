@@ -262,7 +262,7 @@ export class CalculationController extends BaseController {
       const annualGeneration = SolarCalculationService.calculateAnnualGeneration(monthlyGeneration, logger);
 
       // 3. Cálculo do Resumo do Sistema
-      const systemSummary = this.calculateSystemSummary(
+      const systemSummary = SolarCalculationService.calculateSystemSummary(
         systemParams, 
         annualGeneration, 
         6000, // consumo anual padrão 

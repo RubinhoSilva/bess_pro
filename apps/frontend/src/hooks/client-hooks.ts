@@ -115,6 +115,25 @@ export function useDeleteClient() {
   });
 }
 
+export function useRevertClientToLead() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (clientId: string) => 
+      apiClient.clients.revertToLead(clientId),
+    onSuccess: () => {
+      // Invalidar tanto clientes quanto leads para atualizar as listas
+      queryClient.invalidateQueries({ queryKey: clientKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast.success('Cliente convertido para lead com sucesso!');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Erro ao reverter cliente para lead';
+      toast.error(typeof message === 'string' ? message : 'Erro ao reverter cliente para lead');
+    },
+  });
+}
+
 export function useConvertLeadToClient() {
   const queryClient = useQueryClient();
   
