@@ -6,13 +6,25 @@ class SocketService {
 
   connect(): Socket {
     if (!this.socket || !this.isConnected) {
+      // Usa a mesma lógica do api.ts para detectar ambiente
+      const isProduction = import.meta.env.PROD || 
+                           import.meta.env.MODE === 'production' || 
+                           window.location.hostname !== 'localhost';
+      
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-        (window.location.hostname === 'localhost' ? 'http://localhost:8010' : 'https://api.besspro.vizad.com.br');
+        (isProduction ? 'https://api.besspro.vizad.com.br' : 'http://localhost:8010');
+      
+      console.log('🔌 Tentando conectar ao WebSocket:', API_BASE_URL);
       
       this.socket = io(API_BASE_URL, {
-        transports: ['websocket', 'polling'],
-        timeout: 5000,
-        retries: 3,
+        transports: ['polling', 'websocket'], // polling primeiro para melhor compatibilidade
+        timeout: 30000, // Aumentado para 30 segundos
+        retries: 5,
+        reconnectionDelay: 2000,
+        reconnectionDelayMax: 10000,
+        forceNew: true,
+        autoConnect: true,
+        path: '/socket.io/',
       });
 
       this.socket.on('connect', () => {
