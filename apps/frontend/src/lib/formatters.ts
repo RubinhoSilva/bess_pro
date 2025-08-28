@@ -119,9 +119,11 @@ export const formatCurrencyAsYouType = (value: string): string => {
   // Se vazio, retorna vazio
   if (!numbers) return '';
   
-  // Converte para centavos (últimos 2 dígitos são decimais)
-  const cents = parseInt(numbers);
-  const reais = cents / 100;
+  // Converte para número tratando como reais, não centavos
+  const reais = parseFloat(numbers);
+  
+  // Se for um número muito pequeno, evita problemas de precisão
+  if (reais === 0) return 'R$ 0,00';
   
   // Formata usando Intl com configuração brasileira
   return new Intl.NumberFormat('pt-BR', {

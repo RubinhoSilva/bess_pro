@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Battery, Sun, Fuel, BarChart, Calculator } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { CustomCurrencyInput } from '@/components/ui/currency-input';
 
 interface SimulationFormProps {
   onSimulationComplete: (data: any) => void;
@@ -171,20 +172,19 @@ export default function SimulationForm({ onSimulationComplete, activeSystems }: 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-slate-300">Tarifa Energia (R$/kWh)</Label>
-                  <Input 
-                    type="number" 
-                    step="0.01"
+                  <CustomCurrencyInput
                     value={formData.tarifaEnergia}
-                    onChange={(e) => handleInputChange('tarifaEnergia', parseFloat(e.target.value) || 0)}
+                    onValueChange={(value) => handleInputChange('tarifaEnergia', value)}
+                    placeholder="R$ 0,00"
                     className="bg-white/10 border-white/20 text-white"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-300">Tarifa Demanda (R$/kW)</Label>
-                  <Input 
-                    type="number" 
+                  <CustomCurrencyInput
                     value={formData.tarifaDemanda}
-                    onChange={(e) => handleInputChange('tarifaDemanda', parseFloat(e.target.value) || 0)}
+                    onValueChange={(value) => handleInputChange('tarifaDemanda', value)}
+                    placeholder="R$ 0,00"
                     className="bg-white/10 border-white/20 text-white"
                   />
                 </div>
@@ -244,10 +244,10 @@ export default function SimulationForm({ onSimulationComplete, activeSystems }: 
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-300">Custo do Sistema (R$)</Label>
-                  <Input 
-                    type="number" 
+                  <CustomCurrencyInput
                     value={formData.bessCusto}
-                    onChange={(e) => handleInputChange('bessCusto', parseFloat(e.target.value) || 0)}
+                    onValueChange={(value) => handleInputChange('bessCusto', value)}
+                    placeholder="R$ 0,00"
                     className="bg-white/10 border-white/20 text-white"
                   />
                 </div>
@@ -288,10 +288,10 @@ export default function SimulationForm({ onSimulationComplete, activeSystems }: 
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-300">Custo do Sistema (R$)</Label>
-                  <Input 
-                    type="number" 
+                  <CustomCurrencyInput
                     value={formData.solarCusto}
-                    onChange={(e) => handleInputChange('solarCusto', parseFloat(e.target.value) || 0)}
+                    onValueChange={(value) => handleInputChange('solarCusto', value)}
+                    placeholder="R$ 0,00"
                     className="bg-white/10 border-white/20 text-white"
                   />
                 </div>

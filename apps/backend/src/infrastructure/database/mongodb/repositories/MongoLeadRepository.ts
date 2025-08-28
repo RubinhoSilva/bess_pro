@@ -237,6 +237,7 @@ export class MongoLeadRepository implements ILeadRepository {
     
     // Initialize all stages with 0
     const stageCount: Record<LeadStage, number> = {
+      [LeadStage.QUARENTENA]: 0,
       [LeadStage.LEAD_RECEBIDO]: 0,
       [LeadStage.PRE_QUALIFICACAO]: 0,
       [LeadStage.PROPOSTA_ENVIADA]: 0,

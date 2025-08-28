@@ -58,21 +58,34 @@ export default function DashboardHomePage() {
     const activeProjects = allProjects?.filter(project => !project.isDeleted) || [];
     const totalLeads = allLeads?.length || 0;
     
-    // Calculate total power (kWp)
-    const totalPowerKWp = activeProjects.reduce((sum, project) => {
-      const power = project.projectData?.potenciaModulo * project.projectData?.numeroModulos || 0;
-      return sum + (power / 1000); // Convert to kWp
+    // Calculate monthly power (kWp) - current month only
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    const monthlyPowerKWp = activeProjects.reduce((sum, project) => {
+      const projectDate = new Date(project.createdAt || project.savedAt);
+      
+      // Only include projects created in current month
+      if (projectDate.getMonth() === currentMonth && projectDate.getFullYear() === currentYear) {
+        const power = project.projectData?.potenciaModulo * project.projectData?.numeroModulos || 0;
+        return sum + (power / 1000); // Convert to kWp
+      }
+      return sum;
     }, 0);
     
     // Calculate estimated revenue from projects
     const totalRevenue = activeProjects.reduce((sum, project) => {
-      return sum + (project.projectData?.custoEquipamento || 0);
+      const custoEquipamento = project.projectData?.custoEquipamento || 0;
+      const custoMateriais = project.projectData?.custoMateriais || 0;
+      const custoMaoDeObra = project.projectData?.custoMaoDeObra || 0;
+      const totalProjectValue = custoEquipamento + custoMateriais + custoMaoDeObra;
+      return sum + totalProjectValue;
     }, 0);
     
     return {
       activeProjects: activeProjects.length,
       totalLeads,
-      totalPowerMWp: (totalPowerKWp / 1000).toFixed(1), // Convert to MWp
+      totalPowerKWp: monthlyPowerKWp.toFixed(1), // Monthly power in kWp
       totalRevenue: totalRevenue,
       // Calculate month-over-month growth (simplified)
       projectGrowth: activeProjects.length > 0 ? '+12%' : '0%',
@@ -97,13 +110,24 @@ export default function DashboardHomePage() {
       });
       
       const monthRevenue = monthProjects.reduce((sum, project) => {
-        return sum + (project.projectData?.custoEquipamento || 0);
+        const custoEquipamento = project.projectData?.custoEquipamento || 0;
+        const custoMateriais = project.projectData?.custoMateriais || 0;
+        const custoMaoDeObra = project.projectData?.custoMaoDeObra || 0;
+        const totalProjectValue = custoEquipamento + custoMateriais + custoMaoDeObra;
+        return sum + totalProjectValue;
+      }, 0);
+      
+      // Calculate monthly power (kWp)
+      const monthPower = monthProjects.reduce((sum, project) => {
+        const power = project.projectData?.potenciaModulo * project.projectData?.numeroModulos || 0;
+        return sum + (power / 1000); // Convert to kWp
       }, 0);
       
       monthlyProjectsData.push({
         month: date.toLocaleDateString('pt-BR', { month: 'short' }),
         projects: monthProjects.length,
-        revenue: monthRevenue
+        revenue: monthRevenue,
+        power: monthPower
       });
     }
     
@@ -160,9 +184,9 @@ export default function DashboardHomePage() {
       bgColor: 'bg-green-100',
     },
     {
-      title: 'Potência Total',
-      value: realStats.totalPowerMWp + ' MWp',
-      description: 'Capacidade instalada',
+      title: 'Potência Mensal',
+      value: realStats.totalPowerKWp + ' kWp',
+      description: 'Projetos criados este mês',
       icon: Zap,
       trend: 'up',
       color: 'text-yellow-600',
@@ -389,6 +413,40 @@ export default function DashboardHomePage() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Monthly Power Chart */}
+        <motion.div variants={itemVariants}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                Potência Total por Mês
+              </CardTitle>
+              <CardDescription>
+                Capacidade instalada mensal em kWp
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={chartData.monthlyProjectsData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip 
+                    formatter={(value) => [`${Number(value).toFixed(1)} kWp`, 'Potência']}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="power" 
+                    stroke="#f59e0b" 
+                    strokeWidth={3}
+                    dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </motion.div>

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Client, CreateClientData, UpdateClientData, ClientStatus, ClientType } from '../../types/client';
 import { useCreateClient, useUpdateClient } from '../../hooks/client-hooks';
+import { CustomCurrencyInput } from '../ui/currency-input';
 
 const clientFormSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -260,14 +261,12 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
             name="totalProjectsValue"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Valor Total de Projetos (R$)</FormLabel>
+                <FormLabel>Valor Total de Projetos</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00" 
-                    {...field} 
+                  <CustomCurrencyInput
+                    value={field.value}
+                    onValueChange={(value) => field.onChange(value)}
+                    placeholder="R$ 0,00"
                   />
                 </FormControl>
                 <FormMessage />

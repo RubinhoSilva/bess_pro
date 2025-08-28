@@ -302,52 +302,135 @@ export const CRMAdvancedFilters: React.FC<CRMAdvancedFiltersProps> = ({
               </CardHeader>
               
               <CardContent className="space-y-6">
+                {/* Quick Preset Filters */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Filtros Rápidos</label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        updateLocalFilters({ 
+                          stages: [DefaultLeadStage.QUARENTENA, DefaultLeadStage.LEAD_RECEBIDO] 
+                        });
+                      }}
+                      className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                    >
+                      🔍 Leads Novos
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        updateLocalFilters({ 
+                          stages: [DefaultLeadStage.PROPOSTA_ENVIADA, DefaultLeadStage.DOCUMENTACAO_RECEBIDA] 
+                        });
+                      }}
+                      className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                    >
+                      📋 Em Negociação
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const sevenDaysAgo = new Date();
+                        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                        updateLocalFilters({ 
+                          dateRange: { start: sevenDaysAgo, end: new Date() }
+                        });
+                      }}
+                      className="text-green-600 border-green-300 hover:bg-green-50"
+                    >
+                      📅 Últimos 7 dias
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        updateLocalFilters({ 
+                          powerRange: { min: 10, max: 100 }
+                        });
+                      }}
+                      className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                    >
+                      ⚡ Alta Potência (&gt;10kWp)
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Search */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Busca por Texto</label>
+                  <label className="text-sm font-medium">🔍 Busca por Texto</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
-                      placeholder="Nome, email, empresa, notas..."
+                      placeholder="Digite nome, email, empresa ou notas do lead..."
                       value={localFilters.searchTerm}
                       onChange={(e) => updateLocalFilters({ searchTerm: e.target.value })}
                       className="pl-10"
                     />
                   </div>
+                  <p className="text-xs text-gray-500">
+                    💡 Dica: Use termos específicos para encontrar leads mais rapidamente
+                  </p>
                 </div>
 
                 {/* Stages */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Estágios</label>
-                  <div className="flex flex-wrap gap-2">
+                  <label className="text-sm font-medium">📊 Estágios do Funil de Vendas</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {Object.entries(LEAD_STAGE_LABELS).map(([stage, label]) => (
                       <Button
                         key={stage}
                         variant={localFilters.stages.includes(stage as LeadStage) ? "default" : "outline"}
                         size="sm"
                         onClick={() => toggleStage(stage as LeadStage)}
+                        className="justify-start text-left"
                       >
+                        {stage === DefaultLeadStage.QUARENTENA && '🔒 '}
+                        {stage === DefaultLeadStage.LEAD_RECEBIDO && '📨 '}
+                        {stage === DefaultLeadStage.PRE_QUALIFICACAO && '🔍 '}
+                        {stage === DefaultLeadStage.PROPOSTA_ENVIADA && '📋 '}
+                        {stage === DefaultLeadStage.DOCUMENTACAO_RECEBIDA && '📄 '}
+                        {stage === DefaultLeadStage.PROJETO_APROVADO && '✅ '}
+                        {stage === DefaultLeadStage.INSTALACAO_AGENDADA && '📅 '}
+                        {stage === DefaultLeadStage.SISTEMA_ENTREGUE && '🎯 '}
+                        {stage === DefaultLeadStage.CONVERTED && '👤 '}
                         {label}
                       </Button>
                     ))}
                   </div>
+                  <p className="text-xs text-gray-500">
+                    💡 Selecione um ou mais estágios para filtrar
+                  </p>
                 </div>
 
                 {/* Sources */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Fontes</label>
-                  <div className="flex flex-wrap gap-2">
+                  <label className="text-sm font-medium">🎯 Origens dos Leads</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {Object.entries(LEAD_SOURCE_LABELS).map(([source, label]) => (
                       <Button
                         key={source}
                         variant={localFilters.sources.includes(source as LeadSource) ? "default" : "outline"}
                         size="sm"
                         onClick={() => toggleSource(source as LeadSource)}
+                        className="justify-start text-left"
                       >
+                        {source === 'website' && '🌐 '}
+                        {source === 'referral' && '👥 '}
+                        {source === 'social-media' && '📱 '}
+                        {source === 'direct-contact' && '📞 '}
+                        {source === 'advertising' && '📺 '}
+                        {source === 'other' && '📌 '}
                         {label}
                       </Button>
                     ))}
                   </div>
+                  <p className="text-xs text-gray-500">
+                    💡 Identifique quais canais geram mais leads
+                  </p>
                 </div>
 
                 {/* Client Types */}
@@ -447,11 +530,11 @@ export const CRMAdvancedFilters: React.FC<CRMAdvancedFiltersProps> = ({
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
                     <DollarSign className="h-4 w-4" />
-                    Faixa de Valor Estimado
+                    💰 Faixa de Valor do Negócio
                   </label>
                   <div className="space-y-2">
                     <div className="flex items-center gap-4">
-                      <span className="text-sm text-gray-500 w-20">
+                      <span className="text-sm text-gray-500 w-24 text-center">
                         R$ {localFilters.valueRange.min.toLocaleString('pt-BR')}
                       </span>
                       <Slider
@@ -463,11 +546,18 @@ export const CRMAdvancedFilters: React.FC<CRMAdvancedFiltersProps> = ({
                         step={5000}
                         className="flex-1"
                       />
-                      <span className="text-sm text-gray-500 w-20">
+                      <span className="text-sm text-gray-500 w-24 text-center">
                         R$ {localFilters.valueRange.max.toLocaleString('pt-BR')}
                       </span>
                     </div>
+                    <div className="flex justify-between text-xs text-gray-400">
+                      <span>R$ 0</span>
+                      <span>R$ 1.000.000+</span>
+                    </div>
                   </div>
+                  <p className="text-xs text-gray-500">
+                    💡 Encontre leads por potencial de faturamento
+                  </p>
                 </div>
 
                 {/* Power Range */}

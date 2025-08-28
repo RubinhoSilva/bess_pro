@@ -5,6 +5,7 @@ import { BaseEntity } from "./base/BaseEntity";
 import { SoftDeleteProps } from "./base/ISoftDeletable";
 
 export enum LeadStage {
+  QUARENTENA = 'quarentena',
   LEAD_RECEBIDO = 'lead-recebido',
   PRE_QUALIFICACAO = 'pre-qualificacao',
   PROPOSTA_ENVIADA = 'proposta-enviada',
@@ -88,7 +89,7 @@ export class Lead extends BaseEntity {
       props.phone || '',
       props.company || '',
       props.address || '',
-      props.stage || LeadStage.LEAD_RECEBIDO,
+      props.stage || LeadStage.QUARENTENA,
       props.source || LeadSource.OTHER,
       props.notes || '',
       props.colorHighlight || '',

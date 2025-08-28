@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -7,6 +7,7 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { TagInput } from '../ui/tag-input';
+import { CustomCurrencyInput } from '../ui/currency-input';
 import { 
   Form,
   FormControl,
@@ -96,24 +97,55 @@ export const LeadForm: React.FC<LeadFormProps> = ({
   const form = useForm<LeadFormData>({
     resolver: zodResolver(leadSchema),
     defaultValues: {
-      name: lead?.name || '',
-      email: lead?.email || '',
-      phone: lead?.phone || '',
-      company: lead?.company || '',
-      address: lead?.address || '',
-      stage: lead?.stage || defaultStage || DefaultLeadStage.LEAD_RECEBIDO,
-      source: lead?.source || LeadSource.WEBSITE,
-      notes: lead?.notes || '',
-      colorHighlight: lead?.colorHighlight || 'none',
-      estimatedValue: lead?.estimatedValue || 0,
-      expectedCloseDate: lead?.expectedCloseDate ? 
-        new Date(lead.expectedCloseDate).toISOString().split('T')[0] : '',
-      value: lead?.value || 0,
-      powerKwp: lead?.powerKwp || 0,
-      clientType: lead?.clientType || ClientType.B2C,
-      tags: lead?.tags || [],
+      name: '',
+      email: '',
+      phone: '',
+      company: '',
+      address: '',
+      stage: defaultStage || DefaultLeadStage.LEAD_RECEBIDO,
+      source: LeadSource.WEBSITE,
+      notes: '',
+      colorHighlight: 'none',
+      estimatedValue: 0,
+      expectedCloseDate: '',
+      value: 0,
+      powerKwp: 0,
+      clientType: ClientType.B2C,
+      tags: [],
     },
   });
+
+  // Atualizar formulário quando lead for carregado
+  useEffect(() => {
+    if (lead) {
+      console.log('🔄 Populando formulário com dados do lead:', {
+        leadId: lead.id,
+        value: lead.value,
+        powerKwp: lead.powerKwp,
+        clientType: lead.clientType,
+        tags: lead.tags,
+      });
+
+      form.reset({
+        name: lead.name || '',
+        email: lead.email || '',
+        phone: lead.phone || '',
+        company: lead.company || '',
+        address: lead.address || '',
+        stage: lead.stage || defaultStage || DefaultLeadStage.LEAD_RECEBIDO,
+        source: lead.source || LeadSource.WEBSITE,
+        notes: lead.notes || '',
+        colorHighlight: lead.colorHighlight || 'none',
+        estimatedValue: lead.estimatedValue || 0,
+        expectedCloseDate: lead.expectedCloseDate ? 
+          new Date(lead.expectedCloseDate).toISOString().split('T')[0] : '',
+        value: lead.value || 0,
+        powerKwp: lead.powerKwp || 0,
+        clientType: lead.clientType || ClientType.B2C,
+        tags: lead.tags || [],
+      });
+    }
+  }, [lead, form, defaultStage]);
 
   const handleSubmit = async (data: LeadFormData) => {
     try {
@@ -204,7 +236,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Estágio</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o estágio" />
@@ -229,7 +261,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Origem</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a origem" />
@@ -253,14 +285,15 @@ export const LeadForm: React.FC<LeadFormProps> = ({
             name="estimatedValue"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Valor Estimado (R$)</FormLabel>
+                <FormLabel>Valor Estimado</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
-                    min="0" 
-                    step="0.01"
-                    placeholder="0.00" 
-                    {...field} 
+                  <CustomCurrencyInput 
+                    placeholder="R$ 0,00" 
+                    value={field.value || ''}
+                    onValueChange={(value) => {
+                      const numericValue = parseFloat(value || '0') || 0;
+                      field.onChange(numericValue);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -287,14 +320,15 @@ export const LeadForm: React.FC<LeadFormProps> = ({
             name="value"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Valor do Negócio (R$)</FormLabel>
+                <FormLabel>Valor do Negócio</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
-                    min="0" 
-                    step="0.01"
-                    placeholder="0.00" 
-                    {...field} 
+                  <CustomCurrencyInput 
+                    placeholder="R$ 0,00" 
+                    value={field.value || ''}
+                    onValueChange={(value) => {
+                      const numericValue = parseFloat(value || '0') || 0;
+                      field.onChange(numericValue);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -328,7 +362,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Tipo de Cliente</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo de cliente" />
@@ -373,7 +407,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Cor de Destaque</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma cor" />

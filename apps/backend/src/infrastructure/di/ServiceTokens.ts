@@ -72,6 +72,7 @@ export const ServiceTokens = {
   UpdateClientUseCase: 'UpdateClientUseCase',
   DeleteClientUseCase: 'DeleteClientUseCase',
   ConvertLeadToClientUseCase: 'ConvertLeadToClientUseCase',
+  ConvertClientToLeadUseCase: 'ConvertClientToLeadUseCase',
   GenerateFinancialReportUseCase: 'GenerateFinancialReportUseCase',
   CalculateBessSystemUseCase: 'CalculateBessSystemUseCase',
   GetSolarIrradiationUseCase: 'GetSolarIrradiationUseCase',

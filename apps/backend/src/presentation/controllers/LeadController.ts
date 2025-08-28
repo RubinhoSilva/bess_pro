@@ -32,7 +32,11 @@ export class LeadController extends BaseController {
         notes, 
         colorHighlight, 
         estimatedValue, 
-        expectedCloseDate 
+        expectedCloseDate,
+        value,
+        powerKwp,
+        clientType,
+        tags
       } = req.body;
 
       const useCase = this.container.resolve<CreateLeadUseCase>(ServiceTokens.CREATE_LEAD_USE_CASE);
@@ -49,6 +53,10 @@ export class LeadController extends BaseController {
         colorHighlight,
         estimatedValue: estimatedValue ? Number(estimatedValue) : undefined,
         expectedCloseDate: expectedCloseDate ? new Date(expectedCloseDate) : undefined,
+        value: value ? Number(value) : undefined,
+        powerKwp: powerKwp ? Number(powerKwp) : undefined,
+        clientType,
+        tags,
         userId,
       });
 
@@ -164,8 +172,13 @@ export class LeadController extends BaseController {
         notes, 
         colorHighlight, 
         estimatedValue, 
-        expectedCloseDate 
+        expectedCloseDate,
+        value,
+        powerKwp,
+        clientType,
+        tags
       } = req.body;
+
 
       const useCase = this.container.resolve<UpdateLeadUseCase>(ServiceTokens.UPDATE_LEAD_USE_CASE);
       
@@ -183,6 +196,10 @@ export class LeadController extends BaseController {
         colorHighlight,
         estimatedValue: estimatedValue ? Number(estimatedValue) : undefined,
         expectedCloseDate: expectedCloseDate ? new Date(expectedCloseDate) : undefined,
+        value: value ? Number(value) : undefined,
+        powerKwp: powerKwp ? Number(powerKwp) : undefined,
+        clientType,
+        tags
       });
 
       if (result.isSuccess) {

@@ -29,6 +29,12 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import TeamManagementPage from './pages/team/TeamManagementPage'
 import ReportsPage from './pages/reports/ReportsPage'
 import CalendarPage from './pages/calendar/CalendarPage'
+import LiveCalculationLogs from './pages/tools/LiveCalculationLogs'
+import CalculationLogsDemo from './pages/tools/CalculationLogsDemo'
+import SimpleLogViewer from './pages/tools/SimpleLogViewer'
+import LogsConsole from './pages/tools/LogsConsole'
+import TestLogsConsole from './pages/tools/TestLogsConsole'
+import LogsConsoleSimple from './pages/tools/LogsConsoleSimple'
 
 // Components
 import { ProtectedRoute } from './components/providers/protected-route'
@@ -97,6 +103,12 @@ function App() {
                   <Route path="proposal-templates" element={<ProposalTemplatesPage />} />
                   <Route path="reports" element={<ReportsPage />} />
                   <Route path="calendar" element={<CalendarPage />} />
+                  <Route path="tools/live-calculation-logs" element={<LiveCalculationLogs />} />
+                  <Route path="tools/calculation-logs-demo" element={<CalculationLogsDemo />} />
+                  <Route path="tools/simple-log-viewer" element={<SimpleLogViewer />} />
+                  <Route path="tools/logs-console" element={<LogsConsole />} />
+                  <Route path="tools/test-logs" element={<TestLogsConsole />} />
+                  <Route path="tools/logs-simple" element={<LogsConsoleSimple />} />
                   <Route 
                     path="admin" 
                     element={

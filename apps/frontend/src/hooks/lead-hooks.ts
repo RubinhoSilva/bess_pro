@@ -14,8 +14,18 @@ interface CreateLeadRequest {
   email: string;
   phone?: string;
   company?: string;
+  address?: string;
+  stage?: string;
   status?: string;
   source?: string;
+  notes?: string;
+  colorHighlight?: string;
+  estimatedValue?: number;
+  expectedCloseDate?: Date;
+  value?: number; // Valor do negócio em R$
+  powerKwp?: number; // Potência do sistema em kWp
+  clientType?: string; // B2B ou B2C
+  tags?: string[]; // Tags customizáveis
 }
 
 interface UpdateLeadRequest extends Partial<CreateLeadRequest> {

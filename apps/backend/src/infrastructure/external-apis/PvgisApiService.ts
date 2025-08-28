@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { CalculationLogger } from '../../domain/services/CalculationLogger';
 
 export interface PvgisConfig {
   baseUrl: string;
@@ -89,10 +90,14 @@ export class PvgisApiService {
       mountingplace?: string;
       angle?: number;
       aspect?: number;
-    } = {}
+    } = {},
+    logger?: CalculationLogger
   ): Promise<any> {
     try {
-      console.log('🌞 Iniciando requisição PVGIS MRcalc:', { latitude, longitude, params });
+      logger?.context('PVGIS', 'Iniciando requisição à API PVGIS MRcalc', 
+        { latitude, longitude, params }, 
+        'Consultando a base de dados PVGIS (Photovoltaic Geographical Information System) para obter dados de irradiação solar mensal'
+      );
       
       const requestParams = {
         lat: latitude,
@@ -106,16 +111,43 @@ export class PvgisApiService {
         aspect: params.aspect || 0,
       };
 
-      console.log('📝 Parâmetros da requisição:', requestParams);
-      console.log('🔗 URL completa:', `${this.client.defaults.baseURL}/MRcalc`);
+      logger?.info('PVGIS', 'Parâmetros da requisição configurados', requestParams);
+      logger?.info('PVGIS', 'URL da API', { 
+        url: `${this.client.defaults.baseURL}/MRcalc`,
+        timeout: this.client.defaults.timeout 
+      });
 
+      const startTime = Date.now();
       const response = await this.client.get('/MRcalc', {
         params: requestParams,
       });
+      const responseTime = Date.now() - startTime;
+
+      logger?.result('PVGIS', 'Dados PVGIS recebidos com sucesso', { 
+        responseTimeMs: responseTime,
+        dataSize: JSON.stringify(response.data).length,
+        hasMonthlyData: !!response.data?.outputs?.monthly,
+        hasTotals: !!response.data?.outputs?.totals
+      });
+
+      // Log dos dados mensais se disponíveis
+      if (response.data?.outputs?.monthly) {
+        logger?.info('PVGIS', 'Dados mensais PVGIS processados', {
+          monthly: response.data.outputs.monthly,
+          fonte: 'PVGIS-SARAH2 Database',
+          periodo: `${requestParams.startyear}-${requestParams.endyear}`
+        });
+      }
 
       console.log('✅ Resposta PVGIS recebida com sucesso');
       return response.data;
     } catch (error: any) {
+      logger?.error('PVGIS', 'Erro na requisição PVGIS MRcalc', { 
+        message: error.message,
+        latitude,
+        longitude,
+        params 
+      });
       console.error('❌ Erro na requisição PVGIS MRcalc:', error.message);
       throw new Error(`Erro ao buscar dados MRcalc do PVGIS: ${error.message}`);
     }

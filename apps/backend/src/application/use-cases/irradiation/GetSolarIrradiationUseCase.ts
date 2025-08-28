@@ -1,6 +1,7 @@
 import { IUseCase } from "@/application/common/IUseCase";
 import { Result } from "@/application/common/Result";
 import { SolarIrradiationService, IrradiationData } from "@/infrastructure/external-apis/SolarIrradiationService";
+import { CalculationLogger } from "@/domain/services/CalculationLogger";
 
 export interface GetSolarIrradiationCommand {
   latitude: number;
@@ -38,15 +39,29 @@ export interface SolarIrradiationResponseDto {
 export class GetSolarIrradiationUseCase implements IUseCase<GetSolarIrradiationCommand, Result<SolarIrradiationResponseDto>> {
   
   async execute(command: GetSolarIrradiationCommand): Promise<Result<SolarIrradiationResponseDto>> {
+    const logger = new CalculationLogger(`irradiation-${Date.now()}`);
+    
     try {
+      logger.context('Irradiação', 'Iniciando busca de dados de irradiação solar', 
+        { latitude: command.latitude, longitude: command.longitude, source: command.preferredSource },
+        'Obtendo dados de irradiação solar para dimensionamento de sistema fotovoltaico'
+      );
+
       // Validar coordenadas
       if (command.latitude < -90 || command.latitude > 90) {
+        logger.error('Validação', 'Latitude inválida', { latitude: command.latitude });
         return Result.failure('Latitude deve estar entre -90 e 90 graus');
       }
       
       if (command.longitude < -180 || command.longitude > 180) {
+        logger.error('Validação', 'Longitude inválida', { longitude: command.longitude });
         return Result.failure('Longitude deve estar entre -180 e 180 graus');
       }
+
+      logger.result('Validação', 'Coordenadas validadas com sucesso', { 
+        latitude: command.latitude, 
+        longitude: command.longitude 
+      });
 
       // Obter dados de irradiação
       const useCache = command.useCache !== false; // padrão: usar cache

@@ -23,6 +23,7 @@ export async function seedKanbanColumns() {
       { name: 'Projeto Aprovado', key: 'PROJETO_APROVADO', position: 4, isDefault: true },
       { name: 'Instalação Agendada', key: 'INSTALACAO_AGENDADA', position: 5, isDefault: true },
       { name: 'Sistema Entregue', key: 'SISTEMA_ENTREGUE', position: 6, isDefault: true },
+      { name: 'Quarentena', key: 'QUARENTENA', position: 7, isDefault: true },
     ];
 
     let totalSeeded = 0;

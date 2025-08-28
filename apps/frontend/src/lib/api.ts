@@ -1,5 +1,6 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { FrontendCalculationLogger } from './calculationLogger';
 
 // Configuração base da API
 const getApiBaseUrl = () => {
@@ -21,6 +22,9 @@ const api = axios.create({
   timeout: 30000,
 });
 
+// Logger global para APIs
+const apiLogger = new FrontendCalculationLogger('api-global');
+
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
@@ -29,6 +33,23 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Log API calls para cálculos e operações importantes
+    if (config.url && (
+      config.url.includes('calculation') ||
+      config.url.includes('solar') ||
+      config.url.includes('pvgis') ||
+      config.url.includes('irradiation') ||
+      config.url.includes('bess') ||
+      config.url.includes('financial')
+    )) {
+      apiLogger.apiCall(
+        `${config.method?.toUpperCase()} ${config.url}`,
+        config.method?.toUpperCase() || 'GET',
+        config.data || config.params
+      );
+    }
+
     return config;
   },
   (error) => {
@@ -39,6 +60,22 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
+    // Log responses para cálculos e operações importantes
+    if (response.config.url && (
+      response.config.url.includes('calculation') ||
+      response.config.url.includes('solar') ||
+      response.config.url.includes('pvgis') ||
+      response.config.url.includes('irradiation') ||
+      response.config.url.includes('bess') ||
+      response.config.url.includes('financial')
+    )) {
+      apiLogger.apiResponse(
+        `${response.config.method?.toUpperCase()} ${response.config.url}`,
+        response.status,
+        response.data
+      );
+    }
+
     return response;
   },
   (error) => {

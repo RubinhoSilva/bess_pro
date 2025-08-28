@@ -1,4 +1,5 @@
 import { SolarModule, Inverter } from '@/hooks/equipment-hooks';
+import { FrontendCalculationLogger } from './calculationLogger';
 
 export interface DimensioningInput {
   consumoAnual: number; // kWh/ano
@@ -63,6 +64,193 @@ export interface DimensioningResult {
 }
 
 export class PVDimensioningService {
+
+  /**
+   * Calcula o resumo detalhado do sistema fotovoltaico com logging completo
+   */
+  static calculateSystemSummary(
+    potenciaDesejadaKwp: number,
+    consumoAnualKwh: number,
+    irradiacaoMediaDiaria: number,
+    eficienciaSistema: number = 80,
+    logger?: FrontendCalculationLogger
+  ) {
+    logger?.startCalculationSection('Resumo do Sistema Fotovoltaico');
+    
+    logger?.context('Sistema', 'Iniciando cálculo do resumo do sistema fotovoltaico', {
+      potenciaDesejada: potenciaDesejadaKwp,
+      consumoAnual: consumoAnualKwh,
+      irradiacaoMedia: irradiacaoMediaDiaria,
+      eficiencia: eficienciaSistema
+    }, 'Cálculo completo do resumo do sistema incluindo potência pico, número de módulos, área necessária e geração anual estimada.');
+
+    // 1. Potência Pico Real (considerando múltiplos de módulos)
+    const potenciaModulo = 550; // W padrão para módulos modernos
+    const numeroModulos = Math.ceil((potenciaDesejadaKwp * 1000) / potenciaModulo);
+    const potenciaPicoReal = (numeroModulos * potenciaModulo) / 1000;
+
+    logger?.formula('Potência', 'Número de Módulos Necessários',
+      'N_módulos = TETO(P_desejada_W / P_módulo_W)',
+      {
+        P_desejada_kWp: potenciaDesejadaKwp,
+        P_desejada_W: potenciaDesejadaKwp * 1000,
+        P_modulo_W: potenciaModulo,
+        divisao: (potenciaDesejadaKwp * 1000) / potenciaModulo
+      },
+      numeroModulos,
+      {
+        description: 'Número inteiro de módulos necessários para atingir a potência desejada. Usa função TETO para arredondar para cima, garantindo que a potência mínima seja atingida.',
+        units: 'unidades',
+        references: ['NBR 16274:2014 - Dimensionamento de sistemas FV']
+      }
+    );
+
+    logger?.formula('Potência', 'Potência Pico Real do Sistema',
+      'P_pico_real = (N_módulos × P_módulo_W) / 1000',
+      {
+        N_modulos: numeroModulos,
+        P_modulo_W: potenciaModulo
+      },
+      potenciaPicoReal,
+      {
+        description: 'Potência real do sistema considerando o número inteiro de módulos instalados. Geralmente é ligeiramente superior à potência desejada.',
+        units: 'kWp',
+        references: ['IEA PVPS Task 2 - Performance Analysis']
+      }
+    );
+
+    // 2. Área Necessária
+    const areaModulo = 2.79; // m² para módulo de 550W típico (dimensões padrão da indústria)
+    const areaNecessaria = numeroModulos * areaModulo;
+
+    logger?.formula('Area', 'Área Total Necessária',
+      'A_total = N_módulos × A_módulo',
+      {
+        N_modulos: numeroModulos,
+        A_modulo_m2: areaModulo
+      },
+      areaNecessaria,
+      {
+        description: 'Área total necessária para instalação dos módulos fotovoltaicos. Baseada na área individual de cada módulo (considerando módulos de 550W com dimensões típicas de 2,3m × 1,13m).',
+        units: 'm²',
+        references: ['Manual de Engenharia FV - CRESESB', 'Dimensões típicas da indústria solar']
+      }
+    );
+
+    // 3. Geração Anual Estimada
+    const diasAno = 365;
+    const geracaoEstimadaAnual = potenciaPicoReal * irradiacaoMediaDiaria * diasAno * (eficienciaSistema / 100);
+
+    logger?.formula('Geração', 'Geração Anual Estimada',
+      'E_anual = P_pico × H_solar_diária × dias_ano × η_sistema',
+      {
+        P_pico_kWp: potenciaPicoReal,
+        H_solar_diaria: irradiacaoMediaDiaria,
+        dias_ano: diasAno,
+        η_sistema_decimal: eficienciaSistema / 100,
+        η_sistema_percent: eficienciaSistema
+      },
+      geracaoEstimadaAnual,
+      {
+        description: 'Estimativa da energia total gerada pelo sistema durante um ano. Considera a irradiação solar média diária, a potência instalada e a eficiência global do sistema (incluindo perdas por temperatura, cabeamento, inversor, etc.).',
+        units: 'kWh/ano',
+        references: ['PVGIS - Photovoltaic Geographical Information System', 'ABNT NBR 16274:2014']
+      }
+    );
+
+    // 4. Geração Mensal Média
+    const geracaoMensalMedia = geracaoEstimadaAnual / 12;
+
+    logger?.formula('Geração', 'Geração Mensal Média',
+      'E_mensal = E_anual / 12',
+      {
+        E_anual_kWh: geracaoEstimadaAnual
+      },
+      geracaoMensalMedia,
+      {
+        description: 'Média mensal de energia gerada pelo sistema. É uma simplificação, pois a geração varia ao longo do ano devido à variação sazonal da irradiação solar.',
+        units: 'kWh/mês'
+      }
+    );
+
+    // 5. Cobertura do Consumo
+    const coberturaConsumo = (geracaoEstimadaAnual / consumoAnualKwh) * 100;
+
+    logger?.formula('Análise', 'Cobertura do Consumo Anual',
+      'Cobertura_% = (E_gerada / E_consumida) × 100',
+      {
+        E_gerada_kWh: geracaoEstimadaAnual,
+        E_consumida_kWh: consumoAnualKwh
+      },
+      coberturaConsumo,
+      {
+        description: 'Percentual do consumo anual coberto pela geração do sistema fotovoltaico. Valores próximos a 100% indicam sistema bem dimensionado. Valores acima de 100% indicam excesso de geração que pode ser injetado na rede.',
+        units: '%',
+        references: ['REN 482/2012 - Sistema de compensação de energia elétrica']
+      }
+    );
+
+    // 6. Economia Anual Estimada (baseada em tarifa média)
+    const tarifaMediaKwh = 0.75; // R$/kWh - tarifa residencial média Brasil 2024
+    const economiaAnual = geracaoEstimadaAnual * tarifaMediaKwh;
+
+    logger?.formula('Financeiro', 'Economia Anual Estimada',
+      'Economia_anual = E_gerada × Tarifa_kWh',
+      {
+        E_gerada_kWh: geracaoEstimadaAnual,
+        Tarifa_R_kWh: tarifaMediaKwh
+      },
+      economiaAnual,
+      {
+        description: 'Estimativa da economia anual em reais proporcionada pelo sistema fotovoltaico. Baseada na tarifa média residencial brasileira.',
+        units: 'R$/ano',
+        references: ['ANEEL - Tarifas de energia elétrica']
+      }
+    );
+
+    const resumo = {
+      potenciaPico: {
+        valor: potenciaPicoReal,
+        unidade: 'kWp',
+        descricao: `${numeroModulos} módulos de ${potenciaModulo}W`
+      },
+      numeroModulos: {
+        valor: numeroModulos,
+        potenciaUnitaria: potenciaModulo,
+        unidade: 'unidades'
+      },
+      areaNecessaria: {
+        valor: areaNecessaria,
+        unidade: 'm²',
+        descricao: 'Para instalação dos módulos'
+      },
+      geracaoAnual: {
+        valor: geracaoEstimadaAnual,
+        unidade: 'kWh',
+        mensal: geracaoMensalMedia,
+        descricao: `~${Math.round(geracaoMensalMedia)} kWh/mês`
+      },
+      coberturaConsumo: {
+        valor: coberturaConsumo,
+        unidade: '%'
+      },
+      economiaAnual: {
+        valor: economiaAnual,
+        unidade: 'R$/ano'
+      }
+    };
+
+    logger?.result('Sistema', 'Resumo do sistema calculado com sucesso', resumo);
+    logger?.endCalculationSection('Resumo do Sistema Fotovoltaico', {
+      potenciaPico: `${potenciaPicoReal} kWp`,
+      modulos: `${numeroModulos} × ${potenciaModulo}W`,
+      area: `${areaNecessaria.toFixed(1)} m²`,
+      geracao: `${Math.round(geracaoEstimadaAnual)} kWh/ano`,
+      economia: `R$ ${economiaAnual.toFixed(0)}/ano`
+    });
+
+    return resumo;
+  }
   
   static calculateOptimalSystem(
     input: DimensioningInput,

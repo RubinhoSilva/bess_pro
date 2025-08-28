@@ -3,6 +3,11 @@ import { BaseController } from './BaseController';
 import { Container } from '@/infrastructure/di/Container';
 import { CalculateSolarSystemUseCase, AnalyzeFinancialUseCase } from '@/application';
 import { ServiceTokens } from '@/infrastructure';
+import { CalculationLogger } from '@/domain/services/CalculationLogger';
+import { SolarCalculationService } from '@/domain/services/SolarCalculationService';
+import { EnhancedFinancialCalculationService } from '@/domain/services/EnhancedFinancialCalculationService';
+import { IrradiationAnalysisService } from '@/domain/services/IrradiationAnalysisService';
+import { Coordinates } from '@/domain/value-objects/Coordinates';
 
 
 export class CalculationController extends BaseController {
@@ -94,6 +99,14 @@ export class CalculationController extends BaseController {
         coordinates
       );
 
+      // Calcular resumo detalhado do sistema
+      const systemSummary = SolarCalculationService.calculateSystemSummary(
+        data.systemParams, 
+        annualGeneration, 
+        6000, // consumo anual padrão 
+        logger
+      );
+
       // Cálculos financeiros se fornecidos
       let financialAnalysis;
       if (data.financialParams?.totalInvestment) {
@@ -115,7 +128,8 @@ export class CalculationController extends BaseController {
         monthlyGeneration,
         annualGeneration,
         optimalModuleCount,
-        co2Savings
+        co2Savings,
+        systemSummary
       });
 
       return {
@@ -124,6 +138,7 @@ export class CalculationController extends BaseController {
         optimalModuleCount,
         co2Savings,
         orientationLoss,
+        systemSummary,
         financialAnalysis,
         calculationLogs: logger.getLogsForConsole(),
         _rawLogs: logger.getLogs()
@@ -182,5 +197,295 @@ export class CalculationController extends BaseController {
       console.error('Analyze financial error:', error);
       return this.internalServerError(res, 'Erro na análise financeira');
     }
+  }
+
+  /**
+   * Endpoint para demonstração de cálculos detalhados com logs
+   */
+  async calculateWithDetailedLogs(req: Request, res: Response): Promise<Response> {
+    try {
+      const sessionId = `detailed-calc-${Date.now()}`;
+      const logger = new CalculationLogger(sessionId);
+      
+      // Parâmetros de entrada
+      const {
+        systemParams = {
+          potenciaNominal: 5.4, // kWp
+          area: 30, // m²
+          eficiencia: 20, // %
+          perdas: 14, // %
+          inclinacao: 23, // graus
+          orientacao: 0 // graus (Norte)
+        },
+        coordinates = {
+          latitude: -23.5505,
+          longitude: -46.6333
+        },
+        irradiationData = {
+          monthly: [4.5, 4.8, 4.2, 3.9, 3.2, 2.8, 3.1, 3.6, 4.1, 4.7, 5.2, 4.9], // kWh/m²/dia
+          annual: 4.35
+        },
+        financialParams = {
+          investimentoInicial: 32000, // R$
+          geracaoAnual: 7800, // kWh/ano (será recalculado)
+          tarifaEnergia: 0.85, // R$/kWh
+          inflacaoEnergia: 5.5, // % ao ano
+          taxaDesconto: 10.0, // % ao ano
+          vidaUtil: 25, // anos
+          custoOperacional: 200, // R$/ano
+          valorResidual: 3200 // R$ (10% do investimento)
+        }
+      } = req.body;
+
+      logger.info('Sistema', 'Iniciando demonstração de cálculos detalhados', {
+        sessionId,
+        timestamp: new Date().toISOString()
+      });
+
+      // 1. Análise de Irradiação
+      const coordsObj = Coordinates.create(coordinates.latitude, coordinates.longitude);
+      
+      const irradiationAnalysis = IrradiationAnalysisService.analyzeIrradiation(
+        irradiationData.monthly,
+        coordinates,
+        logger
+      );
+
+      // 2. Cálculos Solares
+      const monthlyGeneration = SolarCalculationService.calculateMonthlyGeneration(
+        systemParams,
+        irradiationData,
+        coordsObj,
+        logger
+      );
+
+      const annualGeneration = SolarCalculationService.calculateAnnualGeneration(monthlyGeneration, logger);
+
+      // 3. Cálculo do Resumo do Sistema
+      const systemSummary = this.calculateSystemSummary(
+        systemParams, 
+        annualGeneration, 
+        6000, // consumo anual padrão 
+        logger
+      );
+
+      // 4. Cálculos Financeiros
+      const enhancedFinancialParams = {
+        ...financialParams,
+        geracaoAnual: annualGeneration // Usar a geração calculada
+      };
+
+      const financialResults = EnhancedFinancialCalculationService.calculateFinancialIndicators(
+        enhancedFinancialParams,
+        logger
+      );
+
+      // 3. Resultado final
+      const results = {
+        sessionId,
+        timestamp: new Date().toISOString(),
+        inputData: {
+          systemParams,
+          coordinates,
+          irradiationData,
+          financialParams: enhancedFinancialParams
+        },
+        calculations: {
+          irradiation: irradiationAnalysis,
+          solar: {
+            monthlyGeneration,
+            annualGeneration,
+            averageMonthlyGeneration: annualGeneration / 12
+          },
+          systemSummary,
+          financial: financialResults
+        },
+        logs: {
+          console: logger.getLogsForConsole(),
+          detailed: logger.getDetailedReport(),
+          summary: {
+            totalOperations: logger.getLogs().length,
+            operationsByType: this.summarizeLogsByType(logger.getLogs()),
+            operationsByCategory: this.summarizeLogsByCategory(logger.getLogs())
+          }
+        }
+      };
+
+      logger.result('Sistema', 'Cálculos detalhados concluídos com sucesso', {
+        totalLogs: logger.getLogs().length,
+        vpl: financialResults.vpl,
+        tir: financialResults.tir,
+        payback: financialResults.payback,
+        geracaoAnual: annualGeneration
+      });
+
+      return this.ok(res, results);
+      
+    } catch (error) {
+      console.error('Calculate with detailed logs error:', error);
+      return this.internalServerError(res, 'Erro ao executar cálculos detalhados');
+    }
+  }
+
+  /**
+   * Método auxiliar para sumarizar logs por tipo
+   */
+  private summarizeLogsByType(logs: any[]): Record<string, number> {
+    const summary: Record<string, number> = {};
+    logs.forEach(log => {
+      summary[log.type] = (summary[log.type] || 0) + 1;
+    });
+    return summary;
+  }
+
+  /**
+   * Método auxiliar para sumarizar logs por categoria
+   */
+  private summarizeLogsByCategory(logs: any[]): Record<string, number> {
+    const summary: Record<string, number> = {};
+    logs.forEach(log => {
+      summary[log.category] = (summary[log.category] || 0) + 1;
+    });
+    return summary;
+  }
+
+  /**
+   * Calcula resumo detalhado do sistema fotovoltaico
+   */
+  private calculateSystemSummary(
+    systemParams: any, 
+    annualGeneration: number, 
+    consumoAnual: number, 
+    logger?: CalculationLogger
+  ) {
+    logger?.context('Sistema', 'Calculando resumo do sistema fotovoltaico', {
+      potenciaNominal: systemParams.potenciaNominal,
+      geracaoAnual: annualGeneration,
+      consumoAnual
+    }, 'Cálculo do resumo completo do sistema incluindo potência, módulos, área necessária, inversor e cobertura do consumo.');
+
+    // Cálculo do número de módulos
+    const potenciaModulo = 540; // W padrão
+    const numeroModulos = Math.ceil((systemParams.potenciaNominal * 1000) / potenciaModulo);
+    const potenciaPicoReal = (numeroModulos * potenciaModulo) / 1000;
+
+    logger?.formula('Sistema', 'Número de Módulos Necessários',
+      'N_módulos = TETO(P_sistema / P_módulo)',
+      {
+        P_sistema_W: systemParams.potenciaNominal * 1000,
+        P_modulo_W: potenciaModulo,
+        divisao: (systemParams.potenciaNominal * 1000) / potenciaModulo
+      },
+      numeroModulos,
+      {
+        description: 'Número inteiro de módulos necessários para atingir a potência desejada. Usa função TETO para arredondar para cima.',
+        units: 'unidades',
+        references: ['NBR 16274:2014 - Dimensionamento de sistemas FV']
+      }
+    );
+
+    // Cálculo da área necessária
+    const areaModulo = 2.1; // m² padrão
+    const areaNecessaria = numeroModulos * areaModulo;
+
+    logger?.formula('Sistema', 'Área Necessária para Instalação',
+      'A_total = N_módulos × A_módulo',
+      {
+        N_modulos: numeroModulos,
+        A_modulo_m2: areaModulo
+      },
+      areaNecessaria,
+      {
+        description: 'Área total necessária para instalação dos módulos fotovoltaicos, considerando área individual de cada módulo.',
+        units: 'm²',
+        references: ['Manual de Engenharia FV - CRESESB']
+      }
+    );
+
+    // Geração mensal média
+    const geracaoMensalMedia = annualGeneration / 12;
+
+    logger?.formula('Sistema', 'Geração Mensal Média',
+      'E_mensal = E_anual / 12',
+      {
+        E_anual_kWh: annualGeneration
+      },
+      geracaoMensalMedia,
+      {
+        description: 'Média mensal de energia gerada pelo sistema fotovoltaico.',
+        units: 'kWh/mês'
+      }
+    );
+
+    // Potência do inversor recomendada
+    const fatorSeguranca = 1.2;
+    const potenciaInversor = potenciaPicoReal * fatorSeguranca;
+
+    logger?.formula('Sistema', 'Potência do Inversor Recomendada',
+      'P_inversor = P_pico × F_segurança',
+      {
+        P_pico_kW: potenciaPicoReal,
+        F_seguranca: fatorSeguranca
+      },
+      potenciaInversor,
+      {
+        description: 'Potência recomendada do inversor considerando fator de segurança de 20% sobre a potência pico.',
+        units: 'kW',
+        references: ['IEC 62109 - Inversores fotovoltaicos']
+      }
+    );
+
+    // Cobertura do consumo
+    const coberturaConsumo = (annualGeneration / consumoAnual) * 100;
+
+    logger?.formula('Sistema', 'Cobertura do Consumo Anual',
+      'Cobertura_% = (E_gerada / E_consumida) × 100',
+      {
+        E_gerada_kWh: annualGeneration,
+        E_consumida_kWh: consumoAnual
+      },
+      coberturaConsumo,
+      {
+        description: 'Percentual do consumo anual coberto pela geração do sistema fotovoltaico. Valores acima de 100% indicam excesso de geração.',
+        units: '%',
+        references: ['REN 482/2012 - Compensação de energia']
+      }
+    );
+
+    const resumo = {
+      potenciaPico: {
+        valor: potenciaPicoReal,
+        unidade: 'kWp'
+      },
+      modulos: {
+        quantidade: numeroModulos,
+        potenciaUnitaria: potenciaModulo,
+        unidade: 'W'
+      },
+      geracaoAnual: {
+        valor: annualGeneration,
+        unidade: 'kWh',
+        mensal: geracaoMensalMedia
+      },
+      areaNecessaria: {
+        valor: areaNecessaria,
+        unidade: 'm²'
+      },
+      inversor: {
+        potenciaRecomendada: potenciaInversor,
+        unidade: 'kW',
+        status: 'A definir'
+      },
+      coberturaConsumo: {
+        valor: coberturaConsumo,
+        unidade: '%',
+        consumoAnual: consumoAnual,
+        geracaoEstimada: annualGeneration
+      }
+    };
+
+    logger?.result('Sistema', 'Resumo do sistema calculado', resumo);
+
+    return resumo;
   }
 }

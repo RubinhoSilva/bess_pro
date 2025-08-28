@@ -35,6 +35,10 @@ export class CreateLeadUseCase implements IUseCase<CreateLeadCommand, Result<Lea
         colorHighlight: command.colorHighlight,
         estimatedValue: command.estimatedValue,
         expectedCloseDate: command.expectedCloseDate,
+        value: command.value,
+        powerKwp: command.powerKwp,
+        clientType: command.clientType,
+        tags: command.tags,
         userId: command.userId,
       });
 

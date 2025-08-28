@@ -68,6 +68,14 @@ export class CalculateSolarSystemUseCase implements IUseCase<CalculateSolarSyste
         coordinates
       );
 
+      // Calcular resumo detalhado do sistema
+      const systemSummary = SolarCalculationService.calculateSystemSummary(
+        command.systemParams, 
+        annualGeneration, 
+        6000, // consumo anual padrão 
+        logger
+      );
+
       // Cálculos financeiros opcionais
       let financialAnalysis;
       if (command.financialParams && command.financialParams.totalInvestment) {
@@ -89,7 +97,8 @@ export class CalculateSolarSystemUseCase implements IUseCase<CalculateSolarSyste
         monthlyGeneration,
         annualGeneration,
         optimalModuleCount,
-        co2Savings
+        co2Savings,
+        systemSummary
       });
 
       return Result.success({
@@ -98,6 +107,7 @@ export class CalculateSolarSystemUseCase implements IUseCase<CalculateSolarSyste
         optimalModuleCount,
         co2Savings,
         orientationLoss,
+        systemSummary,
         financialAnalysis,
         calculationLogs: logger.getLogsForConsole(),
         _rawLogs: logger.getLogs() // Para debug interno

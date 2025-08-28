@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { TrendingUp } from 'lucide-react';
+import { CustomCurrencyInput } from '@/components/ui/currency-input';
 
 interface EconomicParametersFormProps {
   formData: any;
@@ -46,13 +47,11 @@ export default function EconomicParametersForm({ formData, onFormChange }: Econo
         <div className="grid grid-cols-1 gap-4">
           <div className="space-y-2">
             <Label htmlFor="custoFioB">Custo Fio B (R$/kWh)</Label>
-            <Input 
-              id="custoFioB" 
-              type="number" 
-              step="0.01" 
-              value={formData.custoFioB || ((formData.tarifaEnergiaB || 0.8) * 0.3)} 
-              onChange={(e) => onFormChange('custoFioB', parseFloat(e.target.value) || 0)} 
-              className="bg-background border-border text-foreground" 
+            <CustomCurrencyInput
+              value={formData.custoFioB || ((formData.tarifaEnergiaB || 0.8) * 0.3)}
+              onValueChange={(value) => onFormChange('custoFioB', value)}
+              placeholder="R$ 0,00"
+              className="bg-background border-border text-foreground"
             />
           </div>
         </div>

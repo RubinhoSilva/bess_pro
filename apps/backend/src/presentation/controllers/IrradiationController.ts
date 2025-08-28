@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { BaseController } from './BaseController';
 import { GetSolarIrradiationUseCase } from '@/application/use-cases/irradiation/GetSolarIrradiationUseCase';
 import { PvgisApiService } from '@/infrastructure/external-apis/PvgisApiService';
+import { CalculationLogger } from '@/domain/services/CalculationLogger';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -465,9 +466,9 @@ export class IrradiationController extends BaseController {
   }
 
   async getPVGISMRData(req: Request, res: Response): Promise<void> {
+    const logger = new CalculationLogger(`pvgis-mr-${Date.now()}`);
+    
     try {
-      // Endpoint público para PVGIS - não requer autenticação
-
       const {
         lat,
         lon,
@@ -480,8 +481,14 @@ export class IrradiationController extends BaseController {
         aspect
       } = req.query;
 
+      logger.context('PVGIS', 'Requisição de dados mensais PVGIS iniciada', 
+        { lat, lon, raddatabase, startyear, endyear },
+        'Endpoint público para buscar dados mensais de irradiação solar via PVGIS MRcalc'
+      );
+
       // Validações básicas
       if (!lat || !lon) {
+        logger.error('Validação', 'Coordenadas não fornecidas', { lat, lon });
         this.badRequest(res, 'Latitude (lat) e longitude (lon) são obrigatórias');
         return;
       }
@@ -490,12 +497,14 @@ export class IrradiationController extends BaseController {
       const longitude = parseFloat(lon as string);
 
       if (isNaN(latitude) || isNaN(longitude)) {
+        logger.error('Validação', 'Coordenadas inválidas', { latitude, longitude });
         this.badRequest(res, 'Latitude e longitude devem ser números válidos');
         return;
       }
 
-      // Chamar o serviço PVGIS MRcalc com todos os parâmetros
-      const result = await this.pvgisService.getMonthlyRadiationCalc(latitude, longitude, {
+      logger.result('Validação', 'Coordenadas validadas com sucesso', { latitude, longitude });
+
+      const params = {
         raddatabase: (raddatabase as string) || 'PVGIS-SARAH2',
         outputformat: (outputformat as string) || 'json',
         startyear: startyear ? parseInt(startyear as string) : 2016,
@@ -503,10 +512,25 @@ export class IrradiationController extends BaseController {
         mountingplace: (mountingplace as string) || 'free',
         angle: angle ? parseFloat(angle as string) : 0,
         aspect: aspect ? parseFloat(aspect as string) : 0
+      };
+
+      logger.info('PVGIS', 'Parâmetros da consulta PVGIS configurados', params);
+
+      // Chamar o serviço PVGIS MRcalc com logging
+      const result = await this.pvgisService.getMonthlyRadiationCalc(latitude, longitude, params, logger);
+
+      logger.result('PVGIS', 'Dados PVGIS MRcalc retornados com sucesso', {
+        hasOutputs: !!result.outputs,
+        hasMonthly: !!result.outputs?.monthly,
+        monthlyCount: result.outputs?.monthly?.length || 0
       });
 
       this.ok(res, result);
     } catch (error: any) {
+      logger.error('PVGIS', 'Erro no proxy PVGIS MRcalc', { 
+        message: error.message, 
+        stack: error.stack 
+      });
       console.error('Erro no proxy PVGIS MRcalc:', error);
       this.internalServerError(res, `Erro ao buscar dados MRcalc do PVGIS: ${error.message}`);
     }

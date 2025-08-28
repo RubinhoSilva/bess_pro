@@ -9,6 +9,7 @@ import { ArrowLeft, Calculator, Battery, Sun, Fuel } from 'lucide-react';
 import { BESSSystemConfiguration } from './BESSAnalysisTool';
 import { useToast } from '@/components/ui/use-toast';
 import CustomerDataForm from '../pv-design/form-sections/CustomerDataForm';
+import { CustomCurrencyInput } from '@/components/ui/currency-input';
 
 interface BESSSimulationFormProps {
   systemConfig: BESSSystemConfiguration;
@@ -459,12 +460,10 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
                 </div>
                 <div>
                   <Label htmlFor="custoLitro">Custo Combustível (R$/L)</Label>
-                  <Input
-                    id="custoLitro"
-                    type="number"
-                    step="0.01"
+                  <CustomCurrencyInput
                     value={inputs.custoLitro}
-                    onChange={(e) => handleInputChange('custoLitro', parseFloat(e.target.value))}
+                    onValueChange={(value) => handleInputChange('custoLitro', value)}
+                    placeholder="R$ 0,00"
                   />
                 </div>
               </div>
@@ -480,12 +479,10 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="tarifaEnergia">Tarifa de Energia (R$/kWh)</Label>
-              <Input
-                id="tarifaEnergia"
-                type="number"
-                step="0.01"
+              <CustomCurrencyInput
                 value={inputs.tarifaEnergia}
-                onChange={(e) => handleInputChange('tarifaEnergia', parseFloat(e.target.value))}
+                onValueChange={(value) => handleInputChange('tarifaEnergia', value)}
+                placeholder="R$ 0,00"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">

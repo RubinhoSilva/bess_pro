@@ -1,4 +1,4 @@
-import { LeadStage, LeadSource } from '@/domain/entities/Lead';
+import { LeadStage, LeadSource, ClientType } from '@/domain/entities/Lead';
 
 export interface LeadResponseDto {
   id: string;
@@ -13,6 +13,10 @@ export interface LeadResponseDto {
   colorHighlight: string;
   estimatedValue: number;
   expectedCloseDate: string | null;
+  value?: number;
+  powerKwp?: number;
+  clientType?: ClientType;
+  tags?: string[];
   userId: string;
   createdAt: string;
   updatedAt: string;

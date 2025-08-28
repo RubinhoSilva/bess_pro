@@ -13,10 +13,21 @@ import {
   ChevronUp,
   ChevronDown,
   BarChart3,
-  Zap
+  Zap,
+  Building
 } from 'lucide-react';
-import { Lead, LeadStage, DefaultLeadStage, LEAD_STAGE_LABELS } from '../../types/lead';
+import { Lead, LeadStage, DefaultLeadStage, LeadSource, LEAD_STAGE_LABELS } from '../../types/lead';
 import { CRMAdvancedFilters, CRMFilterState } from './CRMAdvancedFilters';
+import { formatCurrency } from '../../lib/formatters';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer 
+} from 'recharts';
 
 interface CRMAnalyticsProps {
   leads: Lead[];
@@ -169,11 +180,26 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
   const averageLeadValue = totalLeads > 0 ? totalValue / totalLeads : 0;
 
   // Distribuição por tipo de cliente (baseado nos filtrados)
-  const clientTypeStats = {
-    B2B: filteredLeads.filter(lead => lead.clientType === 'B2B').length,
-    B2C: filteredLeads.filter(lead => lead.clientType === 'B2C').length,
-    undefined: filteredLeads.filter(lead => !lead.clientType).length,
-  };
+  const clientTypeStats = useMemo(() => {
+    const stats = {
+      B2B: filteredLeads.filter(lead => lead.clientType === 'B2B').length,
+      B2C: filteredLeads.filter(lead => lead.clientType === 'B2C').length,
+      undefined: filteredLeads.filter(lead => !lead.clientType || lead.clientType === null || lead.clientType === '').length,
+    };
+    
+    // Debug: log the client type distribution
+    console.log('Client Type Distribution:', {
+      ...stats,
+      totalLeads: filteredLeads.length,
+      sampleLeads: filteredLeads.slice(0, 3).map(lead => ({
+        name: lead.name,
+        clientType: lead.clientType,
+        hasClientType: !!lead.clientType
+      }))
+    });
+    
+    return stats;
+  }, [filteredLeads]);
 
   // Análise de potência por faixa (kWp) - baseado nos filtrados (excluindo potência zerada)
   const leadsWithPower = filteredLeads.filter(lead => lead.powerKwp && lead.powerKwp > 0);
@@ -198,11 +224,15 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
       return leadDate.getMonth() === date.getMonth() && leadDate.getFullYear() === date.getFullYear();
     });
     
+    const monthLeadsWithPower = monthLeads.filter(lead => lead.powerKwp && lead.powerKwp > 0);
+    const monthTotalPowerKwp = monthLeadsWithPower.reduce((sum, lead) => sum + lead.powerKwp!, 0);
+    
     monthlyData.push({
       month: date.toLocaleDateString('pt-BR', { month: 'short' }),
       leads: monthLeads.length,
       value: monthLeads.reduce((sum, lead) => sum + (lead.value || lead.estimatedValue || 0), 0),
-      converted: monthLeads.filter(lead => lead.stage === DefaultLeadStage.SISTEMA_ENTREGUE).length
+      converted: monthLeads.filter(lead => lead.stage === DefaultLeadStage.SISTEMA_ENTREGUE).length,
+      powerKwp: monthTotalPowerKwp
     });
   }
 
@@ -263,10 +293,10 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              R$ {totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              {formatCurrency(totalValue)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Média: R$ {averageLeadValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              Média: {formatCurrency(averageLeadValue)}
             </p>
           </CardContent>
         </Card>
@@ -321,7 +351,7 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
                       </Badge>
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      R$ {value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {formatCurrency(value)}
                     </span>
                   </div>
                   <Progress value={percentage} className="h-2" />
@@ -404,17 +434,45 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
         </CardContent>
       </Card>
 
+      {/* Gráfico de Leads por Mês */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <BarChart3 className="h-5 w-5 mr-2" />
+            Leads por Mês (últimos 12 meses)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={monthlyData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip 
+                formatter={(value) => [value, 'Leads']}
+                labelFormatter={(label) => `Mês: ${label}`}
+              />
+              <Bar 
+                dataKey="leads" 
+                fill="#3b82f6" 
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
       {/* Análise Temporal */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
             <BarChart3 className="h-5 w-5 mr-2" />
-            Análise Temporal (12 meses)
+            Resumo Temporal (últimos 3 meses)
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-4 gap-4 text-center">
               <div>
                 <div className="text-lg font-semibold">
                   {monthlyData.slice(-3).reduce((sum, month) => sum + month.leads, 0)}
@@ -429,24 +487,141 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
               </div>
               <div>
                 <div className="text-lg font-semibold">
-                  R$ {monthlyData.slice(-3).reduce((sum, month) => sum + month.value, 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                  {formatCurrency(monthlyData.slice(-3).reduce((sum, month) => sum + month.value, 0))}
                 </div>
                 <p className="text-xs text-muted-foreground">Valor</p>
               </div>
+              <div>
+                <div className="text-lg font-semibold text-blue-600">
+                  {monthlyData.slice(-3).reduce((sum, month) => sum + month.powerKwp, 0).toFixed(1)} kWp
+                </div>
+                <p className="text-xs text-muted-foreground">Potência Total</p>
+              </div>
             </div>
             
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Últimos 6 meses:</p>
-              <div className="flex justify-between items-center text-xs">
-                {monthlyData.slice(-6).map((month, index) => (
-                  <div key={index} className="text-center">
-                    <div className="font-medium">{month.leads}</div>
-                    <div className="text-muted-foreground">{month.month}</div>
-                  </div>
-                ))}
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium mb-2">Leads por Mês (últimos 6 meses):</p>
+                <div className="flex justify-between items-center text-xs">
+                  {monthlyData.slice(-6).map((month, index) => (
+                    <div key={index} className="text-center">
+                      <div className="font-medium">{month.leads}</div>
+                      <div className="text-muted-foreground">{month.month}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium mb-2">Potência Total por Mês (kWp):</p>
+                <div className="flex justify-between items-center text-xs">
+                  {monthlyData.slice(-6).map((month, index) => (
+                    <div key={index} className="text-center">
+                      <div className="font-medium text-blue-600">{month.powerKwp.toFixed(1)}</div>
+                      <div className="text-muted-foreground">{month.month}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Funil de Conversão */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <TrendingUp className="h-5 w-5 mr-2" />
+            Funil de Conversão
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {stageStats.map((stage, index) => {
+              const percentage = totalLeads > 0 ? (stage.count / totalLeads) * 100 : 0;
+              
+              return (
+                <div key={stage.stage} className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-medium">
+                      {LEAD_STAGE_LABELS[stage.stage as DefaultLeadStage] || stage.stage}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={index === 0 ? "default" : "secondary"}>
+                        {stage.count}
+                      </Badge>
+                      <span className="text-muted-foreground">
+                        {percentage.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all ${
+                          index === 0 ? 'bg-blue-600' : 
+                          index === 1 ? 'bg-green-500' : 
+                          index === 2 ? 'bg-yellow-500' : 
+                          index === 3 ? 'bg-orange-500' : 'bg-purple-500'
+                        }`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Distribuição por Origem */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Activity className="h-5 w-5 mr-2" />
+            Distribuição por Origem
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            const sourceStats = Object.values(LeadSource).map(source => {
+              const sourceLeads = filteredLeads.filter(lead => lead.source === source);
+              return {
+                source,
+                count: sourceLeads.length,
+                percentage: totalLeads > 0 ? (sourceLeads.length / totalLeads) * 100 : 0
+              };
+            }).filter(stat => stat.count > 0);
+
+            return sourceStats.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Activity className="h-8 w-8 mx-auto mb-2" />
+                <p>Nenhuma origem de lead definida</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sourceStats.map((stat) => (
+                  <div key={stat.source} className="flex justify-between items-center">
+                    <span className="text-sm capitalize">
+                      {stat.source === 'website' ? 'Website' : 
+                       stat.source === 'referral' ? 'Indicação' : 
+                       stat.source === 'social-media' ? 'Redes Sociais' : 
+                       stat.source === 'direct-contact' ? 'Contato Direto' : 
+                       stat.source === 'advertising' ? 'Publicidade' : 'Outros'}
+                    </span>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline">{stat.count}</Badge>
+                      <span className="text-xs text-muted-foreground w-12">
+                        {stat.percentage.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 
@@ -460,89 +635,100 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Empresas (B2B)</span>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="outline">{clientTypeStats.B2B}</Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {totalLeads > 0 ? ((clientTypeStats.B2B / totalLeads) * 100).toFixed(1) : 0}%
-                  </span>
-                </div>
+            {totalLeads === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="h-8 w-8 mx-auto mb-2" />
+                <p>Nenhum lead encontrado</p>
               </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Pessoa Física (B2C)</span>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="outline">{clientTypeStats.B2C}</Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {totalLeads > 0 ? ((clientTypeStats.B2C / totalLeads) * 100).toFixed(1) : 0}%
-                  </span>
-                </div>
-              </div>
-              
-              {clientTypeStats.undefined > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Não definido</span>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="secondary">{clientTypeStats.undefined}</Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {((clientTypeStats.undefined / totalLeads) * 100).toFixed(1)}%
-                    </span>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Building className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium">Empresas (B2B)</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        {clientTypeStats.B2B}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground w-12">
+                        {totalLeads > 0 ? ((clientTypeStats.B2B / totalLeads) * 100).toFixed(1) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all" 
+                      style={{ 
+                        width: `${totalLeads > 0 ? (clientTypeStats.B2B / totalLeads) * 100 : 0}%` 
+                      }}
+                    />
                   </div>
                 </div>
-              )}
-            </div>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium">Pessoa Física (B2C)</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        {clientTypeStats.B2C}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground w-12">
+                        {totalLeads > 0 ? ((clientTypeStats.B2C / totalLeads) * 100).toFixed(1) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-green-600 h-2 rounded-full transition-all" 
+                      style={{ 
+                        width: `${totalLeads > 0 ? (clientTypeStats.B2C / totalLeads) * 100 : 0}%` 
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                {clientTypeStats.undefined > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 rounded-full bg-gray-400" />
+                        <span className="text-sm text-muted-foreground font-medium">Não Classificado</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="secondary">
+                          {clientTypeStats.undefined}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground w-12">
+                          {((clientTypeStats.undefined / totalLeads) * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-gray-400 h-2 rounded-full transition-all" 
+                        style={{ 
+                          width: `${(clientTypeStats.undefined / totalLeads) * 100}%` 
+                        }}
+                      />
+                    </div>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-sm text-yellow-800">
+                        💡 {clientTypeStats.undefined} leads sem tipo de cliente definido. 
+                        Edite-os para melhorar suas análises!
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <TrendingUp className="h-5 w-5 mr-2" />
-              Insights
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 text-sm">
-              {conversionRate < 10 && (
-                <div className="flex items-start space-x-2">
-                  <ChevronDown className="h-4 w-4 text-red-500 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-red-700">Taxa de conversão baixa</p>
-                    <p className="text-muted-foreground">
-                      Apenas {conversionRate.toFixed(1)}% dos leads estão sendo convertidos
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {upcomingDeadlines > 0 && (
-                <div className="flex items-start space-x-2">
-                  <Calendar className="h-4 w-4 text-orange-500 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-orange-700">Prazos próximos</p>
-                    <p className="text-muted-foreground">
-                      {upcomingDeadlines} leads com data de fechamento nos próximos 7 dias
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {recentLeads > totalLeads * 0.3 && (
-                <div className="flex items-start space-x-2">
-                  <ChevronUp className="h-4 w-4 text-green-500 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-green-700">Crescimento acelerado</p>
-                    <p className="text-muted-foreground">
-                      {((recentLeads / totalLeads) * 100).toFixed(1)}% dos leads foram criados nos últimos 30 dias
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

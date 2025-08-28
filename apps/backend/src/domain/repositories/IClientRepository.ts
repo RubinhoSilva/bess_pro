@@ -1,4 +1,4 @@
-import { Client } from "../entities/Client";
+import { Client, ClientStatus } from "../entities/Client";
 import { UserId } from "../value-objects/UserId";
 import { ISoftDeleteRepository } from "./IBaseRepository";
 
@@ -12,6 +12,7 @@ export interface IClientRepository extends ISoftDeleteRepository<Client, string>
   }>;
   findByEmail(email: string, userId?: string): Promise<Client | null>;
   update(client: Client): Promise<Client>;
+  updateStatus(id: string, status: ClientStatus): Promise<void>;
   delete(id: string): Promise<void>;
   search(userId: UserId, searchTerm: string, page?: number, pageSize?: number): Promise<{
     clients: Client[];

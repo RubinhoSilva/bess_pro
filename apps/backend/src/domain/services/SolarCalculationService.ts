@@ -27,31 +27,70 @@ export class SolarCalculationService {
   ): number[] {
     const { potenciaNominal, eficiencia, perdas } = systemParams;
     
-    logger?.info('Solar', 'Iniciando cálculo de geração mensal', {
+    logger?.context('Solar', 'Iniciando cálculo de geração mensal', {
       potenciaNominal,
       eficiencia,
       perdas,
       latitude: coordinates.getLatitude(),
       longitude: coordinates.getLongitude(),
       irradiacaoMensal: irradiationData.monthly
-    });
+    }, 'Este cálculo determina a geração de energia elétrica mensal de um sistema fotovoltaico considerando irradiação solar, eficiência do sistema e perdas operacionais.');
     
     // Fator de correção baseado na localização (simplificado)
     const latitudeFactor = this.getLatitudeFactor(coordinates.getLatitude());
-    logger?.calculation('Solar', 'Fator de correção por latitude calculado', 
-      `getLatitudeFactor(${coordinates.getLatitude()})`, { latitudeFactor });
+    logger?.formula('Solar', 'Fator de correção por latitude', 
+      'f_lat = 1 - (0.004 × |latitude|)',
+      { latitude: coordinates.getLatitude() },
+      latitudeFactor,
+      {
+        description: 'Fator de correção que considera a influência da latitude na eficiência dos painéis solares. Latitudes mais altas tendem a ter menor irradiação direta.',
+        units: 'adimensional',
+        references: ['CRESESB - Manual de Engenharia para Sistemas Fotovoltaicos', 'NBR 16274:2014']
+      }
+    );
     
     // Eficiência do sistema considerando perdas
     const systemEfficiency = (eficiencia / 100) * (1 - perdas / 100);
-    logger?.calculation('Solar', 'Eficiência do sistema calculada', 
-      `(${eficiencia} / 100) × (1 - ${perdas} / 100)`, { systemEfficiency });
+    logger?.formula('Solar', 'Eficiência líquida do sistema', 
+      'η_sistema = (η_nominal / 100) × (1 - P_perdas / 100)',
+      { 
+        η_nominal: eficiencia, 
+        P_perdas: perdas,
+        η_nominal_decimal: eficiencia / 100,
+        P_perdas_decimal: perdas / 100
+      },
+      systemEfficiency,
+      {
+        description: 'Eficiência real do sistema considerando a eficiência nominal dos painéis e as perdas do sistema (cabeamento, inversor, sujeira, temperatura, etc.)',
+        units: 'decimal (0-1)',
+        references: ['IEC 61724-1:2017 - Photovoltaic system performance', 'NREL PVWatts Calculator']
+      }
+    );
     
     const monthlyGeneration = irradiationData.monthly.map((irradiation, index) => {
-      // Geração = Potência × Irradiação × Eficiência × Fator de correção
-      const generation = potenciaNominal * irradiation * systemEfficiency * latitudeFactor * 30; // 30 dias médio
-      logger?.calculation('Solar', `Geração do mês ${index + 1}`, 
-        `${potenciaNominal} × ${irradiation} × ${systemEfficiency} × ${latitudeFactor} × 30`, 
-        { mes: index + 1, irradiation, generation });
+      const diasMes = this.getDaysInMonth(index);
+      
+      // Geração = Potência × Irradiação × Eficiência × Fator de correção × Dias do mês
+      const generation = potenciaNominal * irradiation * systemEfficiency * latitudeFactor * diasMes;
+      
+      logger?.formula('Solar', `Geração mensal - ${this.getMonthName(index)}`, 
+        'E_mensal = P_nominal × H_solar × η_sistema × f_lat × dias_mês',
+        {
+          P_nominal: potenciaNominal,
+          H_solar: irradiation,
+          η_sistema: systemEfficiency,
+          f_lat: latitudeFactor,
+          dias_mês: diasMes,
+          mês: this.getMonthName(index)
+        },
+        generation,
+        {
+          description: 'Cálculo da energia gerada mensalmente pelo sistema fotovoltaico. A irradiação solar (H) é multiplicada pela potência nominal, eficiência do sistema e fator de correção geográfica.',
+          units: 'kWh',
+          references: ['ABNT NBR 16274:2014 - Sistemas fotovoltaicos conectados à rede', 'IEA PVPS Task 2']
+        }
+      );
+      
       return generation;
     });
 
@@ -61,6 +100,23 @@ export class SolarCalculationService {
     });
     
     return monthlyGeneration;
+  }
+
+  /**
+   * Obtém o número de dias do mês (considerando ano não bissexto)
+   */
+  private static getDaysInMonth(monthIndex: number): number {
+    const daysPerMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return daysPerMonth[monthIndex] || 30;
+  }
+
+  /**
+   * Obtém o nome do mês em português
+   */
+  private static getMonthName(monthIndex: number): string {
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    return months[monthIndex] || `Mês ${monthIndex + 1}`;
   }
 
   /**
@@ -143,5 +199,145 @@ export class SolarCalculationService {
     // Norte = 0°, Sul = 180°
     const deviationFromSouth = Math.abs(180 - azimuth);
     return Math.max(0.3, 1 - (deviationFromSouth / 180) * 0.7);
+  }
+
+  /**
+   * Calcula resumo detalhado do sistema fotovoltaico
+   */
+  static calculateSystemSummary(
+    systemParams: SolarSystemParams, 
+    annualGeneration: number, 
+    consumoAnual: number, 
+    logger?: CalculationLogger
+  ) {
+    logger?.context('Sistema', 'Calculando resumo do sistema fotovoltaico', {
+      potenciaNominal: systemParams.potenciaNominal,
+      geracaoAnual: annualGeneration,
+      consumoAnual
+    }, 'Cálculo do resumo completo do sistema incluindo potência, módulos, área necessária, inversor e cobertura do consumo.');
+
+    // Cálculo do número de módulos
+    const potenciaModulo = 540; // W padrão
+    const numeroModulos = Math.ceil((systemParams.potenciaNominal * 1000) / potenciaModulo);
+    const potenciaPicoReal = (numeroModulos * potenciaModulo) / 1000;
+
+    logger?.formula('Sistema', 'Número de Módulos Necessários',
+      'N_módulos = TETO(P_sistema / P_módulo)',
+      {
+        P_sistema_W: systemParams.potenciaNominal * 1000,
+        P_modulo_W: potenciaModulo,
+        divisao: (systemParams.potenciaNominal * 1000) / potenciaModulo
+      },
+      numeroModulos,
+      {
+        description: 'Número inteiro de módulos necessários para atingir a potência desejada. Usa função TETO para arredondar para cima.',
+        units: 'unidades',
+        references: ['NBR 16274:2014 - Dimensionamento de sistemas FV']
+      }
+    );
+
+    // Cálculo da área necessária
+    const areaModulo = 2.1; // m² padrão
+    const areaNecessaria = numeroModulos * areaModulo;
+
+    logger?.formula('Sistema', 'Área Necessária para Instalação',
+      'A_total = N_módulos × A_módulo',
+      {
+        N_modulos: numeroModulos,
+        A_modulo_m2: areaModulo
+      },
+      areaNecessaria,
+      {
+        description: 'Área total necessária para instalação dos módulos fotovoltaicos, considerando área individual de cada módulo.',
+        units: 'm²',
+        references: ['Manual de Engenharia FV - CRESESB']
+      }
+    );
+
+    // Geração mensal média
+    const geracaoMensalMedia = annualGeneration / 12;
+
+    logger?.formula('Sistema', 'Geração Mensal Média',
+      'E_mensal = E_anual / 12',
+      {
+        E_anual_kWh: annualGeneration
+      },
+      geracaoMensalMedia,
+      {
+        description: 'Média mensal de energia gerada pelo sistema fotovoltaico.',
+        units: 'kWh/mês'
+      }
+    );
+
+    // Potência do inversor recomendada
+    const fatorSeguranca = 1.2;
+    const potenciaInversor = potenciaPicoReal * fatorSeguranca;
+
+    logger?.formula('Sistema', 'Potência do Inversor Recomendada',
+      'P_inversor = P_pico × F_segurança',
+      {
+        P_pico_kW: potenciaPicoReal,
+        F_seguranca: fatorSeguranca
+      },
+      potenciaInversor,
+      {
+        description: 'Potência recomendada do inversor considerando fator de segurança de 20% sobre a potência pico.',
+        units: 'kW',
+        references: ['IEC 62109 - Inversores fotovoltaicos']
+      }
+    );
+
+    // Cobertura do consumo
+    const coberturaConsumo = (annualGeneration / consumoAnual) * 100;
+
+    logger?.formula('Sistema', 'Cobertura do Consumo Anual',
+      'Cobertura_% = (E_gerada / E_consumida) × 100',
+      {
+        E_gerada_kWh: annualGeneration,
+        E_consumida_kWh: consumoAnual
+      },
+      coberturaConsumo,
+      {
+        description: 'Percentual do consumo anual coberto pela geração do sistema fotovoltaico. Valores acima de 100% indicam excesso de geração.',
+        units: '%',
+        references: ['REN 482/2012 - Compensação de energia']
+      }
+    );
+
+    const resumo = {
+      potenciaPico: {
+        valor: potenciaPicoReal,
+        unidade: 'kWp'
+      },
+      modulos: {
+        quantidade: numeroModulos,
+        potenciaUnitaria: potenciaModulo,
+        unidade: 'W'
+      },
+      geracaoAnual: {
+        valor: annualGeneration,
+        unidade: 'kWh',
+        mensal: geracaoMensalMedia
+      },
+      areaNecessaria: {
+        valor: areaNecessaria,
+        unidade: 'm²'
+      },
+      inversor: {
+        potenciaRecomendada: potenciaInversor,
+        unidade: 'kW',
+        status: 'A definir'
+      },
+      coberturaConsumo: {
+        valor: coberturaConsumo,
+        unidade: '%',
+        consumoAnual: consumoAnual,
+        geracaoEstimada: annualGeneration
+      }
+    };
+
+    logger?.result('Sistema', 'Resumo do sistema calculado', resumo);
+
+    return resumo;
   }
 }

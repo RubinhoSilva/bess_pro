@@ -5,6 +5,7 @@ import { AppConfig } from '../../infrastructure/config/AppConfig';
 import { Container } from '../../infrastructure/di/Container';
 import { ApiRoutes } from '../routes';
 import { SocketIOServer } from '../../infrastructure/websockets/SocketIOServer';
+import { SocketManager } from '../../infrastructure/websocket/SocketManager';
 import { createServer, Server as HttpServer } from 'http';
 import { CorsMiddleware } from '../middleware/CorsMiddleware';
 import { ErrorHandlerMiddleware } from '../middleware/ErrorHandlerMiddleware';
@@ -97,6 +98,9 @@ export class ExpressServer {
 
       console.log(`WebSockets enabled on path: ${this.config.websockets.path}`);
     }
+
+    // Initialize calculation logs WebSocket
+    SocketManager.getInstance().initialize(this.httpServer);
   }
 
   start(): Promise<void> {

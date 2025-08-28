@@ -6,7 +6,8 @@ import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DollarSign, Info, TrendingUp } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatCurrency, parseCurrency, isValidCurrency, formatCurrencyAsYouType, parseCurrencyAsYouType } from '@/lib/formatters';
+import { formatCurrency } from '@/lib/formatters';
+import { CustomCurrencyInput } from '@/components/ui/currency-input';
 
 interface FinancialFormProps {
   formData: any;
@@ -15,44 +16,6 @@ interface FinancialFormProps {
 }
 
 const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, totalInvestment }) => {
-  const [displayValues, setDisplayValues] = React.useState<Record<string, string>>({});
-
-  const handleCurrencyChange = (field: string, value: string) => {
-    // Formata o valor em tempo real conforme digita
-    const formattedValue = formatCurrencyAsYouType(value);
-    
-    // Atualiza o valor exibido
-    setDisplayValues(prev => ({ ...prev, [field]: formattedValue }));
-    
-    // Converte para número e salva no formData
-    const numericValue = parseCurrencyAsYouType(formattedValue);
-    onFormChange(field, numericValue);
-  };
-
-  const getDisplayValue = (field: string) => {
-    // Prioriza o valor sendo digitado, senão usa o valor formatado do formData
-    if (displayValues[field] !== undefined) {
-      return displayValues[field];
-    }
-    if (formData[field]) {
-      return formatCurrency(formData[field]);
-    }
-    return '';
-  };
-
-  // Sincroniza displayValues quando formData muda externamente
-  React.useEffect(() => {
-    const newDisplayValues: Record<string, string> = {};
-    ['custoEquipamento', 'custoMateriais', 'custoMaoDeObra'].forEach(field => {
-      if (formData[field] && displayValues[field] === undefined) {
-        newDisplayValues[field] = formatCurrency(formData[field]);
-      }
-    });
-    
-    if (Object.keys(newDisplayValues).length > 0) {
-      setDisplayValues(prev => ({ ...prev, ...newDisplayValues }));
-    }
-  }, [formData, displayValues]);
 
   return (
     <TooltipProvider>
@@ -83,11 +46,9 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                     </Tooltip></TooltipProvider>
                   </TooltipProvider>
                 </div>
-                <Input
-                  id="custoEquipamento"
-                  type="text"
-                  value={getDisplayValue('custoEquipamento')}
-                  onChange={(e) => handleCurrencyChange('custoEquipamento', e.target.value)}
+                <CustomCurrencyInput
+                  value={formData.custoEquipamento}
+                  onValueChange={(value) => onFormChange('custoEquipamento', value)}
                   placeholder="R$ 0,00"
                 />
               </div>
@@ -104,11 +65,9 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                     </TooltipContent>
                   </Tooltip></TooltipProvider>
                 </div>
-                <Input
-                  id="custoMateriais"
-                  type="text"
-                  value={getDisplayValue('custoMateriais')}
-                  onChange={(e) => handleCurrencyChange('custoMateriais', e.target.value)}
+                <CustomCurrencyInput
+                  value={formData.custoMateriais}
+                  onValueChange={(value) => onFormChange('custoMateriais', value)}
                   placeholder="R$ 0,00"
                 />
               </div>
@@ -125,11 +84,9 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                     </TooltipContent>
                   </Tooltip></TooltipProvider>
                 </div>
-                <Input
-                  id="custoMaoDeObra"
-                  type="text"
-                  value={getDisplayValue('custoMaoDeObra')}
-                  onChange={(e) => handleCurrencyChange('custoMaoDeObra', e.target.value)}
+                <CustomCurrencyInput
+                  value={formData.custoMaoDeObra}
+                  onValueChange={(value) => onFormChange('custoMaoDeObra', value)}
                   placeholder="R$ 0,00"
                 />
               </div>

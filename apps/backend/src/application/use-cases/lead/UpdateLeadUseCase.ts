@@ -46,6 +46,10 @@ export class UpdateLeadUseCase implements IUseCase<UpdateLeadCommand, Result<Lea
       if (command.colorHighlight !== undefined) existingLead.updateColorHighlight(command.colorHighlight);
       if (command.estimatedValue !== undefined) existingLead.updateEstimatedValue(command.estimatedValue);
       if (command.expectedCloseDate !== undefined) existingLead.updateExpectedCloseDate(command.expectedCloseDate);
+      if (command.value !== undefined) existingLead.updateValue(command.value);
+      if (command.powerKwp !== undefined) existingLead.updatePowerKwp(command.powerKwp);
+      if (command.clientType) existingLead.updateClientType(command.clientType);
+      if (command.tags !== undefined) existingLead.updateTags(command.tags);
 
       // Salvar
       const updatedLead = await this.leadRepository.update(existingLead);

@@ -13,6 +13,12 @@ export class CalculationRoutes {
     // All routes require authentication
     router.use(authMiddleware.authenticate());
 
+    // Endpoint para cálculos detalhados com logs completos - NOVO
+    router.post('/detailed-calculation',
+      ValidationMiddleware.handleValidationErrors(),
+      calculationController.calculateWithDetailedLogs.bind(calculationController)
+    );
+
     // Endpoint independente de projeto - NOVO
     router.post('/solar-system',
       ValidationMiddleware.handleValidationErrors(),

@@ -1,5 +1,6 @@
 // Stages padrão do sistema
 export enum DefaultLeadStage {
+  QUARENTENA = 'quarentena',
   LEAD_RECEBIDO = 'lead-recebido',
   PRE_QUALIFICACAO = 'pre-qualificacao',
   PROPOSTA_ENVIADA = 'proposta-enviada',
@@ -97,6 +98,7 @@ export interface GetLeadsQuery {
 }
 
 export const LEAD_STAGE_LABELS: Record<DefaultLeadStage, string> = {
+  [DefaultLeadStage.QUARENTENA]: 'Quarentena',
   [DefaultLeadStage.LEAD_RECEBIDO]: 'Lead Recebido',
   [DefaultLeadStage.PRE_QUALIFICACAO]: 'Pré-qualificação',
   [DefaultLeadStage.PROPOSTA_ENVIADA]: 'Proposta Enviada',

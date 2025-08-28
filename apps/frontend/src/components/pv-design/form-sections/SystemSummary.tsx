@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -9,6 +9,7 @@ import {
   Wrench, 
   TrendingUp
 } from 'lucide-react';
+import { FrontendCalculationLogger } from '@/lib/calculationLogger';
 
 interface SystemSummaryProps {
   formData: any;
@@ -23,35 +24,223 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' 
     return null; // Só esconder se realmente não há nenhum dado de consumo
   }
 
-  // Consumo total anual
+  // Inicializar logger para cálculos automáticos do resumo
+  const logger = new FrontendCalculationLogger(`system-summary-${Date.now()}`);
+
+  // Consumo total anual com logging
   const consumoTotalAnual = formData.energyBills?.reduce((acc: number, bill: any) => {
     return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
   }, 0) || 0;
 
+  if (consumoTotalAnual > 0) {
+    logger.startCalculationSection('RESUMO AUTOMÁTICO DO SISTEMA - EXIBIÇÃO PASSO 5');
+    
+    logger.context('Resumo', 'Calculando resumo automático do sistema fotovoltaico', {
+      consumoTotalAnual,
+      numeroContas: formData.energyBills?.length,
+      temNumeroModulosDefinido: !!(formData.numeroModulos && formData.numeroModulos > 0)
+    }, 'Cálculos automáticos executados quando o resumo do sistema é exibido no passo 5 do formulário');
+
+    logger.formula('Consumo', 'Consumo Total Anual',
+      'C_anual = Σ(contas) → Σ(meses)',
+      {
+        contas: formData.energyBills?.map((bill: any) => ({
+          nome: bill.name,
+          consumo_mensal: bill.consumoMensal,
+          total_conta: bill.consumoMensal.reduce((sum: number, c: number) => sum + c, 0)
+        }))
+      },
+      consumoTotalAnual,
+      {
+        description: 'Soma de todos os consumos mensais de todas as contas de energia registradas',
+        units: 'kWh/ano',
+        references: ['Dados inseridos pelo usuário no formulário']
+      }
+    );
+  }
+
   // Cálculos do sistema
   const potenciaModulo = formData.potenciaModulo || 550; // W
-  const irradiacaoMediaAnual = formData.irradiacaoMensal?.reduce((a: number, b: number) => a + b, 0) / 12 || 4.5;
-  const eficienciaSistema = (formData.eficienciaSistema || 85) / 100;
+  const somaIrradiacao = formData.irradiacaoMensal?.reduce((a: number, b: number) => a + b, 0) || 54;
+  const irradiacaoMediaAnual = somaIrradiacao / 12;
+  const eficienciaDecimal = (formData.eficienciaSistema || 85) / 100;
+
+  if (consumoTotalAnual > 0) {
+    logger.formula('Irradiação', 'Irradiação Solar Média Anual',
+      'H_média = Σ(H_mensais) / 12',
+      {
+        valores_mensais: formData.irradiacaoMensal || Array(12).fill(4.5),
+        soma_total: somaIrradiacao,
+        divisor: 12
+      },
+      irradiacaoMediaAnual,
+      {
+        description: 'Média anual da irradiação solar baseada nos dados mensais inseridos ou valores padrão',
+        units: 'kWh/m²/dia',
+        references: ['PVGIS', 'Dados do usuário']
+      }
+    );
+  }
   
   // Se não há número de módulos definido, calcular baseado no consumo
   let numeroModulos = formData.numeroModulos || 0;
   let potenciaPico = formData.potenciaPico || 0;
   
   if (numeroModulos === 0 && consumoTotalAnual > 0) {
-    // Cálculo automático baseado no consumo
+    // Cálculo automático baseado no consumo com logging detalhado
     const consumoMedioDiario = consumoTotalAnual / 365;
-    potenciaPico = consumoMedioDiario / (irradiacaoMediaAnual * eficienciaSistema);
+    
+    logger.formula('Consumo', 'Consumo Médio Diário',
+      'C_diário = C_anual / 365',
+      {
+        C_anual: consumoTotalAnual,
+        divisor: 365
+      },
+      consumoMedioDiario,
+      {
+        description: 'Consumo médio diário calculado para dimensionamento automático do sistema',
+        units: 'kWh/dia'
+      }
+    );
+
+    const irradiacaoEfetiva = irradiacaoMediaAnual * eficienciaDecimal;
+    
+    logger.formula('Sistema', 'Irradiação Solar Efetiva',
+      'H_efetiva = H_média × η_sistema',
+      {
+        H_media: irradiacaoMediaAnual,
+        η_sistema_decimal: eficienciaDecimal,
+        η_sistema_percent: formData.eficienciaSistema || 85
+      },
+      irradiacaoEfetiva,
+      {
+        description: 'Irradiação solar efetiva considerando perdas do sistema',
+        units: 'kWh/m²/dia'
+      }
+    );
+
+    potenciaPico = consumoMedioDiario / irradiacaoEfetiva;
+    
+    logger.formula('Sistema', 'Potência Pico Necessária',
+      'P_pico = C_diário / H_efetiva',
+      {
+        C_diario: consumoMedioDiario,
+        H_efetiva: irradiacaoEfetiva
+      },
+      potenciaPico,
+      {
+        description: 'Potência pico necessária para atender o consumo médio diário',
+        units: 'kWp'
+      }
+    );
+
     numeroModulos = Math.ceil((potenciaPico * 1000) / potenciaModulo);
+    
+    logger.formula('Sistema', 'Número de Módulos Necessários',
+      'N_módulos = TETO(P_pico_W / P_módulo_W)',
+      {
+        P_pico_kWp: potenciaPico,
+        P_pico_W: potenciaPico * 1000,
+        P_modulo_W: potenciaModulo,
+        divisao: (potenciaPico * 1000) / potenciaModulo
+      },
+      numeroModulos,
+      {
+        description: 'Número inteiro de módulos necessários (arredondado para cima)',
+        units: 'unidades'
+      }
+    );
+
     potenciaPico = (numeroModulos * potenciaModulo) / 1000; // Ajustar com número real de módulos
+    
+    logger.formula('Sistema', 'Potência Pico Real',
+      'P_pico_real = (N_módulos × P_módulo_W) / 1000',
+      {
+        N_modulos: numeroModulos,
+        P_modulo_W: potenciaModulo
+      },
+      potenciaPico,
+      {
+        description: 'Potência pico real considerando número inteiro de módulos',
+        units: 'kWp'
+      }
+    );
   } else if (numeroModulos > 0) {
     potenciaPico = (numeroModulos * potenciaModulo) / 1000;
+    
+    if (consumoTotalAnual > 0) {
+      logger.info('Sistema', 'Usando número de módulos pré-definido', {
+        numeroModulos,
+        potenciaModulo,
+        potenciaPico
+      });
+    }
   }
   
-  // Cálculo estimado de área (considerando ~2.5m² por módulo)
-  const areaEstimada = numeroModulos * 2.5;
+  // Cálculo estimado de área
+  const areaModulo = 2.5; // m² por módulo (valor padrão usado no sistema)
+  const areaEstimada = numeroModulos * areaModulo;
+  
+  if (consumoTotalAnual > 0 && numeroModulos > 0) {
+    logger.formula('Area', 'Área Total Necessária',
+      'A_total = N_módulos × A_módulo',
+      {
+        N_modulos: numeroModulos,
+        A_modulo_m2: areaModulo
+      },
+      areaEstimada,
+      {
+        description: 'Área total necessária para instalação dos módulos (valor padrão de 2.5m² por módulo)',
+        units: 'm²'
+      }
+    );
+  }
   
   // Geração estimada anual
-  const geracaoEstimadaAnual = potenciaPico * irradiacaoMediaAnual * 365 * eficienciaSistema;
+  const diasAno = 365;
+  const geracaoEstimadaAnual = potenciaPico * irradiacaoMediaAnual * diasAno * eficienciaDecimal;
+  
+  if (consumoTotalAnual > 0 && potenciaPico > 0) {
+    logger.formula('Geração', 'Geração Anual Estimada',
+      'E_anual = P_pico × H_média × dias_ano × η_sistema',
+      {
+        P_pico_kWp: potenciaPico,
+        H_media: irradiacaoMediaAnual,
+        dias_ano: diasAno,
+        η_sistema_decimal: eficienciaDecimal,
+        η_sistema_percent: formData.eficienciaSistema || 85
+      },
+      geracaoEstimadaAnual,
+      {
+        description: 'Estimativa da energia total gerada pelo sistema durante um ano',
+        units: 'kWh/ano'
+      }
+    );
+
+    // Cobertura do consumo
+    const coberturaConsumo = (geracaoEstimadaAnual / consumoTotalAnual) * 100;
+    
+    logger.formula('Análise', 'Cobertura do Consumo',
+      'Cobertura_% = (E_gerada / E_consumida) × 100',
+      {
+        E_gerada: geracaoEstimadaAnual,
+        E_consumida: consumoTotalAnual
+      },
+      coberturaConsumo,
+      {
+        description: 'Percentual do consumo anual coberto pela geração estimada do sistema',
+        units: '%'
+      }
+    );
+
+    logger.endCalculationSection('RESUMO AUTOMÁTICO DO SISTEMA - EXIBIÇÃO PASSO 5', {
+      potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
+      numeroModulos: `${numeroModulos} × ${potenciaModulo}W`,
+      areaEstimada: `${areaEstimada.toFixed(1)} m²`,
+      geracaoAnual: `${Math.round(geracaoEstimadaAnual)} kWh/ano`,
+      coberturaConsumo: `${Math.round(coberturaConsumo)}%`
+    });
+  }
   
   // Inversor selecionado
   const inversorSelecionado = formData.inverters?.[0] || null;

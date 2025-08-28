@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import { CalculationLogDisplayer } from './calculationLogger';
+import { FrontendCalculationLogger } from './calculationLogger';
 
 export interface BackendCalculationParams {
   systemParams: {
@@ -79,12 +79,10 @@ export class BackendCalculationService {
 
       const result = response.data;
 
-      // Usar o CalculationLogDisplayer para processar e exibir logs
-      CalculationLogDisplayer.logApiCall(
-        `/calculations/solar-system`,
-        params,
-        result
-      );
+      // Usar o logger para processar e exibir logs
+      const logger = new FrontendCalculationLogger('backend-calc');
+      logger.apiCall('/calculations/solar-system', 'POST', params);
+      logger.apiResponse('/calculations/solar-system', 200, result);
 
       console.log('✅ Cálculo do backend finalizado com sucesso!');
       console.log('📋 Dados retornados do backend:', result);
@@ -132,7 +130,13 @@ export class BackendCalculationService {
       console.log('✅ === MESCLANDO FRONTEND + BACKEND ===');
       console.log('🔄 Resultados do backend:', backendResults);
       
-      const mergedResults = CalculationLogDisplayer.mergeWithFrontendResults(frontendResults, backendResults);
+      // Mesclar resultados frontend e backend
+      const mergedResults = {
+        ...frontendResults,
+        backendData: backendResults,
+        backendLogs: backendResults.calculationLogs,
+        _backendRawLogs: backendResults._rawLogs
+      };
       
       console.log('🎯 Resultados finais (frontend + backend):', {
         temBackendLogs: !!(mergedResults.backendLogs?.length),

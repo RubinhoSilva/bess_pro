@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { User, Search, Loader2 } from 'lucide-react';
 import { useClients } from '@/hooks/client-hooks';
 import { apiClient } from '@/lib/api';
-import { formatCurrency, parseCurrency, formatCurrencyAsYouType, parseCurrencyAsYouType } from '@/lib/formatters';
+import { CustomCurrencyInput } from '@/components/ui/currency-input';
 
 interface CustomerDataFormProps {
   formData: any;
@@ -21,31 +21,6 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [initialLeads, setInitialLeads] = useState<any[]>([]);
-  const [displayValues, setDisplayValues] = useState<Record<string, string>>({});
-  
-  // Funções para formatação monetária
-  const handleCurrencyChange = (field: string, value: string) => {
-    // Formata o valor em tempo real conforme digita
-    const formattedValue = formatCurrencyAsYouType(value);
-    
-    // Atualiza o valor exibido
-    setDisplayValues(prev => ({ ...prev, [field]: formattedValue }));
-    
-    // Converte para número e salva no formData
-    const numericValue = parseCurrencyAsYouType(formattedValue);
-    onFormChange(field, numericValue);
-  };
-
-  const getDisplayValue = (field: string) => {
-    // Prioriza o valor sendo digitado, senão usa o valor formatado do formData
-    if (displayValues[field] !== undefined) {
-      return displayValues[field];
-    }
-    if (formData[field]) {
-      return formatCurrency(formData[field]);
-    }
-    return '';
-  };
 
   // Usar dados reais dos hooks
   const { data: clientsData } = useClients({ pageSize: 100 }); // Buscar mais clientes para busca
@@ -88,19 +63,6 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
     loadInitialLeads();
   }, [loadInitialLeads]);
 
-  // Sincroniza displayValues quando formData muda externamente
-  useEffect(() => {
-    const newDisplayValues: Record<string, string> = {};
-    ['tarifaEnergiaB', 'custoFioB', 'tarifaEnergiaPontaA', 'tarifaEnergiaForaPontaA'].forEach(field => {
-      if (formData[field] && displayValues[field] === undefined) {
-        newDisplayValues[field] = formatCurrency(formData[field]);
-      }
-    });
-    
-    if (Object.keys(newDisplayValues).length > 0) {
-      setDisplayValues(prev => ({ ...prev, ...newDisplayValues }));
-    }
-  }, [formData, displayValues]);
 
   const performSearch = useCallback(async () => {
     if (searchTerm.length < 2) {
@@ -436,22 +398,18 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
             >
               <div className="space-y-2">
                 <Label htmlFor="tarifaEnergiaB" className="text-foreground">Tarifa de Energia (R$/kWh)</Label>
-                <Input 
-                  id="tarifaEnergiaB" 
-                  type="text"
-                  value={getDisplayValue('tarifaEnergiaB')} 
-                  onChange={(e) => handleCurrencyChange('tarifaEnergiaB', e.target.value)}
+                <CustomCurrencyInput
+                  value={formData.tarifaEnergiaB}
+                  onValueChange={(value) => onFormChange('tarifaEnergiaB', value)}
                   placeholder="R$ 0,00"
                   className="bg-background border-border text-foreground"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="custoFioB" className="text-foreground">Custo Fio B (R$/kWh)</Label>
-                <Input 
-                  id="custoFioB" 
-                  type="text"
-                  value={getDisplayValue('custoFioB')} 
-                  onChange={(e) => handleCurrencyChange('custoFioB', e.target.value)}
+                <CustomCurrencyInput
+                  value={formData.custoFioB}
+                  onValueChange={(value) => onFormChange('custoFioB', value)}
                   placeholder="R$ 0,00"
                   className="bg-background border-border text-foreground"
                 />
@@ -469,22 +427,18 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="tarifaEnergiaPontaA" className="text-foreground">Tarifa Ponta (R$/kWh)</Label>
-                  <Input 
-                    id="tarifaEnergiaPontaA" 
-                    type="text"
-                    value={getDisplayValue('tarifaEnergiaPontaA')} 
-                    onChange={(e) => handleCurrencyChange('tarifaEnergiaPontaA', e.target.value)}
+                  <CustomCurrencyInput
+                    value={formData.tarifaEnergiaPontaA}
+                    onValueChange={(value) => onFormChange('tarifaEnergiaPontaA', value)}
                     placeholder="R$ 0,00"
                     className="bg-background border-border text-foreground"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="tarifaEnergiaForaPontaA" className="text-foreground">Tarifa Fora Ponta (R$/kWh)</Label>
-                  <Input 
-                    id="tarifaEnergiaForaPontaA" 
-                    type="text"
-                    value={getDisplayValue('tarifaEnergiaForaPontaA')} 
-                    onChange={(e) => handleCurrencyChange('tarifaEnergiaForaPontaA', e.target.value)}
+                  <CustomCurrencyInput
+                    value={formData.tarifaEnergiaForaPontaA}
+                    onValueChange={(value) => onFormChange('tarifaEnergiaForaPontaA', value)}
                     placeholder="R$ 0,00"
                     className="bg-background border-border text-foreground"
                   />

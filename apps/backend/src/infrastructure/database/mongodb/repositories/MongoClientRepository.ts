@@ -1,5 +1,5 @@
 import { IClientRepository } from "../../../../domain/repositories/IClientRepository";
-import { Client } from "../../../../domain/entities/Client";
+import { Client, ClientStatus } from "../../../../domain/entities/Client";
 import { UserId } from "../../../../domain/value-objects/UserId";
 import { ClientModel } from "../schemas/ClientSchema";
 import { ClientDbMapper } from "../mappers/ClientDbMapper";
@@ -145,6 +145,10 @@ export class MongoClientRepository implements IClientRepository {
     }
 
     return ClientDbMapper.toDomain(clientDoc);
+  }
+
+  async updateStatus(id: string, status: ClientStatus): Promise<void> {
+    await ClientModel.findByIdAndUpdate(id, { status, updatedAt: new Date() });
   }
 
   async delete(id: string): Promise<void> {

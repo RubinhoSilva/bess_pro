@@ -16,6 +16,7 @@ export class KanbanColumnSeederService implements IKanbanColumnSeederService {
       { teamId, name: 'Projeto Aprovado', key: 'PROJETO_APROVADO', position: 4, isDefault: true, isActive: true },
       { teamId, name: 'Instalação Agendada', key: 'INSTALACAO_AGENDADA', position: 5, isDefault: true, isActive: true },
       { teamId, name: 'Sistema Entregue', key: 'SISTEMA_ENTREGUE', position: 6, isDefault: true, isActive: true },
+      { teamId, name: 'Quarentena', key: 'QUARENTENA', position: 7, isDefault: true, isActive: true },
     ];
 
     return defaultColumns.map(col => ({

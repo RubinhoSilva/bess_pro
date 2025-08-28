@@ -1,4 +1,4 @@
-import { LeadStage, LeadSource } from '@/domain/entities/Lead';
+import { LeadStage, LeadSource, ClientType } from '@/domain/entities/Lead';
 
 export interface CreateLeadCommand {
   name: string;
@@ -12,5 +12,9 @@ export interface CreateLeadCommand {
   colorHighlight?: string;
   estimatedValue?: number;
   expectedCloseDate?: Date;
+  value?: number; // Valor do negócio em R$
+  powerKwp?: number; // Potência do sistema em kWp
+  clientType?: ClientType; // B2B ou B2C
+  tags?: string[]; // Tags customizáveis
   userId: string;
 }

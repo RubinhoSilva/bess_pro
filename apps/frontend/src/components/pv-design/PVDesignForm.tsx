@@ -10,8 +10,10 @@ import { calculateAdvancedFinancials } from '@/lib/financialCalculations';
 import { AdvancedSolarCalculator, SolarCalculationOptions } from '@/lib/solarCalculations';
 import { AdvancedFinancialAnalyzer, AdvancedFinancialInput } from '@/lib/advancedFinancialAnalysis';
 import { NotificationManager } from '@/lib/notificationSystem';
-import { CalculationLogDisplayer } from '@/lib/calculationLogger';
+import { useCalculationLogger } from '@/hooks/useCalculationLogger';
 import { BackendCalculationService, shouldUseBackendCalculations } from '@/lib/backendCalculations';
+import { FrontendCalculationLogger } from '@/lib/calculationLogger';
+import { PVDimensioningService } from '@/lib/pvDimensioning';
 import CustomerDataForm from './form-sections/CustomerDataForm';
 import ConsumptionForm from './form-sections/ConsumptionForm';
 import LocationForm from './form-sections/LocationForm';
@@ -79,8 +81,10 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
   }, [currentDimensioning.custoEquipamento, currentDimensioning.custoMateriais, currentDimensioning.custoMaoDeObra, currentDimensioning.bdi]);
 
   const handleCalculate = () => {
-    console.log('🚀 === INICIANDO CÁLCULO DE DIMENSIONAMENTO ===');
-    console.log('📊 Dados de entrada:', {
+    const logger = new FrontendCalculationLogger(`pvdesign-${Date.now()}`);
+    
+    logger.startCalculationSection('CÁLCULO DE DIMENSIONAMENTO PV - SISTEMA SOLAR FOTOVOLTAICO');
+    logger.context('PVDesign', 'Iniciando cálculo via PVDesignForm', {
       cliente: currentDimensioning.customer?.name,
       projeto: currentDimensioning.dimensioningName,
       irradiacao: currentDimensioning.irradiacaoMensal,
@@ -88,15 +92,19 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
       eficiencia: currentDimensioning.eficienciaSistema,
       numeroModulos: currentDimensioning.numeroModulos,
       energyBills: currentDimensioning.energyBills?.length
-    });
+    }, 'Dados de entrada coletados pelo formulário PVDesignForm para dimensionamento do sistema fotovoltaico');
     
     setIsCalculating(true);
     setTimeout(async () => {
       try {
         // Validação básica
-        console.log('🔍 Executando validações básicas...');
+        logger.info('Validação', 'Executando validações dos dados de entrada');
+        
         if (!currentDimensioning.irradiacaoMensal || currentDimensioning.irradiacaoMensal.length !== 12) {
-          console.error('❌ Validação falhou: Dados de irradiação mensal ausentes');
+          logger.error('Validação', 'Dados de irradiação mensal ausentes ou incompletos', {
+            irradiacaoMensal: currentDimensioning.irradiacaoMensal,
+            comprimento: currentDimensioning.irradiacaoMensal?.length
+          });
           toast({ 
             variant: "destructive", 
             title: "Dados incompletos", 
@@ -106,19 +114,28 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           return;
         }
 
-        const irradiacaoMediaAnual = currentDimensioning.irradiacaoMensal.reduce((a: number, b: number) => a + b, 0) / 12;
-        console.log('☀️ Irradiação média anual calculada:', {
-          valores: currentDimensioning.irradiacaoMensal,
-          soma: currentDimensioning.irradiacaoMensal.reduce((a: number, b: number) => a + b, 0),
-          media: irradiacaoMediaAnual,
-          operacao: 'soma / 12'
-        });
+        const somaIrradiacao = currentDimensioning.irradiacaoMensal.reduce((a: number, b: number) => a + b, 0);
+        const irradiacaoMediaAnual = somaIrradiacao / 12;
+
+        logger.formula('Irradiação', 'Irradiação Solar Média Anual',
+          'H_média = (H_jan + H_fev + ... + H_dez) / 12',
+          {
+            valores_mensais: currentDimensioning.irradiacaoMensal,
+            soma_total: somaIrradiacao,
+            divisor: 12
+          },
+          irradiacaoMediaAnual,
+          {
+            description: 'Cálculo da irradiação solar média anual a partir dos dados mensais. Este valor representa a média de energia solar disponível por metro quadrado ao longo do ano.',
+            units: 'kWh/m²/dia',
+            references: ['PVGIS - Photovoltaic Geographical Information System', 'INPE - Instituto Nacional de Pesquisas Espaciais']
+          }
+        );
         
         if (irradiacaoMediaAnual <= 0 || !currentDimensioning.potenciaModulo || currentDimensioning.potenciaModulo <= 0) {
-          console.error('❌ Validação falhou:', {
+          logger.error('Validação', 'Parâmetros inválidos detectados', {
             irradiacaoMediaAnual,
-            potenciaModulo: currentDimensioning.potenciaModulo,
-            motivo: 'Valores devem ser maiores que zero'
+            potenciaModulo: currentDimensioning.potenciaModulo
           });
           toast({ 
             variant: "destructive", 
@@ -130,98 +147,131 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         }
 
         // Cálculo do consumo total mensal
-        console.log('🔢 === CÁLCULO DO CONSUMO MENSAL (FORM) ===');
+        logger.context('Consumo', 'Iniciando cálculo do consumo mensal total', {
+          numeroContas: currentDimensioning.energyBills?.length || 0,
+          contas: currentDimensioning.energyBills?.map(bill => ({ nome: bill.name, consumo: bill.consumoMensal }))
+        }, 'Agregação do consumo de todas as contas de energia para obter o perfil de consumo mensal');
+
         const totalConsumoMensal = currentDimensioning.energyBills?.reduce((acc: number[], bill: any) => {
-          console.log(`📊 Processando conta: ${bill.name}`, {
+          logger.info('Consumo', `Processando conta: ${bill.name}`, {
             consumoMensal: bill.consumoMensal,
             operacao: 'Soma mensal por mês'
           });
+          
           bill.consumoMensal.forEach((consumo: number, index: number) => {
             const valorAnterior = acc[index] || 0;
             acc[index] = valorAnterior + consumo;
-            console.log(`   Mês ${index + 1}: ${valorAnterior} + ${consumo} = ${acc[index]} kWh`);
+            
+            const mes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][index];
+            logger.calculation('Consumo', `${mes} - Agregação de consumo`, 
+              `${valorAnterior} + ${consumo} = ${acc[index]}`, 
+              { mes: index + 1, valorAnterior, consumoAdicional: consumo, total: acc[index] }
+            );
           });
           return acc;
         }, Array(12).fill(0)) || Array(12).fill(0);
+
+        const consumoTotalAnual = totalConsumoMensal.reduce((a: number, b: number) => a + b, 0);
         
-        console.log('⚡ Consumo total mensal calculado:', {
-          valores: totalConsumoMensal,
-          total_anual: totalConsumoMensal.reduce((a, b) => a + b, 0),
-          operacao: 'soma de todas as contas por mês'
+        logger.result('Consumo', 'Consumo mensal total calculado', {
+          consumoMensal: totalConsumoMensal,
+          unidade: 'kWh/mês',
+          total_anual: consumoTotalAnual
         });
 
-        // Cálculo da potência e número de módulos
-        console.log('🔢 === DIMENSIONAMENTO DO SISTEMA (FORM) ===');
-        let potenciaPico: number;
-        let numeroModulos: number;
-        const consumoTotalAnual = totalConsumoMensal.reduce((a: number, b: number) => a + b, 0);
-        console.log(`📈 Consumo total anual: ${totalConsumoMensal.join(' + ')} = ${consumoTotalAnual} kWh/ano`);
+        // Calcular resumo do sistema usando método detalhado com logging
+        logger.formula('Consumo', 'Consumo Total Anual',
+          'C_anual = C_jan + C_fev + ... + C_dez',
+          {
+            valores_mensais: totalConsumoMensal,
+            operacao: `${totalConsumoMensal.join(' + ')}`
+          },
+          consumoTotalAnual,
+          {
+            description: 'Soma do consumo de todos os meses do ano para obter o consumo total anual',
+            units: 'kWh/ano'
+          }
+        );
 
-        // Verifica se há equipamentos selecionados da API (usar dados simulados por enquanto)
-        const selectedModules: any[] = [];
-        const selectedInverters = currentDimensioning.inverters || [];
-
-        if (selectedModules.length > 0) {
-          console.log('🔌 Usando equipamentos selecionados da API');
-          // Usar equipamentos selecionados da API
-          numeroModulos = selectedModules.reduce((total: number, module: any) => total + module.quantity, 0);
-          // Para calcular potência, precisaríamos buscar os dados dos módulos da API
-          // Por enquanto, mantemos compatibilidade com o sistema legado
-          const modulePower = currentDimensioning.potenciaModulo || 550;
-          potenciaPico = (numeroModulos * modulePower) / 1000;
-          console.log('⚙️ Cálculo com equipamentos selecionados:', {
-            numeroModulos,
-            potenciaUnitaria: modulePower,
-            potenciaPico,
-            operacao: `(${numeroModulos} × ${modulePower}) ÷ 1000`
-          });
-        } else if (currentDimensioning.numeroModulos && currentDimensioning.numeroModulos > 0) {
-          numeroModulos = currentDimensioning.numeroModulos;
-          console.log(`🔧 Modo: Número de módulos fixo = ${numeroModulos} módulos`);
+        // Determinar potência desejada baseada no modo selecionado
+        let potenciaDesejadaKwp: number;
+        
+        if (currentDimensioning.numeroModulos && currentDimensioning.numeroModulos > 0) {
+          // Modo: número de módulos fixo
+          potenciaDesejadaKwp = (currentDimensioning.numeroModulos * currentDimensioning.potenciaModulo) / 1000;
           
-          const potenciaModuloKW = currentDimensioning.potenciaModulo / 1000;
-          potenciaPico = numeroModulos * potenciaModuloKW;
-          console.log(`⚡ Potência pico: ${numeroModulos} módulos × ${currentDimensioning.potenciaModulo}W ÷ 1000 = ${potenciaPico.toFixed(2)} kWp`);
+          logger.info('Dimensionamento', 'Modo: Número de módulos fixo', {
+            numeroModulos: currentDimensioning.numeroModulos,
+            potenciaModulo: currentDimensioning.potenciaModulo,
+            potenciaTotal: potenciaDesejadaKwp
+          });
         } else {
-          console.log('🔧 Modo: Dimensionamento automático baseado no consumo');
+          // Modo: dimensionamento automático baseado no consumo
+          logger.context('Dimensionamento', 'Modo: Dimensionamento automático baseado no consumo');
           
           const consumoMedioDiario = consumoTotalAnual / 365;
-          console.log(`📅 Consumo médio diário: ${consumoTotalAnual} ÷ 365 = ${consumoMedioDiario.toFixed(2)} kWh/dia`);
+          logger.formula('Consumo', 'Consumo Médio Diário',
+            'C_diário = C_anual / 365',
+            {
+              C_anual: consumoTotalAnual,
+              divisor: 365
+            },
+            consumoMedioDiario,
+            {
+              description: 'Consumo médio diário calculado a partir do consumo anual',
+              units: 'kWh/dia'
+            }
+          );
           
           const eficienciaDecimal = (currentDimensioning.eficienciaSistema || 85) / 100;
           const irradiacaoEfetiva = irradiacaoMediaAnual * eficienciaDecimal;
-          console.log(`☀️ Irradiação efetiva: ${irradiacaoMediaAnual.toFixed(2)} × ${eficienciaDecimal} = ${irradiacaoEfetiva.toFixed(2)} kWh/m²/dia`);
           
-          potenciaPico = consumoMedioDiario / irradiacaoEfetiva;
-          console.log(`⚡ Potência pico: ${consumoMedioDiario.toFixed(2)} ÷ ${irradiacaoEfetiva.toFixed(2)} = ${potenciaPico.toFixed(2)} kWp`);
+          logger.formula('Sistema', 'Irradiação Solar Efetiva',
+            'H_efetiva = H_média × η_sistema',
+            {
+              H_media: irradiacaoMediaAnual,
+              η_sistema_decimal: eficienciaDecimal,
+              η_sistema_percent: currentDimensioning.eficienciaSistema || 85
+            },
+            irradiacaoEfetiva,
+            {
+              description: 'Irradiação solar efetiva considerando as perdas do sistema (temperatura, cabeamento, inversor, etc.)',
+              units: 'kWh/m²/dia',
+              references: ['ABNT NBR 16274:2014 - Sistemas fotovoltaicos']
+            }
+          );
           
-          const potenciaW = potenciaPico * 1000;
-          numeroModulos = Math.ceil(potenciaW / currentDimensioning.potenciaModulo);
-          console.log(`🔢 Número de módulos: ceil(${potenciaW.toFixed(0)}W ÷ ${currentDimensioning.potenciaModulo}W) = ${numeroModulos} módulos`);
+          potenciaDesejadaKwp = consumoMedioDiario / irradiacaoEfetiva;
           
-          // Recalcular potência real com número inteiro de módulos
-          const potenciaReal = (numeroModulos * currentDimensioning.potenciaModulo) / 1000;
-          console.log(`⚡ Potência real: ${numeroModulos} × ${currentDimensioning.potenciaModulo}W ÷ 1000 = ${potenciaReal.toFixed(2)} kWp`);
-          potenciaPico = potenciaReal;
-          
-          console.log('⚙️ Cálculo automático:', {
-            consumoMedioDiario,
-            operacao_potencia: `${consumoMedioDiario} ÷ (${irradiacaoMediaAnual} × ${eficienciaDecimal})`,
-            potenciaPico_calculada: potenciaPico,
-            operacao_modulos: `ceil((${potenciaPico} × 1000) ÷ ${currentDimensioning.potenciaModulo})`,
-            numeroModulos_final: numeroModulos
-          });
+          logger.formula('Sistema', 'Potência Pico Necessária',
+            'P_pico = C_diário / H_efetiva',
+            {
+              C_diario: consumoMedioDiario,
+              H_efetiva: irradiacaoEfetiva
+            },
+            potenciaDesejadaKwp,
+            {
+              description: 'Cálculo da potência pico necessária para atender ao consumo diário médio considerando a irradiação solar efetiva no local',
+              units: 'kWp',
+              references: ['Manual de Engenharia para Sistemas Fotovoltaicos - CRESESB']
+            }
+          );
         }
 
-        // Cálculos avançados de geração usando o AdvancedSolarCalculator
-        const areaEstimada = numeroModulos * 2.5;
-        console.log('📐 Área estimada calculada:', {
-          numeroModulos,
-          fator: 2.5,
-          areaEstimada,
-          operacao: `${numeroModulos} × 2.5`,
-          unidade: 'm²'
-        });
+        // Usar o novo método detalhado para calcular o resumo do sistema
+        const resumoSistema = PVDimensioningService.calculateSystemSummary(
+          potenciaDesejadaKwp,
+          consumoTotalAnual,
+          irradiacaoMediaAnual,
+          currentDimensioning.eficienciaSistema || 85,
+          logger
+        );
+
+        // Extrair valores para compatibilidade com o código existente
+        const potenciaPico = resumoSistema.potenciaPico.valor;
+        const numeroModulos = resumoSistema.numeroModulos.valor;
+        const areaEstimada = resumoSistema.areaNecessaria.valor;
+        const geracaoEstimadaAnual = resumoSistema.geracaoAnual.valor;
         
         // Configurar dados para cálculo avançado
         const solarOptions: SolarCalculationOptions = {
@@ -255,7 +305,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
 
         // Usar os resultados avançados para a geração
         const geracaoEstimadaMensal = advancedResults.geracaoEstimada.mensal;
-        const geracaoEstimadaAnual = advancedResults.geracaoEstimada.anual;
+        const geracaoAnualAdvanced = advancedResults.geracaoEstimada.anual;
 
         console.log('☀️ === RESULTADOS DE GERAÇÃO (FORM) ===');
         console.log('📊 Geração mensal calculada:');
@@ -265,7 +315,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           const diasMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][index];
           console.log(`   Mês ${index + 1}: ${potenciaPico.toFixed(2)} kWp × ${irradiacao} kWh/m²/dia × ${diasMes} dias × ${eficiencia} = ${geracao.toFixed(0)} kWh`);
         });
-        console.log(`📈 Geração anual total: ${geracaoEstimadaMensal.map(g => g.toFixed(0)).join(' + ')} = ${geracaoEstimadaAnual.toFixed(0)} kWh/ano`);
+        console.log(`📈 Geração anual total: ${geracaoEstimadaMensal.map(g => g.toFixed(0)).join(' + ')} = ${geracaoAnualAdvanced.toFixed(0)} kWh/ano`);
 
         // Cálculos financeiros básicos (manter compatibilidade)
         console.log('🔢 === CÁLCULOS FINANCEIROS (FORM) ===');
@@ -339,7 +389,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           potenciaPico,
           numeroModulos,
           areaEstimada,
-          geracaoEstimadaAnual,
+          geracaoEstimadaAnual, // Do resumo sistema
           geracaoEstimadaMensal,
           consumoTotalAnual,
           totalInvestment,
@@ -366,7 +416,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           potencia_pico: potenciaPico,
           numero_modulos: numeroModulos,
           area_estimada: areaEstimada,
-          geracao_anual: geracaoEstimadaAnual,
+          geracao_anual: geracaoEstimadaAnual, // Do resumo sistema
           investimento_total: totalInvestment,
           payback: financialResults.payback,
           vpl: financialResults.vpl,
@@ -478,12 +528,21 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
 
         onCalculationComplete(results);
         
+        // Finalizar logging
+        logger.endCalculationSection('CÁLCULO DE DIMENSIONAMENTO PV - SISTEMA SOLAR FOTOVOLTAICO', {
+          potenciaPico: `${potenciaPico} kWp`,
+          numeroModulos: `${numeroModulos} unidades`,
+          areaEstimada: `${areaEstimada.toFixed(1)} m²`,
+          geracaoAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`,
+          investimento: `R$ ${totalInvestment.toLocaleString('pt-BR')}`
+        });
+
         // Notificação de conclusão
         notificationManager.calculationComplete(results);
         
         toast({ 
           title: "Cálculo concluído!", 
-          description: "Resultados disponíveis na próxima tela." 
+          description: "Resultados disponíveis na próxima tela. Verifique o console do navegador (F12) para logs detalhados." 
         });
 
       } catch (error) {
