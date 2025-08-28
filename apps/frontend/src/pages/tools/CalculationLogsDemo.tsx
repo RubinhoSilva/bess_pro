@@ -82,7 +82,7 @@ export default function CalculationLogsDemo() {
   const executeCalculation = async () => {
     setIsCalculating(true);
     try {
-      const response = await apiClient.post('/calculations/detailed-calculation', params);
+      const response = await apiClient.calculations.post('/calculations/detailed-calculation', params);
       setResults(response.data);
       
       toast({

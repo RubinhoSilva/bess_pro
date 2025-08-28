@@ -36,7 +36,8 @@ export default function SimpleLogViewer() {
       '✅ Cálculos concluídos com sucesso!'
     ];
 
-    for (const [index, step] of steps.entries()) {
+    for (let index = 0; index < steps.length; index++) {
+      const step = steps[index];
       setCurrentStep(step);
       addLog(step);
       

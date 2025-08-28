@@ -214,6 +214,9 @@ export const apiClient = {
     
     financial: (projectId: string, data: any) =>
       api.post(`/calculations/projects/${projectId}/financial-analysis`, data),
+
+    // Generic post method for calculations
+    post: (endpoint: string, data: any) => api.post(endpoint, data),
   },
 };
 

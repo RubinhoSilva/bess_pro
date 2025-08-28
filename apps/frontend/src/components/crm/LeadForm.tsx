@@ -291,8 +291,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({
                     placeholder="R$ 0,00" 
                     value={field.value || ''}
                     onValueChange={(value) => {
-                      const numericValue = parseFloat(value || '0') || 0;
-                      field.onChange(numericValue);
+                      field.onChange(value);
                     }}
                   />
                 </FormControl>
@@ -326,8 +325,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({
                     placeholder="R$ 0,00" 
                     value={field.value || ''}
                     onValueChange={(value) => {
-                      const numericValue = parseFloat(value || '0') || 0;
-                      field.onChange(numericValue);
+                      field.onChange(value);
                     }}
                   />
                 </FormControl>

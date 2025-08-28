@@ -184,7 +184,7 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
     const stats = {
       B2B: filteredLeads.filter(lead => lead.clientType === 'B2B').length,
       B2C: filteredLeads.filter(lead => lead.clientType === 'B2C').length,
-      undefined: filteredLeads.filter(lead => !lead.clientType || lead.clientType === null || lead.clientType === '').length,
+      undefined: filteredLeads.filter(lead => !lead.clientType || lead.clientType === null).length,
     };
     
     // Debug: log the client type distribution

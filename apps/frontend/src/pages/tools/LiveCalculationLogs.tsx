@@ -58,8 +58,7 @@ export default function LiveCalculationLogs() {
 
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString('pt-BR', {
-      hour12: false,
-      millisecond: true
+      hour12: false
     });
   };
 
@@ -118,7 +117,7 @@ export default function LiveCalculationLogs() {
         type: 'error',
         category: 'Sistema',
         message: 'Erro ao executar cálculos',
-        data: { error: error.message }
+        data: { error: error instanceof Error ? error.message : String(error) }
       });
       
       toast({
