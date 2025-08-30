@@ -436,7 +436,7 @@ export const AdvancedFinancialAnalysis: React.FC<AdvancedFinancialAnalysisProps>
             <CashFlowChart cashFlow={advancedFinancial.cashFlow.slice(0, 10)} />
             <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Resumo da Análise Financeira
+                Indicadores Financeiros Principais
               </h4>
               <div className="space-y-4">
                 <div className="flex justify-between">

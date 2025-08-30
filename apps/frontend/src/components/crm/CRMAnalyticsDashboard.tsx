@@ -14,11 +14,19 @@ import {
   ChevronDown,
   BarChart3,
   Zap,
-  Building
+  Building,
+  FileText,
+  Folder,
+  ExternalLink,
+  CheckCircle,
+  AlertCircle,
+  Settings
 } from 'lucide-react';
 import { Lead, LeadStage, DefaultLeadStage, LeadSource, LEAD_STAGE_LABELS } from '../../types/lead';
 import { CRMAdvancedFilters, CRMFilterState } from './CRMAdvancedFilters';
 import { formatCurrency } from '../../lib/formatters';
+import { useProjects } from '../../hooks/project-hooks';
+import { ProjectType } from '../../types/project';
 import { 
   BarChart, 
   Bar, 
@@ -26,7 +34,14 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  Area,
+  AreaChart
 } from 'recharts';
 
 interface CRMAnalyticsProps {
@@ -61,6 +76,19 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
 }) => {
   const [filters, setFilters] = useState<CRMFilterState>(initialFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  
+  // Load projects data to show in CRM
+  const { data: projectsData } = useProjects({ 
+    hasLead: true, // Only projects with leads
+    pageSize: 100 // Maximum allowed by backend validation
+  });
+
+  // Função para calcular valor total de um lead (prioriza value, depois estimatedValue)
+  const getLeadValue = (lead: Lead): number => {
+    if (lead.value && lead.value > 0) return lead.value;
+    if (lead.estimatedValue && lead.estimatedValue > 0) return lead.estimatedValue;
+    return 0;
+  };
 
   // Aplicar filtros aos leads
   const filteredLeads = useMemo(() => {
@@ -92,7 +120,8 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
 
       // Filtro por tipo de cliente
       if (filters.clientTypes.length > 0) {
-        if (!filters.clientTypes.includes(lead.clientType as 'B2B' | 'B2C')) {
+        const leadClientType = lead.clientType || 'B2C'; // Default para B2C se não estiver definido
+        if (!filters.clientTypes.includes(leadClientType as 'B2B' | 'B2C')) {
           return false;
         }
       }
@@ -113,8 +142,8 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
         if (filters.dateRange.end && leadDate > filters.dateRange.end) return false;
       }
 
-      // Filtro por valor
-      const leadValue = lead.estimatedValue || lead.value || 0;
+      // Filtro por valor (usando a mesma lógica de priorização)
+      const leadValue = getLeadValue(lead);
       if (leadValue < filters.valueRange.min || leadValue > filters.valueRange.max) {
         return false;
       }
@@ -139,18 +168,18 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
 
       return true;
     });
-  }, [leads, filters]);
+  }, [leads, filters, getLeadValue]);
 
   // Calcular métricas principais baseadas nos leads filtrados
   const totalLeads = filteredLeads.length;
-  const totalValue = filteredLeads.reduce((sum, lead) => sum + (lead.value || lead.estimatedValue || 0), 0);
+  const totalValue = filteredLeads.reduce((sum, lead) => sum + getLeadValue(lead), 0);
   const convertedLeads = filteredLeads.filter(lead => lead.stage === DefaultLeadStage.SISTEMA_ENTREGUE).length;
   const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
 
   // Métricas por estágio baseadas nos leads filtrados
   const stageStats: StageStats[] = Object.values(DefaultLeadStage).map(stage => {
     const stageLeads = filteredLeads.filter(lead => lead.stage === stage);
-    const stageValue = stageLeads.reduce((sum, lead) => sum + (lead.value || lead.estimatedValue || 0), 0);
+    const stageValue = stageLeads.reduce((sum, lead) => sum + getLeadValue(lead), 0);
     
     return {
       stage,
@@ -181,21 +210,35 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
 
   // Distribuição por tipo de cliente (baseado nos filtrados)
   const clientTypeStats = useMemo(() => {
+    // Normalizar clientType para garantir que todos os leads tenham um tipo definido
+    const leadsWithNormalizedClientType = filteredLeads.map(lead => ({
+      ...lead,
+      clientType: lead.clientType || 'B2C' // Default para B2C se não estiver definido
+    }));
+
     const stats = {
-      B2B: filteredLeads.filter(lead => lead.clientType === 'B2B').length,
-      B2C: filteredLeads.filter(lead => lead.clientType === 'B2C').length,
-      undefined: filteredLeads.filter(lead => !lead.clientType || lead.clientType === null).length,
+      B2B: leadsWithNormalizedClientType.filter(lead => lead.clientType === 'B2B').length,
+      B2C: leadsWithNormalizedClientType.filter(lead => lead.clientType === 'B2C').length,
+      undefined: filteredLeads.filter(lead => !lead.clientType || lead.clientType === null || lead.clientType === undefined || lead.clientType === '').length,
     };
     
     // Debug: log the client type distribution
-    console.log('Client Type Distribution:', {
+    console.log('🔍 Client Type Distribution Analysis:', {
       ...stats,
       totalLeads: filteredLeads.length,
-      sampleLeads: filteredLeads.slice(0, 3).map(lead => ({
+      sampleLeads: filteredLeads.slice(0, 5).map(lead => ({
+        id: lead.id,
         name: lead.name,
         clientType: lead.clientType,
+        clientTypeType: typeof lead.clientType,
         hasClientType: !!lead.clientType
-      }))
+      })),
+      allClientTypes: [...new Set(filteredLeads.map(lead => lead.clientType).filter(Boolean))],
+      undefinedLeads: filteredLeads.filter(lead => !lead.clientType).map(lead => ({
+        id: lead.id,
+        name: lead.name,
+        clientType: lead.clientType
+      })).slice(0, 3)
     });
     
     return stats;
@@ -230,7 +273,7 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
     monthlyData.push({
       month: date.toLocaleDateString('pt-BR', { month: 'short' }),
       leads: monthLeads.length,
-      value: monthLeads.reduce((sum, lead) => sum + (lead.value || lead.estimatedValue || 0), 0),
+      value: monthLeads.reduce((sum, lead) => sum + getLeadValue(lead), 0),
       converted: monthLeads.filter(lead => lead.stage === DefaultLeadStage.SISTEMA_ENTREGUE).length,
       powerKwp: monthTotalPowerKwp
     });
@@ -576,7 +619,7 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
         </CardContent>
       </Card>
 
-      {/* Distribuição por Origem */}
+      {/* Distribuição por Origem - Gráfico de Pizza */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -589,11 +632,21 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
             const sourceStats = Object.values(LeadSource).map(source => {
               const sourceLeads = filteredLeads.filter(lead => lead.source === source);
               return {
-                source,
-                count: sourceLeads.length,
-                percentage: totalLeads > 0 ? (sourceLeads.length / totalLeads) * 100 : 0
+                name: source === 'website' ? 'Website' : 
+                      source === 'referral' ? 'Indicação' : 
+                      source === 'social-media' ? 'Redes Sociais' : 
+                      source === 'direct-contact' ? 'Contato Direto' : 
+                      source === 'advertising' ? 'Publicidade' : 'Outros',
+                value: sourceLeads.length,
+                fill: source === 'website' ? '#3b82f6' : 
+                      source === 'referral' ? '#10b981' : 
+                      source === 'social-media' ? '#f59e0b' : 
+                      source === 'direct-contact' ? '#ef4444' : 
+                      source === 'advertising' ? '#8b5cf6' : '#6b7280'
               };
-            }).filter(stat => stat.count > 0);
+            }).filter(stat => stat.value > 0);
+
+            const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280'];
 
             return sourceStats.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
@@ -601,24 +654,28 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
                 <p>Nenhuma origem de lead definida</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {sourceStats.map((stat) => (
-                  <div key={stat.source} className="flex justify-between items-center">
-                    <span className="text-sm capitalize">
-                      {stat.source === 'website' ? 'Website' : 
-                       stat.source === 'referral' ? 'Indicação' : 
-                       stat.source === 'social-media' ? 'Redes Sociais' : 
-                       stat.source === 'direct-contact' ? 'Contato Direto' : 
-                       stat.source === 'advertising' ? 'Publicidade' : 'Outros'}
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline">{stat.count}</Badge>
-                      <span className="text-xs text-muted-foreground w-12">
-                        {stat.percentage.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={sourceStats}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {sourceStats.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value) => [value, 'Leads']}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
             );
           })()}
@@ -729,7 +786,317 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
           </CardContent>
         </Card>
 
+        {/* Gráfico de Pizza - Distribuição de Clientes */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <BarChart3 className="h-5 w-5 mr-2" />
+              Visualização por Tipo
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {totalLeads === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <BarChart3 className="h-8 w-8 mx-auto mb-2" />
+                <p>Nenhum lead para exibir</p>
+              </div>
+            ) : (
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { 
+                          name: 'Empresas (B2B)', 
+                          value: clientTypeStats.B2B,
+                          fill: '#3b82f6',
+                          percentage: totalLeads > 0 ? ((clientTypeStats.B2B / totalLeads) * 100).toFixed(1) : 0
+                        },
+                        { 
+                          name: 'Pessoa Física (B2C)', 
+                          value: clientTypeStats.B2C,
+                          fill: '#10b981',
+                          percentage: totalLeads > 0 ? ((clientTypeStats.B2C / totalLeads) * 100).toFixed(1) : 0
+                        },
+                        ...(clientTypeStats.undefined > 0 ? [{
+                          name: 'Não Definido', 
+                          value: clientTypeStats.undefined,
+                          fill: '#f59e0b',
+                          percentage: totalLeads > 0 ? ((clientTypeStats.undefined / totalLeads) * 100).toFixed(1) : 0
+                        }] : [])
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      dataKey="value"
+                      label={({ name, percentage }) => `${name}: ${percentage}%`}
+                    >
+                      {[
+                        { fill: '#3b82f6' },
+                        { fill: '#10b981' },
+                        { fill: '#f59e0b' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number, name: string) => [
+                        `${value} leads (${totalLeads > 0 ? ((value / totalLeads) * 100).toFixed(1) : 0}%)`,
+                        name
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
       </div>
+
+      {/* Evolução Temporal - Gráfico de Área */}
+      <Card className="col-span-full">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <TrendingUp className="h-5 w-5 mr-2" />
+            Evolução Temporal dos Leads
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip 
+                  formatter={(value, name) => {
+                    if (name === 'leads') return [value, 'Leads'];
+                    if (name === 'converted') return [value, 'Convertidos'];
+                    if (name === 'value') return [formatCurrency(value as number), 'Valor'];
+                    return [value, name];
+                  }}
+                />
+                <Area
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="leads"
+                  stackId="1"
+                  stroke="#3b82f6"
+                  fill="#3b82f6"
+                  fillOpacity={0.6}
+                  name="leads"
+                />
+                <Area
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="converted"
+                  stackId="2"
+                  stroke="#10b981"
+                  fill="#10b981"
+                  fillOpacity={0.8}
+                  name="converted"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Performance de Valor vs Quantidade */}
+      <Card className="col-span-full">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <BarChart3 className="h-5 w-5 mr-2" />
+            Performance: Valor vs Quantidade
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip 
+                  formatter={(value, name) => {
+                    if (name === 'Leads') return [value, 'Leads'];
+                    if (name === 'Valor') return [formatCurrency(value as number), 'Valor'];
+                    return [value, name];
+                  }}
+                />
+                <Bar yAxisId="left" dataKey="leads" fill="#3b82f6" name="Leads" />
+                <Bar yAxisId="right" dataKey="value" fill="#10b981" name="Valor" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Projetos e Propostas dos Leads */}
+      <Card className="col-span-full">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <FileText className="h-5 w-5 mr-2" />
+            Projetos e Propostas dos Leads
+            {projectsData?.projects && (
+              <Badge variant="secondary" className="ml-2">
+                {projectsData.projects.length}
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!projectsData?.projects?.length ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Folder className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium mb-2">Nenhum projeto encontrado</p>
+              <p className="text-sm">Leads ainda não possuem projetos associados</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-600 rounded-lg">
+                      <Zap className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-blue-600 font-medium">Projetos Solares</p>
+                      <p className="text-xl font-bold text-blue-900">
+                        {projectsData.projects.filter(p => p.projectType === ProjectType.PV).length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-600 rounded-lg">
+                      <Activity className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-green-600 font-medium">Projetos BESS</p>
+                      <p className="text-xl font-bold text-green-900">
+                        {projectsData.projects.filter(p => p.projectType === ProjectType.BESS).length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-600 rounded-lg">
+                      <Settings className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-orange-600 font-medium">Projetos Híbridos</p>
+                      <p className="text-xl font-bold text-orange-900">
+                        {projectsData.projects.filter(p => p.projectType === ProjectType.HYBRID).length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-600 rounded-lg">
+                      <CheckCircle className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-purple-600 font-medium">Leads com Projetos</p>
+                      <p className="text-xl font-bold text-purple-900">
+                        {filteredLeads.filter(lead => lead.hasProject).length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Projects */}
+              <div className="mt-6">
+                <h4 className="text-lg font-semibold mb-4 flex items-center">
+                  <Clock className="h-5 w-5 mr-2" />
+                  Projetos Recentes
+                </h4>
+                
+                <div className="space-y-3">
+                  {projectsData.projects
+                    .sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime())
+                    .slice(0, 5)
+                    .map((project) => {
+                      const associatedLead = filteredLeads.find(lead => lead.id === project.leadId);
+                      const projectIcon = project.projectType === ProjectType.PV ? Zap : 
+                                        project.projectType === ProjectType.BESS ? Activity : Settings;
+                      const ProjectIcon = projectIcon;
+                      
+                      return (
+                        <div 
+                          key={project.id}
+                          className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${
+                              project.projectType === ProjectType.PV ? 'bg-blue-600' :
+                              project.projectType === ProjectType.BESS ? 'bg-green-600' : 'bg-orange-600'
+                            }`}>
+                              <ProjectIcon className="h-4 w-4 text-white" />
+                            </div>
+                            
+                            <div>
+                              <h5 className="font-medium text-gray-900">{project.projectName}</h5>
+                              <div className="flex items-center gap-4 text-sm text-gray-500">
+                                <span>📍 {project.address || 'Sem endereço'}</span>
+                                {associatedLead && (
+                                  <span className="flex items-center gap-1">
+                                    <UserCheck className="h-3 w-3" />
+                                    {associatedLead.name}
+                                  </span>
+                                )}
+                                <span>📅 {new Date(project.savedAt).toLocaleDateString('pt-BR')}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <Badge variant={project.projectType === ProjectType.PV ? 'default' : 'secondary'}>
+                              {project.projectType === ProjectType.PV ? 'Solar' : 
+                               project.projectType === ProjectType.BESS ? 'BESS' : 'Híbrido'}
+                            </Badge>
+                            <div className="text-right">
+                              <p className="text-sm text-gray-500">
+                                {project.totalPVDimensionings + project.totalBESSAnalyses} análise{project.totalPVDimensionings + project.totalBESSAnalyses !== 1 ? 's' : ''}
+                              </p>
+                              {project.hasLocation && (
+                                <p className="text-xs text-green-600 flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" />
+                                  Com localização
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+                
+                {projectsData.projects.length > 5 && (
+                  <div className="mt-4 text-center">
+                    <button className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1 mx-auto">
+                      <ExternalLink className="h-4 w-4" />
+                      Ver todos os {projectsData.projects.length} projetos
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   );
 };

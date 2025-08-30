@@ -10,6 +10,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { FrontendCalculationLogger } from '@/lib/calculationLogger';
+import { SystemCalculations } from '@/lib/systemCalculations';
 
 interface SystemSummaryProps {
   formData: any;
@@ -59,18 +60,31 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' 
     );
   }
 
-  // Cálculos do sistema
-  const potenciaModulo = formData.potenciaModulo || 550; // W
-  const somaIrradiacao = formData.irradiacaoMensal?.reduce((a: number, b: number) => a + b, 0) || 54;
-  const irradiacaoMediaAnual = somaIrradiacao / 12;
-  const eficienciaDecimal = (formData.eficienciaSistema || 85) / 100;
+  // Usar cálculos padronizados para consistência
+  const systemResults = SystemCalculations.calculate({
+    numeroModulos: formData.numeroModulos || 0,
+    potenciaModulo: formData.potenciaModulo || 550,
+    irradiacaoMensal: formData.irradiacaoMensal || Array(12).fill(4.5),
+    eficienciaSistema: formData.eficienciaSistema || 85,
+    dimensionamentoPercentual: formData.dimensionamentoPercentual || 100,
+    consumoAnual: consumoTotalAnual > 0 ? consumoTotalAnual : undefined
+  });
+
+  const { 
+    potenciaPico, 
+    numeroModulos, 
+    areaEstimada, 
+    geracaoEstimadaAnual, 
+    irradiacaoMediaAnual,
+    coberturaConsumo 
+  } = systemResults;
 
   if (consumoTotalAnual > 0) {
     logger.formula('Irradiação', 'Irradiação Solar Média Anual',
       'H_média = Σ(H_mensais) / 12',
       {
         valores_mensais: formData.irradiacaoMensal || Array(12).fill(4.5),
-        soma_total: somaIrradiacao,
+        soma_total: (formData.irradiacaoMensal || Array(12).fill(4.5)).reduce((a: number, b: number) => a + b, 0),
         divisor: 12
       },
       irradiacaoMediaAnual,
@@ -80,165 +94,45 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' 
         references: ['PVGIS', 'Dados do usuário']
       }
     );
-  }
-  
-  // Se não há número de módulos definido, calcular baseado no consumo
-  let numeroModulos = formData.numeroModulos || 0;
-  let potenciaPico = formData.potenciaPico || 0;
-  
-  if (numeroModulos === 0 && consumoTotalAnual > 0) {
-    // Cálculo automático baseado no consumo com logging detalhado
-    const consumoMedioDiario = consumoTotalAnual / 365;
-    
-    logger.formula('Consumo', 'Consumo Médio Diário',
-      'C_diário = C_anual / 365',
-      {
-        C_anual: consumoTotalAnual,
-        divisor: 365
-      },
-      consumoMedioDiario,
-      {
-        description: 'Consumo médio diário calculado para dimensionamento automático do sistema',
-        units: 'kWh/dia'
-      }
-    );
 
-    const irradiacaoEfetiva = irradiacaoMediaAnual * eficienciaDecimal;
-    
-    logger.formula('Sistema', 'Irradiação Solar Efetiva',
-      'H_efetiva = H_média × η_sistema',
+    logger.formula('Sistema', 'Cálculo Padronizado do Sistema',
+      'Usando SystemCalculations.calculate() para consistência',
       {
-        H_media: irradiacaoMediaAnual,
-        η_sistema_decimal: eficienciaDecimal,
-        η_sistema_percent: formData.eficienciaSistema || 85
-      },
-      irradiacaoEfetiva,
-      {
-        description: 'Irradiação solar efetiva considerando perdas do sistema',
-        units: 'kWh/m²/dia'
-      }
-    );
-
-    potenciaPico = consumoMedioDiario / irradiacaoEfetiva;
-    
-    logger.formula('Sistema', 'Potência Pico Necessária',
-      'P_pico = C_diário / H_efetiva',
-      {
-        C_diario: consumoMedioDiario,
-        H_efetiva: irradiacaoEfetiva
-      },
-      potenciaPico,
-      {
-        description: 'Potência pico necessária para atender o consumo médio diário',
-        units: 'kWp'
-      }
-    );
-
-    numeroModulos = Math.ceil((potenciaPico * 1000) / potenciaModulo);
-    
-    logger.formula('Sistema', 'Número de Módulos Necessários',
-      'N_módulos = TETO(P_pico_W / P_módulo_W)',
-      {
-        P_pico_kWp: potenciaPico,
-        P_pico_W: potenciaPico * 1000,
-        P_modulo_W: potenciaModulo,
-        divisao: (potenciaPico * 1000) / potenciaModulo
-      },
-      numeroModulos,
-      {
-        description: 'Número inteiro de módulos necessários (arredondado para cima)',
-        units: 'unidades'
-      }
-    );
-
-    potenciaPico = (numeroModulos * potenciaModulo) / 1000; // Ajustar com número real de módulos
-    
-    logger.formula('Sistema', 'Potência Pico Real',
-      'P_pico_real = (N_módulos × P_módulo_W) / 1000',
-      {
-        N_modulos: numeroModulos,
-        P_modulo_W: potenciaModulo
-      },
-      potenciaPico,
-      {
-        description: 'Potência pico real considerando número inteiro de módulos',
-        units: 'kWp'
-      }
-    );
-  } else if (numeroModulos > 0) {
-    potenciaPico = (numeroModulos * potenciaModulo) / 1000;
-    
-    if (consumoTotalAnual > 0) {
-      logger.info('Sistema', 'Usando número de módulos pré-definido', {
         numeroModulos,
-        potenciaModulo,
-        potenciaPico
-      });
-    }
-  }
-  
-  // Cálculo estimado de área
-  const areaModulo = 2.5; // m² por módulo (valor padrão usado no sistema)
-  const areaEstimada = numeroModulos * areaModulo;
-  
-  if (consumoTotalAnual > 0 && numeroModulos > 0) {
-    logger.formula('Area', 'Área Total Necessária',
-      'A_total = N_módulos × A_módulo',
-      {
-        N_modulos: numeroModulos,
-        A_modulo_m2: areaModulo
+        potenciaModulo: formData.potenciaModulo || 550,
+        potenciaPico,
+        areaEstimada,
+        geracaoAnual: geracaoEstimadaAnual,
+        consumoAnual: consumoTotalAnual
       },
-      areaEstimada,
+      systemResults,
       {
-        description: 'Área total necessária para instalação dos módulos (valor padrão de 2.5m² por módulo)',
-        units: 'm²'
-      }
-    );
-  }
-  
-  // Geração estimada anual
-  const diasAno = 365;
-  const geracaoEstimadaAnual = potenciaPico * irradiacaoMediaAnual * diasAno * eficienciaDecimal;
-  
-  if (consumoTotalAnual > 0 && potenciaPico > 0) {
-    logger.formula('Geração', 'Geração Anual Estimada',
-      'E_anual = P_pico × H_média × dias_ano × η_sistema',
-      {
-        P_pico_kWp: potenciaPico,
-        H_media: irradiacaoMediaAnual,
-        dias_ano: diasAno,
-        η_sistema_decimal: eficienciaDecimal,
-        η_sistema_percent: formData.eficienciaSistema || 85
-      },
-      geracaoEstimadaAnual,
-      {
-        description: 'Estimativa da energia total gerada pelo sistema durante um ano',
-        units: 'kWh/ano'
+        description: 'Cálculos padronizados para evitar inconsistências entre resumo e resultado',
+        units: 'diversos'
       }
     );
 
-    // Cobertura do consumo
-    const coberturaConsumo = (geracaoEstimadaAnual / consumoTotalAnual) * 100;
-    
-    logger.formula('Análise', 'Cobertura do Consumo',
-      'Cobertura_% = (E_gerada / E_consumida) × 100',
-      {
-        E_gerada: geracaoEstimadaAnual,
-        E_consumida: consumoTotalAnual
-      },
-      coberturaConsumo,
-      {
-        description: 'Percentual do consumo anual coberto pela geração estimada do sistema',
-        units: '%'
-      }
-    );
+    if (coberturaConsumo !== undefined) {
+      logger.formula('Análise', 'Cobertura do Consumo',
+        'Cobertura_% = (E_gerada / E_consumida) × 100',
+        {
+          E_gerada: geracaoEstimadaAnual,
+          E_consumida: consumoTotalAnual
+        },
+        coberturaConsumo,
+        {
+          description: 'Percentual do consumo anual coberto pela geração estimada do sistema',
+          units: '%'
+        }
+      );
+    }
 
     logger.endCalculationSection('RESUMO AUTOMÁTICO DO SISTEMA - EXIBIÇÃO PASSO 5', {
       potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
-      numeroModulos: `${numeroModulos} × ${potenciaModulo}W`,
+      numeroModulos: `${numeroModulos} × ${formData.potenciaModulo || 550}W`,
       areaEstimada: `${areaEstimada.toFixed(1)} m²`,
       geracaoAnual: `${Math.round(geracaoEstimadaAnual)} kWh/ano`,
-      coberturaConsumo: `${Math.round(coberturaConsumo)}%`
+      coberturaConsumo: coberturaConsumo ? `${Math.round(coberturaConsumo)}%` : 'N/A'
     });
   }
   
@@ -265,7 +159,7 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' 
               <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Potência Pico</span>
             </div>
             <p className="text-2xl font-bold text-blue-800 dark:text-blue-100">{potenciaPico.toFixed(2)} kWp</p>
-            <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">{numeroModulos} módulos de {potenciaModulo}W</p>
+            <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">{numeroModulos} módulos de {formData.potenciaModulo || 550}W</p>
           </div>
 
           <div className="bg-gradient-to-br from-green-100/80 to-green-200/80 dark:from-green-500/20 dark:to-green-600/20 p-4 rounded-lg border border-green-300/50 dark:border-green-400/30">
@@ -307,7 +201,7 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' 
 
 
         {/* Cobertura do Consumo */}
-        {consumoTotalAnual > 0 && (
+        {consumoTotalAnual > 0 && coberturaConsumo !== undefined && (
           <>
             <Separator className="bg-border/50" />
             <div className="bg-green-100/60 dark:bg-green-900/20 border border-green-300/60 dark:border-green-700/50 rounded-lg p-4">
@@ -317,7 +211,7 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' 
                   variant="secondary" 
                   className="bg-green-200/80 dark:bg-green-500/20 text-green-800 dark:text-green-300 border-green-400/60 dark:border-green-500/30"
                 >
-                  {Math.round((geracaoEstimadaAnual / consumoTotalAnual) * 100)}%
+                  {Math.round(coberturaConsumo)}%
                 </Badge>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">

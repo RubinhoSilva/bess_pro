@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { FileText, ArrowRight, ArrowLeft } from 'lucide-react';
 import SystemSummary from './SystemSummary';
-import { FinancialSummary } from './FinancialSummary';
 import { GenerationChart } from './GenerationChart';
 import { PaybackChart } from './PaybackChart';
 import { EconomyProjectionChart } from './EconomyProjectionChart';
@@ -143,7 +142,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             <SystemSummary results={{
               potenciaPico: results.potenciaPico,
               numeroModulos: results.numeroModulos,
-              areaEstimada: results.numeroModulos * 2.7, // Estimativa padrão de 2.7m² por módulo
+              areaEstimada: results.numeroModulos * 2.5, // Estimativa padrão de 2.5m² por módulo (consistente com resumo)
               geracaoEstimadaAnual: results.geracaoEstimadaMensal.reduce((acc, val) => acc + val, 0)
             }} />
           </Section>
@@ -155,29 +154,25 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             </Section>
           )}
 
-          {/* Advanced Financial Analysis */}
+          {/* Financial Analysis */}
           {results.advancedFinancial && (
-            <Section title="Análise Financeira Avançada" delay={3}>
+            <Section title="Análise Financeira" delay={3}>
               <AdvancedFinancialAnalysis results={results} />
             </Section>
           )}
 
-          <Section title="Análise Financeira Resumida" delay={4}>
-            <FinancialSummary results={results} />
-          </Section>
-
-          <Section title="Gráficos de Desempenho" delay={5}>
+          <Section title="Gráficos de Desempenho" delay={4}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <PaybackChart results={results} />
               <EconomyProjectionChart results={results} />
             </div>
           </Section>
 
-          <Section title="Projeção de Economia" delay={6}>
+          <Section title="Projeção de Economia" delay={5}>
             <AnnualSavingsChart results={results} />
           </Section>
           
-          <Section title="Análise Técnica Detalhada" delay={7}>
+          <Section title="Análise Técnica Detalhada" delay={6}>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
               <div className="lg:col-span-3">
                 <GenerationChart results={results} />
@@ -185,11 +180,11 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             </div>
           </Section>
           
-          <Section title="Composição do Investimento" delay={8}>
+          <Section title="Composição do Investimento" delay={7}>
             <InvestmentChart results={results} />
           </Section>
 
-          <Section title="Geração de Relatórios" delay={9}>
+          <Section title="Geração de Relatórios" delay={8}>
             <AdvancedPDFGenerator results={results} onGenerate={onGenerateProposal} />
           </Section>
         </div>

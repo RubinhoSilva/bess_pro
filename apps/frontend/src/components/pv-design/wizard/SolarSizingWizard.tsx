@@ -11,6 +11,7 @@ import { useCalculationLogger } from '@/hooks/useCalculationLogger';
 import { BackendCalculationService, shouldUseBackendCalculations } from '@/lib/backendCalculations';
 import { FrontendCalculationLogger } from '@/lib/calculationLogger';
 import { PVDimensioningService } from '@/lib/pvDimensioning';
+import { SystemCalculations } from '@/lib/systemCalculations';
 
 // Import existing form components
 import CustomerDataForm from '../form-sections/CustomerDataForm';
@@ -345,20 +346,29 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         );
       }
 
-      // Usar o novo método detalhado para calcular o resumo do sistema
-      const resumoSistema = PVDimensioningService.calculateSystemSummary(
-        potenciaDesejadaKwp,
-        consumoTotalAnual,
-        irradiacaoMediaAnual,
-        currentDimensioning.eficienciaSistema || 85,
-        logger
-      );
+      // Usar cálculos padronizados para consistência com resumo
+      console.log('🔄 === USANDO CÁLCULOS PADRONIZADOS ===');
+      const systemResults = SystemCalculations.calculate({
+        numeroModulos: currentDimensioning.numeroModulos || 0,
+        potenciaModulo: currentDimensioning.potenciaModulo || 550,
+        irradiacaoMensal: currentDimensioning.irradiacaoMensal || Array(12).fill(4.5),
+        eficienciaSistema: currentDimensioning.eficienciaSistema || 85,
+        dimensionamentoPercentual: currentDimensioning.dimensionamentoPercentual || 100,
+        consumoAnual: consumoTotalAnual > 0 ? consumoTotalAnual : undefined
+      });
 
-      // Extrair valores para compatibilidade com o código existente
-      const potenciaPico = resumoSistema.potenciaPico.valor;
-      const numeroModulos = resumoSistema.numeroModulos.valor;
-      const areaEstimada = resumoSistema.areaNecessaria.valor;
-      const geracaoEstimadaAnual = resumoSistema.geracaoAnual.valor;
+      // Extrair valores padronizados
+      const potenciaPico = systemResults.potenciaPico;
+      const numeroModulos = systemResults.numeroModulos;
+      const areaEstimada = systemResults.areaEstimada;
+      const geracaoEstimadaAnual = systemResults.geracaoEstimadaAnual;
+      
+      console.log('✅ Cálculos padronizados:', {
+        potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
+        numeroModulos: `${numeroModulos} unidades`,
+        areaEstimada: `${areaEstimada.toFixed(2)} m²`,
+        geracaoAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`
+      });
       
       const solarOptions: SolarCalculationOptions = {
         location: {
@@ -388,18 +398,19 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         solarOptions
       );
 
-      const geracaoEstimadaMensal = advancedResults.geracaoEstimada.mensal;
-      const geracaoAnualAdvanced = advancedResults.geracaoEstimada.anual;
-
-      console.log('☀️ === RESULTADOS DE GERAÇÃO ===');
-      console.log('📊 Geração mensal calculada:');
+      // Usar geração mensal dos cálculos padronizados para consistência
+      const geracaoEstimadaMensal = systemResults.geracaoEstimadaMensal;
+      const geracaoAnualAdvanced = geracaoEstimadaAnual;
+      
+      console.log('☀️ === RESULTADOS DE GERAÇÃO PADRONIZADOS ===');
+      console.log('📊 Geração mensal calculada (padronizada):');
       geracaoEstimadaMensal.forEach((geracao, index) => {
-        const irradiacao = currentDimensioning.irradiacaoMensal[index];
-        const eficiencia = (currentDimensioning.eficienciaSistema || 85) / 100;
+        const irradiacao = (currentDimensioning.irradiacaoMensal || Array(12).fill(4.5))[index];
         const diasMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][index];
+        const eficiencia = (currentDimensioning.eficienciaSistema || 85) / 100;
         console.log(`   Mês ${index + 1}: ${potenciaPico.toFixed(2)} kWp × ${irradiacao} kWh/m²/dia × ${diasMes} dias × ${eficiencia} = ${geracao.toFixed(0)} kWh`);
       });
-      console.log(`📈 Geração anual total: ${geracaoEstimadaMensal.map(g => g.toFixed(0)).join(' + ')} = ${geracaoAnualAdvanced.toFixed(0)} kWh/ano`);
+      console.log(`📈 Geração anual total (padronizada): ${geracaoEstimadaMensal.map(g => g.toFixed(0)).join(' + ')} = ${geracaoEstimadaAnual.toFixed(0)} kWh/ano`);
 
       // Financial calculations
       console.log('🔢 === CÁLCULOS FINANCEIROS ===');

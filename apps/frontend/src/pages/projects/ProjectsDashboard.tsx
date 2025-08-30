@@ -33,7 +33,12 @@ import {
   Edit,
   Copy,
   Trash2,
-  MoreVertical
+  MoreVertical,
+  Folder,
+  FolderOpen,
+  FolderX,
+  UserCheck,
+  Clock
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -50,6 +55,7 @@ import ProjectDetailView from '@/components/projects/ProjectDetailView';
 import ProjectForm from '@/components/projects/ProjectForm';
 import { ProposalGenerator } from '@/components/proposal/ProposalGenerator';
 import { useClients } from '@/hooks/client-hooks';
+import { useLeads } from '@/hooks/lead-hooks';
 import { apiClient } from '@/lib/api';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 
@@ -62,6 +68,7 @@ const ProjectsDashboard: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [organizationMode, setOrganizationMode] = useState<'date' | 'lead'>('date');
   const [proposalProject, setProposalProject] = useState<Project | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<ProjectSummary | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -72,11 +79,13 @@ const ProjectsDashboard: React.FC = () => {
   const { data: projectsData, isLoading, error } = useProjects({
     searchTerm: debouncedSearchTerm,
   });
+  const { data: leadsData } = useLeads({ pageSize: 100 }); // Maximum allowed by backend validation
   const deleteProjectMutation = useDeleteProject();
   const cloneProjectMutation = useCloneProject();
   const createProjectMutation = useCreateProject();
   
   const projects = projectsData?.projects || [];
+  const leads = leadsData?.leads || [];
 
   // Estatísticas dos dimensionamentos e análises
   const getProjectStats = () => {

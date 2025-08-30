@@ -19,11 +19,48 @@ L.Icon.Default.mergeOptions({
   shadowUrl,
 });
 
+// Custom icons for different project types
+const createProjectIcon = (type: 'pv' | 'bess' | 'hybrid') => {
+  const colors = {
+    pv: '#3b82f6', // blue
+    bess: '#10b981', // green  
+    hybrid: '#f59e0b' // orange
+  };
+  
+  const svgIcon = `
+    <svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="${colors[type]}"/>
+      <circle cx="12.5" cy="12.5" r="8" fill="white"/>
+      <text x="12.5" y="17" text-anchor="middle" font-size="10" font-weight="bold" fill="${colors[type]}">
+        ${type === 'pv' ? '⚡' : type === 'bess' ? '🔋' : '💡'}
+      </text>
+    </svg>
+  `;
+  
+  return new L.DivIcon({
+    html: svgIcon,
+    className: 'custom-project-marker',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+  });
+};
+
+interface ProjectPin {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  type: 'pv' | 'bess' | 'hybrid';
+  onClick?: (project: ProjectPin) => void;
+}
+
 interface MapSelectorProps {
   onSelect: (location: { lat: number; lng: number; address?: string }) => void;
   initialPosition?: { lat: number; lng: number };
   className?: string;
   height?: string;
+  projectPins?: ProjectPin[]; // Add support for project pins
 }
 
 interface Position {
@@ -53,6 +90,7 @@ const MapSelector: React.FC<MapSelectorProps> = ({
   initialPosition = { lat: -14.235004, lng: -51.92528 }, // Centro do Brasil
   className = '',
   height = '400px',
+  projectPins = [],
 }) => {
   const [markerPosition, setMarkerPosition] = useState<LatLng | null>(
     initialPosition ? new LatLng(initialPosition.lat, initialPosition.lng) : null
@@ -280,6 +318,26 @@ const MapSelector: React.FC<MapSelectorProps> = ({
           {markerPosition && (
             <Marker position={markerPosition} />
           )}
+          
+          {/* Project pins */}
+          {projectPins.map((pin) => (
+            <Marker
+              key={pin.id}
+              position={[pin.lat, pin.lng]}
+              icon={createProjectIcon(pin.type)}
+              eventHandlers={{
+                click: () => pin.onClick?.(pin),
+              }}
+            >
+              {/* Optional: Add popup with project info */}
+              {/* <Popup>
+                <div>
+                  <h4 className="font-medium">{pin.name}</h4>
+                  <p className="text-sm text-gray-500">Tipo: {pin.type}</p>
+                </div>
+              </Popup> */}
+            </Marker>
+          ))}
           
           <MapClickHandler 
             onLocationSelect={handleLocationSelect}

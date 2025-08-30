@@ -9,7 +9,8 @@ import {
   Users,
   Building,
   Search,
-  RotateCcw
+  RotateCcw,
+  Hash
 } from 'lucide-react';
 
 import { Button } from '../ui/button';
@@ -435,7 +436,15 @@ export const CRMAdvancedFilters: React.FC<CRMAdvancedFiltersProps> = ({
 
                 {/* Client Types */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Tipo de Cliente</label>
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Building className="h-4 w-4" />
+                    🏢 Tipo de Cliente
+                  </label>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
+                    <p className="text-sm text-green-800">
+                      💡 Segmente leads por tipo de cliente: empresas (B2B) ou pessoas físicas (B2C)
+                    </p>
+                  </div>
                   <div className="flex gap-2">
                     <Button
                       variant={localFilters.clientTypes.includes('B2B') ? "default" : "outline"}
@@ -460,7 +469,15 @@ export const CRMAdvancedFilters: React.FC<CRMAdvancedFiltersProps> = ({
 
                 {/* Tags */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Tags</label>
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Hash className="h-4 w-4" />
+                    🏷️ Tags Personalizadas
+                  </label>
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-2">
+                    <p className="text-sm text-purple-800">
+                      💡 Use tags para classificar leads com critérios personalizados
+                    </p>
+                  </div>
                   <TagInput
                     value={localFilters.tags || []}
                     onChange={(tags) => updateLocalFilters({ tags })}
@@ -473,8 +490,13 @@ export const CRMAdvancedFilters: React.FC<CRMAdvancedFiltersProps> = ({
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    Período de Criação
+                    📅 Período de Criação dos Leads
                   </label>
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-2">
+                    <p className="text-sm text-indigo-800">
+                      💡 Filtre leads por quando foram criados no sistema
+                    </p>
+                  </div>
                   <div className="flex gap-2">
                     <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                       <PopoverTrigger asChild>
@@ -532,9 +554,14 @@ export const CRMAdvancedFilters: React.FC<CRMAdvancedFiltersProps> = ({
                     <DollarSign className="h-4 w-4" />
                     💰 Faixa de Valor do Negócio
                   </label>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+                    <p className="text-sm text-blue-800">
+                      💡 Filtre leads pelo valor estimado do negócio (R$ 0 a R$ 1.000.000)
+                    </p>
+                  </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-4">
-                      <span className="text-sm text-gray-500 w-24 text-center">
+                      <span className="text-sm font-semibold text-green-700 w-24 text-center">
                         R$ {localFilters.valueRange.min.toLocaleString('pt-BR')}
                       </span>
                       <Slider
@@ -546,7 +573,7 @@ export const CRMAdvancedFilters: React.FC<CRMAdvancedFiltersProps> = ({
                         step={5000}
                         className="flex-1"
                       />
-                      <span className="text-sm text-gray-500 w-24 text-center">
+                      <span className="text-sm font-semibold text-green-700 w-24 text-center">
                         R$ {localFilters.valueRange.max.toLocaleString('pt-BR')}
                       </span>
                     </div>
@@ -564,11 +591,16 @@ export const CRMAdvancedFilters: React.FC<CRMAdvancedFiltersProps> = ({
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
                     <Zap className="h-4 w-4" />
-                    Faixa de Potência (kWp)
+                    ⚡ Faixa de Potência do Sistema
                   </label>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-2">
+                    <p className="text-sm text-yellow-800">
+                      💡 Filtre leads pela potência do sistema solar (0 a 100 kWp)
+                    </p>
+                  </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-4">
-                      <span className="text-sm text-gray-500 w-16">
+                      <span className="text-sm font-semibold text-blue-700 w-16">
                         {localFilters.powerRange.min} kWp
                       </span>
                       <Slider
@@ -580,16 +612,20 @@ export const CRMAdvancedFilters: React.FC<CRMAdvancedFiltersProps> = ({
                         step={1}
                         className="flex-1"
                       />
-                      <span className="text-sm text-gray-500 w-16">
+                      <span className="text-sm font-semibold text-blue-700 w-16">
                         {localFilters.powerRange.max} kWp
                       </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-400">
+                      <span>Sistemas pequenos</span>
+                      <span>Sistemas grandes</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Additional Filters */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Filtros Adicionais</label>
+                  <label className="text-sm font-medium">📋 Filtros de Conteúdo</label>
                   <div className="flex gap-2">
                     <Select 
                       value={localFilters.hasNotes === null ? 'any' : localFilters.hasNotes.toString()}

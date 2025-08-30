@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
@@ -73,10 +73,23 @@ interface DimensioningData {
   numeroModulos: number;
   eficienciaSistema: number;
   selectedModuleId?: string;
+  moduloSelecionado?: string;
+  eficienciaModulo?: number;
+  tensaoModulo?: number;
+  correnteModulo?: number;
+  dimensionamentoPercentual?: number;
+  vidaUtil?: number;
+  degradacaoAnual?: number;
+  orientacao?: number;
+  inclinacao?: number;
   
   // Inversores
   inverters: Inverter[];
   totalInverterPower: number;
+  inversorSelecionado?: string;
+  potenciaInversor?: number;
+  eficienciaInversor?: number;
+  canaisMppt?: number;
   
   // Consumo energético
   energyBills: EnergyBill[];
@@ -97,7 +110,6 @@ interface DimensioningData {
   bdi: number;
   taxaDesconto: number;
   inflacaoEnergia: number;
-  vidaUtil: number;
   
   // Condições de pagamento
   paymentMethod: 'vista' | 'cartao' | 'financiamento';
@@ -145,6 +157,23 @@ const getInitialDimensioningData = (): DimensioningData => ({
   numeroModulos: 0,
   eficienciaSistema: 85,
   
+  // Dados adicionais do módulo
+  moduloSelecionado: '',
+  eficienciaModulo: 0,
+  tensaoModulo: 0,
+  correnteModulo: 0,
+  dimensionamentoPercentual: 100,
+  vidaUtil: 25,
+  degradacaoAnual: 0.5,
+  orientacao: 180,
+  inclinacao: 23,
+  
+  // Dados do inversor
+  inversorSelecionado: '',
+  potenciaInversor: 0,
+  eficienciaInversor: 0,
+  canaisMppt: 2,
+  
   inverters: [{
     id: crypto.randomUUID(),
     selectedInverterId: '',
@@ -168,8 +197,6 @@ const getInitialDimensioningData = (): DimensioningData => ({
   bdi: 25,
   taxaDesconto: 8,
   inflacaoEnergia: 4.5,
-  vidaUtil: 25,
-  
   paymentMethod: 'vista',
   cardInstallments: 12,
   cardInterest: 1.99,
@@ -180,13 +207,67 @@ const getInitialDimensioningData = (): DimensioningData => ({
 });
 
 export function DimensioningProvider({ children }: { children: React.ReactNode }) {
-  const [currentDimensioning, setCurrentDimensioning] = useState<DimensioningData>(getInitialDimensioningData());
-  const [isDimensioningLoaded, setIsDimensioningLoaded] = useState(false);
-  const [dimensioningId, setDimensioningId] = useState<string | null>(null);
+  // Load data from localStorage on initialization
+  const [currentDimensioning, setCurrentDimensioning] = useState<DimensioningData>(() => {
+    const saved = localStorage.getItem('currentDimensioning');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return { ...getInitialDimensioningData(), ...parsed };
+      } catch (e) {
+        console.warn('Error parsing saved dimensioning data:', e);
+      }
+    }
+    return getInitialDimensioningData();
+  });
+  
+  const [isDimensioningLoaded, setIsDimensioningLoaded] = useState(() => {
+    const saved = localStorage.getItem('isDimensioningLoaded');
+    return saved ? JSON.parse(saved) : false;
+  });
+  
+  const [dimensioningId, setDimensioningId] = useState<string | null>(() => {
+    const saved = localStorage.getItem('dimensioningId');
+    return saved ? JSON.parse(saved) : null;
+  });
+  
   const [isSaving, setIsSaving] = useState(false);
 
+  // Auto-save to localStorage whenever currentDimensioning changes
+  useEffect(() => {
+    localStorage.setItem('currentDimensioning', JSON.stringify(currentDimensioning));
+  }, [currentDimensioning]);
+
+  // Save loading state to localStorage
+  useEffect(() => {
+    localStorage.setItem('isDimensioningLoaded', JSON.stringify(isDimensioningLoaded));
+  }, [isDimensioningLoaded]);
+
+  // Save dimensioning ID to localStorage
+  useEffect(() => {
+    localStorage.setItem('dimensioningId', JSON.stringify(dimensioningId));
+  }, [dimensioningId]);
+
   const loadDimensioning = useCallback((data: DimensioningData) => {
-    setCurrentDimensioning(data);
+    // Ensure all fields are properly loaded, including equipment data
+    const loadedData = {
+      ...getInitialDimensioningData(), // Start with defaults
+      ...data, // Override with loaded data
+      // Ensure arrays are properly initialized
+      irradiacaoMensal: data.irradiacaoMensal || Array(12).fill(4.5),
+      inverters: data.inverters || [{
+        id: crypto.randomUUID(),
+        selectedInverterId: '',
+        quantity: 1
+      }],
+      energyBills: data.energyBills || [{
+        id: crypto.randomUUID(),
+        name: 'Conta Principal',
+        consumoMensal: Array(12).fill(500)
+      }]
+    };
+    
+    setCurrentDimensioning(loadedData);
     setDimensioningId(data.id || null);
     setIsDimensioningLoaded(true);
     
@@ -201,6 +282,11 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     setCurrentDimensioning(getInitialDimensioningData());
     setDimensioningId(null);
     setIsDimensioningLoaded(false);
+    
+    // Clear localStorage as well
+    localStorage.removeItem('currentDimensioning');
+    localStorage.removeItem('isDimensioningLoaded');
+    localStorage.removeItem('dimensioningId');
   }, []);
 
   const createNewDimensioning = useCallback((customerId: string, customerData: Customer) => {

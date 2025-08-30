@@ -1,6 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Navigation, Satellite, Layers, Search, Download, Share2, Settings } from 'lucide-react';
+import { MapPin, Navigation, Satellite, Layers, Search, Download, Share2, Settings, ExternalLink, Zap, Battery, Lightbulb } from 'lucide-react';
 import MapSelector from '../../components/pv-design/form-sections/MapSelector';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -9,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Badge } from '../../components/ui/badge';
 import toast from 'react-hot-toast';
+import { useProjects } from '../../hooks/project-hooks';
+import type { Project } from '../../types/project';
 
 interface LocationData {
   lat: number;
@@ -18,22 +21,33 @@ interface LocationData {
   notes?: string;
 }
 
-interface Project {
-  id: string;
-  name: string;
-  location: LocationData;
-  type: 'solar' | 'bess' | 'hybrid';
-  status: 'active' | 'completed' | 'planned';
-}
+// Mapeamento de tipos para apresentação
+const projectTypeLabels: Record<string, string> = {
+  'pv': 'Solar',
+  'bess': 'BESS',
+  'hybrid': 'Híbrido'
+};
+
+const projectTypeIcons: Record<string, React.ComponentType<any>> = {
+  'pv': Zap,
+  'bess': Battery,
+  'hybrid': Lightbulb
+};
 
 const GeoMapPage: React.FC = () => {
+  const navigate = useNavigate();
   const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null);
   const [savedLocations, setSavedLocations] = useState<LocationData[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
   const [mapType, setMapType] = useState<'street' | 'satellite' | 'hybrid'>('street');
   const [activeTab, setActiveTab] = useState('map');
   const [searchQuery, setSearchQuery] = useState('');
-  const [projectFilter, setProjectFilter] = useState<'all' | 'solar' | 'bess' | 'hybrid'>('all');
+  const [projectFilter, setProjectFilter] = useState<string>('all');
+  
+  // Load projects from API with location data
+  const { data: projectsData, isLoading: loadingProjects } = useProjects({
+    hasLocation: true, // Only projects with location data
+    pageSize: 100, // Maximum allowed by backend validation
+  });
 
   // Handle location selection from map
   const handleLocationSelect = useCallback((location: { lat: number; lng: number; address?: string }) => {
@@ -56,22 +70,24 @@ const GeoMapPage: React.FC = () => {
     toast.success('Localização salva!');
   }, [selectedLocation]);
 
-  // Create project from location
+  // Navigate to project details
+  const handleNavigateToProject = useCallback((project: any) => {
+    navigate(`/projects/${project.id}`);
+  }, [navigate]);
+
+  // Create new project at location (navigate to create page with location data)
   const handleCreateProject = useCallback((location: LocationData) => {
-    const projectName = prompt('Nome do projeto:');
-    if (!projectName) return;
-
-    const newProject: Project = {
-      id: Date.now().toString(),
-      name: projectName,
-      location,
-      type: 'solar',
-      status: 'planned',
-    };
-
-    setProjects(prev => [...prev, newProject]);
-    toast.success(`Projeto "${projectName}" criado!`);
-  }, []);
+    // Navigate to create project page with location data in state
+    navigate('/projects/new', {
+      state: {
+        location: {
+          latitude: location.lat,
+          longitude: location.lng,
+          address: location.address
+        }
+      }
+    });
+  }, [navigate]);
 
   // Export location data
   const handleExportLocation = useCallback(() => {
@@ -103,13 +119,60 @@ const GeoMapPage: React.FC = () => {
     toast.success('Link copiado para área de transferência!');
   }, [selectedLocation]);
 
+  // Extract projects with location from API data
+  const projectsWithLocation = useMemo(() => {
+    if (!projectsData?.projects) return [];
+    
+    return projectsData.projects.filter(project => {
+      // Check if project has location in either root or projectData
+      const hasRootLocation = (project as any).location?.latitude && (project as any).location?.longitude;
+      const hasProjectDataLocation = (project as any).projectData?.location?.latitude && (project as any).projectData?.location?.longitude;
+      return hasRootLocation || hasProjectDataLocation;
+    });
+  }, [projectsData]);
+
   // Filter projects
-  const filteredProjects = projects.filter(project => {
-    const matchesFilter = projectFilter === 'all' || project.type === projectFilter;
-    const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         project.location.address?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  const filteredProjects = useMemo(() => {
+    return projectsWithLocation.filter(project => {
+      const matchesFilter = projectFilter === 'all' || project.projectType === projectFilter;
+      const matchesSearch = project.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           project.address?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesFilter && matchesSearch;
+    });
+  }, [projectsWithLocation, projectFilter, searchQuery]);
+
+  // Convert projects to map pins
+  const projectPins = useMemo(() => {
+    return projectsWithLocation.map(project => {
+      const location = (project as any).location || (project as any).projectData?.location;
+      if (!location?.latitude || !location?.longitude) return null;
+      
+      return {
+        id: project.id,
+        name: project.projectName,
+        lat: location.latitude,
+        lng: location.longitude,
+        type: project.projectType as 'pv' | 'bess' | 'hybrid',
+        onClick: (pin: any) => {
+          // When clicking a pin, select it on the map and navigate to project
+          setSelectedLocation({
+            lat: pin.lat,
+            lng: pin.lng,
+            address: project.address || location.address,
+            timestamp: new Date()
+          });
+          handleNavigateToProject(project);
+        }
+      };
+    }).filter(Boolean) as Array<{
+      id: string;
+      name: string;
+      lat: number;
+      lng: number;
+      type: 'pv' | 'bess' | 'hybrid';
+      onClick: (pin: any) => void;
+    }>;
+  }, [projectsWithLocation, handleNavigateToProject]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -148,9 +211,19 @@ const GeoMapPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
               <MapPin className="w-8 h-8 text-blue-600" />
               Geolocalização e Mapas
+              {projectsWithLocation.length > 0 && (
+                <Badge variant="secondary" className="text-sm">
+                  {projectsWithLocation.length} projeto{projectsWithLocation.length !== 1 ? 's' : ''}
+                </Badge>
+              )}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
               Visualize, selecione e gerencie localizações geográficas para seus projetos
+              {projectsWithLocation.length > 0 && (
+                <span className="block mt-1 text-sm text-blue-600">
+                  🎯 Clique nos pins do mapa para navegar diretamente aos projetos
+                </span>
+              )}
             </p>
           </div>
           
@@ -231,6 +304,7 @@ const GeoMapPage: React.FC = () => {
                 <MapSelector
                   onSelect={handleLocationSelect}
                   height="calc(100vh - 320px)"
+                  projectPins={projectPins}
                 />
               </div>
             </CardContent>
@@ -344,7 +418,7 @@ const GeoMapPage: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">Todos</SelectItem>
-                            <SelectItem value="solar">Solar</SelectItem>
+                            <SelectItem value="pv">Solar</SelectItem>
                             <SelectItem value="bess">BESS</SelectItem>
                             <SelectItem value="hybrid">Híbrido</SelectItem>
                           </SelectContent>
@@ -353,40 +427,83 @@ const GeoMapPage: React.FC = () => {
 
                       {/* Projects list */}
                       <div className="space-y-2 h-full overflow-y-auto">
-                        {filteredProjects.length === 0 ? (
+                        {loadingProjects ? (
                           <p className="text-center text-gray-500 dark:text-gray-400 mt-8">
-                            {projects.length === 0 ? 'Nenhum projeto criado ainda' : 'Nenhum projeto encontrado'}
+                            Carregando projetos...
+                          </p>
+                        ) : filteredProjects.length === 0 ? (
+                          <p className="text-center text-gray-500 dark:text-gray-400 mt-8">
+                            {projectsWithLocation.length === 0 ? 'Nenhum projeto com localização encontrado' : 'Nenhum projeto encontrado'}
                           </p>
                         ) : (
-                          filteredProjects.map((project) => (
-                            <div 
-                              key={project.id} 
-                              className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                              onClick={() => setSelectedLocation(project.location)}
-                            >
-                              <div className="flex items-start justify-between mb-2">
-                                <h4 className="font-medium text-sm">{project.name}</h4>
-                                <div className="flex gap-1">
-                                  <Badge variant="secondary" className="text-xs">
-                                    {project.type}
-                                  </Badge>
-                                  <Badge 
-                                    variant={project.status === 'active' ? 'default' : 'outline'}
-                                    className="text-xs"
+                          filteredProjects.map((project) => {
+                            // Get location data (prioritize root location over projectData location)
+                            const location = (project as any).location || (project as any).projectData?.location;
+                            const ProjectIcon = projectTypeIcons[project.projectType];
+                            
+                            return (
+                              <div 
+                                key={project.id} 
+                                className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer group"
+                              >
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <ProjectIcon className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                    <h4 className="font-medium text-sm truncate">{project.projectName}</h4>
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <Badge variant="secondary" className="text-xs">
+                                      {projectTypeLabels[project.projectType]}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
+                                  {project.address || location?.address || 'Sem endereço'}
+                                </p>
+                                
+                                {location && (
+                                  <p className="text-xs text-gray-400 font-mono mb-2">
+                                    {location.latitude?.toFixed(4)}, {location.longitude?.toFixed(4)}
+                                  </p>
+                                )}
+                                
+                                <div className="flex gap-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="text-xs h-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (location) {
+                                        setSelectedLocation({
+                                          lat: location.latitude!,
+                                          lng: location.longitude!,
+                                          address: project.address || location.address,
+                                          timestamp: new Date()
+                                        });
+                                      }
+                                    }}
                                   >
-                                    {project.status}
-                                  </Badge>
+                                    <MapPin className="w-3 h-3 mr-1" />
+                                    Ver no Mapa
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="text-xs h-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleNavigateToProject(project);
+                                    }}
+                                  >
+                                    <ExternalLink className="w-3 h-3 mr-1" />
+                                    Abrir
+                                  </Button>
                                 </div>
                               </div>
-                              
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {project.location.address || 'Sem endereço'}
-                              </p>
-                              <p className="text-xs text-gray-400 font-mono mt-1">
-                                {project.location.lat.toFixed(4)}, {project.location.lng.toFixed(4)}
-                              </p>
-                            </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
                     </div>

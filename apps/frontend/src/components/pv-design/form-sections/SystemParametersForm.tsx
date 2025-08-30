@@ -49,6 +49,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
     if (moduleId === 'custom') {
       // Reset to allow custom input
       onFormChange('moduloSelecionado', moduleId);
+      onFormChange('selectedModuleId', moduleId);
       onFormChange('potenciaModulo', 0);
       onFormChange('eficienciaModulo', 0);
       onFormChange('tensaoModulo', 0);
@@ -60,6 +61,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
     const hardcodedModule = SOLAR_MODULES.find(m => m.id === moduleId);
     if (hardcodedModule) {
       onFormChange('moduloSelecionado', moduleId);
+      onFormChange('selectedModuleId', moduleId);
       onFormChange('potenciaModulo', hardcodedModule.power);
       onFormChange('eficienciaModulo', hardcodedModule.efficiency);
       onFormChange('tensaoModulo', hardcodedModule.voltage);
@@ -71,6 +73,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
     const selectedModule = solarModules.modules?.find((m: any) => m.id === moduleId);
     if (selectedModule) {
       onFormChange('moduloSelecionado', moduleId);
+      onFormChange('selectedModuleId', moduleId);
       onFormChange('potenciaModulo', selectedModule.potenciaNominal);
       onFormChange('eficienciaModulo', selectedModule.eficiencia || 0);
       onFormChange('tensaoModulo', selectedModule.vmpp || 0);
@@ -85,6 +88,13 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
       onFormChange('potenciaInversor', 0);
       onFormChange('eficienciaInversor', 0);
       onFormChange('canaisMppt', 1);
+      
+      // Update inverters array as well
+      onFormChange('inverters', [{
+        id: crypto.randomUUID(),
+        selectedInverterId: inverterId,
+        quantity: 1
+      }]);
       return;
     }
 
@@ -95,6 +105,14 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
       onFormChange('potenciaInversor', hardcodedInverter.power);
       onFormChange('eficienciaInversor', hardcodedInverter.efficiency);
       onFormChange('canaisMppt', hardcodedInverter.mpptChannels);
+      onFormChange('totalInverterPower', hardcodedInverter.power);
+      
+      // Update inverters array as well
+      onFormChange('inverters', [{
+        id: crypto.randomUUID(),
+        selectedInverterId: inverterId,
+        quantity: 1
+      }]);
       return;
     }
 
@@ -105,6 +123,14 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
       onFormChange('potenciaInversor', selectedInverter.potenciaSaidaCA);
       onFormChange('eficienciaInversor', selectedInverter.eficienciaMax || 0);
       onFormChange('canaisMppt', selectedInverter.numeroMppt || 2);
+      onFormChange('totalInverterPower', selectedInverter.potenciaSaidaCA);
+      
+      // Update inverters array as well
+      onFormChange('inverters', [{
+        id: crypto.randomUUID(),
+        selectedInverterId: inverterId,
+        quantity: 1
+      }]);
     }
   };
 
@@ -160,7 +186,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
               </div>
               <Select 
                 onValueChange={handleModuleChange} 
-                value={formData.moduloSelecionado || ''}
+                value={formData.moduloSelecionado || formData.selectedModuleId || ''}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o módulo fotovoltaico" />
@@ -257,6 +283,89 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                 Se não especificado, será calculado automaticamente baseado no consumo
               </p>
             </div>
+
+            {/* Dimensionamento Percentual */}
+            <div className="space-y-3 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="dimensionamentoPercentual" className="text-sm font-semibold text-green-800">
+                    Dimensionamento Percentual
+                  </Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="w-4 h-4 text-green-600" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">
+                          Ajuste o tamanho do sistema como percentual do dimensionamento base. 
+                          Use valores menores que 100% para sistemas econômicos ou maiores que 100% para superdimensionamento.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-bold ${
+                    (formData.dimensionamentoPercentual || 100) < 70 ? 'text-orange-600' :
+                    (formData.dimensionamentoPercentual || 100) > 150 ? 'text-purple-600' : 'text-green-600'
+                  }`}>
+                    {formData.dimensionamentoPercentual || 100}%
+                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    (formData.dimensionamentoPercentual || 100) < 70 ? 'bg-orange-100 text-orange-600' :
+                    (formData.dimensionamentoPercentual || 100) > 150 ? 'bg-purple-100 text-purple-600' : 'bg-green-100 text-green-600'
+                  }`}>
+                    {(formData.dimensionamentoPercentual || 100) < 70 ? 'Subdimensionado' :
+                     (formData.dimensionamentoPercentual || 100) > 150 ? 'Superdimensionado' : 'Padrão'}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Slider
+                  id="dimensionamentoPercentual"
+                  min={30}
+                  max={300}
+                  step={5}
+                  value={[formData.dimensionamentoPercentual || 100]}
+                  onValueChange={(value) => onFormChange('dimensionamentoPercentual', value[0])}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>30% (Mínimo)</span>
+                  <span>100% (Padrão)</span>
+                  <span>300% (Máximo)</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="text-center p-2 bg-orange-100 rounded">
+                  <div className="font-medium text-orange-700">30-69%</div>
+                  <div className="text-orange-600">Econômico</div>
+                </div>
+                <div className="text-center p-2 bg-green-100 rounded">
+                  <div className="font-medium text-green-700">70-149%</div>
+                  <div className="text-green-600">Padrão</div>
+                </div>
+                <div className="text-center p-2 bg-purple-100 rounded">
+                  <div className="font-medium text-purple-700">150-300%</div>
+                  <div className="text-purple-600">Superdimensionado</div>
+                </div>
+              </div>
+
+              {formData.dimensionamentoPercentual && formData.dimensionamentoPercentual !== 100 && (
+                <div className="mt-2 p-3 bg-white rounded border border-gray-200">
+                  <p className="text-xs text-gray-600">
+                    💡 <strong>Impacto:</strong> {' '}
+                    {formData.dimensionamentoPercentual < 100 ? 
+                      `Sistema ${formData.dimensionamentoPercentual}% do tamanho padrão. Menor investimento, mas pode não cobrir todo o consumo.` :
+                      `Sistema ${formData.dimensionamentoPercentual}% do tamanho padrão. Maior geração, possível excesso de energia.`
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Inversores */}
@@ -279,7 +388,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
               </div>
               <Select 
                 onValueChange={handleInverterChange} 
-                value={formData.inversorSelecionado || ''}
+                value={formData.inversorSelecionado || (formData.inverters && formData.inverters.length > 0 ? formData.inverters[0].selectedInverterId : '') || ''}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o inversor" />
