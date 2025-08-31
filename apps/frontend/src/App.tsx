@@ -101,7 +101,11 @@ function App() {
                   <Route path="clients" element={<ClientsPage />} />
                   <Route path="equipment" element={<EquipmentPage />} />
                   <Route path="proposal-templates" element={<ProposalTemplatesPage />} />
-                  <Route path="reports" element={<ReportsPage />} />
+                  <Route path="reports" element={
+                    <ProtectedRoute requiredRole="team_owner">
+                      <ReportsPage />
+                    </ProtectedRoute>
+                  } />
                   <Route path="calendar" element={<CalendarPage />} />
                   <Route path="tools/live-calculation-logs" element={<LiveCalculationLogs />} />
                   <Route path="tools/calculation-logs-demo" element={<CalculationLogsDemo />} />

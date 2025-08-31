@@ -54,7 +54,7 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
 
   const handleLogout = () => {
     logout();
@@ -63,9 +63,20 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
   // Verificar se o usuário é super admin (acesso ao menu admin)
   const isSuperAdmin = user?.role === 'super_admin';
   
-  
   // Verificar se o usuário pode gerenciar seu próprio team
   const canManageTeam = user?.role === 'team_owner' || user?.role === 'admin';
+  
+  // Verificar se o usuário pode acessar relatórios (apenas team_owner ou superior)
+  const canAccessReports = user?.role === 'team_owner' || user?.role === 'admin' || user?.role === 'super_admin';
+
+  // Filtrar navegação baseado nas permissões do usuário
+  const filteredNavigation = navigation.filter(item => {
+    // Restringir relatórios apenas para donos de team
+    if (item.href === '/dashboard/reports') {
+      return canAccessReports;
+    }
+    return true; // Outros itens são acessíveis por todos
+  });
 
   return (
     <div className={`bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300 ${
@@ -95,7 +106,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
-        {navigation.map((item) => {
+        {filteredNavigation.map((item) => {
           const isActive = location.pathname === item.href;
           return (
             <Link

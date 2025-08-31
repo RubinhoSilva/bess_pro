@@ -8,6 +8,8 @@ import { User, Search, Loader2 } from 'lucide-react';
 import { useClients } from '@/hooks/client-hooks';
 import { apiClient } from '@/lib/api';
 import { CustomCurrencyInput } from '@/components/ui/currency-input';
+import { energyCompanyService, EnergyCompany } from '@/lib/energyCompanyService';
+import toast from 'react-hot-toast';
 
 interface CustomerDataFormProps {
   formData: any;
@@ -21,6 +23,10 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [initialLeads, setInitialLeads] = useState<any[]>([]);
+  
+  // Estados para concessionárias
+  const [energyCompanies, setEnergyCompanies] = useState<EnergyCompany[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
 
   // Usar dados reais dos hooks
   const { data: clientsData } = useClients({ pageSize: 100 }); // Buscar mais clientes para busca
@@ -62,6 +68,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
   useEffect(() => {
     loadInitialLeads();
   }, [loadInitialLeads]);
+
 
 
   const performSearch = useCallback(async () => {
@@ -159,6 +166,27 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
       setSearchTerm(formData.customer.name);
     }
   }, [formData.customer]);
+
+  // Carregar concessionárias de energia
+  useEffect(() => {
+    const loadEnergyCompanies = async () => {
+      setLoadingCompanies(true);
+      try {
+        const companies = await energyCompanyService.getActiveCompanies();
+        // Garantir que sempre temos um array
+        const validCompanies = Array.isArray(companies) ? companies : [];
+        setEnergyCompanies(validCompanies);
+      } catch (error) {
+        console.error('Erro ao carregar concessionárias:', error);
+        setEnergyCompanies([]);
+        toast.error('Erro ao carregar lista de concessionárias');
+      } finally {
+        setLoadingCompanies(false);
+      }
+    };
+
+    loadEnergyCompanies();
+  }, []);
 
 
   const handleSelectCustomer = (customer: any) => {
@@ -413,6 +441,116 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   placeholder="R$ 0,00"
                   className="bg-background border-border text-foreground"
                 />
+              </div>
+
+              {/* Novos campos de instalação */}
+              <div className="mt-6 space-y-4 border-t border-border/50 pt-4">
+                <h4 className="text-sm font-medium text-foreground/80">Dados da Instalação</h4>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="concessionaria">Concessionária de Energia</Label>
+                    <Select 
+                      value={formData.concessionaria || ''} 
+                      onValueChange={(value) => onFormChange('concessionaria', value)}
+                      disabled={loadingCompanies}
+                    >
+                      <SelectTrigger className="bg-background border-border text-foreground">
+                        <SelectValue placeholder={loadingCompanies ? 'Carregando...' : 'Selecione a concessionária'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {loadingCompanies ? (
+                          <SelectItem value="LOADING" disabled>
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Carregando concessionárias...</span>
+                            </div>
+                          </SelectItem>
+                        ) : (
+                          <>
+                            {energyCompanies.map((company) => (
+                              <SelectItem key={company.id} value={company.acronym}>
+                                {company.acronym} - {company.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="OUTRO">Outra</SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tipoRede">Tipo de Rede</Label>
+                    <Select 
+                      value={formData.tipoRede || ''} 
+                      onValueChange={(value) => onFormChange('tipoRede', value)}
+                    >
+                      <SelectTrigger className="bg-background border-border text-foreground">
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monofasico">Monofásico</SelectItem>
+                        <SelectItem value="bifasico">Bifásico</SelectItem>
+                        <SelectItem value="trifasico">Trifásico</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tensaoRede">Tensão de Rede (V)</Label>
+                    <Select 
+                      value={formData.tensaoRede || ''} 
+                      onValueChange={(value) => onFormChange('tensaoRede', value)}
+                    >
+                      <SelectTrigger className="bg-background border-border text-foreground">
+                        <SelectValue placeholder="Selecione a tensão" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="127">127V</SelectItem>
+                        <SelectItem value="220">220V</SelectItem>
+                        <SelectItem value="380">380V</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fatorSimultaneidade">Fator de Simultaneidade (%)</Label>
+                    <Input 
+                      id="fatorSimultaneidade" 
+                      type="number" 
+                      min="0" 
+                      max="100" 
+                      step="1" 
+                      value={formData.fatorSimultaneidade || 100} 
+                      onChange={(e) => onFormChange('fatorSimultaneidade', parseInt(e.target.value) || 100)} 
+                      className="bg-background border-border text-foreground"
+                      placeholder="0-100"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tipoTelhado">Tipo de Telhado</Label>
+                    <Select 
+                      value={formData.tipoTelhado || ''} 
+                      onValueChange={(value) => onFormChange('tipoTelhado', value)}
+                    >
+                      <SelectTrigger className="bg-background border-border text-foreground">
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ceramico">Cerâmico</SelectItem>
+                        <SelectItem value="fibrocimento-madeira">Fibrocimento / Madeira</SelectItem>
+                        <SelectItem value="fibrocimento-metalica">Fibrocimento / Metálica</SelectItem>
+                        <SelectItem value="telha-metalica">Telha Metálica</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}

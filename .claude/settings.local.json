@@ -97,7 +97,9 @@
       "Bash(git checkout:*)",
       "Bash(git branch:*)",
       "WebSearch",
-      "Bash(DOCKER_DEFAULT_PLATFORM=linux/arm64 docker-compose -f docker-compose.prod.yml up -d --build)"
+      "Bash(DOCKER_DEFAULT_PLATFORM=linux/arm64 docker-compose -f docker-compose.prod.yml up -d --build)",
+      "Bash(MONGODB_URL=\"mongodb://localhost:27017/bess-pro\" npx ts-node src/infrastructure/cli/seedEnergyCompanies.ts)",
+      "Bash(MONGODB_URL=\"mongodb://admin:bess123456@localhost:27017/bess-pro?authSource=admin\" npx ts-node src/infrastructure/cli/seedEnergyCompanies.ts)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

@@ -135,7 +135,53 @@ const AdvancedPDFGenerator: React.FC<AdvancedPDFGeneratorProps> = ({ results, on
     ));
   };
 
+  const validateReportData = () => {
+    const errors: string[] = [];
+    
+    // Validar dados básicos do sistema
+    if (!results.potenciaPico || results.potenciaPico <= 0) {
+      errors.push('Potência do sistema não definida');
+    }
+    
+    if (!results.numeroModulos || results.numeroModulos <= 0) {
+      errors.push('Número de módulos não definido');
+    }
+    
+    if (!results.totalInvestment || results.totalInvestment <= 0) {
+      errors.push('Investimento total não calculado');
+    }
+    
+    // Validar dados do cliente se a seção está habilitada
+    const customerSectionEnabled = sections.find(s => s.id === 'customer-data')?.enabled;
+    if (customerSectionEnabled) {
+      if (!results.formData?.customer?.name) {
+        errors.push('Nome do cliente obrigatório');
+      }
+    }
+    
+    // Validar análise financeira se habilitada
+    const financialSectionEnabled = sections.find(s => s.id === 'advanced-financial')?.enabled;
+    if (financialSectionEnabled && !results.advancedFinancial) {
+      errors.push('Análise financeira avançada não disponível');
+    }
+    
+    // Validar análise solar se habilitada
+    const solarSectionEnabled = sections.find(s => s.id === 'solar-analysis')?.enabled;
+    if (solarSectionEnabled && !results.advancedSolar) {
+      errors.push('Análise solar avançada não disponível');
+    }
+    
+    return errors;
+  };
+
   const generatePDF = async () => {
+    // Validar dados antes de iniciar
+    const validationErrors = validateReportData();
+    if (validationErrors.length > 0) {
+      alert(`❌ Dados Incompletos\n\nCorreja os seguintes problemas antes de gerar o relatório:\n\n• ${validationErrors.join('\n• ')}`);
+      return;
+    }
+
     setIsGenerating(true);
     setGenerationProgress(0);
     
@@ -153,8 +199,13 @@ const AdvancedPDFGenerator: React.FC<AdvancedPDFGeneratorProps> = ({ results, on
       // Aqui seria a implementação real da geração do PDF
       const pdfData = await generateAdvancedPDFData();
       
+      if (!pdfData) {
+        throw new Error('Falha na geração dos dados do PDF');
+      }
+      
       // Download do arquivo
-      downloadPDF(pdfData, `Proposta_PV_${results.formData.customer?.name || 'Cliente'}.pdf`);
+      const filename = `Proposta_PV_${results.formData.customer?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Cliente'}_${new Date().toISOString().split('T')[0]}.pdf`;
+      downloadPDF(pdfData, filename);
       
       if (onGenerate) {
         onGenerate();
@@ -162,7 +213,24 @@ const AdvancedPDFGenerator: React.FC<AdvancedPDFGeneratorProps> = ({ results, on
       
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
-      alert('Erro ao gerar o relatório. Tente novamente.');
+      
+      let errorMessage = 'Erro desconhecido ao gerar o relatório.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('customer')) {
+          errorMessage = 'Dados do cliente incompletos. Verifique se todos os campos obrigatórios estão preenchidos.';
+        } else if (error.message.includes('calculation')) {
+          errorMessage = 'Erro nos cálculos. Execute novamente o dimensionamento antes de gerar o relatório.';
+        } else if (error.message.includes('network')) {
+          errorMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
+        } else if (error.message.includes('permission')) {
+          errorMessage = 'Você não tem permissão para gerar relatórios. Contate o administrador.';
+        } else {
+          errorMessage = `Erro técnico: ${error.message}`;
+        }
+      }
+      
+      alert(`❌ Falha na Geração do Relatório\n\n${errorMessage}\n\nTente novamente ou contate o suporte se o problema persistir.`);
     } finally {
       setIsGenerating(false);
       setGenerationProgress(0);
@@ -170,47 +238,101 @@ const AdvancedPDFGenerator: React.FC<AdvancedPDFGeneratorProps> = ({ results, on
   };
 
   const generateAdvancedPDFData = async () => {
-    // Implementação da geração do PDF
-    const reportData = {
-      metadata: {
-        title: `Proposta de Sistema Fotovoltaico - ${results.formData.customer?.name || 'Cliente'}`,
-        author: 'BESS Pro',
-        subject: 'Dimensionamento de Sistema Solar Fotovoltaico',
-        keywords: 'solar, fotovoltaico, energia renovável',
-        creator: 'BESS Pro Advanced Solar Calculator',
-        creationDate: new Date().toISOString(),
-        format: reportOptions.format,
-        language: reportOptions.language
-      },
-      sections: sections.filter(s => s.enabled),
-      data: {
-        customer: results.formData.customer,
-        system: {
-          potenciaPico: results.potenciaPico,
-          numeroModulos: results.numeroModulos,
-          investment: results.totalInvestment,
-          generation: results.geracaoEstimadaMensal
-        },
-        solarAnalysis: results.advancedSolar,
-        financialAnalysis: results.advancedFinancial,
-        options: reportOptions
+    try {
+      // Validar dados essenciais novamente
+      if (!results.formData) {
+        throw new Error('Dados do formulário não encontrados');
       }
-    };
 
-    return JSON.stringify(reportData); // Em implementação real, seria um buffer de PDF
+      // Preparar dados de geração mensal
+      const monthlyGeneration = results.geracaoEstimadaMensal || Array(12).fill(0);
+      if (monthlyGeneration.every(g => g === 0)) {
+        throw new Error('Dados de geração mensal inválidos');
+      }
+
+      // Implementação da geração do PDF
+      const reportData = {
+        metadata: {
+          title: `Proposta de Sistema Fotovoltaico - ${results.formData.customer?.name || 'Cliente'}`,
+          author: 'BESS Pro',
+          subject: 'Dimensionamento de Sistema Solar Fotovoltaico',
+          keywords: 'solar, fotovoltaico, energia renovável',
+          creator: 'BESS Pro Advanced Solar Calculator',
+          creationDate: new Date().toISOString(),
+          format: reportOptions.format,
+          language: reportOptions.language,
+          version: '1.0'
+        },
+        sections: sections.filter(s => s.enabled),
+        data: {
+          customer: {
+            name: results.formData.customer?.name || 'N/A',
+            email: results.formData.customer?.email || '',
+            phone: results.formData.customer?.phone || '',
+            company: results.formData.customer?.company || '',
+            type: results.formData.customer?.type || 'client'
+          },
+          system: {
+            potenciaPico: results.potenciaPico,
+            numeroModulos: results.numeroModulos,
+            investment: results.totalInvestment,
+            generation: monthlyGeneration,
+            totalAnnualGeneration: monthlyGeneration.reduce((acc, month) => acc + month, 0)
+          },
+          solarAnalysis: results.advancedSolar || null,
+          financialAnalysis: results.advancedFinancial || null,
+          options: reportOptions,
+          generatedAt: new Date().toLocaleString('pt-BR')
+        }
+      };
+
+      // Simular geração de PDF (em implementação real usaria jsPDF ou similar)
+      const pdfString = JSON.stringify(reportData, null, 2);
+      
+      if (pdfString.length < 100) {
+        throw new Error('Dados insuficientes para gerar o relatório');
+      }
+
+      return pdfString; // Em implementação real, seria um buffer de PDF
+    } catch (error) {
+      console.error('Erro na geração dos dados PDF:', error);
+      throw new Error(`Falha na preparação dos dados: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
   };
 
   const downloadPDF = (data: string, filename: string) => {
-    // Em implementação real, usaria uma biblioteca como jsPDF ou PDFKit
-    const blob = new Blob([data], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      if (!data || data.length === 0) {
+        throw new Error('Dados de PDF vazios');
+      }
+
+      if (!filename || filename.length === 0) {
+        throw new Error('Nome do arquivo inválido');
+      }
+
+      // Em implementação real, usaria uma biblioteca como jsPDF ou PDFKit
+      // Por enquanto, salvamos como JSON para demonstrar funcionalidade
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename.replace('.pdf', '.json'); // Temporário para demonstração
+      a.style.display = 'none';
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Cleanup
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+      
+      console.log(`📄 Relatório salvo como: ${a.download}`);
+      
+    } catch (error) {
+      console.error('Erro no download:', error);
+      throw new Error(`Falha no download: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
   };
 
   const getSummaryStats = () => {

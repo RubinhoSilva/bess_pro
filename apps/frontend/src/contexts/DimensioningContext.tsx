@@ -102,6 +102,13 @@ interface DimensioningData {
   tarifaEnergiaForaPontaA?: number;
   demandaContratada?: number;
   tarifaDemanda?: number;
+
+  // Dados da instalação
+  concessionaria?: string;
+  tipoRede?: 'monofasico' | 'bifasico' | 'trifasico';
+  tensaoRede?: '127' | '220' | '380';
+  fatorSimultaneidade?: number;
+  tipoTelhado?: 'ceramico' | 'fibrocimento-madeira' | 'fibrocimento-metalica' | 'telha-metalica';
   
   // Custos e financeiro
   custoEquipamento: number;
@@ -190,6 +197,13 @@ const getInitialDimensioningData = (): DimensioningData => ({
   grupoTarifario: 'B',
   tarifaEnergiaB: 0.75,
   custoFioB: 0.30,
+
+  // Dados da instalação - valores padrão
+  concessionaria: '',
+  tipoRede: 'monofasico',
+  tensaoRede: '220',
+  fatorSimultaneidade: 100,
+  tipoTelhado: 'ceramico',
   
   custoEquipamento: 0,
   custoMateriais: 0,

@@ -441,32 +441,31 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-700">Parâmetros Gerais</h3>
             
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Eficiência do Sistema: {formData.eficienciaSistema || 85}%</Label>
-                <div className="flex items-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="w-4 h-4 text-gray-400" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Inclui perdas por sombreamento, cabeamento, sujeira, etc.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="eficienciaSistema">Eficiência do Sistema (%)</Label>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="w-4 h-4 text-gray-400" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Inclui perdas por sombreamento, cabeamento, sujeira, etc.</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
-              <Slider
-                value={[formData.eficienciaSistema || 85]}
-                onValueChange={(values) => onFormChange('eficienciaSistema', values[0])}
-                max={95}
-                min={70}
-                step={1}
-                className="w-full"
+              <Input
+                id="eficienciaSistema"
+                type="number"
+                min="70"
+                max="95"
+                step="1"
+                value={formData.eficienciaSistema || ''}
+                onChange={(e) => onFormChange('eficienciaSistema', parseFloat(e.target.value) || 85)}
+                placeholder="85"
               />
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>70%</span>
-                <span>95%</span>
-              </div>
+              <p className="text-xs text-gray-500">
+                Eficiência global do sistema (70% - 95%). Padrão: 85%
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

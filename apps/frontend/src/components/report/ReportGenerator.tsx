@@ -82,15 +82,42 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
     return new Intl.NumberFormat('pt-BR').format(value);
   };
 
-  const handleExportPDF = () => {
-    // Try to use the same PDF generation logic from PVProposalGenerator
-    const reportElement = document.getElementById('report-content');
-    if (reportElement) {
+  const handleExportPDF = async () => {
+    try {
+      // Validar dados antes de tentar exportar
+      if (!data || Object.keys(data).length === 0) {
+        throw new Error('Dados do relatório não disponíveis');
+      }
+
+      if (!data.formData && !data.vpl && !data.potenciaInstalada) {
+        throw new Error('Dados insuficientes para gerar o relatório');
+      }
+
+      const reportElement = document.getElementById('report-content');
+      if (!reportElement) {
+        throw new Error('Conteúdo do relatório não encontrado na página');
+      }
+
+      // Em implementação real, usaria bibliotecas como html2pdf ou jsPDF
+      // Por enquanto, usar impressão como fallback
       window.print();
-    } else {
+      
       toast({
-        title: "🚧 Funcionalidade em desenvolvimento!",
-        description: "A exportação em PDF será implementada em breve.",
+        title: "📄 Relatório em processamento",
+        description: "Use Ctrl+P ou Cmd+P para salvar como PDF através do navegador.",
+      });
+      
+    } catch (error) {
+      console.error('Erro na exportação PDF:', error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Erro desconhecido na exportação';
+        
+      toast({
+        title: "❌ Erro na Exportação",
+        description: `Não foi possível exportar o relatório: ${errorMessage}`,
+        variant: "destructive"
       });
     }
   };

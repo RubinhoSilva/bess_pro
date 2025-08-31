@@ -38,14 +38,15 @@ export const GenerationChart: React.FC<GenerationChartProps> = ({ results }) => 
         <BarChart data={chartData} barGap={8}>
           <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
           <XAxis 
-            dataKey="name" 
+            dataKey="name"
+            label={{ value: 'Meses do Ano', position: 'insideBottom', offset: -5, fill: colors.axis }}
             stroke={colors.axis}
             tick={{ fill: colors.axis }}
           />
           <YAxis 
             stroke={colors.axis}
             tick={{ fill: colors.axis }}
-            label={{ value: 'kWh', angle: -90, position: 'insideLeft', fill: colors.axis }} 
+            label={{ value: 'Energia Mensal (kWh)', angle: -90, position: 'insideLeft', fill: colors.axis }} 
           />
           <Tooltip
             contentStyle={{

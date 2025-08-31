@@ -19,12 +19,15 @@ export const EconomyProjectionChart: React.FC<EconomyProjectionChartProps> = ({ 
   const { isDark } = useTheme();
   const colors = getChartColors(isDark);
 
-  const chartData = fluxoCaixa.map(item => ({
-    ano: `Ano ${item.ano}`,
-    'Custo Sem FV': item.ano === 0 ? 0 : item.custoSemFV,
-    'Custo Com FV': item.ano === 0 ? 0 : item.custoComFV,
-    'Economia Anual': item.economia,
-  }));
+  const chartData = fluxoCaixa
+    .filter(item => item.ano >= 1) // Começar do ano 1
+    .map(item => ({
+      ano: item.ano, // Usar número simples para melhor ordenação
+      anoLabel: `Ano ${item.ano}`, // Para exibição nos tooltips
+      'Custo Sem FV': item.custoSemFV,
+      'Custo Com FV': item.custoComFV,
+      'Economia Anual': item.economia,
+    }));
 
   return (
     <Card className="bg-white dark:bg-slate-800/50 border-gray-300 dark:border-slate-700 print:border-gray-200 print:shadow-none h-full">
@@ -53,7 +56,12 @@ export const EconomyProjectionChart: React.FC<EconomyProjectionChartProps> = ({ 
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
             <XAxis 
-              dataKey="ano" 
+              dataKey="ano"
+              type="number"
+              domain={['dataMin', 'dataMax']}
+              ticks={chartData.map(item => item.ano)}
+              tickFormatter={(value) => `Ano ${value}`}
+              label={{ value: 'Anos do Projeto', position: 'insideBottom', offset: -5, fill: colors.axis }}
               stroke={colors.axis}
               tick={{ fill: colors.axis }}
             />
@@ -63,6 +71,7 @@ export const EconomyProjectionChart: React.FC<EconomyProjectionChartProps> = ({ 
                 currency: 'BRL', 
                 notation: 'compact' 
               })}
+              label={{ value: 'Valor (R$)', angle: -90, position: 'insideLeft', fill: colors.axis }}
               stroke={colors.axis}
               tick={{ fill: colors.axis }}
             />
@@ -71,6 +80,7 @@ export const EconomyProjectionChart: React.FC<EconomyProjectionChartProps> = ({ 
                 value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 
                 name
               ]}
+              labelFormatter={(value) => `Ano ${value} do Projeto`}
               contentStyle={{
                 backgroundColor: colors.tooltip.background,
                 borderColor: colors.tooltip.border,

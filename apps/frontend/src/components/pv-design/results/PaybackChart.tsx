@@ -16,10 +16,14 @@ export const PaybackChart: React.FC<PaybackChartProps> = ({ results }) => {
   const { isDark } = useTheme();
   const colors = getChartColors(isDark);
 
-  const chartData = fluxoCaixa.map((item, index) => ({
-    ...item,
-    fluxoAcumulado: fluxoCaixa.slice(0, index + 1).reduce((acc, curr) => acc + curr.fluxoLiquido, 0)
-  }));
+  const chartData = fluxoCaixa
+    .filter(item => item.ano >= 1) // Começar do ano 1
+    .map((item, index) => ({
+      ...item,
+      fluxoAcumulado: fluxoCaixa
+        .filter(f => f.ano >= 1 && f.ano <= item.ano)
+        .reduce((acc, curr) => acc + curr.fluxoLiquido, 0)
+    }));
 
   return (
     <div className="w-full h-80">
@@ -27,8 +31,12 @@ export const PaybackChart: React.FC<PaybackChartProps> = ({ results }) => {
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
           <XAxis 
-            dataKey="ano" 
-            label={{ value: 'Anos', position: 'insideBottom', offset: -5, fill: colors.axis }} 
+            dataKey="ano"
+            type="number"
+            domain={['dataMin', 'dataMax']}
+            ticks={chartData.map(item => item.ano)}
+            tickFormatter={(value) => `Ano ${value}`}
+            label={{ value: 'Anos do Projeto', position: 'insideBottom', offset: -5, fill: colors.axis }} 
             stroke={colors.axis}
             tick={{ fill: colors.axis }}
           />
@@ -38,6 +46,7 @@ export const PaybackChart: React.FC<PaybackChartProps> = ({ results }) => {
               currency: 'BRL', 
               notation: 'compact' 
             })}
+            label={{ value: 'Fluxo de Caixa Acumulado (R$)', angle: -90, position: 'insideLeft', fill: colors.axis }}
             stroke={colors.axis}
             tick={{ fill: colors.axis }}
           />
@@ -46,6 +55,7 @@ export const PaybackChart: React.FC<PaybackChartProps> = ({ results }) => {
               value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 
               name
             ]}
+            labelFormatter={(value) => `Ano ${value} do Projeto`}
             contentStyle={{
               backgroundColor: colors.tooltip.background,
               borderColor: colors.tooltip.border,

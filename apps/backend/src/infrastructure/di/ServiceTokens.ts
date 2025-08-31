@@ -16,6 +16,7 @@ export const ServiceTokens = {
   ProposalTemplateRepository: 'ProposalTemplateRepository',
   ProposalSettingsRepository: 'ProposalSettingsRepository',
   AdvancedProposalTemplateRepository: 'AdvancedProposalTemplateRepository',
+  EnergyCompanyRepository: 'EnergyCompanyRepository',
 
   // Services
   PASSWORD_HASH_SERVICE: 'PasswordHashService',
@@ -120,6 +121,14 @@ export const ServiceTokens = {
   DeleteAdvancedTemplateUseCase: 'DeleteAdvancedTemplateUseCase',
   GenerateProposalFromTemplateUseCase: 'GenerateProposalFromTemplateUseCase',
 
+  // Energy Company Use Cases
+  CreateEnergyCompanyUseCase: 'CreateEnergyCompanyUseCase',
+  GetEnergyCompaniesUseCase: 'GetEnergyCompaniesUseCase',
+  GetEnergyCompanyByIdUseCase: 'GetEnergyCompanyByIdUseCase',
+  UpdateEnergyCompanyUseCase: 'UpdateEnergyCompanyUseCase',
+  DeleteEnergyCompanyUseCase: 'DeleteEnergyCompanyUseCase',
+  GetEnergyCompaniesByStateUseCase: 'GetEnergyCompaniesByStateUseCase',
+
   // Controllers
   TEAM_CONTROLLER: 'TeamController',
   KANBAN_CONTROLLER: 'KanbanController',
@@ -129,6 +138,7 @@ export const ServiceTokens = {
   ProposalSettingsController: 'ProposalSettingsController',
   SolarAnalysisController: 'SolarAnalysisController',
   AdvancedProposalTemplateController: 'AdvancedProposalTemplateController',
+  EnergyCompanyController: 'EnergyCompanyController',
   
   // Middlewares
   AuthMiddleware: 'AuthMiddleware',

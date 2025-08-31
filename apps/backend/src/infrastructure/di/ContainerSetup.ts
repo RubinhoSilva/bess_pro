@@ -19,6 +19,7 @@ import { MongoAdvancedProposalTemplateRepository } from '../database/mongodb/rep
 import { MongoAreaMontagemRepository } from '../database/mongodb/repositories/MongoAreaMontagemRepository';
 import { MongoModel3DRepository } from '../database/mongodb/repositories/MongoModel3DRepository';
 import { MongoClientAlertRepository } from '../database/mongodb/repositories/MongoClientAlertRepository';
+import { MongoEnergyCompanyRepository } from '../database/mongodb/repositories/MongoEnergyCompanyRepository';
 import { ProposalSettingsModel } from '../database/mongodb/schemas/ProposalSettingsSchema';
 
 // Infrastructure - External Services
@@ -165,6 +166,7 @@ import { GenerateProposalFromTemplateUseCase } from '../../application/use-cases
 // Controllers
 import { LeadInteractionController } from '../../presentation/controllers/LeadInteractionController';
 import { ClientController } from '../../presentation/controllers/ClientController';
+import { EnergyCompanyController } from '../../presentation/controllers/EnergyCompanyController';
 import { ReportController } from '../../presentation/controllers/ReportController';
 import { BessController } from '../../presentation/controllers/BessController';
 import { IrradiationController } from '../../presentation/controllers/IrradiationController';
@@ -202,6 +204,7 @@ export class ContainerSetup {
     container.register(ServiceTokens.Model3DRepository, MongoModel3DRepository, true);
     container.register(ServiceTokens.PASSWORD_RESET_TOKEN_REPOSITORY, MongoPasswordResetTokenRepository, true);
     container.register('ClientAlertRepository', MongoClientAlertRepository, true);
+    container.register(ServiceTokens.EnergyCompanyRepository, MongoEnergyCompanyRepository, true);
 
     // Register Infrastructure Services (Singletons)
     container.register(ServiceTokens.PASSWORD_HASH_SERVICE, BcryptPasswordHashService, true);
@@ -855,6 +858,13 @@ export class ContainerSetup {
         container.resolve(ServiceTokens.UpdateAdvancedTemplateUseCase),
         container.resolve(ServiceTokens.DeleteAdvancedTemplateUseCase),
         container.resolve(ServiceTokens.GenerateProposalFromTemplateUseCase)
+      );
+    });
+
+    // Controllers - Energy Company
+    container.registerFactory(ServiceTokens.EnergyCompanyController, () => {
+      return new EnergyCompanyController(
+        container.resolve(ServiceTokens.EnergyCompanyRepository)
       );
     });
 

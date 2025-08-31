@@ -20,10 +20,12 @@ export const AnnualSavingsChart: React.FC<AnnualSavingsChartProps> = ({ results 
   const { isDark } = useTheme();
   const colors = getChartColors(isDark);
 
-  const chartData = fluxoCaixa.filter(item => item.ano > 0).map(item => ({
-    ano: item.ano,
-    economia: item.economia
-  }));
+  const chartData = fluxoCaixa
+    .filter(item => item.ano >= 1) // Começar do ano 1
+    .map(item => ({
+      ano: item.ano,
+      economia: item.economia
+    }));
 
   return (
     <Card className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 shadow-lg print:border-gray-200 print:shadow-none">
@@ -38,8 +40,12 @@ export const AnnualSavingsChart: React.FC<AnnualSavingsChartProps> = ({ results 
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
             <XAxis 
-              dataKey="ano" 
-              label={{ value: 'Anos', position: 'insideBottom', offset: -5, fill: colors.axis }} 
+              dataKey="ano"
+              type="number"
+              domain={['dataMin', 'dataMax']}
+              ticks={chartData.map(item => item.ano)}
+              tickFormatter={(value) => `Ano ${value}`}
+              label={{ value: 'Anos do Projeto', position: 'insideBottom', offset: -5, fill: colors.axis }} 
               stroke={colors.axis}
               tick={{ fill: colors.axis }}
             />
@@ -49,6 +55,7 @@ export const AnnualSavingsChart: React.FC<AnnualSavingsChartProps> = ({ results 
                 currency: 'BRL', 
                 notation: 'compact' 
               })}
+              label={{ value: 'Economia Anual (R$)', angle: -90, position: 'insideLeft', fill: colors.axis }}
               stroke={colors.axis}
               tick={{ fill: colors.axis }}
             />
@@ -57,6 +64,7 @@ export const AnnualSavingsChart: React.FC<AnnualSavingsChartProps> = ({ results 
                 style: 'currency', 
                 currency: 'BRL' 
               })}
+              labelFormatter={(value) => `Ano ${value} do Projeto`}
               contentStyle={{
                 backgroundColor: colors.tooltip.background,
                 borderColor: colors.tooltip.border,
