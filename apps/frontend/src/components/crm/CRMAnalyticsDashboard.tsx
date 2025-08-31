@@ -20,7 +20,8 @@ import {
   ExternalLink,
   CheckCircle,
   AlertCircle,
-  Settings
+  Settings,
+  UserCheck
 } from 'lucide-react';
 import { Lead, LeadStage, DefaultLeadStage, LeadSource, LEAD_STAGE_LABELS } from '../../types/lead';
 import { CRMAdvancedFilters, CRMFilterState } from './CRMAdvancedFilters';
@@ -219,7 +220,7 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
     const stats = {
       B2B: leadsWithNormalizedClientType.filter(lead => lead.clientType === 'B2B').length,
       B2C: leadsWithNormalizedClientType.filter(lead => lead.clientType === 'B2C').length,
-      undefined: filteredLeads.filter(lead => !lead.clientType || lead.clientType === null || lead.clientType === undefined || lead.clientType === '').length,
+      undefined: filteredLeads.filter(lead => !lead.clientType || lead.clientType === null || lead.clientType === undefined).length,
     };
     
     // Debug: log the client type distribution
@@ -233,7 +234,7 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
         clientTypeType: typeof lead.clientType,
         hasClientType: !!lead.clientType
       })),
-      allClientTypes: [...new Set(filteredLeads.map(lead => lead.clientType).filter(Boolean))],
+      allClientTypes: Array.from(new Set(filteredLeads.map(lead => lead.clientType).filter(Boolean))),
       undefinedLeads: filteredLeads.filter(lead => !lead.clientType).map(lead => ({
         id: lead.id,
         name: lead.name,
@@ -1028,7 +1029,7 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
                     .sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime())
                     .slice(0, 5)
                     .map((project) => {
-                      const associatedLead = filteredLeads.find(lead => lead.id === project.leadId);
+                      const associatedLead = filteredLeads.find(lead => lead.id === (project as any).leadId);
                       const projectIcon = project.projectType === ProjectType.PV ? Zap : 
                                         project.projectType === ProjectType.BESS ? Activity : Settings;
                       const ProjectIcon = projectIcon;

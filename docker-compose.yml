@@ -93,6 +93,27 @@ services:
     depends_on:
       - backend
 
+  pvlib-service:
+    build:
+      context: ./apps/pvlib-service
+      dockerfile: Dockerfile
+    container_name: bess-pro-pvlib
+    restart: unless-stopped
+    ports:
+      - "8100:8100"
+    volumes:
+      - ./apps/pvlib-service:/app
+    networks:
+      - bess-network
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 volumes:
   mongodb_data:
   redis_data:

@@ -494,29 +494,6 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="orientacao">Orientação (graus)</Label>
-                <Input
-                  id="orientacao"
-                  type="number"
-                  value={formData.orientacao || 180}
-                  onChange={(e) => onFormChange('orientacao', parseFloat(e.target.value) || 180)}
-                  placeholder="180 (Sul)"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="inclinacao">Inclinação (graus)</Label>
-                <Input
-                  id="inclinacao"
-                  type="number"
-                  value={formData.inclinacao || 23}
-                  onChange={(e) => onFormChange('inclinacao', parseFloat(e.target.value) || 23)}
-                  placeholder="23"
-                />
-              </div>
-            </div>
           </div>
 
           {/* Resumo */}

@@ -196,7 +196,11 @@ const LocationForm: React.FC<LocationFormProps> = ({ formData, onFormChange }) =
         </div>
 
         {analysisType === 'pvgis' ? (
-          <PVGISIntegration onDataReceived={handlePVGISData} />
+          <PVGISIntegration 
+            onDataReceived={handlePVGISData}
+            formData={formData}
+            onFormChange={onFormChange}
+          />
         ) : (
           <>
             <div className="space-y-2">

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -7,10 +7,11 @@ import {
   Sun, 
   Calculator, 
   Wrench, 
-  TrendingUp
+  TrendingUp,
+  Loader
 } from 'lucide-react';
 import { FrontendCalculationLogger } from '@/lib/calculationLogger';
-import { SystemCalculations } from '@/lib/systemCalculations';
+import { SystemCalculations, SystemCalculationResults } from '@/lib/systemCalculations';
 
 interface SystemSummaryProps {
   formData: any;
@@ -20,6 +21,8 @@ interface SystemSummaryProps {
 const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' }) => {
   // Sempre mostrar o resumo se há dados de consumo (incluindo os dados padrão)
   const hasConsumptionData = formData.energyBills && formData.energyBills.length > 0;
+  const [systemResults, setSystemResults] = useState<SystemCalculationResults | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
   
   if (!hasConsumptionData) {
     return null; // Só esconder se realmente não há nenhum dado de consumo
@@ -33,42 +36,141 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' 
     return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
   }, 0) || 0;
 
-  if (consumoTotalAnual > 0) {
-    logger.startCalculationSection('RESUMO AUTOMÁTICO DO SISTEMA - EXIBIÇÃO PASSO 5');
-    
-    logger.context('Resumo', 'Calculando resumo automático do sistema fotovoltaico', {
-      consumoTotalAnual,
-      numeroContas: formData.energyBills?.length,
-      temNumeroModulosDefinido: !!(formData.numeroModulos && formData.numeroModulos > 0)
-    }, 'Cálculos automáticos executados quando o resumo do sistema é exibido no passo 5 do formulário');
+  // Effect para calcular sistema automaticamente
+  useEffect(() => {
+    const calculateSystem = async () => {
+      if (consumoTotalAnual > 0) {
+        setIsCalculating(true);
+        
+        logger.startCalculationSection('RESUMO AUTOMÁTICO DO SISTEMA - EXIBIÇÃO PASSO 5');
+        
+        logger.context('Resumo', 'Calculando resumo automático do sistema fotovoltaico', {
+          consumoTotalAnual,
+          numeroContas: formData.energyBills?.length,
+          temNumeroModulosDefinido: !!(formData.numeroModulos && formData.numeroModulos > 0),
+          temDadosLocalizacao: !!(formData.latitude && formData.longitude),
+          orientacao: formData.orientacao,
+          inclinacao: formData.inclinacao
+        }, 'Cálculos automáticos executados quando o resumo do sistema é exibido no passo 5 do formulário');
 
-    logger.formula('Consumo', 'Consumo Total Anual',
-      'C_anual = Σ(contas) → Σ(meses)',
-      {
-        contas: formData.energyBills?.map((bill: any) => ({
-          nome: bill.name,
-          consumo_mensal: bill.consumoMensal,
-          total_conta: bill.consumoMensal.reduce((sum: number, c: number) => sum + c, 0)
-        }))
-      },
-      consumoTotalAnual,
-      {
-        description: 'Soma de todos os consumos mensais de todas as contas de energia registradas',
-        units: 'kWh/ano',
-        references: ['Dados inseridos pelo usuário no formulário']
+        logger.formula('Consumo', 'Consumo Total Anual',
+          'C_anual = Σ(contas) → Σ(meses)',
+          {
+            contas: formData.energyBills?.map((bill: any) => ({
+              nome: bill.name,
+              consumo_mensal: bill.consumoMensal,
+              total_conta: bill.consumoMensal.reduce((sum: number, c: number) => sum + c, 0)
+            }))
+          },
+          consumoTotalAnual,
+          {
+            description: 'Soma de todos os consumos mensais de todas as contas de energia registradas',
+            units: 'kWh/ano',
+            references: ['Dados inseridos pelo usuário no formulário']
+          }
+        );
+
+        try {
+          // Usar cálculos padronizados com possível integração PVLIB
+          const results = await SystemCalculations.calculate({
+            numeroModulos: formData.numeroModulos || 0,
+            potenciaModulo: formData.potenciaModulo || 550,
+            irradiacaoMensal: formData.irradiacaoMensal || Array(12).fill(4.5),
+            eficienciaSistema: formData.eficienciaSistema || 85,
+            dimensionamentoPercentual: formData.dimensionamentoPercentual || 100,
+            consumoAnual: consumoTotalAnual > 0 ? consumoTotalAnual : undefined,
+            // Dados para PVLIB (se disponíveis)
+            latitude: formData.latitude,
+            longitude: formData.longitude,
+            orientacao: formData.orientacao,
+            inclinacao: formData.inclinacao
+          });
+
+          setSystemResults(results);
+
+          if (results.usedPVLIB) {
+            logger.context('PVLIB', 'Cálculo usando PVLIB para maior precisão', {
+              latitude: formData.latitude,
+              longitude: formData.longitude,
+              orientacao: formData.orientacao,
+              inclinacao: formData.inclinacao
+            }, 'Sistema detectou dados de orientação/inclinação válidos e usou PVLIB');
+          } else {
+            logger.context('PVGIS', 'Cálculo usando dados PVGIS tradicionais', {
+              motivo: !formData.latitude ? 'Sem localização' : 
+                      (formData.orientacao === 0 && formData.inclinacao === 0) ? 'Sistema horizontal' : 'Fallback'
+            }, 'Sistema usou cálculos PVGIS por limitações nos dados');
+          }
+
+          logger.endCalculationSection('RESUMO AUTOMÁTICO DO SISTEMA - EXIBIÇÃO PASSO 5', {
+            potenciaPico: `${results.potenciaPico.toFixed(2)} kWp`,
+            numeroModulos: `${results.numeroModulos} × ${formData.potenciaModulo || 550}W`,
+            areaEstimada: `${results.areaEstimada.toFixed(1)} m²`,
+            geracaoAnual: `${Math.round(results.geracaoEstimadaAnual)} kWh/ano`,
+            coberturaConsumo: results.coberturaConsumo ? `${Math.round(results.coberturaConsumo)}%` : 'N/A',
+            metodologiaUsada: results.usedPVLIB ? 'PVLIB (alta precisão)' : 'PVGIS (padrão)'
+          });
+
+        } catch (error) {
+          console.error('Erro ao calcular sistema:', error);
+          // Fallback para cálculo síncrono simples se houver erro
+          const fallbackResults = await SystemCalculations.calculate({
+            numeroModulos: formData.numeroModulos || 0,
+            potenciaModulo: formData.potenciaModulo || 550,
+            irradiacaoMensal: formData.irradiacaoMensal || Array(12).fill(4.5),
+            eficienciaSistema: formData.eficienciaSistema || 85,
+            dimensionamentoPercentual: formData.dimensionamentoPercentual || 100,
+            consumoAnual: consumoTotalAnual > 0 ? consumoTotalAnual : undefined
+          });
+          setSystemResults(fallbackResults);
+        } finally {
+          setIsCalculating(false);
+        }
       }
+    };
+
+    calculateSystem();
+  }, [
+    consumoTotalAnual,
+    formData.numeroModulos,
+    formData.potenciaModulo,
+    formData.irradiacaoMensal,
+    formData.eficienciaSistema,
+    formData.dimensionamentoPercentual,
+    formData.latitude,
+    formData.longitude,
+    formData.orientacao,
+    formData.inclinacao
+  ]);
+
+  // Se ainda está calculando ou não há resultados, mostrar loading ou valores padrão
+  if (isCalculating || !systemResults) {
+    return (
+      <Card className={`glass border-orange-400/30 ${className}`}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+            {isCalculating ? <Loader className="w-5 h-5 animate-spin" /> : <Calculator className="w-5 h-5" />}
+            Resumo do Sistema Fotovoltaico
+            {isCalculating && <span className="text-sm font-normal">Calculando...</span>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-32">
+            <div className="text-center text-muted-foreground">
+              {isCalculating ? (
+                <>
+                  <Loader className="w-8 h-8 animate-spin mx-auto mb-2" />
+                  <p>Processando cálculos do sistema...</p>
+                </>
+              ) : (
+                <p>Carregando dados do sistema...</p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
-
-  // Usar cálculos padronizados para consistência
-  const systemResults = SystemCalculations.calculate({
-    numeroModulos: formData.numeroModulos || 0,
-    potenciaModulo: formData.potenciaModulo || 550,
-    irradiacaoMensal: formData.irradiacaoMensal || Array(12).fill(4.5),
-    eficienciaSistema: formData.eficienciaSistema || 85,
-    dimensionamentoPercentual: formData.dimensionamentoPercentual || 100,
-    consumoAnual: consumoTotalAnual > 0 ? consumoTotalAnual : undefined
-  });
 
   const { 
     potenciaPico, 
@@ -76,65 +178,9 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' 
     areaEstimada, 
     geracaoEstimadaAnual, 
     irradiacaoMediaAnual,
-    coberturaConsumo 
+    coberturaConsumo,
+    usedPVLIB
   } = systemResults;
-
-  if (consumoTotalAnual > 0) {
-    logger.formula('Irradiação', 'Irradiação Solar Média Anual',
-      'H_média = Σ(H_mensais) / 12',
-      {
-        valores_mensais: formData.irradiacaoMensal || Array(12).fill(4.5),
-        soma_total: (formData.irradiacaoMensal || Array(12).fill(4.5)).reduce((a: number, b: number) => a + b, 0),
-        divisor: 12
-      },
-      irradiacaoMediaAnual,
-      {
-        description: 'Média anual da irradiação solar baseada nos dados mensais inseridos ou valores padrão',
-        units: 'kWh/m²/dia',
-        references: ['PVGIS', 'Dados do usuário']
-      }
-    );
-
-    logger.formula('Sistema', 'Cálculo Padronizado do Sistema',
-      'Usando SystemCalculations.calculate() para consistência',
-      {
-        numeroModulos,
-        potenciaModulo: formData.potenciaModulo || 550,
-        potenciaPico,
-        areaEstimada,
-        geracaoAnual: geracaoEstimadaAnual,
-        consumoAnual: consumoTotalAnual
-      },
-      systemResults,
-      {
-        description: 'Cálculos padronizados para evitar inconsistências entre resumo e resultado',
-        units: 'diversos'
-      }
-    );
-
-    if (coberturaConsumo !== undefined) {
-      logger.formula('Análise', 'Cobertura do Consumo',
-        'Cobertura_% = (E_gerada / E_consumida) × 100',
-        {
-          E_gerada: geracaoEstimadaAnual,
-          E_consumida: consumoTotalAnual
-        },
-        coberturaConsumo,
-        {
-          description: 'Percentual do consumo anual coberto pela geração estimada do sistema',
-          units: '%'
-        }
-      );
-    }
-
-    logger.endCalculationSection('RESUMO AUTOMÁTICO DO SISTEMA - EXIBIÇÃO PASSO 5', {
-      potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
-      numeroModulos: `${numeroModulos} × ${formData.potenciaModulo || 550}W`,
-      areaEstimada: `${areaEstimada.toFixed(1)} m²`,
-      geracaoAnual: `${Math.round(geracaoEstimadaAnual)} kWh/ano`,
-      coberturaConsumo: coberturaConsumo ? `${Math.round(coberturaConsumo)}%` : 'N/A'
-    });
-  }
   
   // Inversor selecionado
   const inversorSelecionado = formData.inverters?.[0] || null;
@@ -148,6 +194,11 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '' 
         <CardTitle className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
           <Calculator className="w-5 h-5" />
           Resumo do Sistema Fotovoltaico
+          {usedPVLIB && (
+            <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
+              PVLIB
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

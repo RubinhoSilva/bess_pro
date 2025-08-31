@@ -19,6 +19,12 @@ interface PVGISMonthlyData {
   H_d: number; // Daily irradiation (kWh/m²)
   H_m: number; // Monthly irradiation (kWh/m²)
   SD_m: number; // Standard deviation of monthly irradiation
+  // Componentes de radiação (quando components=1)
+  Gb_d?: number; // Daily beam irradiation (kWh/m²)
+  Gd_d?: number; // Daily diffuse irradiation (kWh/m²)
+  Gr_d?: number; // Daily reflected irradiation (kWh/m²)
+  // Dados horários ótimos (quando hourlyoptimal=1)
+  optimal_angle?: number; // Ângulo ótimo calculado
 }
 
 interface PVGISTotals {
@@ -34,6 +40,13 @@ interface PVGISTotals {
   l_spec: number; // Spectral losses (%)
   l_tg: number; // Temperature and irradiance losses (%)
   l_total: number; // Total losses (%)
+  // Componentes de radiação totais (quando components=1)
+  Gb_y?: number; // Yearly beam irradiation (kWh/m²/year)
+  Gd_y?: number; // Yearly diffuse irradiation (kWh/m²/year)
+  Gr_y?: number; // Yearly reflected irradiation (kWh/m²/year)
+  // Ângulo ótimo anual (quando hourlyoptimal=1)
+  optimal_inclination?: number; // Ângulo de inclinação ótimo anual
+  optimal_azimuth?: number; // Azimute ótimo anual
 }
 
 interface PVGISRequest {
@@ -48,6 +61,8 @@ interface PVGISRequest {
   database?: 'PVGIS-SARAH2' | 'PVGIS-NSRDB' | 'PVGIS-ERA5'; // Database
   startyear?: number;
   endyear?: number;
+  components?: number; // Include radiation components
+  hourlyoptimal?: number; // Use hourly optimal angle
   js?: 1; // Return JSON format
 }
 
@@ -88,6 +103,24 @@ interface PVGISResponse {
   outputs: {
     monthly: PVGISMonthlyData[];
     totals: PVGISTotals;
+    // Dados de componentes de radiação (quando components=1)
+    radiation_components?: {
+      beam: PVGISMonthlyData[];
+      diffuse: PVGISMonthlyData[];
+      reflected: PVGISMonthlyData[];
+    };
+    // Dados horários ótimos (quando hourlyoptimal=1)
+    hourly_optimal?: {
+      angles: Array<{
+        hour: number;
+        optimal_angle: number;
+        irradiation: number;
+      }>;
+      annual_optimal: {
+        inclination: number;
+        azimuth: number;
+      };
+    };
   };
 }
 
@@ -118,6 +151,8 @@ interface PVGISDailyRadiationRequest {
   database?: 'PVGIS-SARAH2' | 'PVGIS-ERA5';
   angle?: number;
   aspect?: number;
+  components?: number;
+  hourlyoptimal?: number;
 }
 
 interface PVGISDailyRadiationResponse {
@@ -142,9 +177,13 @@ interface PVGISDailyRadiationResponse {
     G_d: number; // Daily global irradiation (Wh/m²)
     Gb_d: number; // Daily beam irradiation (Wh/m²)
     Gd_d: number; // Daily diffuse irradiation (Wh/m²)
+    Gr_d?: number; // Daily reflected irradiation (Wh/m²) - quando components=1
     T2m: number; // 2-m air temperature (°C)
     WS10m: number; // 10-m wind speed (m/s)
     Int: number; // Data quality flag
+    // Ângulos ótimos horários (quando hourlyoptimal=1)
+    optimal_angle?: number;
+    optimal_azimuth?: number;
   }>;
 }
 
@@ -172,6 +211,8 @@ export class PVGISAPI {
       database = 'PVGIS-SARAH2',
       startyear = 2016,
       endyear = 2020,
+      components = 1,
+      hourlyoptimal = 1,
       js = 1
     } = request;
 
@@ -188,6 +229,8 @@ export class PVGISAPI {
       raddatabase: database,
       startyear: startyear.toString(),
       endyear: endyear.toString(),
+      components: components.toString(),
+      hourlyoptimal: hourlyoptimal.toString(),
       js: js.toString()
     });
 
@@ -254,7 +297,9 @@ export class PVGISAPI {
       end,
       database = 'PVGIS-SARAH2',
       angle = 0,
-      aspect = 180
+      aspect = 180,
+      components = 1,
+      hourlyoptimal = 1
     } = request;
 
     const params = new URLSearchParams({
@@ -265,6 +310,8 @@ export class PVGISAPI {
       raddatabase: database,
       angle: angle.toString(),
       aspect: aspect.toString(),
+      components: components.toString(),
+      hourlyoptimal: hourlyoptimal.toString(),
       outputformat: 'json'
     });
 
@@ -349,6 +396,16 @@ export class PVGISAPI {
     };
     coordenadas: Location;
     elevacao: number;
+    // Dados adicionais dos novos parâmetros
+    componentesRadiacao?: {
+      direta: number[];
+      difusa: number[];
+      refletida: number[];
+    };
+    angulosOtimos?: {
+      inclinacao: number;
+      azimute: number;
+    };
   } {
     const { inputs, outputs } = pvgisData;
     
@@ -361,6 +418,19 @@ export class PVGISAPI {
     // Temperatura média estimada (PVGIS não retorna diretamente, usar aproximação)
     const temperaturaMedia = 20; // Valor padrão, pode ser melhorado com dados climáticos
     
+    // Processar componentes de radiação se disponíveis
+    const componentesRadiacao = outputs.radiation_components ? {
+      direta: outputs.radiation_components.beam.map(month => month.H_d),
+      difusa: outputs.radiation_components.diffuse.map(month => month.H_d),
+      refletida: outputs.radiation_components.reflected.map(month => month.H_d)
+    } : undefined;
+
+    // Processar ângulos ótimos se disponíveis
+    const angulosOtimos = outputs.hourly_optimal ? {
+      inclinacao: outputs.hourly_optimal.annual_optimal.inclination,
+      azimute: outputs.hourly_optimal.annual_optimal.azimuth
+    } : undefined;
+
     return {
       irradiacaoMensal,
       irradiacaoAnual,
@@ -380,7 +450,9 @@ export class PVGISAPI {
         latitude: inputs.location.latitude,
         longitude: inputs.location.longitude
       },
-      elevacao: inputs.location.elevation
+      elevacao: inputs.location.elevation,
+      componentesRadiacao,
+      angulosOtimos
     };
   }
 

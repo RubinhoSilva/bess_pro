@@ -298,7 +298,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           parametrosSistema: (solarOptions as any).systemParams
         });
 
-        const advancedResults = AdvancedSolarCalculator.calculateDetailedSolar(
+        const advancedResults = await AdvancedSolarCalculator.calculateDetailedSolar(
           potenciaPico,
           solarOptions
         );

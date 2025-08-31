@@ -23,10 +23,16 @@ export class IrradiationRoutes {
       this.irradiationController.getPVGISData.bind(this.irradiationController)
     );
 
-    // GET /irradiation/pvgis-mrcalc - Proxy para PVGIS MRcalc endpoint  
+    // GET /irradiation/pvgis-mr - Proxy para PVGIS MRcalc endpoint  
     this.router.get(
-      '/pvgis-mrcalc',
+      '/pvgis-mr',
       this.irradiationController.getPVGISMRData.bind(this.irradiationController)
+    );
+
+    // GET /irradiation/pvgis-components - Endpoint otimizado para componentes mensais
+    this.router.get(
+      '/pvgis-components',
+      this.irradiationController.getPVGISMonthlyComponents.bind(this.irradiationController)
     );
 
     // Todas as outras rotas de irradiação requerem autenticação

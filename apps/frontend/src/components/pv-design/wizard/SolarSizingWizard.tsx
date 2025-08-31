@@ -348,13 +348,18 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
       // Usar cálculos padronizados para consistência com resumo
       console.log('🔄 === USANDO CÁLCULOS PADRONIZADOS ===');
-      const systemResults = SystemCalculations.calculate({
+      const systemResults = await SystemCalculations.calculate({
         numeroModulos: currentDimensioning.numeroModulos || 0,
         potenciaModulo: currentDimensioning.potenciaModulo || 550,
         irradiacaoMensal: currentDimensioning.irradiacaoMensal || Array(12).fill(4.5),
         eficienciaSistema: currentDimensioning.eficienciaSistema || 85,
         dimensionamentoPercentual: currentDimensioning.dimensionamentoPercentual || 100,
-        consumoAnual: consumoTotalAnual > 0 ? consumoTotalAnual : undefined
+        consumoAnual: consumoTotalAnual > 0 ? consumoTotalAnual : undefined,
+        // Dados para PVLIB se disponíveis
+        latitude: currentDimensioning.latitude,
+        longitude: currentDimensioning.longitude,
+        orientacao: currentDimensioning.orientacao,
+        inclinacao: currentDimensioning.inclinacao
       });
 
       // Extrair valores padronizados
@@ -364,10 +369,11 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       const geracaoEstimadaAnual = systemResults.geracaoEstimadaAnual;
       
       console.log('✅ Cálculos padronizados:', {
-        potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
-        numeroModulos: `${numeroModulos} unidades`,
-        areaEstimada: `${areaEstimada.toFixed(2)} m²`,
-        geracaoAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`
+        potenciaPico: `${potenciaPico?.toFixed(2) || 0} kWp`,
+        numeroModulos: `${numeroModulos || 0} unidades`,
+        areaEstimada: `${areaEstimada?.toFixed(2) || 0} m²`,
+        geracaoAnual: `${geracaoEstimadaAnual?.toFixed(0) || 0} kWh/ano`,
+        usedPVLIB: systemResults.usedPVLIB ? 'Sim' : 'Não'
       });
       
       const solarOptions: SolarCalculationOptions = {
@@ -393,7 +399,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         parametrosSistema: (solarOptions as any).systemParams
       });
 
-      const advancedResults = AdvancedSolarCalculator.calculateDetailedSolar(
+      const advancedResults = await AdvancedSolarCalculator.calculateDetailedSolar(
         potenciaPico,
         solarOptions
       );
@@ -450,17 +456,29 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       }
 
       // Advanced financial analysis
+      // Calcular custo fio B conforme Lei 14.300/2022
+      const anoAtual = new Date().getFullYear();
+      let percentualFioB = 0;
+      if (anoAtual >= 2025 && anoAtual <= 2028) {
+        percentualFioB = 0.15; // Período de transição gradual
+      } else if (anoAtual >= 2029) {
+        percentualFioB = 0.90; // Tarifa completa menos impostos
+      }
+      
+      const tarifaEnergia = currentDimensioning.tarifaEnergiaB || 0.8;
+      const custoFioBCalculado = tarifaEnergia * percentualFioB;
+
       const advancedFinancialInput: AdvancedFinancialInput = {
         investimentoInicial: totalInvestment,
         geracaoMensal: geracaoEstimadaMensal,
         consumoMensal: totalConsumoMensal,
-        tarifaEnergia: currentDimensioning.tarifaEnergiaB || 0.8,
-        custoFioB: currentDimensioning.custoFioB || (currentDimensioning.tarifaEnergiaB || 0.8) * 0.3,
+        tarifaEnergia: tarifaEnergia,
+        custoFioB: currentDimensioning.custoFioB || custoFioBCalculado,
         vidaUtil: currentDimensioning.vidaUtil || 25,
         taxaDesconto: currentDimensioning.taxaDesconto || 8.0,
         inflacaoEnergia: currentDimensioning.inflacaoEnergia || 4.5,
         degradacaoModulos: 0.5,
-        custoOM: totalInvestment * 0.01,
+        custoOM: totalInvestment * 0.01, // 1% do investimento/ano
         inflacaoOM: 4.0,
         modalidadeTarifaria: 'convencional'
       };

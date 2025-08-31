@@ -194,12 +194,21 @@ export const AdvancedSolarAnalysis: React.FC<AdvancedSolarAnalysisProps> = ({ re
 
       {/* Detailed Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <MonthlyChart
-          data={advancedSolar.irradiacaoInclinada}
-          label="Irradiação Corrigida por Inclinação"
-          color="bg-gradient-to-r from-yellow-400 to-orange-500"
-          suffix=" kWh/m²"
-        />
+        <div className="relative">
+          <MonthlyChart
+            data={advancedSolar.irradiacaoInclinada}
+            label="Irradiação Corrigida por Inclinação"
+            color="bg-gradient-to-r from-yellow-400 to-orange-500"
+            suffix=" kWh/m²"
+          />
+          {advancedSolar.source === 'pvlib' && (
+            <div className="absolute top-2 right-2">
+              <div className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded-full border border-green-200 dark:border-green-700/50">
+                PVLIB
+              </div>
+            </div>
+          )}
+        </div>
         
         <LossesBreakdown perdas={perdas} />
       </div>

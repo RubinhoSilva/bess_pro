@@ -31,7 +31,12 @@ function PVDesignPageContent() {
     const projectId = searchParams.get('projectId');
     
     if (projectId) {
+      console.log('📂 Carregando projeto da URL:', projectId);
       loadProjectData(projectId);
+    } else {
+      console.log('✨ Acessando PV Design sem parâmetros - novo dimensionamento');
+      // Garantir que não há dados residuais quando acessar diretamente
+      sessionStorage.removeItem('continueDimensioning');
     }
   }, [searchParams]);
 
@@ -40,6 +45,11 @@ function PVDesignPageContent() {
     const selectedLead = location.state?.selectedLead;
     
     if (selectedLead) {
+      console.log('📄 Lead pré-selecionado do CRM:', selectedLead.name);
+      
+      // Marcar que é um carregamento explícito
+      sessionStorage.setItem('continueDimensioning', 'true');
+      
       updateDimensioning({
         customer: selectedLead,
       });

@@ -85,8 +85,8 @@ export class AdvancedFinancialAnalyzer {
     });
 
     // 2. Calcular indicadores financeiros
-    const vpl = this.calculateNPV(cashFlow, taxaDesconto);
-    const tir = this.calculateIRR(cashFlow);
+    const vpl = this.calculateNPV(cashFlow, taxaDesconto) - investimentoInicial;
+    const tir = this.calculateIRR(cashFlow, investimentoInicial);
     const paybackSimples = this.calculateSimplePayback(cashFlow);
     const paybackDescontado = this.calculateDiscountedPayback(cashFlow, taxaDesconto);
 
@@ -199,17 +199,22 @@ export class AdvancedFinancialAnalyzer {
   }
 
   private static calculateNPV(cashFlow: CashFlowDetails[], taxaDesconto: number): number {
-    return cashFlow.reduce((npv, year) => npv + year.valorPresente, 0);
+    // VPL = -Investimento_Inicial + Σ(Fluxos_Futuros / (1+taxa)^ano)
+    const vplFluxos = cashFlow.reduce((npv, year) => npv + year.valorPresente, 0);
+    
+    // O investimento inicial já deve estar incluído no primeiro cálculo
+    // Se não estiver, seria necessário subtrair aqui
+    return vplFluxos;
   }
 
-  private static calculateIRR(cashFlow: CashFlowDetails[]): number {
+  private static calculateIRR(cashFlow: CashFlowDetails[], investimentoInicial: number): number {
     // Método de Newton-Raphson para encontrar a TIR
     let taxa = 0.1; // Chute inicial de 10%
     const maxIteracoes = 100;
     const tolerancia = 0.0001;
     
     for (let i = 0; i < maxIteracoes; i++) {
-      let f = 0; // NPV
+      let f = -investimentoInicial; // NPV começando com investimento inicial negativo
       let df = 0; // Derivada do NPV
       
       cashFlow.forEach((year) => {
@@ -221,6 +226,8 @@ export class AdvancedFinancialAnalyzer {
       if (Math.abs(f) < tolerancia) {
         return taxa * 100;
       }
+      
+      if (df === 0) break; // Evitar divisão por zero
       
       taxa = taxa - f / df;
       

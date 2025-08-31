@@ -7,6 +7,11 @@ export interface PVGISLocation {
   elevation?: number;
 }
 
+export interface PVGISParameters {
+  orientacao?: number; // azimuth angle (0-360)
+  inclinacao?: number; // tilt angle (0-90)
+}
+
 export interface PVGISMonthlyData {
   month: number;
   value: number; // kWh/m²/day
@@ -32,10 +37,39 @@ export interface PVGISResponse {
 /**
  * Busca dados de irradiação solar no PVGIS
  * @param location Coordenadas da localização
+ * @param parameters Parâmetros de orientação e inclinação
  * @returns Dados mensais de irradiação
  */
-export const fetchPVGISData = async (location: PVGISLocation): Promise<PVGISResponse> => {
+/**
+ * Converte orientação da convenção do sistema (0°=Norte) para PVGIS (0°=Sul)
+ */
+const convertOrientationToPVGIS = (orientacao: number): number => {
+  // Nossa convenção: 0°=Norte, 90°=Leste, 180°=Sul, 270°=Oeste
+  // PVGIS convenção: 0°=Sul, 90°=Oeste, 180°=Norte, -90°=Leste
+  
+  // Converter: adicionar 180° e normalizar
+  let pvgisOrientation = (orientacao + 180) % 360;
+  
+  // PVGIS usa -90 para Leste, então converter valores > 180 para negativos
+  if (pvgisOrientation > 180) {
+    pvgisOrientation = pvgisOrientation - 360;
+  }
+  
+  return pvgisOrientation;
+};
+
+export const fetchPVGISData = async (location: PVGISLocation, parameters?: PVGISParameters): Promise<PVGISResponse> => {
   const { latitude, longitude } = location;
+  const { orientacao = 0, inclinacao = 0 } = parameters || {};
+  
+  // Converter orientação para convenção PVGIS
+  const pvgisOrientation = convertOrientationToPVGIS(orientacao);
+  
+  console.log('🧭 Conversão de orientação:', {
+    orientacaoSistema: orientacao,
+    orientacaoPVGIS: pvgisOrientation,
+    inclinacao: inclinacao
+  });
   
   // Detectar ambiente automaticamente
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -48,8 +82,8 @@ export const fetchPVGISData = async (location: PVGISLocation): Promise<PVGISResp
     lon: longitude.toString(),
     peakpower: '1', // 1kWp para obter dados de irradiação
     loss: '14', // Perdas padrão do sistema
-    angle: '0', // Ângulo horizontal para obter irradiação global
-    aspect: '0', // Orientação (não relevante para horizontal)
+    angle: inclinacao.toString(), // Ângulo de inclinação (0-90°)
+    aspect: pvgisOrientation.toString(), // Ângulo de orientação convertido
     mountingplace: 'free', // Instalação livre
   });
 
@@ -199,15 +233,16 @@ const CACHE_DURATION = 1000 * 60 * 60; // 1 hora
 /**
  * Busca dados com cache
  */
-export const fetchPVGISDataWithCache = async (location: PVGISLocation): Promise<PVGISResponse> => {
-  const key = `${location.latitude.toFixed(4)},${location.longitude.toFixed(4)}`;
+export const fetchPVGISDataWithCache = async (location: PVGISLocation, parameters?: PVGISParameters): Promise<PVGISResponse> => {
+  const { orientacao = 0, inclinacao = 0 } = parameters || {};
+  const key = `${location.latitude.toFixed(4)},${location.longitude.toFixed(4)},${orientacao},${inclinacao}`;
   const cached = pvgisCache.get(key);
   
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     return cached.data;
   }
   
-  const data = await fetchPVGISData(location);
+  const data = await fetchPVGISData(location, parameters);
   pvgisCache.set(key, { data, timestamp: Date.now() });
   
   return data;

@@ -27,8 +27,8 @@ export interface SolarCalculationOptions {
 }
 
 export interface DetailedSolarResults {
-  irradiacaoMensal: number[];           // kWh/m²/mês
-  irradiacaoInclinada: number[];        // Corrigida para inclinação
+  irradiacaoMensal: number[];           // kWh/m²/mês (base horizontal)
+  irradiacaoInclinada: number[];        // Corrigida para inclinação (PVLIB)
   fatorTemperatura: number[];           // Fator de correção por temperatura
   perdas: {
     temperatura: number[];
@@ -47,6 +47,7 @@ export interface DetailedSolarResults {
     yieldEspecifico: number; // kWh/kWp/ano
     fatorCapacidade: number; // %
   };
+  source: 'pvlib' | 'estimated';  // Fonte dos dados
 }
 
 export class AdvancedSolarCalculator {
@@ -91,7 +92,120 @@ export class AdvancedSolarCalculator {
     // Adicionar mais estados conforme necessário
   };
 
-  static calculateDetailedSolar(
+  static async calculateDetailedSolar(
+    potenciaKw: number,
+    options: SolarCalculationOptions
+  ): Promise<DetailedSolarResults> {
+    
+    const { location, tilt, azimuth } = options;
+    
+    try {
+      // Tentar usar PVLIB para dados precisos
+      const pvlibResults = await this.calculateWithPVLIB(
+        potenciaKw,
+        location,
+        tilt,
+        azimuth,
+        options
+      );
+      return pvlibResults;
+    } catch (error) {
+      console.warn('PVLIB não disponível, usando cálculos estimados:', error);
+      // Fallback para cálculos estimados
+      return this.calculateWithEstimatedData(potenciaKw, options);
+    }
+  }
+
+  /**
+   * Cálculo usando serviço PVLIB para máxima precisão
+   */
+  private static async calculateWithPVLIB(
+    potenciaKw: number,
+    location: LocationData,
+    tilt: number,
+    azimuth: number,
+    options: SolarCalculationOptions
+  ): Promise<DetailedSolarResults> {
+    
+    // Chamada para o serviço PVLIB
+    const response = await fetch('http://localhost:8100/pv-system', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        location: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          altitude: location.altitude || 0,
+          timezone: location.timezone || 'America/Sao_Paulo'
+        },
+        surface_tilt: tilt,
+        surface_azimuth: azimuth,
+        module_power: 550, // Assumindo módulos de 550W
+        num_modules: Math.round((potenciaKw * 1000) / 550),
+        inverter_efficiency: 0.96,
+        system_losses: 0.14 // 14% perdas do sistema
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`PVLIB API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Converter dados do PVLIB para formato esperado
+    const geracaoMensal = data.monthly_energy;
+    const geracaoAnual = data.annual_energy;
+    const geracaoDiarioMedio = geracaoAnual / 365;
+    
+    // Calcular irradiação inclinada baseada na geração PVLIB
+    const irradiacaoInclinada = geracaoMensal.map((geracao: number) => {
+      // Reverse engineering: geracao / (potencia * dias * eficiencia)
+      const diasMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+      return geracao / (potenciaKw * diasMes[geracaoMensal.indexOf(geracao)] * 0.86);
+    });
+    
+    // Estimar irradiação horizontal base (para referência)
+    const stateCode = location.state || 'SP';
+    const baseIrradiation = this.IRRADIATION_DATA[stateCode] || this.IRRADIATION_DATA['SP'];
+    
+    // Calcular fatores de temperatura
+    const temperatures = this.TEMPERATURE_DATA[stateCode] || this.TEMPERATURE_DATA['SP'];
+    const fatorTemperatura = this.calculateTemperatureFactor(temperatures);
+    
+    // Calcular perdas detalhadas
+    const perdas = this.calculateLosses(options, irradiacaoInclinada);
+    
+    // Métricas de performance
+    const prMedio = data.monthly_performance_ratio?.[0] || 0.85;
+    const yieldEspecifico = data.specific_yield || (geracaoAnual / potenciaKw);
+    const fatorCapacidade = data.capacity_factor * 100;
+    
+    return {
+      irradiacaoMensal: baseIrradiation,
+      irradiacaoInclinada,
+      fatorTemperatura,
+      perdas,
+      geracaoEstimada: {
+        mensal: geracaoMensal,
+        anual: geracaoAnual,
+        diarioMedio: geracaoDiarioMedio
+      },
+      performance: {
+        prMedio,
+        yieldEspecifico,
+        fatorCapacidade
+      },
+      source: 'pvlib'
+    };
+  }
+
+  /**
+   * Cálculo com dados estimados (fallback)
+   */
+  private static calculateWithEstimatedData(
     potenciaKw: number,
     options: SolarCalculationOptions
   ): DetailedSolarResults {
@@ -148,7 +262,8 @@ export class AdvancedSolarCalculator {
         prMedio,
         yieldEspecifico,
         fatorCapacidade
-      }
+      },
+      source: 'estimated'
     };
   }
 

@@ -165,8 +165,8 @@ const getInitialDimensioningData = (): DimensioningData => ({
   dimensionamentoPercentual: 100,
   vidaUtil: 25,
   degradacaoAnual: 0.5,
-  orientacao: 180,
-  inclinacao: 23,
+  orientacao: 0,
+  inclinacao: 0,
   
   // Dados do inversor
   inversorSelecionado: '',
@@ -209,26 +209,48 @@ const getInitialDimensioningData = (): DimensioningData => ({
 export function DimensioningProvider({ children }: { children: React.ReactNode }) {
   // Load data from localStorage on initialization
   const [currentDimensioning, setCurrentDimensioning] = useState<DimensioningData>(() => {
-    const saved = localStorage.getItem('currentDimensioning');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return { ...getInitialDimensioningData(), ...parsed };
-      } catch (e) {
-        console.warn('Error parsing saved dimensioning data:', e);
+    // Verificar se deve continuar um dimensionamento existente
+    const shouldContinue = sessionStorage.getItem('continueDimensioning');
+    
+    if (shouldContinue === 'true') {
+      const saved = localStorage.getItem('currentDimensioning');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          console.log('📂 Carregando dimensionamento salvo do localStorage');
+          return { ...getInitialDimensioningData(), ...parsed };
+        } catch (e) {
+          console.warn('Error parsing saved dimensioning data:', e);
+        }
       }
     }
+    
+    console.log('✨ Iniciando novo dimensionamento limpo');
     return getInitialDimensioningData();
   });
   
   const [isDimensioningLoaded, setIsDimensioningLoaded] = useState(() => {
-    const saved = localStorage.getItem('isDimensioningLoaded');
-    return saved ? JSON.parse(saved) : false;
+    // Só marcar como carregado se deve continuar um dimensionamento existente
+    const shouldContinue = sessionStorage.getItem('continueDimensioning');
+    
+    if (shouldContinue === 'true') {
+      const saved = localStorage.getItem('isDimensioningLoaded');
+      return saved ? JSON.parse(saved) : false;
+    }
+    
+    return false;
   });
   
   const [dimensioningId, setDimensioningId] = useState<string | null>(() => {
-    const saved = localStorage.getItem('dimensioningId');
-    return saved ? JSON.parse(saved) : null;
+    // Só carregar ID se deve continuar um dimensionamento existente
+    const shouldContinue = sessionStorage.getItem('continueDimensioning');
+    
+    if (shouldContinue === 'true') {
+      const saved = localStorage.getItem('dimensioningId');
+      return saved ? JSON.parse(saved) : null;
+    }
+    
+    return null;
   });
   
   const [isSaving, setIsSaving] = useState(false);
@@ -271,6 +293,10 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     setDimensioningId(data.id || null);
     setIsDimensioningLoaded(true);
     
+    // Mark that user explicitly loaded a dimensioning
+    sessionStorage.setItem('continueDimensioning', 'true');
+    
+    console.log('📂 Dimensionamento carregado explicitamente:', data.dimensioningName);
     toast.success(`Dimensionamento "${data.dimensioningName}" carregado com sucesso.`);
   }, []);
 
@@ -283,13 +309,22 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     setDimensioningId(null);
     setIsDimensioningLoaded(false);
     
-    // Clear localStorage as well
+    // Clear all storage
     localStorage.removeItem('currentDimensioning');
     localStorage.removeItem('isDimensioningLoaded');
     localStorage.removeItem('dimensioningId');
+    sessionStorage.removeItem('continueDimensioning');
+    
+    console.log('🧼 Dimensionamento limpo - valores padrão restaurados');
   }, []);
 
   const createNewDimensioning = useCallback((customerId: string, customerData: Customer) => {
+    // Clear any previous session flags to ensure a fresh start
+    sessionStorage.removeItem('continueDimensioning');
+    localStorage.removeItem('currentDimensioning');
+    localStorage.removeItem('isDimensioningLoaded');
+    localStorage.removeItem('dimensioningId');
+    
     const newDimensioning = {
       ...getInitialDimensioningData(),
       dimensioningName: `Dimensionamento ${new Date().toLocaleDateString()}`,
@@ -304,8 +339,9 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     };
     
     setCurrentDimensioning(newDimensioning);
-    setIsDimensioningLoaded(true);
+    setIsDimensioningLoaded(false); // Changed to false for new dimensioning
     
+    console.log('✨ Novo dimensionamento criado para:', customerData.name);
     toast.success(`Novo dimensionamento criado para ${customerData.name}`);
   }, []);
 
