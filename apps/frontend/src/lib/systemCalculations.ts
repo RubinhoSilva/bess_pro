@@ -165,7 +165,7 @@ export class SystemCalculations {
     inverter_efficiency: number;
     system_losses: number;
   }): Promise<{ annual_energy: number; monthly_energy: number[] }> {
-    const response = await fetch('http://localhost:8100/pv-system', {
+    const response = await fetch('http://localhost:8110/pv-system', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

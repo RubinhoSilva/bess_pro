@@ -195,7 +195,7 @@ export class AdvancedSolarCalculator {
       
       // Fallback para o serviço PVLIB original
       try {
-        const response = await fetch('http://localhost:8100/pv-system', {
+        const response = await fetch('http://localhost:8110/pv-system', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -93,7 +93,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     try {
       console.log('🐍 Chamando API financeira Python:', financialData);
       
-      const response = await fetch('http://localhost:8100/financial/calculate-advanced', {
+      const response = await fetch('http://localhost:8110/financial/calculate-advanced', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

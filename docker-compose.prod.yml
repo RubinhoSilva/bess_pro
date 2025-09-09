@@ -83,7 +83,7 @@ services:
     platform: linux/arm64
     restart: unless-stopped
     ports:
-      - "8100:8100"
+      - "8110:8100"
     environment:
       - ENVIRONMENT=production
       - LOG_LEVEL=INFO
