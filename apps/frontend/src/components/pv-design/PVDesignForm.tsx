@@ -283,10 +283,15 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           },
           tilt: 23, // Usar valor padrão por enquanto
           azimuth: 180, // Usar valor padrão por enquanto
-          considerarSombreamento: false,
-          sombreamento: undefined,
-          considerarSujeira: true,
-          sujeira: 3
+          considerarSombreamento: (currentDimensioning.perdaSombreamento || 0) > 0,
+          sombreamento: Array(12).fill(currentDimensioning.perdaSombreamento || 0),
+          considerarSujeira: (currentDimensioning.perdaSujeira || 0) > 0,
+          sujeira: currentDimensioning.perdaSujeira || 0,
+          outrasPerdasPercentual: currentDimensioning.perdaOutras || 0,
+          // Perdas específicas do usuário
+          perdaMismatch: currentDimensioning.perdaMismatch || 2,
+          perdaCabeamento: currentDimensioning.perdaCabeamento || 2,
+          perdaInversor: currentDimensioning.perdaInversor || 3
         };
 
         // Calcular resultados detalhados

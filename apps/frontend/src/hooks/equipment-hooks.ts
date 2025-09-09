@@ -28,6 +28,27 @@ export interface SolarModule {
   tolerancia?: string;
   areaM2?: number;
   densidadePotencia?: number;
+  // Parâmetros para modelo espectral
+  material?: string;     // Material da célula (c-Si, a-Si, CdTe, etc.)
+  technology?: string;   // Tecnologia (mono-Si, mc-Si, a-Si, CdTe, etc.)
+  
+  // Parâmetros do modelo de diodo único (5 parâmetros fundamentais)
+  aRef?: number;         // Fator de idealidade modificado [V]
+  iLRef?: number;        // Fotocorrente STC [A]
+  iORef?: number;        // Corrente saturação reversa STC [A]
+  rS?: number;           // Resistência série [Ω]
+  rShRef?: number;       // Resistência paralelo STC [Ω]
+  
+  // Coeficientes de temperatura críticos
+  alphaSc?: number;      // Coef. temperatura corrente [A/°C]
+  betaOc?: number;       // Coef. temperatura tensão [V/°C]
+  gammaR?: number;       // Coef. temperatura potência [1/°C]
+  
+  // Parâmetros SAPM térmicos
+  a0?: number; a1?: number; a2?: number; a3?: number; a4?: number;
+  b0?: number; b1?: number; b2?: number; b3?: number; b4?: number; b5?: number;
+  dtc?: number;          // Delta T para SAPM [°C]
+  
   createdAt: string;
   updatedAt: string;
 }
@@ -67,6 +88,14 @@ export interface Inverter {
   maxModulosSuportados?: number;
   maxStringsTotal?: number;
   tipoFase?: 'monofásico' | 'bifásico' | 'trifásico' | 'unknown';
+  // Parâmetros Sandia para simulação precisa
+  vdco?: number;  // Tensão DC nominal de operação
+  pso?: number;   // Potência de standby (W)
+  c0?: number;    // Coeficiente curva eficiência
+  c1?: number;    // Coeficiente curva eficiência  
+  c2?: number;    // Coeficiente curva eficiência
+  c3?: number;    // Coeficiente curva eficiência
+  pnt?: number;   // Potência threshold normalizada
   createdAt: string;
   updatedAt: string;
 }

@@ -19,7 +19,7 @@ const getApiBaseUrl = () => {
 
 const api = axios.create({
   baseURL: getApiBaseUrl(),
-  timeout: 30000,
+  timeout: 120000, // 2 minutos para chamadas PVGIS
 });
 
 // Logger global para APIs

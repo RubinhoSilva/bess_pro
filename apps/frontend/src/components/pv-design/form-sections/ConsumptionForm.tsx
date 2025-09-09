@@ -24,9 +24,8 @@ const EnergyBillComponent: React.FC<{
   onRemoveBill: (id: string) => void;
 }> = ({ bill, onBillChange, onRemoveBill }) => {
   const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-  const [consumptionType, setConsumptionType] = useState<'monthly' | 'average' | 'total'>('monthly');
+  const [consumptionType, setConsumptionType] = useState<'monthly' | 'average'>('monthly');
   const [avgConsumption, setAvgConsumption] = useState(500);
-  const [totalConsumption, setTotalConsumption] = useState(6000);
 
   const handleMonthlyChange = (index: number, value: string) => {
     const newValues = [...bill.consumoMensal];
@@ -40,11 +39,6 @@ const EnergyBillComponent: React.FC<{
     onBillChange(bill.id, 'consumoMensal', Array(12).fill(avg));
   };
 
-  const handleTotalChange = (value: string) => {
-    const total = parseFloat(value) || 0;
-    setTotalConsumption(total);
-    onBillChange(bill.id, 'consumoMensal', Array(12).fill(total / 12));
-  };
 
   return (
     <div className="p-4 border border-border rounded-lg bg-muted space-y-4">
@@ -66,10 +60,9 @@ const EnergyBillComponent: React.FC<{
       </div>
 
       <Tabs value={consumptionType} onValueChange={(value) => setConsumptionType(value as any)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="monthly">Mensal</TabsTrigger>
           <TabsTrigger value="average">Média</TabsTrigger>
-          <TabsTrigger value="total">Total Anual</TabsTrigger>
         </TabsList>
 
         <TabsContent value="monthly" className="space-y-4">
@@ -108,38 +101,8 @@ const EnergyBillComponent: React.FC<{
           </div>
         </TabsContent>
 
-        <TabsContent value="total" className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor={`${bill.id}-total`}>Consumo Total Anual (kWh)</Label>
-            <Input
-              id={`${bill.id}-total`}
-              type="number"
-              placeholder="6000"
-              value={totalConsumption}
-              onChange={(e) => handleTotalChange(e.target.value)}
-            />
-            <p className="text-xs text-gray-500">
-              Será dividido igualmente pelos 12 meses ({(totalConsumption / 12).toFixed(0)} kWh/mês)
-            </p>
-          </div>
-        </TabsContent>
       </Tabs>
 
-      {/* Resumo */}
-      {bill.consumoMensal.some(val => val > 0) && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-200 dark:border-blue-700">
-          <div className="text-sm space-y-1 text-gray-800 dark:text-gray-200">
-            <div className="flex justify-between">
-              <span>Total Anual:</span>
-              <span className="font-semibold">{bill.consumoMensal.reduce((a, b) => a + b, 0).toFixed(0)} kWh</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Média Mensal:</span>
-              <span className="font-semibold">{(bill.consumoMensal.reduce((a, b) => a + b, 0) / 12).toFixed(0)} kWh</span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -229,17 +192,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
         {totalAnualConsumption > 0 && (
           <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-700">
             <h4 className="font-semibold text-green-800 dark:text-green-200 mb-3">Resumo Total do Consumo</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div className="text-center">
-                <div className="text-green-600 dark:text-green-400 font-medium">Total Anual</div>
-                <div className="text-xl font-bold text-green-800 dark:text-green-200">{totalAnualConsumption.toFixed(0)}</div>
-                <div className="text-xs text-green-600 dark:text-green-400">kWh/ano</div>
-              </div>
-              <div className="text-center">
-                <div className="text-green-600 dark:text-green-400 font-medium">Média Mensal</div>
-                <div className="text-xl font-bold text-green-800 dark:text-green-200">{(totalAnualConsumption / 12).toFixed(0)}</div>
-                <div className="text-xs text-green-600 dark:text-green-400">kWh/mês</div>
-              </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="text-center">
                 <div className="text-green-600 dark:text-green-400 font-medium">Média Diária</div>
                 <div className="text-xl font-bold text-green-800 dark:text-green-200">{(totalAnualConsumption / 365).toFixed(0)}</div>

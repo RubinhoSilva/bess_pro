@@ -1,4 +1,6 @@
 // Cálculos padronizados para evitar inconsistências entre resumo e resultado
+import { calculateSystemEfficiency, SystemLosses } from './pvDimensioning';
+
 export interface SystemCalculationInputs {
   // Módulos
   numeroModulos: number;
@@ -8,7 +10,8 @@ export interface SystemCalculationInputs {
   irradiacaoMensal: number[]; // kWh/m²/dia para cada mês
   
   // Sistema
-  eficienciaSistema: number; // %
+  eficienciaSistema?: number; // % (deprecated, use systemLosses)
+  systemLosses?: SystemLosses;
   dimensionamentoPercentual?: number; // %
   
   // Consumo (para cálculo automático quando necessário)
@@ -44,11 +47,11 @@ export class SystemCalculations {
     consumoAnual: number,
     potenciaModulo: number,
     irradiacaoMensal: number[],
-    eficienciaSistema: number,
+    eficienciaReal: number,
     dimensionamentoPercentual: number = 100
   ): number {
     const irradiacaoMediaAnual = irradiacaoMensal.reduce((a, b) => a + b, 0) / 12;
-    const eficienciaDecimal = eficienciaSistema / 100;
+    const eficienciaDecimal = eficienciaReal / 100;
     const fatorDimensionamento = dimensionamentoPercentual / 100;
     
     const consumoMedioDiario = consumoAnual / 365;
@@ -62,7 +65,10 @@ export class SystemCalculations {
    * Executa todos os cálculos do sistema de forma padronizada
    */
   static async calculate(inputs: SystemCalculationInputs): Promise<SystemCalculationResults> {
-    let { numeroModulos, potenciaModulo, irradiacaoMensal, eficienciaSistema, dimensionamentoPercentual = 100, consumoAnual, latitude, longitude, orientacao, inclinacao } = inputs;
+    let { numeroModulos, potenciaModulo, irradiacaoMensal, eficienciaSistema, systemLosses, dimensionamentoPercentual = 100, consumoAnual, latitude, longitude, orientacao, inclinacao } = inputs;
+    
+    // Calcular eficiência real a partir das perdas específicas
+    const eficienciaReal = calculateSystemEfficiency(systemLosses, eficienciaSistema || 85);
     
     // Se não há módulos definidos, calcular baseado no consumo
     if (numeroModulos === 0 && consumoAnual && consumoAnual > 0) {
@@ -70,7 +76,7 @@ export class SystemCalculations {
         consumoAnual,
         potenciaModulo,
         irradiacaoMensal,
-        eficienciaSistema,
+        eficienciaReal,
         dimensionamentoPercentual
       );
     }
@@ -79,16 +85,15 @@ export class SystemCalculations {
     const potenciaPico = (numeroModulos * potenciaModulo) / 1000; // kWp
     const areaEstimada = numeroModulos * this.AREA_POR_MODULO; // m²
     const irradiacaoMediaAnual = irradiacaoMensal.reduce((a, b) => a + b, 0) / 12; // kWh/m²/dia
-    const eficienciaDecimal = eficienciaSistema / 100;
+    const eficienciaDecimal = eficienciaReal / 100;
     
     let geracaoEstimadaAnual: number;
     let geracaoEstimadaMensal: number[];
     let usedPVLIB = false;
     
-    // Se temos dados de localização e orientação definidos (não zerados), usar PVLIB
+    // Se temos dados de localização, usar PVLIB para maior precisão
     if (latitude !== undefined && longitude !== undefined && 
-        orientacao !== undefined && inclinacao !== undefined &&
-        (orientacao !== 0 || inclinacao !== 0)) {
+        orientacao !== undefined && inclinacao !== undefined) {
       
       try {
         const pvlibResult = await this.calculateWithPVLIB({
@@ -99,12 +104,17 @@ export class SystemCalculations {
           module_power: potenciaModulo,
           num_modules: numeroModulos,
           inverter_efficiency: 0.96,
-          system_losses: (100 - eficienciaSistema) / 100
+          system_losses: (100 - eficienciaReal) / 100
         });
         
         geracaoEstimadaAnual = pvlibResult.annual_energy;
         geracaoEstimadaMensal = pvlibResult.monthly_energy;
         usedPVLIB = true;
+        console.log('✅ PVLIB usado com sucesso:', {
+          geracaoAnual: geracaoEstimadaAnual.toFixed(2),
+          coordenadas: { latitude, longitude },
+          orientacao: { tilt: inclinacao, azimuth: orientacao }
+        });
       } catch (error) {
         console.warn('Erro ao usar PVLIB, usando cálculo PVGIS:', error);
         // Fallback para cálculo PVGIS
@@ -193,9 +203,9 @@ export class SystemCalculations {
   static calculateGeneration(
     potenciaPico: number,
     irradiacaoMensal: number[],
-    eficienciaSistema: number
+    eficienciaReal: number
   ): { mensal: number[], anual: number } {
-    const eficienciaDecimal = eficienciaSistema / 100;
+    const eficienciaDecimal = eficienciaReal / 100;
     
     const mensal = irradiacaoMensal.map((irradiacao, index) => {
       const diasMes = this.DIAS_POR_MES[index];

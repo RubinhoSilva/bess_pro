@@ -1,10 +1,36 @@
 import { SolarModule, Inverter } from '@/hooks/equipment-hooks';
 import { FrontendCalculationLogger } from './calculationLogger';
 
+// Função utilitária para calcular eficiência do sistema a partir das perdas específicas
+export function calculateSystemEfficiency(losses: SystemLosses | undefined, fallbackEfficiency: number = 85): number {
+  if (!losses) {
+    return fallbackEfficiency;
+  }
+  
+  const totalLosses = (losses.perdaSombreamento || 3) + 
+                     (losses.perdaMismatch || 2) + 
+                     (losses.perdaCabeamento || 2) + 
+                     (losses.perdaSujeira || 5) + 
+                     (losses.perdaInversor || 3) + 
+                     (losses.perdaOutras || 0);
+  
+  return Math.max(0, Math.min(100, 100 - totalLosses));
+}
+
+export interface SystemLosses {
+  perdaSombreamento?: number;
+  perdaMismatch?: number;
+  perdaCabeamento?: number;
+  perdaSujeira?: number;
+  perdaInversor?: number;
+  perdaOutras?: number;
+}
+
 export interface DimensioningInput {
   consumoAnual: number; // kWh/ano
   irradiacaoMedia: number; // kWh/m²/dia
-  eficienciaSistema: number; // %
+  eficienciaSistema?: number; // % (deprecated, use systemLosses)
+  systemLosses?: SystemLosses;
   location: {
     latitude: number;
     longitude: number;
@@ -73,15 +99,21 @@ export class PVDimensioningService {
     consumoAnualKwh: number,
     irradiacaoMediaDiaria: number,
     eficienciaSistema: number = 80,
-    logger?: FrontendCalculationLogger
+    logger?: FrontendCalculationLogger,
+    systemLosses?: SystemLosses
   ) {
+    // Calcular eficiência real baseada nas perdas específicas se fornecidas
+    const eficienciaReal = systemLosses ? 
+      calculateSystemEfficiency(systemLosses, eficienciaSistema) : 
+      eficienciaSistema;
     logger?.startCalculationSection('Resumo do Sistema Fotovoltaico');
     
     logger?.context('Sistema', 'Iniciando cálculo do resumo do sistema fotovoltaico', {
       potenciaDesejada: potenciaDesejadaKwp,
       consumoAnual: consumoAnualKwh,
       irradiacaoMedia: irradiacaoMediaDiaria,
-      eficiencia: eficienciaSistema
+      eficiencia: eficienciaReal,
+      perdas: systemLosses
     }, 'Cálculo completo do resumo do sistema incluindo potência pico, número de módulos, área necessária e geração anual estimada.');
 
     // 1. Potência Pico Real (considerando múltiplos de módulos)
@@ -139,7 +171,7 @@ export class PVDimensioningService {
 
     // 3. Geração Anual Estimada
     const diasAno = 365;
-    const geracaoEstimadaAnual = potenciaPicoReal * irradiacaoMediaDiaria * diasAno * (eficienciaSistema / 100);
+    const geracaoEstimadaAnual = potenciaPicoReal * irradiacaoMediaDiaria * diasAno * (eficienciaReal / 100);
 
     logger?.formula('Geração', 'Geração Anual Estimada',
       'E_anual = P_pico × H_solar_diária × dias_ano × η_sistema',
@@ -147,8 +179,8 @@ export class PVDimensioningService {
         P_pico_kWp: potenciaPicoReal,
         H_solar_diaria: irradiacaoMediaDiaria,
         dias_ano: diasAno,
-        η_sistema_decimal: eficienciaSistema / 100,
-        η_sistema_percent: eficienciaSistema
+        η_sistema_decimal: eficienciaReal / 100,
+        η_sistema_percent: eficienciaReal
       },
       geracaoEstimadaAnual,
       {
@@ -258,7 +290,8 @@ export class PVDimensioningService {
     availableInverters: Inverter[]
   ): DimensioningResult[] {
     
-    const potenciaMinima = input.consumoAnual / (input.irradiacaoMedia * 365 * input.eficienciaSistema / 100);
+    const eficienciaReal = calculateSystemEfficiency(input.systemLosses, input.eficienciaSistema || 85);
+    const potenciaMinima = input.consumoAnual / (input.irradiacaoMedia * 365 * eficienciaReal / 100);
     const potenciaIdeal = potenciaMinima * 1.1; // 10% de margem
     
     const options: DimensioningResult[] = [];
@@ -401,7 +434,7 @@ export class PVDimensioningService {
     const geracaoMensal = this.calculateMonthlyGeneration(
       config.potenciaTotal,
       input.irradiacaoMedia,
-      input.eficienciaSistema,
+      eficienciaReal,
       input.location
     );
     
@@ -432,7 +465,7 @@ export class PVDimensioningService {
       performance: {
         geracaoMensal,
         fatorCapacidade: this.calculateCapacityFactor(geracaoAnual, config.potenciaTotal),
-        perdas: this.calculateSystemLosses(input.eficienciaSistema)
+        perdas: this.calculateSystemLosses(eficienciaReal, input.systemLosses)
       }
     };
   }
@@ -472,14 +505,14 @@ export class PVDimensioningService {
   private static calculateMonthlyGeneration(
     potenciaKw: number,
     irradiacaoMedia: number,
-    eficienciaSistema: number,
+    eficienciaReal: number,
     location: { latitude: number }
   ): number[] {
     // Variação mensal simplificada baseada na latitude
     const variacao = this.getMonthlyIrradiationVariation(location.latitude);
     
     return variacao.map(fator => 
-      potenciaKw * irradiacaoMedia * fator * 30 * (eficienciaSistema / 100)
+      potenciaKw * irradiacaoMedia * fator * 30 * (eficienciaReal / 100)
     );
   }
   
@@ -535,8 +568,21 @@ export class PVDimensioningService {
     return geracaoAnual / geracaoTeoricaMaxima;
   }
   
-  private static calculateSystemLosses(eficienciaSistema: number) {
-    const perdasTotais = 100 - eficienciaSistema;
+  private static calculateSystemLosses(eficienciaReal: number, systemLosses?: SystemLosses) {
+    if (systemLosses) {
+      return {
+        sombreamento: systemLosses.perdaSombreamento || 3,
+        mismatch: systemLosses.perdaMismatch || 2,
+        cabeamento: systemLosses.perdaCabeamento || 2,
+        sujeira: systemLosses.perdaSujeira || 5,
+        inversor: systemLosses.perdaInversor || 3,
+        outras: systemLosses.perdaOutras || 0,
+        total: 100 - eficienciaReal
+      };
+    }
+    
+    // Fallback para método antigo
+    const perdasTotais = 100 - eficienciaReal;
     return {
       temperatura: perdasTotais * 0.4, // 40% das perdas por temperatura
       sombreamento: perdasTotais * 0.2, // 20% por sombreamento

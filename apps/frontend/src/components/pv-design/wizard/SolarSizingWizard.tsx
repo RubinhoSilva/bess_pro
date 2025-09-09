@@ -88,6 +88,34 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   } = useDimensioning();
 
 
+  // Função para chamar a API financeira do Python
+  const callPythonFinancialAPI = async (financialData: any) => {
+    try {
+      console.log('🐍 Chamando API financeira Python:', financialData);
+      
+      const response = await fetch('http://localhost:8100/financial/calculate-advanced', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(financialData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Python API Error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Resultado API Python:', result);
+      
+      return result.data || result;
+    } catch (error) {
+      console.error('❌ Erro ao chamar API financeira Python:', error);
+      // Fallback para cálculos locais se a API falhar
+      return null;
+    }
+  };
+
   // Calculate total investment
   const totalInvestment = useMemo(() => {
     const subtotal = (currentDimensioning.custoEquipamento || 0) + 
@@ -378,6 +406,24 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       let potenciaPico, numeroModulos, areaEstimada, geracaoEstimadaAnual, geracaoEstimadaMensal;
       let apiResult = null;
       
+      // Calcular perdas totais do sistema
+      const perdasSistema = (currentDimensioning.perdaSombreamento || 3) + 
+                           (currentDimensioning.perdaMismatch || 2) + 
+                           (currentDimensioning.perdaCabeamento || 2) + 
+                           (currentDimensioning.perdaSujeira || 5) + 
+                           (currentDimensioning.perdaInversor || 3) + 
+                           (currentDimensioning.perdaOutras || 0);
+      
+      console.log('📊 Perdas do sistema calculadas:', {
+        sombreamento: `${currentDimensioning.perdaSombreamento || 3}%`,
+        mismatch: `${currentDimensioning.perdaMismatch || 2}%`,
+        cabeamento: `${currentDimensioning.perdaCabeamento || 2}%`,
+        sujeira: `${currentDimensioning.perdaSujeira || 5}%`,
+        inversor: `${currentDimensioning.perdaInversor || 3}%`,
+        outras: `${currentDimensioning.perdaOutras || 0}%`,
+        total: `${perdasSistema}%`
+      });
+
       // Chamar a mesma rota que funciona no resumo: /api/v1/solar/calculate-advanced-modules
       console.log('🔄 Chamando a rota que funciona: /api/v1/solar/calculate-advanced-modules');
       
@@ -386,7 +432,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${localStorage.getItem('auth-token') || sessionStorage.getItem('auth-token')}`
           },
           body: JSON.stringify({
             lat: currentDimensioning.latitude || -23.7621,
@@ -435,7 +481,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
               potencia_saida_ca_w: 5000,
               tipo_rede: "Monofásico 220V"
             },
-            perdas_sistema: 14,
+            perdas_sistema: perdasSistema,
             fator_seguranca: 1.1
           })
         });
@@ -616,7 +662,19 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
             diarioMedio: apiResult?.data?.energia_diaria_media || (geracaoEstimadaAnual / 365)
           }
         },
-        advancedFinancial: {
+        advancedFinancial: await callPythonFinancialAPI({
+          investimento_inicial: totalInvestment,
+          geracao_mensal: geracaoEstimadaMensal,
+          consumo_mensal: totalConsumoMensal,
+          tarifa_energia: currentDimensioning.tarifaEnergiaB || 0.8,
+          custo_fio_b: currentDimensioning.custoFioB || 0.3,
+          vida_util: currentDimensioning.vidaUtil || 25,
+          taxa_desconto: currentDimensioning.taxaDesconto || 8.0,
+          inflacao_energia: currentDimensioning.inflacaoEnergia || 4.5,
+          degradacao_modulos: 0.5,
+          custo_om: totalInvestment * 0.01,
+          inflacao_om: 4.0
+        }) || {
           ...advancedFinancialResults,
           scenarios: scenarioAnalysis
         },

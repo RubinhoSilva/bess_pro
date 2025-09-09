@@ -4,13 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import toast from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Map, Loader2, MapPin, Download, AlertCircle, BarChart3 } from 'lucide-react';
+import { Map, Loader2, MapPin, Download, AlertCircle } from 'lucide-react';
 import MapSelector from './MapSelector';
 import MonthlyIrradiationDisplay from './MonthlyIrradiationDisplay';
-import PVGISRadiationComponents from './PVGISRadiationComponents';
 import { fetchPVGISDataWithCache, isLocationInBrazil, formatMonthlyData, PVGISLocation } from '@/lib/pvgisService';
-import { usePVGISComponents } from '@/hooks/usePVGISComponents';
+import { api } from '@/lib/api';
 
 interface PVGISIntegrationProps {
   onDataReceived: (data: {
@@ -43,13 +41,6 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
     cidade: string;
   } | null>(null);
   
-  // Hook para componentes de radiação
-  const { 
-    data: componentsData, 
-    isLoading: isLoadingComponents, 
-    error: componentsError, 
-    fetchComponents 
-  } = usePVGISComponents();
 
   const handleLocationSelect = (location: { lat: number; lng: number }) => {
     setIsMapOpen(false);
@@ -103,29 +94,45 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
     try {
       // Usar parâmetros de orientação e inclinação se disponíveis
       const parameters = formData ? {
-        orientacao: formData.orientacao || 0,
-        inclinacao: formData.inclinacao || 0
-      } : undefined;
+        tilt: formData.inclinacao || 0,
+        azimuth: formData.orientacao || 0
+      } : {
+        tilt: 0,
+        azimuth: 0
+      };
       
-      console.log('🔧 Parâmetros PVGIS sendo enviados:', {
+      console.log('🔧 Parâmetros PVGIS sendo enviados via backend:', {
         location,
         parameters,
-        formData: formData ? {
-          orientacao: formData.orientacao,
-          inclinacao: formData.inclinacao
-        } : 'undefined'
+        formData
       });
       
-      const pvgisData = await fetchPVGISDataWithCache(location, parameters);
+      // Chamar o backend Node.js que se comunica com a API Python
+      const response = await api.post('/solar/analyze-monthly-irradiation', {
+        lat: location.latitude,
+        lon: location.longitude,
+        tilt: parameters.tilt,
+        azimuth: parameters.azimuth,
+        modelo_decomposicao: 'erbs'
+      });
+
+      console.log('✅ Resposta do backend recebida:', response.data);
       
-      const orientacaoText = parameters ? ` (${parameters.orientacao}°/${parameters.inclinacao}°)` : '';
-      const formattedCity = `Lat: ${pvgisData.inputs.location.latitude.toFixed(4)}, Lon: ${pvgisData.inputs.location.longitude.toFixed(4)}${orientacaoText}`;
+      const orientacaoText = parameters.tilt > 0 || parameters.azimuth > 0 ? 
+        ` (${parameters.azimuth}°/${parameters.tilt}°)` : '';
+      const formattedCity = `Lat: ${response.data.data.coordenadas.lat.toFixed(4)}, Lon: ${response.data.data.coordenadas.lon.toFixed(4)}${orientacaoText}`;
       
       const data = {
-        irradiacaoMensal: pvgisData.outputs.monthly_radiation,
-        latitude: pvgisData.inputs.location.latitude,
-        longitude: pvgisData.inputs.location.longitude,
+        irradiacaoMensal: response.data.data.irradiacaoMensal,
+        latitude: response.data.data.coordenadas.lat,
+        longitude: response.data.data.coordenadas.lon,
         cidade: formattedCity,
+        // Dados adicionais da API Python
+        mediaAnual: response.data.data.mediaAnual,
+        maximo: response.data.data.maximo,
+        minimo: response.data.data.minimo,
+        variacaoSazonal: response.data.data.variacaoSazonal,
+        configuracao: response.data.data.configuracao
       };
       
       // Armazenar dados para exibição
@@ -133,21 +140,26 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
       
       // Enviar dados para o componente pai
       onDataReceived(data);
-      
-      // Buscar componentes de radiação em paralelo
-      fetchComponents(location).catch(error => {
-        console.warn('Erro ao buscar componentes de radiação:', error);
-        // Não exibir erro para o usuário, pois os dados básicos já foram carregados
-      });
 
-      toast.success(`Dados de irradiação solar importados do PVGIS para ${formattedCity}`, {
+      toast.success(`${response.data.data.message}`, {
         duration: 4000,
         position: 'top-right',
       });
 
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro desconhecido';
-      toast.error(`Erro ao obter dados PVGIS: ${message}`, {
+    } catch (error: any) {
+      console.error('❌ Erro ao obter dados via backend:', error);
+      
+      let message = 'Erro desconhecido ao obter dados PVGIS';
+      
+      if (error.response?.data?.message) {
+        message = error.response.data.message;
+      } else if (error.response?.status === 500) {
+        message = 'Serviço PVLIB temporariamente indisponível. Tente novamente.';
+      } else if (error.message) {
+        message = error.message;
+      }
+      
+      toast.error(`Erro: ${message}`, {
         duration: 5000,
         position: 'top-right',
       });
@@ -312,17 +324,33 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Obtendo dados PVGIS...
+                  Obtendo dados PVGIS... (pode levar até 2 min)
                 </>
               ) : (
                 <>
                   <Download className="mr-2 h-5 w-5" />
-                  Buscar Dados PVGIS
+                  Buscar Dados PVGIS *
                 </>
               )}
             </Button>
             <p className="text-xs text-muted-foreground mt-2 text-center">
-              Clique para obter dados de irradiação solar com os parâmetros configurados
+              * <strong>Obrigatório:</strong> Clique para obter dados de irradiação solar com os parâmetros configurados<br/>
+              <span className="text-amber-600">⏱️ A consulta pode levar até 2 minutos - aguarde!</span>
+            </p>
+          </div>
+        )}
+
+        {/* Aviso de dados obrigatórios */}
+        {!irradiationData && (
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600" />
+              <p className="text-sm text-amber-700 font-medium">
+                Dados PVGIS obrigatórios
+              </p>
+            </div>
+            <p className="text-xs text-amber-600 mt-1">
+              É necessário buscar os dados de irradiação solar antes de prosseguir para a próxima etapa.
             </p>
           </div>
         )}
@@ -340,73 +368,14 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
       {/* Exibir dados de irradiação quando disponíveis */}
       {irradiationData && (
         <div className="mt-6">
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="basic" className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Dados Básicos
-              </TabsTrigger>
-              <TabsTrigger value="components" className="flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" />
-                Componentes de Radiação
-                {isLoadingComponents && (
-                  <Loader2 className="h-3 w-3 animate-spin ml-1" />
-                )}
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="basic" className="mt-4">
-              <MonthlyIrradiationDisplay
-                irradiacaoMensal={irradiationData.irradiacaoMensal}
-                location={{
-                  latitude: irradiationData.latitude,
-                  longitude: irradiationData.longitude,
-                  cidade: irradiationData.cidade
-                }}
-              />
-            </TabsContent>
-            
-            <TabsContent value="components" className="mt-4">
-              {componentsData ? (
-                <PVGISRadiationComponents 
-                  data={componentsData} 
-                  isLoading={isLoadingComponents}
-                />
-              ) : isLoadingComponents ? (
-                <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                  <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-                    <p className="text-gray-600 font-medium">Buscando componentes de radiação...</p>
-                    <p className="text-sm text-gray-500 mt-1">Dados detalhados com radiação direta, difusa e refletida</p>
-                  </div>
-                </div>
-              ) : componentsError ? (
-                <div className="flex items-center justify-center h-64 bg-red-50 rounded-lg border-2 border-dashed border-red-200">
-                  <div className="text-center">
-                    <AlertCircle className="h-8 w-8 mx-auto mb-4 text-red-600" />
-                    <p className="text-red-700 font-medium">Erro ao carregar componentes</p>
-                    <p className="text-sm text-red-600 mt-1">{componentsError}</p>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => selectedLocation && fetchComponents(selectedLocation)}
-                      className="mt-3"
-                    >
-                      Tentar Novamente
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                  <div className="text-center">
-                    <BarChart3 className="h-8 w-8 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-600 font-medium">Componentes não carregados</p>
-                    <p className="text-sm text-gray-500 mt-1">Clique em "Selecionar no Mapa" ou insira coordenadas para ver os componentes detalhados</p>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+          <MonthlyIrradiationDisplay
+            irradiacaoMensal={irradiationData.irradiacaoMensal}
+            location={{
+              latitude: irradiationData.latitude,
+              longitude: irradiationData.longitude,
+              cidade: irradiationData.cidade
+            }}
+          />
         </div>
       )}
     </div>

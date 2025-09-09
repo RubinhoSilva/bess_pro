@@ -10,6 +10,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useSolarModules, useInverters } from '@/hooks/equipment-hooks';
 import { AddSolarModuleModal } from '../modals/AddSolarModuleModal';
 import { AddInverterModal } from '../modals/AddInverterModal';
+// MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
+// import MultipleRoofAreasForm from './MultipleRoofAreasForm';
+// import { AguaTelhado } from '@/contexts/DimensioningContext';
 
 interface SystemParametersFormProps {
   formData: any;
@@ -187,9 +190,10 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
               <Select 
                 onValueChange={handleModuleChange} 
                 value={formData.moduloSelecionado || formData.selectedModuleId || ''}
+                required
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o módulo fotovoltaico" />
+                <SelectTrigger className={(formData.moduloSelecionado || formData.selectedModuleId) ? "" : "border-red-300 focus:border-red-500"}>
+                  <SelectValue placeholder="Selecione o módulo fotovoltaico *" />
                 </SelectTrigger>
                 <SelectContent>
                   {/* Hardcoded modules for backward compatibility */}
@@ -209,66 +213,6 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="potenciaModulo">Potência do Módulo (W)</Label>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="w-4 h-4 text-gray-400" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Potência nominal do módulo em Watts</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <Input
-                  id="potenciaModulo"
-                  type="number"
-                  value={formData.potenciaModulo || ''}
-                  onChange={(e) => onFormChange('potenciaModulo', parseFloat(e.target.value) || 0)}
-                  placeholder="550"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="eficienciaModulo">Eficiência (%)</Label>
-                <Input
-                  id="eficienciaModulo"
-                  type="number"
-                  step="0.1"
-                  value={formData.eficienciaModulo || ''}
-                  onChange={(e) => onFormChange('eficienciaModulo', parseFloat(e.target.value) || 0)}
-                  placeholder="21.0"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="tensaoModulo">Tensão MPP (V)</Label>
-                <Input
-                  id="tensaoModulo"
-                  type="number"
-                  step="0.1"
-                  value={formData.tensaoModulo || ''}
-                  onChange={(e) => onFormChange('tensaoModulo', parseFloat(e.target.value) || 0)}
-                  placeholder="41.8"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="correnteModulo">Corrente MPP (A)</Label>
-                <Input
-                  id="correnteModulo"
-                  type="number"
-                  step="0.1"
-                  value={formData.correnteModulo || ''}
-                  onChange={(e) => onFormChange('correnteModulo', parseFloat(e.target.value) || 0)}
-                  placeholder="13.16"
-                />
-              </div>
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="numeroModulos">Número de Módulos</Label>
@@ -282,89 +226,6 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
               <p className="text-xs text-gray-500">
                 Se não especificado, será calculado automaticamente baseado no consumo
               </p>
-            </div>
-
-            {/* Dimensionamento Percentual */}
-            <div className="space-y-3 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="dimensionamentoPercentual" className="text-sm font-semibold text-green-800">
-                    Dimensionamento Percentual
-                  </Label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="w-4 h-4 text-green-600" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="max-w-xs">
-                          Ajuste o tamanho do sistema como percentual do dimensionamento base. 
-                          Use valores menores que 100% para sistemas econômicos ou maiores que 100% para superdimensionamento.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-bold ${
-                    (formData.dimensionamentoPercentual || 100) < 70 ? 'text-orange-600' :
-                    (formData.dimensionamentoPercentual || 100) > 150 ? 'text-purple-600' : 'text-green-600'
-                  }`}>
-                    {formData.dimensionamentoPercentual || 100}%
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    (formData.dimensionamentoPercentual || 100) < 70 ? 'bg-orange-100 text-orange-600' :
-                    (formData.dimensionamentoPercentual || 100) > 150 ? 'bg-purple-100 text-purple-600' : 'bg-green-100 text-green-600'
-                  }`}>
-                    {(formData.dimensionamentoPercentual || 100) < 70 ? 'Subdimensionado' :
-                     (formData.dimensionamentoPercentual || 100) > 150 ? 'Superdimensionado' : 'Padrão'}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Slider
-                  id="dimensionamentoPercentual"
-                  min={30}
-                  max={300}
-                  step={5}
-                  value={[formData.dimensionamentoPercentual || 100]}
-                  onValueChange={(value) => onFormChange('dimensionamentoPercentual', value[0])}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>30% (Mínimo)</span>
-                  <span>100% (Padrão)</span>
-                  <span>300% (Máximo)</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <div className="text-center p-2 bg-orange-100 rounded">
-                  <div className="font-medium text-orange-700">30-69%</div>
-                  <div className="text-orange-600">Econômico</div>
-                </div>
-                <div className="text-center p-2 bg-green-100 rounded">
-                  <div className="font-medium text-green-700">70-149%</div>
-                  <div className="text-green-600">Padrão</div>
-                </div>
-                <div className="text-center p-2 bg-purple-100 rounded">
-                  <div className="font-medium text-purple-700">150-300%</div>
-                  <div className="text-purple-600">Superdimensionado</div>
-                </div>
-              </div>
-
-              {formData.dimensionamentoPercentual && formData.dimensionamentoPercentual !== 100 && (
-                <div className="mt-2 p-3 bg-white rounded border border-gray-200">
-                  <p className="text-xs text-gray-600">
-                    💡 <strong>Impacto:</strong> {' '}
-                    {formData.dimensionamentoPercentual < 100 ? 
-                      `Sistema ${formData.dimensionamentoPercentual}% do tamanho padrão. Menor investimento, mas pode não cobrir todo o consumo.` :
-                      `Sistema ${formData.dimensionamentoPercentual}% do tamanho padrão. Maior geração, possível excesso de energia.`
-                    }
-                  </p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -389,9 +250,10 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
               <Select 
                 onValueChange={handleInverterChange} 
                 value={formData.inversorSelecionado || (formData.inverters && formData.inverters.length > 0 ? formData.inverters[0].selectedInverterId : '') || ''}
+                required
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o inversor" />
+                <SelectTrigger className={(formData.inversorSelecionado || (formData.inverters && formData.inverters.length > 0 ? formData.inverters[0].selectedInverterId : '')) ? "" : "border-red-300 focus:border-red-500"}>
+                  <SelectValue placeholder="Selecione o inversor *" />
                 </SelectTrigger>
                 <SelectContent>
                   {/* Hardcoded inverters for backward compatibility */}
@@ -411,61 +273,129 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="potenciaInversor">Potência do Inversor (W)</Label>
-                <Input
-                  id="potenciaInversor"
-                  type="number"
-                  value={formData.potenciaInversor || ''}
-                  onChange={(e) => onFormChange('potenciaInversor', parseFloat(e.target.value) || 0)}
-                  placeholder="8200"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="eficienciaInversor">Eficiência (%)</Label>
-                <Input
-                  id="eficienciaInversor"
-                  type="number"
-                  step="0.1"
-                  value={formData.eficienciaInversor || ''}
-                  onChange={(e) => onFormChange('eficienciaInversor', parseFloat(e.target.value) || 0)}
-                  placeholder="96.8"
-                />
-              </div>
-            </div>
           </div>
 
           {/* Parâmetros Gerais do Sistema */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-700">Parâmetros Gerais</h3>
             
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="eficienciaSistema">Eficiência do Sistema (%)</Label>
+            {/* Perdas Específicas do Sistema */}
+            <div className="space-y-4 p-4 border border-border/50 rounded-lg bg-card/30">
+              <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+                Perdas do Sistema (%)
                 <Tooltip>
                   <TooltipTrigger>
                     <Info className="w-4 h-4 text-gray-400" />
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Inclui perdas por sombreamento, cabeamento, sujeira, etc.</p>
+                    <p>Especifique cada tipo de perda individualmente para maior precisão</p>
                   </TooltipContent>
                 </Tooltip>
+              </h4>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="perdaSombreamento">Sombreamento (%)</Label>
+                  <Input
+                    id="perdaSombreamento"
+                    type="number"
+                    min="0"
+                    max="30"
+                    step="0.1"
+                    value={formData.perdaSombreamento || ''}
+                    onChange={(e) => onFormChange('perdaSombreamento', parseFloat(e.target.value) || 3)}
+                    placeholder="3.0"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="perdaMismatch">Mismatch (%)</Label>
+                  <Input
+                    id="perdaMismatch"
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    value={formData.perdaMismatch || ''}
+                    onChange={(e) => onFormChange('perdaMismatch', parseFloat(e.target.value) || 2)}
+                    placeholder="2.0"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="perdaCabeamento">Cabeamento (%)</Label>
+                  <Input
+                    id="perdaCabeamento"
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    value={formData.perdaCabeamento || ''}
+                    onChange={(e) => onFormChange('perdaCabeamento', parseFloat(e.target.value) || 2)}
+                    placeholder="2.0"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="perdaSujeira">Sujeira (%)</Label>
+                  <Input
+                    id="perdaSujeira"
+                    type="number"
+                    min="0"
+                    max="20"
+                    step="0.1"
+                    value={formData.perdaSujeira || ''}
+                    onChange={(e) => onFormChange('perdaSujeira', parseFloat(e.target.value) || 5)}
+                    placeholder="5.0"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="perdaInversor">Inversor (%)</Label>
+                  <Input
+                    id="perdaInversor"
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    value={formData.perdaInversor || ''}
+                    onChange={(e) => onFormChange('perdaInversor', parseFloat(e.target.value) || 3)}
+                    placeholder="3.0"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="perdaOutras">Outras Perdas (%)</Label>
+                  <Input
+                    id="perdaOutras"
+                    type="number"
+                    min="0"
+                    max="15"
+                    step="0.1"
+                    value={formData.perdaOutras || ''}
+                    onChange={(e) => onFormChange('perdaOutras', parseFloat(e.target.value) || 0)}
+                    placeholder="0.0"
+                  />
+                </div>
               </div>
-              <Input
-                id="eficienciaSistema"
-                type="number"
-                min="70"
-                max="95"
-                step="1"
-                value={formData.eficienciaSistema || ''}
-                onChange={(e) => onFormChange('eficienciaSistema', parseFloat(e.target.value) || 85)}
-                placeholder="85"
-              />
-              <p className="text-xs text-gray-500">
-                Eficiência global do sistema (70% - 95%). Padrão: 85%
-              </p>
+              
+              <div className="pt-2 border-t border-border/30">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Eficiência Resultante:</span>
+                  <span className="font-medium text-foreground">
+                    {(() => {
+                      const totalPerdas = (formData.perdaSombreamento || 3) + 
+                                         (formData.perdaMismatch || 2) + 
+                                         (formData.perdaCabeamento || 2) + 
+                                         (formData.perdaSujeira || 5) + 
+                                         (formData.perdaInversor || 3) + 
+                                         (formData.perdaOutras || 0);
+                      const eficiencia = Math.max(0, 100 - totalPerdas);
+                      return `${eficiencia.toFixed(1)}%`;
+                    })()}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -515,6 +445,18 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
               </div>
             </div>
           )}
+
+
+          {/* MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO */}
+          {/* 
+          <div className="mt-6">
+            <MultipleRoofAreasForm
+              aguasTelhado={formData.aguasTelhado || []}
+              onAguasChange={(aguas: AguaTelhado[]) => onFormChange('aguasTelhado', aguas)}
+              potenciaModulo={formData.potenciaModulo || 550}
+            />
+          </div>
+          */}
         </CardContent>
       </Card>
 

@@ -12,8 +12,11 @@ interface AdvancedSolarAnalysisProps {
       perdas: {
         temperatura: number[];
         sombreamento: number[];
+        mismatch: number[];
+        cabeamento: number[];
         sujeira: number[];
-        angular: number[];
+        inversor: number[];
+        outras?: number[];
         total: number[];
       };
       performance: {
@@ -89,10 +92,12 @@ const MonthlyChart: React.FC<{
 
 const LossesBreakdown: React.FC<{ perdas: any }> = ({ perdas }) => {
   const lossTypes = [
-    { name: 'Temperatura', data: perdas.temperatura, color: 'bg-red-500' },
     { name: 'Sombreamento', data: perdas.sombreamento, color: 'bg-gray-600' },
+    { name: 'Mismatch', data: perdas.mismatch, color: 'bg-blue-600' },
+    { name: 'Cabeamento', data: perdas.cabeamento, color: 'bg-green-600' },
     { name: 'Sujeira', data: perdas.sujeira, color: 'bg-yellow-600' },
-    { name: 'Angular/Espectral', data: perdas.angular, color: 'bg-purple-500' }
+    { name: 'Inversor', data: perdas.inversor, color: 'bg-purple-600' },
+    ...(perdas.outras ? [{ name: 'Outras Perdas', data: perdas.outras, color: 'bg-orange-500' }] : [])
   ];
 
   return (
@@ -201,7 +206,7 @@ export const AdvancedSolarAnalysis: React.FC<AdvancedSolarAnalysisProps> = ({ re
             color="bg-gradient-to-r from-yellow-400 to-orange-500"
             suffix=" kWh/m²"
           />
-          {advancedSolar.source === 'pvlib' && (
+          {results.advancedSolar?.source === 'pvlib' && (
             <div className="absolute top-2 right-2">
               <div className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded-full border border-green-200 dark:border-green-700/50">
                 PVLIB

@@ -1,5 +1,6 @@
 import { apiClient } from './api';
 import { FrontendCalculationLogger } from './calculationLogger';
+import { calculateSystemEfficiency, SystemLosses } from './pvDimensioning';
 
 export interface BackendCalculationParams {
   systemParams: {
@@ -168,7 +169,14 @@ const handleCalculate = async () => {
     const backendParams = {
       systemParams: {
         potenciaNominal: potenciaPico,
-        eficiencia: currentDimensioning.eficienciaSistema || 85,
+        eficiencia: calculateSystemEfficiency({
+          perdaSombreamento: currentDimensioning.perdaSombreamento,
+          perdaMismatch: currentDimensioning.perdaMismatch,
+          perdaCabeamento: currentDimensioning.perdaCabeamento,
+          perdaSujeira: currentDimensioning.perdaSujeira,
+          perdaInversor: currentDimensioning.perdaInversor,
+          perdaTemperatura: currentDimensioning.perdaTemperatura
+        }, currentDimensioning.eficienciaSistema || 85),
         perdas: 5,
         inclinacao: 23,
         orientacao: 180

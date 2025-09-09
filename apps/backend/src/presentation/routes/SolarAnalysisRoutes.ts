@@ -17,6 +17,24 @@ export const createSolarAnalysisRoutes = (container: Container): Router => {
 
   // Solar analysis endpoint
   router.post('/analyze', solarAnalysisController.analyzePotential.bind(solarAnalysisController));
+  
+  // Solar system calculation endpoint
+  router.post('/calculate-system', solarAnalysisController.calculateSolarSystem.bind(solarAnalysisController));
+  
+  // Irradiation correction endpoint
+  router.post('/calculate-irradiation-correction', solarAnalysisController.calculateIrradiationCorrection.bind(solarAnalysisController));
+  
+  // Module count calculation endpoint
+  router.post('/calculate-module-count', solarAnalysisController.calculateModuleCount.bind(solarAnalysisController));
+  
+  // Monthly irradiation analysis endpoint
+  router.post('/analyze-monthly-irradiation', solarAnalysisController.analyzeMonthlyIrradiation.bind(solarAnalysisController));
+  
+  // Advanced module calculation endpoint
+  router.post('/calculate-advanced-modules', solarAnalysisController.calculateAdvancedModules.bind(solarAnalysisController));
+  
+  // Enhanced analysis data endpoint (irradiation + losses)
+  router.get('/enhanced-analysis-data', solarAnalysisController.getEnhancedAnalysisData.bind(solarAnalysisController));
 
   return router;
 };

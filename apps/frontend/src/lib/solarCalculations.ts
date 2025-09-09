@@ -1,4 +1,6 @@
 // Cálculos avançados para sistemas fotovoltaicos
+import { SolarSystemService } from '@/lib/solarSystemService';
+
 export interface LocationData {
   latitude: number;
   longitude: number;
@@ -24,6 +26,11 @@ export interface SolarCalculationOptions {
   sombreamento?: number[];  // Percentual por mês
   considerarSujeira: boolean;
   sujeira?: number;       // Percentual anual
+  outrasPerdasPercentual?: number; // Outras perdas em percentual
+  // Perdas específicas do usuário
+  perdaMismatch?: number;
+  perdaCabeamento?: number;
+  perdaInversor?: number;
 }
 
 export interface DetailedSolarResults {
@@ -31,10 +38,12 @@ export interface DetailedSolarResults {
   irradiacaoInclinada: number[];        // Corrigida para inclinação (PVLIB)
   fatorTemperatura: number[];           // Fator de correção por temperatura
   perdas: {
-    temperatura: number[];
     sombreamento: number[];
+    mismatch: number[];
+    cabeamento: number[];
     sujeira: number[];
-    angular: number[];
+    inversor: number[];
+    outras?: number[];
     total: number[];
   };
   geracaoEstimada: {
@@ -94,9 +103,44 @@ export class AdvancedSolarCalculator {
 
   static async calculateDetailedSolar(
     potenciaKw: number,
-    options: SolarCalculationOptions
+    options: SolarCalculationOptions,
+    advancedResult?: any,
+    irradiationData?: any
   ): Promise<DetailedSolarResults> {
     
+    // Se temos dados avançados da API, usar eles
+    if (advancedResult && advancedResult.perdas_detalhadas) {
+      console.log('✅ Usando dados avançados da API Python');
+      
+      return {
+        irradiacaoMensal: irradiationData?.irradiacaoMensal || this.getRegionalIrradiation(options.location),
+        irradiacaoInclinada: irradiationData?.irradiacaoMensal || this.getRegionalIrradiation(options.location),
+        fatorTemperatura: this.calculateTemperatureFactorsFromLocation(options.location),
+        perdas: {
+          temperatura: advancedResult.perdas_detalhadas.temperatura || Array(12).fill(8),
+          sombreamento: advancedResult.perdas_detalhadas.sombreamento || Array(12).fill(3),
+          mismatch: advancedResult.perdas_detalhadas.mismatch || Array(12).fill(2),
+          cabeamento: advancedResult.perdas_detalhadas.cabeamento || Array(12).fill(2),
+          sujeira: advancedResult.perdas_detalhadas.sujeira || Array(12).fill(5),
+          inversor: advancedResult.perdas_detalhadas.inversor || Array(12).fill(3),
+          outras: advancedResult.perdas_detalhadas.outras,
+          total: advancedResult.perdas_detalhadas.total || Array(12).fill(20)
+        },
+        geracaoEstimada: {
+          mensal: advancedResult.geracao_mensal || this.estimateMonthlyGeneration(advancedResult.energia_total_anual_kwh),
+          anual: advancedResult.energia_total_anual_kwh,
+          diarioMedio: advancedResult.energia_total_anual_kwh / 365
+        },
+        performance: {
+          prMedio: advancedResult.pr_medio || 85,
+          yieldEspecifico: advancedResult.yield_especifico || 1200,
+          fatorCapacidade: advancedResult.fator_capacidade || 15
+        },
+        source: 'api_python'
+      };
+    }
+    
+    // Fallback para cálculo antigo
     const { location, tilt, azimuth } = options;
     
     try {
@@ -108,11 +152,12 @@ export class AdvancedSolarCalculator {
         azimuth,
         options
       );
+      console.log('✅ PVLIB Avançado usado com sucesso para análise solar detalhada');
       return pvlibResults;
     } catch (error) {
-      console.warn('PVLIB não disponível, usando cálculos estimados:', error);
+      console.warn('⚠️ PVLIB não disponível, usando cálculos estimados:', error);
       // Fallback para cálculos estimados
-      return this.calculateWithEstimatedData(potenciaKw, options);
+      return await this.calculateWithEstimatedData(potenciaKw, options);
     }
   }
 
@@ -127,49 +172,76 @@ export class AdvancedSolarCalculator {
     options: SolarCalculationOptions
   ): Promise<DetailedSolarResults> {
     
-    // Chamada para o serviço PVLIB
-    const response = await fetch('http://localhost:8100/pv-system', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        location: {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          altitude: location.altitude || 0,
-          timezone: location.timezone || 'America/Sao_Paulo'
-        },
-        surface_tilt: tilt,
-        surface_azimuth: azimuth,
-        module_power: 550, // Assumindo módulos de 550W
-        num_modules: Math.round((potenciaKw * 1000) / 550),
-        inverter_efficiency: 0.96,
-        system_losses: 0.14 // 14% perdas do sistema
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`PVLIB API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // Converter dados do PVLIB para formato esperado
-    const geracaoMensal = data.monthly_energy;
-    const geracaoAnual = data.annual_energy;
-    const geracaoDiarioMedio = geracaoAnual / 365;
-    
-    // Calcular irradiação inclinada baseada na geração PVLIB
-    const irradiacaoInclinada = geracaoMensal.map((geracao: number) => {
-      // Reverse engineering: geracao / (potencia * dias * eficiencia)
-      const diasMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-      return geracao / (potenciaKw * diasMes[geracaoMensal.indexOf(geracao)] * 0.86);
-    });
+    console.log('🔄 PVLIB: Tentando usar serviço PVLIB completo...');
     
     // Estimar irradiação horizontal base (para referência)
     const stateCode = location.state || 'SP';
     const baseIrradiation = this.IRRADIATION_DATA[stateCode] || this.IRRADIATION_DATA['SP'];
+    
+    // Tentar obter irradiação corrigida da nossa API Python primeiro
+    let irradiacaoInclinada: number[];
+    try {
+      console.log('📡 PVLIB: Chamando nossa API Python para correção de irradiação...');
+      const correctionResult = await SolarSystemService.calculateIrradiationCorrection({
+        baseIrradiation,
+        latitude: location.latitude,
+        tilt,
+        azimuth
+      });
+      
+      irradiacaoInclinada = correctionResult.irradiacaoCorrigida;
+      console.log('✅ PVLIB: Usando irradiação corrigida da nossa API Python:', irradiacaoInclinada);
+    } catch (error) {
+      console.warn('⚠️ PVLIB: Nossa API Python não disponível, tentando serviço PVLIB original...');
+      
+      // Fallback para o serviço PVLIB original
+      try {
+        const response = await fetch('http://localhost:8100/pv-system', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            location: {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              altitude: location.altitude || 0,
+              timezone: location.timezone || 'America/Sao_Paulo'
+            },
+            surface_tilt: tilt,
+            surface_azimuth: azimuth,
+            module_power: 550, // Assumindo módulos de 550W
+            num_modules: Math.round((potenciaKw * 1000) / 550),
+            inverter_efficiency: 0.96,
+            system_losses: 0.14 // 14% perdas do sistema
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`PVLIB API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Calcular irradiação inclinada baseada na geração PVLIB
+        const geracaoMensal = data.monthly_energy;
+        irradiacaoInclinada = geracaoMensal.map((geracao: number) => {
+          // Reverse engineering: geracao / (potencia * dias * eficiencia)
+          const diasMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+          return geracao / (potenciaKw * diasMes[geracaoMensal.indexOf(geracao)] * 0.86);
+        });
+        console.log('📊 PVLIB: Usando dados do serviço PVLIB original');
+      } catch (pvlibError) {
+        console.warn('⚠️ PVLIB: Serviço PVLIB original também não disponível, usando correção local');
+        // Fallback final para correção local
+        irradiacaoInclinada = await this.correctForTiltAndAzimuth(
+          baseIrradiation,
+          location.latitude,
+          tilt,
+          azimuth
+        );
+      }
+    }
     
     // Calcular fatores de temperatura
     const temperatures = this.TEMPERATURE_DATA[stateCode] || this.TEMPERATURE_DATA['SP'];
@@ -178,10 +250,22 @@ export class AdvancedSolarCalculator {
     // Calcular perdas detalhadas
     const perdas = this.calculateLosses(options, irradiacaoInclinada);
     
+    // Calcular geração estimada com os dados corrigidos
+    const geracaoMensal = irradiacaoInclinada.map((irr, month) => {
+      const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month];
+      const tempFactor = fatorTemperatura[month];
+      const totalLossFactor = 1 - (perdas.total[month] / 100);
+      
+      return potenciaKw * irr * daysInMonth * tempFactor * totalLossFactor;
+    });
+    
+    const geracaoAnual = geracaoMensal.reduce((sum, gen) => sum + gen, 0);
+    const geracaoDiarioMedio = geracaoAnual / 365;
+    
     // Métricas de performance
-    const prMedio = data.monthly_performance_ratio?.[0] || 0.85;
-    const yieldEspecifico = data.specific_yield || (geracaoAnual / potenciaKw);
-    const fatorCapacidade = data.capacity_factor * 100;
+    const prMedio = this.calculatePerformanceRatio(geracaoMensal, irradiacaoInclinada, potenciaKw);
+    const yieldEspecifico = geracaoAnual / potenciaKw;
+    const fatorCapacidade = (geracaoAnual / (potenciaKw * 8760)) * 100;
     
     return {
       irradiacaoMensal: baseIrradiation,
@@ -205,10 +289,10 @@ export class AdvancedSolarCalculator {
   /**
    * Cálculo com dados estimados (fallback)
    */
-  private static calculateWithEstimatedData(
+  private static async calculateWithEstimatedData(
     potenciaKw: number,
     options: SolarCalculationOptions
-  ): DetailedSolarResults {
+  ): Promise<DetailedSolarResults> {
     
     const { location, tilt, azimuth } = options;
     
@@ -217,7 +301,7 @@ export class AdvancedSolarCalculator {
     const baseIrradiation = this.IRRADIATION_DATA[stateCode] || this.IRRADIATION_DATA['SP'];
     
     // 2. Correção para inclinação e azimute
-    const irradiacaoInclinada = this.correctForTiltAndAzimuth(
+    const irradiacaoInclinada = await this.correctForTiltAndAzimuth(
       baseIrradiation,
       location.latitude,
       tilt,
@@ -267,23 +351,42 @@ export class AdvancedSolarCalculator {
     };
   }
 
-  private static correctForTiltAndAzimuth(
+  private static async correctForTiltAndAzimuth(
     baseIrradiation: number[],
     latitude: number,
     tilt: number,
     azimuth: number
-  ): number[] {
-    return baseIrradiation.map((irr, month) => {
-      // Fator de correção baseado em modelos simplificados
-      // Em implementação real, usaria bibliotecas como pvlib
+  ): Promise<number[]> {
+    console.log('🔄 Iniciando correção de inclinação com parâmetros:', { baseIrradiation, latitude, tilt, azimuth });
+    
+    try {
+      // Tentar usar API Python primeiro
+      console.log('📡 Chamando API Python para correção de irradiação...');
+      const result = await SolarSystemService.calculateIrradiationCorrection({
+        baseIrradiation,
+        latitude,
+        tilt,
+        azimuth
+      });
       
-      const declinacao = this.calculateSolarDeclination(month);
-      const anguloPerfil = this.calculateProfileAngle(latitude, declinacao, tilt);
-      const fatorInclinacao = this.calculateTiltFactor(anguloPerfil, tilt);
-      const fatorAzimute = this.calculateAzimuthFactor(azimuth);
+      console.log('✅ Usando irradiação corrigida da API Python:', result.irradiacaoCorrigida);
+      return result.irradiacaoCorrigida;
+    } catch (error) {
+      console.warn('⚠️ API Python não disponível, usando cálculo local:', error);
       
-      return irr * fatorInclinacao * fatorAzimute;
-    });
+      // Fallback para cálculo local
+      return baseIrradiation.map((irr, month) => {
+        // Fator de correção baseado em modelos simplificados
+        // Em implementação real, usaria bibliotecas como pvlib
+        
+        const declinacao = this.calculateSolarDeclination(month);
+        const anguloPerfil = this.calculateProfileAngle(latitude, declinacao, tilt);
+        const fatorInclinacao = this.calculateTiltFactor(anguloPerfil, tilt);
+        const fatorAzimute = this.calculateAzimuthFactor(azimuth);
+        
+        return irr * fatorInclinacao * fatorAzimute;
+      });
+    }
   }
 
   private static calculateSolarDeclination(month: number): number {
@@ -322,6 +425,51 @@ export class AdvancedSolarCalculator {
     return Math.max(0.85, 1 - (azimuthDifference * 0.002));
   }
 
+  private static getRegionalIrradiation(location: LocationData): number[] {
+    // Usar estado se disponível, senão usar uma média baseada na latitude
+    const state = location.state;
+    if (state && this.IRRADIATION_DATA[state]) {
+      return this.IRRADIATION_DATA[state];
+    }
+    
+    // Fallback baseado na latitude
+    const lat = location.latitude;
+    if (lat > -15) {
+      return [6.0, 5.8, 5.6, 5.2, 4.8, 4.4, 4.6, 5.0, 5.4, 5.7, 5.9, 6.0]; // Norte
+    } else if (lat > -25) {
+      return [5.8, 5.6, 5.4, 5.0, 4.6, 4.2, 4.4, 4.8, 5.2, 5.5, 5.7, 5.8]; // Sudeste
+    } else {
+      return [5.2, 5.0, 4.8, 4.4, 4.0, 3.6, 3.8, 4.2, 4.6, 4.9, 5.1, 5.2]; // Sul
+    }
+  }
+
+  private static calculateTemperatureFactorsFromLocation(location: LocationData): number[] {
+    const state = location.state;
+    const temperatures = (state && this.TEMPERATURE_DATA[state]) || 
+      this.getRegionalTemperature(location.latitude);
+    
+    return this.calculateTemperatureFactor(temperatures);
+  }
+
+  private static getRegionalTemperature(latitude: number): number[] {
+    if (latitude > -15) {
+      return [28, 29, 30, 30, 31, 32, 32, 33, 32, 31, 30, 28]; // Norte - mais quente
+    } else if (latitude > -25) {
+      return [26, 27, 28, 27, 24, 22, 22, 25, 28, 29, 28, 26]; // Sudeste
+    } else {
+      return [24, 25, 23, 20, 17, 15, 15, 17, 19, 22, 23, 24]; // Sul - mais frio
+    }
+  }
+
+  private static estimateMonthlyGeneration(annualGeneration: number): number[] {
+    // Distribuição sazonal típica
+    const factors = [1.25, 1.15, 1.05, 0.90, 0.75, 0.70, 0.75, 0.85, 0.95, 1.10, 1.20, 1.25];
+    const avgFactor = factors.reduce((a, b) => a + b, 0) / 12;
+    const normalized = factors.map(f => f / avgFactor);
+    const monthlyAvg = annualGeneration / 12;
+    return normalized.map(f => monthlyAvg * f);
+  }
+
   private static calculateTemperatureFactor(temperatures: number[]): number[] {
     return temperatures.map(temp => {
       // Coeficiente de temperatura típico: -0.4%/°C acima de 25°C
@@ -336,25 +484,44 @@ export class AdvancedSolarCalculator {
     irradiacao: number[]
   ): DetailedSolarResults['perdas'] {
     
-    const { considerarSombreamento, sombreamento = [], considerarSujeira, sujeira = 3 } = options;
+    const { 
+      considerarSombreamento, 
+      sombreamento = [], 
+      considerarSujeira, 
+      sujeira = 3, 
+      outrasPerdasPercentual = 0,
+      perdaMismatch = 2,
+      perdaCabeamento = 2,
+      perdaInversor = 3
+    } = options;
     
     return {
-      temperatura: irradiacao.map(() => 8), // 8% perdas por temperatura (típico)
       sombreamento: considerarSombreamento ? 
-        (sombreamento.length === 12 ? sombreamento : Array(12).fill(5)) : // 5% se não especificado
+        (sombreamento.length === 12 ? sombreamento : Array(12).fill(sombreamento[0] || 3)) : 
         Array(12).fill(0),
-      sujeira: Array(12).fill(considerarSujeira ? sujeira : 2), // 2% padrão
-      angular: Array(12).fill(3), // 3% perdas angulares/espectrais
+      mismatch: Array(12).fill(perdaMismatch),
+      cabeamento: Array(12).fill(perdaCabeamento),
+      sujeira: Array(12).fill(considerarSujeira ? sujeira : 0),
+      inversor: Array(12).fill(perdaInversor),
+      outras: outrasPerdasPercentual > 0 ? Array(12).fill(outrasPerdasPercentual) : undefined,
       total: irradiacao.map((_, month) => {
-        const tempLoss = 8;
-        const shadingLoss = considerarSombreamento ? 
-          (sombreamento[month] || 5) : 0;
-        const soilingLoss = considerarSujeira ? sujeira : 2;
-        const angularLoss = 3;
+        const shadingLoss = considerarSombreamento ? (sombreamento[month] || sombreamento[0] || 0) : 0;
+        const mismatchLoss = perdaMismatch;
+        const cablingLoss = perdaCabeamento;
+        const soilingLoss = considerarSujeira ? sujeira : 0;
+        const inverterLoss = perdaInversor;
+        const otherLoss = outrasPerdasPercentual || 0;
         
-        // Perdas não são simplesmente aditivas
-        return 1 - (1 - tempLoss/100) * (1 - shadingLoss/100) * (1 - soilingLoss/100) * (1 - angularLoss/100);
-      }).map(loss => loss * 100)
+        // Perdas não são simplesmente aditivas - aplicar fórmula multiplicativa
+        const totalEfficiency = (1 - shadingLoss/100) * 
+                               (1 - mismatchLoss/100) * 
+                               (1 - cablingLoss/100) * 
+                               (1 - soilingLoss/100) * 
+                               (1 - inverterLoss/100) * 
+                               (1 - otherLoss/100);
+        
+        return (1 - totalEfficiency) * 100;
+      })
     };
   }
 

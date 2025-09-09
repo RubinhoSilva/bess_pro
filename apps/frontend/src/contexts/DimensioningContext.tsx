@@ -1,6 +1,28 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import { calculateSystemEfficiency, SystemLosses } from '@/lib/pvDimensioning';
+
+// FUNCIONALIDADE DE MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
+// export interface AguaTelhado {
+//   id: string;
+//   nome: string;
+//   orientacao: number; // 0-360° (0=Norte, 90=Leste, 180=Sul, 270=Oeste)
+//   inclinacao: number; // 0-90°
+//   areaDisponivel?: number; // m²
+//   numeroModulos: number;
+//   sombreamentoParcial: number; // % específico desta área
+// }
+
+// Função utilitária para converter dados do contexto para SystemLosses
+const convertToSystemLosses = (data: DimensioningData): SystemLosses => ({
+  perdaSombreamento: data.perdaSombreamento,
+  perdaMismatch: data.perdaMismatch,
+  perdaCabeamento: data.perdaCabeamento,
+  perdaSujeira: data.perdaSujeira,
+  perdaInversor: data.perdaInversor,
+  perdaOutras: data.perdaOutras
+});
 
 export interface Customer {
   id: string;
@@ -64,14 +86,21 @@ interface DimensioningData {
   endereco?: string;
   cidade?: string;
   estado?: string;
-  latitude?: number;
-  longitude?: number;
   irradiacaoMensal: number[];
   
   // Sistema fotovoltaico
   potenciaModulo: number;
   numeroModulos: number;
-  eficienciaSistema: number;
+  eficienciaSistema: number; // deprecated, use systemLosses
+  // MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
+  // aguasTelhado: AguaTelhado[];
+  // Perdas específicas do sistema
+  perdaSombreamento?: number;
+  perdaMismatch?: number;
+  perdaCabeamento?: number;
+  perdaSujeira?: number;
+  perdaInversor?: number;
+  perdaOutras?: number;
   selectedModuleId?: string;
   moduloSelecionado?: string;
   eficienciaModulo?: number;
@@ -82,6 +111,8 @@ interface DimensioningData {
   degradacaoAnual?: number;
   orientacao?: number;
   inclinacao?: number;
+  latitude?: number;
+  longitude?: number;
   
   // Inversores
   inverters: Inverter[];
@@ -162,7 +193,24 @@ const getInitialDimensioningData = (): DimensioningData => ({
   irradiacaoMensal: Array(12).fill(4.5),
   potenciaModulo: 550,
   numeroModulos: 0,
-  eficienciaSistema: 85,
+  eficienciaSistema: 85, // deprecated
+  // ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
+  // aguasTelhado: [{
+  //   id: 'agua_principal',
+  //   nome: 'Água Principal',
+  //   orientacao: 180, // Sul
+  //   inclinacao: 23, // Ângulo ótimo para Brasil
+  //   numeroModulos: 20,
+  //   sombreamentoParcial: 0,
+  //   areaDisponivel: 50
+  // }],
+  // Perdas padrão específicas
+  perdaSombreamento: 3,
+  perdaMismatch: 2,
+  perdaCabeamento: 2,
+  perdaSujeira: 5,
+  perdaInversor: 3,
+  perdaOutras: 0,
   
   // Dados adicionais do módulo
   moduloSelecionado: '',
@@ -172,8 +220,12 @@ const getInitialDimensioningData = (): DimensioningData => ({
   dimensionamentoPercentual: 100,
   vidaUtil: 25,
   degradacaoAnual: 0.5,
-  orientacao: 0,
-  inclinacao: 0,
+  orientacao: 180, // Norte geográfico (padrão ótimo para Brasil)
+  inclinacao: 23,  // Ângulo ótimo para latitude média do Brasil
+  
+  // Localização padrão (São Paulo) para habilitar PVLIB
+  latitude: -23.5505,
+  longitude: -46.6333,
   
   // Dados do inversor
   inversorSelecionado: '',
@@ -300,7 +352,17 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
         id: crypto.randomUUID(),
         name: 'Conta Principal',
         consumoMensal: Array(12).fill(500)
-      }]
+      }],
+      // ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
+      // aguasTelhado: data.aguasTelhado || [{
+      //   id: 'agua_principal',
+      //   nome: 'Água Principal',
+      //   orientacao: 180,
+      //   inclinacao: 23,
+      //   numeroModulos: 20,
+      //   sombreamentoParcial: 0,
+      //   areaDisponivel: 50
+      // }]
     };
     
     setCurrentDimensioning(loadedData);
