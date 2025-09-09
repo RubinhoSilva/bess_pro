@@ -142,8 +142,8 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             <SystemSummary results={{
               potenciaPico: results.potenciaPico,
               numeroModulos: results.numeroModulos,
-              areaEstimada: results.numeroModulos * 2.5, // Estimativa padrão de 2.5m² por módulo (consistente com resumo)
-              geracaoEstimadaAnual: results.geracaoEstimadaMensal.reduce((acc, val) => acc + val, 0)
+              areaEstimada: results.areaEstimada,
+              geracaoEstimadaAnual: results.geracaoEstimadaAnual
             }} />
           </Section>
 

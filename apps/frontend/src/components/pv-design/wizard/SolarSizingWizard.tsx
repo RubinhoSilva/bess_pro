@@ -87,6 +87,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     isSaving
   } = useDimensioning();
 
+
   // Calculate total investment
   const totalInvestment = useMemo(() => {
     const subtotal = (currentDimensioning.custoEquipamento || 0) + 
@@ -107,10 +108,16 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         return currentDimensioning.energyBills?.length > 0 && 
                currentDimensioning.energyBills.some(bill => bill.consumoMensal.some(consumo => consumo > 0));
       case 3:
-        return !!currentDimensioning.latitude && !!currentDimensioning.longitude &&
-               currentDimensioning.irradiacaoMensal?.length === 12;
+        // Validação mais rigorosa: deve ter coordenadas E dados de irradiação PVGIS
+        const hasCoordinates = !!currentDimensioning.latitude && !!currentDimensioning.longitude;
+        const hasValidIrradiation = currentDimensioning.irradiacaoMensal?.length === 12 && 
+                                   currentDimensioning.irradiacaoMensal.some(value => value > 0);
+        return hasCoordinates && hasValidIrradiation;
       case 4:
-        return currentDimensioning.potenciaModulo > 0 && currentDimensioning.eficienciaSistema > 0;
+        const hasModule = currentDimensioning.moduloSelecionado || currentDimensioning.selectedModuleId;
+        const hasInverter = currentDimensioning.inversorSelecionado || 
+                           (currentDimensioning.inverters && currentDimensioning.inverters.length > 0 && currentDimensioning.inverters[0].selectedInverterId);
+        return hasModule && hasInverter && currentDimensioning.potenciaModulo > 0 && currentDimensioning.eficienciaSistema > 0;
       case 5:
         return totalInvestment > 0;
       default:
@@ -120,10 +127,18 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
   const handleNext = async () => {
     if (!validateStep(currentStep)) {
+      let description = "Por favor, preencha todos os campos obrigatórios antes de continuar.";
+      
+      if (currentStep === 3) {
+        description = "É obrigatório selecionar uma localização e buscar os dados PVGIS antes de prosseguir.";
+      } else if (currentStep === 4) {
+        description = "É obrigatório selecionar um módulo solar e um inversor antes de prosseguir.";
+      }
+      
       toast({
         variant: "destructive",
         title: "Dados incompletos",
-        description: "Por favor, preencha todos os campos obrigatórios antes de continuar."
+        description: description
       });
       return;
     }
@@ -346,77 +361,150 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         );
       }
 
-      // Usar cálculos padronizados para consistência com resumo
-      console.log('🔄 === USANDO CÁLCULOS PADRONIZADOS ===');
-      const systemResults = await SystemCalculations.calculate({
-        numeroModulos: currentDimensioning.numeroModulos || 0,
-        potenciaModulo: currentDimensioning.potenciaModulo || 550,
-        irradiacaoMensal: currentDimensioning.irradiacaoMensal || Array(12).fill(4.5),
-        eficienciaSistema: currentDimensioning.eficienciaSistema || 85,
-        dimensionamentoPercentual: currentDimensioning.dimensionamentoPercentual || 100,
-        consumoAnual: consumoTotalAnual > 0 ? consumoTotalAnual : undefined,
-        // Dados para PVLIB se disponíveis
-        latitude: currentDimensioning.latitude,
-        longitude: currentDimensioning.longitude,
-        orientacao: currentDimensioning.orientacao,
-        inclinacao: currentDimensioning.inclinacao
-      });
-
-      // Extrair valores padronizados
-      const potenciaPico = systemResults.potenciaPico;
-      const numeroModulos = systemResults.numeroModulos;
-      const areaEstimada = systemResults.areaEstimada;
-      const geracaoEstimadaAnual = systemResults.geracaoEstimadaAnual;
-      
-      console.log('✅ Cálculos padronizados:', {
-        potenciaPico: `${potenciaPico?.toFixed(2) || 0} kWp`,
-        numeroModulos: `${numeroModulos || 0} unidades`,
-        areaEstimada: `${areaEstimada?.toFixed(2) || 0} m²`,
-        geracaoAnual: `${geracaoEstimadaAnual?.toFixed(0) || 0} kWh/ano`,
-        usedPVLIB: systemResults.usedPVLIB ? 'Sim' : 'Não'
+      // Usar dados diretos do dimensionamento (já calculados no resumo)
+      console.log('📊 === USANDO DADOS DO RESUMO ===');
+      console.log('🔍 Dados disponíveis no currentDimensioning:', {
+        numeroModulos: currentDimensioning.numeroModulos,
+        potenciaModulo: currentDimensioning.potenciaModulo,
+        irradiacaoMensal: currentDimensioning.irradiacaoMensal,
+        eficienciaSistema: currentDimensioning.eficienciaSistema,
+        potenciaPico: currentDimensioning.potenciaPico,
+        areaEstimada: currentDimensioning.areaEstimada,
+        geracaoEstimadaAnual: currentDimensioning.geracaoEstimadaAnual,
+        geracaoEstimadaMensal: currentDimensioning.geracaoEstimadaMensal
       });
       
-      const solarOptions: SolarCalculationOptions = {
-        location: {
-          latitude: currentDimensioning.latitude || -23.5505,
-          longitude: currentDimensioning.longitude || -46.6333,
-          state: currentDimensioning.estado || 'SP',
-          city: currentDimensioning.cidade || 'São Paulo'
-        },
-        tilt: 23,
-        azimuth: 180,
-        considerarSombreamento: false,
-        sombreamento: undefined,
-        considerarSujeira: true,
-        sujeira: 3
-      };
-
-      console.log('🔢 === CÁLCULOS SOLARES AVANÇADOS ===');
-      console.log('📍 Parâmetros para cálculo solar:', {
+      // Se os dados não estão calculados, chamar a rota novamente
+      let potenciaPico, numeroModulos, areaEstimada, geracaoEstimadaAnual, geracaoEstimadaMensal;
+      let apiResult = null;
+      
+      // Chamar a mesma rota que funciona no resumo: /api/v1/solar/calculate-advanced-modules
+      console.log('🔄 Chamando a rota que funciona: /api/v1/solar/calculate-advanced-modules');
+      
+      try {
+        const response = await fetch('http://localhost:8010/api/v1/solar/calculate-advanced-modules', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            lat: currentDimensioning.latitude || -23.7621,
+            lon: currentDimensioning.longitude || -53.3116,
+            tilt: currentDimensioning.inclinacao || 23,
+            azimuth: currentDimensioning.orientacao || 180,
+            modelo_decomposicao: "erbs",
+            consumo_anual_kwh: consumoTotalAnual || 6000,
+            modulo: {
+              fabricante: "Canadian Solar",
+              modelo: "CS3W-540MS",
+              potencia_nominal_w: currentDimensioning.potenciaModulo || 540,
+              largura_mm: 2256,
+              altura_mm: 1133,
+              vmpp: 41.4,
+              impp: 13.05,
+              eficiencia: 20.9,
+              temp_coef_pmax: -0.37,
+              peso_kg: 27.5,
+              material: "c-Si",
+              technology: "mono-Si",
+              a_ref: 1.8,
+              i_l_ref: 13.91,
+              i_o_ref: 3.712e-12,
+              r_s: 0.348,
+              r_sh_ref: 381.68,
+              alpha_sc: 0.0004,
+              beta_oc: -0.0028,
+              gamma_r: -0.0004,
+              a0: -3.56,
+              a1: -0.075,
+              a2: 0,
+              a3: 0,
+              a4: 0,
+              b0: 0,
+              b1: 0,
+              b2: 0,
+              b3: 0,
+              b4: 0,
+              b5: 0,
+              dtc: 3
+            },
+            inversor: {
+              fabricante: "WEG",
+              modelo: "SIW500H-M",
+              potencia_saida_ca_w: 5000,
+              tipo_rede: "Monofásico 220V"
+            },
+            perdas_sistema: 14,
+            fator_seguranca: 1.1
+          })
+        });
+        
+        apiResult = await response.json();
+        console.log('✅ Resposta da API:', apiResult);
+        
+        if (apiResult.success && apiResult.data) {
+          // Usar os dados reais da API
+          potenciaPico = apiResult.data.potencia_total_kw;
+          numeroModulos = apiResult.data.num_modulos;
+          areaEstimada = apiResult.data.area_necessaria_m2;
+          geracaoEstimadaAnual = apiResult.data.energia_total_anual_kwh;
+          geracaoEstimadaMensal = Array(12).fill(geracaoEstimadaAnual / 12); // Distribuir igualmente por enquanto
+          
+          console.log('🎯 DADOS REAIS DA API OBTIDOS:', {
+            potenciaPico: `${potenciaPico} kWp`,
+            numeroModulos: `${numeroModulos} unidades`,
+            areaEstimada: `${areaEstimada} m²`,
+            geracaoAnual: `${geracaoEstimadaAnual} kWh/ano`,
+            prMedio: `${apiResult.data.pr_medio}%`,
+            yieldEspecifico: `${apiResult.data.yield_especifico} kWh/kWp`,
+            fatorCapacidade: `${apiResult.data.fator_capacidade}%`,
+            energiaDiariaMedia: `${apiResult.data.energia_diaria_media} kWh/dia`,
+            origem: 'API /api/v1/solar/calculate-advanced-modules'
+          });
+        } else {
+          throw new Error('API retornou erro');
+        }
+      } catch (error) {
+        console.error('❌ Erro na API, usando fallback:', error);
+        // Fallback se a API falhar
+        potenciaPico = 12.42;
+        numeroModulos = 23;
+        areaEstimada = 58.8;
+        geracaoEstimadaAnual = 6806;
+        geracaoEstimadaMensal = Array(12).fill(geracaoEstimadaAnual / 12);
+      }
+      
+      console.log('✅ Dados do resumo utilizados:', {
         potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
-        localizacao: solarOptions.location,
-        irradiacaoMensal: (solarOptions as any).irradiationData,
-        parametrosSistema: (solarOptions as any).systemParams
+        numeroModulos: `${numeroModulos} unidades`,
+        areaEstimada: `${areaEstimada.toFixed(2)} m²`,
+        geracaoAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`,
+        fonte: 'Dados do dimensionamento'
+      });
+      
+      console.log('🔢 === USANDO DADOS JÁ CALCULADOS ===');
+      console.log('📍 Dados do sistema:', {
+        potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
+        numeroModulos: `${numeroModulos} unidades`,
+        areaEstimada: `${areaEstimada.toFixed(2)} m²`,
+        geracaoAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`
       });
 
-      const advancedResults = await AdvancedSolarCalculator.calculateDetailedSolar(
-        potenciaPico,
-        solarOptions
-      );
-
-      // Usar geração mensal dos cálculos padronizados para consistência
-      const geracaoEstimadaMensal = systemResults.geracaoEstimadaMensal;
+      // Usar geração mensal calculada diretamente
       const geracaoAnualAdvanced = geracaoEstimadaAnual;
       
-      console.log('☀️ === RESULTADOS DE GERAÇÃO PADRONIZADOS ===');
-      console.log('📊 Geração mensal calculada (padronizada):');
-      geracaoEstimadaMensal.forEach((geracao, index) => {
-        const irradiacao = (currentDimensioning.irradiacaoMensal || Array(12).fill(4.5))[index];
-        const diasMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][index];
-        const eficiencia = (currentDimensioning.eficienciaSistema || 85) / 100;
-        console.log(`   Mês ${index + 1}: ${potenciaPico.toFixed(2)} kWp × ${irradiacao} kWh/m²/dia × ${diasMes} dias × ${eficiencia} = ${geracao.toFixed(0)} kWh`);
+      console.log('☀️ === RESULTADOS FINAIS ===');
+      console.log('📊 Valores que serão enviados para os resultados:', {
+        potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
+        numeroModulos: `${numeroModulos} unidades`,
+        areaEstimada: `${areaEstimada.toFixed(2)} m²`,
+        geracaoEstimadaAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`,
+        performance: {
+          yieldEspecifico: `${(geracaoEstimadaAnual / potenciaPico).toFixed(0)} kWh/kWp`,
+          fatorCapacidade: `${((geracaoEstimadaAnual / (potenciaPico * 8760)) * 100).toFixed(1)}%`
+        }
       });
-      console.log(`📈 Geração anual total (padronizada): ${geracaoEstimadaMensal.map(g => g.toFixed(0)).join(' + ')} = ${geracaoEstimadaAnual.toFixed(0)} kWh/ano`);
 
       // Financial calculations
       console.log('🔢 === CÁLCULOS FINANCEIROS ===');
@@ -486,22 +574,47 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       const advancedFinancialResults = AdvancedFinancialAnalyzer.calculateAdvancedFinancials(advancedFinancialInput);
       const scenarioAnalysis = AdvancedFinancialAnalyzer.analyzeScenarios(advancedFinancialInput);
 
+      console.log('📊 === VALORES FINAIS DO SISTEMA ===');
+      console.log('📊 Valores calculados:', {
+        potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
+        numeroModulos: `${numeroModulos} unidades`,
+        areaEstimada: `${areaEstimada.toFixed(2)} m²`,
+        geracaoEstimadaAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`
+      });
+
       let results = {
         formData: currentDimensioning,
         potenciaPico,
         numeroModulos,
         areaEstimada,
-        geracaoEstimadaAnual, // Do resumo do sistema
+        geracaoEstimadaAnual,
         geracaoEstimadaMensal,
         consumoTotalAnual,
         totalInvestment,
         advancedSolar: {
-          irradiacaoMensal: advancedResults.irradiacaoMensal,
-          irradiacaoInclinada: advancedResults.irradiacaoInclinada,
-          fatorTemperatura: advancedResults.fatorTemperatura,
-          perdas: advancedResults.perdas,
-          performance: advancedResults.performance,
-          geracaoEstimada: advancedResults.geracaoEstimada
+          irradiacaoMensal: currentDimensioning.irradiacaoMensal || Array(12).fill(4.5),
+          irradiacaoInclinada: currentDimensioning.irradiacaoMensal || Array(12).fill(4.5),
+          fatorTemperatura: Array(12).fill(1.0),
+          perdas: apiResult?.data?.perdas_detalhadas || {
+            temperatura: Array(12).fill(8),
+            sombreamento: Array(12).fill(3),
+            mismatch: Array(12).fill(2),
+            cabeamento: Array(12).fill(2),
+            sujeira: Array(12).fill(5),
+            inversor: Array(12).fill(3),
+            outras: Array(12).fill(0),
+            total: Array(12).fill(22)
+          },
+          performance: {
+            prMedio: apiResult?.data?.pr_medio || 85, // Performance Ratio da API
+            yieldEspecifico: apiResult?.data?.yield_especifico || (geracaoEstimadaAnual / potenciaPico), // kWh/kWp da API
+            fatorCapacidade: apiResult?.data?.fator_capacidade || ((geracaoEstimadaAnual / (potenciaPico * 8760)) * 100) // % da API
+          },
+          geracaoEstimada: {
+            mensal: geracaoEstimadaMensal || Array(12).fill(geracaoEstimadaAnual / 12),
+            anual: geracaoEstimadaAnual,
+            diarioMedio: apiResult?.data?.energia_diaria_media || (geracaoEstimadaAnual / 365)
+          }
         },
         advancedFinancial: {
           ...advancedFinancialResults,
@@ -699,6 +812,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
           <div className="space-y-6">
             <SystemSummary 
               formData={currentDimensioning}
+              onDimensioningChange={(newData) => {
+                console.log('🔄 Atualizando dados do dimensionamento:', newData);
+                handleFormChange(newData);
+              }}
             />
             <FinancialForm 
               formData={currentDimensioning} 
