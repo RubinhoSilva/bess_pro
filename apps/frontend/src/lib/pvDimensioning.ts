@@ -18,6 +18,7 @@ export function calculateSystemEfficiency(losses: SystemLosses | undefined, fall
 }
 
 export interface SystemLosses {
+  temperatura?: number;
   perdaSombreamento?: number;
   perdaMismatch?: number;
   perdaCabeamento?: number;
@@ -30,6 +31,8 @@ export interface DimensioningInput {
   consumoAnual: number; // kWh/ano
   irradiacaoMedia: number; // kWh/m²/dia
   eficienciaSistema?: number; // % (deprecated, use systemLosses)
+  eficienciaInversor?: number; // %
+  eficienciaModulo?: number; // %
   systemLosses?: SystemLosses;
   location: {
     latitude: number;
@@ -431,6 +434,7 @@ export class PVDimensioningService {
     const ratioDcAc = config.potenciaTotal / (inverter.potenciaSaidaCA / 1000);
     
     // Calcular geração mensal estimada
+    const eficienciaReal = (input.eficienciaInversor || 95) * (input.eficienciaModulo || 85) / 10000;
     const geracaoMensal = this.calculateMonthlyGeneration(
       config.potenciaTotal,
       input.irradiacaoMedia,
@@ -465,7 +469,7 @@ export class PVDimensioningService {
       performance: {
         geracaoMensal,
         fatorCapacidade: this.calculateCapacityFactor(geracaoAnual, config.potenciaTotal),
-        perdas: this.calculateSystemLosses(eficienciaReal, input.systemLosses)
+        perdas: this.calculateSystemLosses(eficienciaReal, input.systemLosses || {})
       }
     };
   }
@@ -571,12 +575,10 @@ export class PVDimensioningService {
   private static calculateSystemLosses(eficienciaReal: number, systemLosses?: SystemLosses) {
     if (systemLosses) {
       return {
+        temperatura: systemLosses.temperatura || 8,
         sombreamento: systemLosses.perdaSombreamento || 3,
-        mismatch: systemLosses.perdaMismatch || 2,
         cabeamento: systemLosses.perdaCabeamento || 2,
         sujeira: systemLosses.perdaSujeira || 5,
-        inversor: systemLosses.perdaInversor || 3,
-        outras: systemLosses.perdaOutras || 0,
         total: 100 - eficienciaReal
       };
     }

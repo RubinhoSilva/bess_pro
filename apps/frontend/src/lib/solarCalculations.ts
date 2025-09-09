@@ -117,7 +117,6 @@ export class AdvancedSolarCalculator {
         irradiacaoInclinada: irradiationData?.irradiacaoMensal || this.getRegionalIrradiation(options.location),
         fatorTemperatura: this.calculateTemperatureFactorsFromLocation(options.location),
         perdas: {
-          temperatura: advancedResult.perdas_detalhadas.temperatura || Array(12).fill(8),
           sombreamento: advancedResult.perdas_detalhadas.sombreamento || Array(12).fill(3),
           mismatch: advancedResult.perdas_detalhadas.mismatch || Array(12).fill(2),
           cabeamento: advancedResult.perdas_detalhadas.cabeamento || Array(12).fill(2),
@@ -136,7 +135,7 @@ export class AdvancedSolarCalculator {
           yieldEspecifico: advancedResult.yield_especifico || 1200,
           fatorCapacidade: advancedResult.fator_capacidade || 15
         },
-        source: 'api_python'
+        source: 'pvlib' as 'pvlib' | 'estimated'
       };
     }
     

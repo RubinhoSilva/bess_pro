@@ -145,7 +145,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         const hasModule = currentDimensioning.moduloSelecionado || currentDimensioning.selectedModuleId;
         const hasInverter = currentDimensioning.inversorSelecionado || 
                            (currentDimensioning.inverters && currentDimensioning.inverters.length > 0 && currentDimensioning.inverters[0].selectedInverterId);
-        return hasModule && hasInverter && currentDimensioning.potenciaModulo > 0 && currentDimensioning.eficienciaSistema > 0;
+        return !!(hasModule && hasInverter && currentDimensioning.potenciaModulo > 0 && currentDimensioning.eficienciaSistema > 0);
       case 5:
         return totalInvestment > 0;
       default:
@@ -396,10 +396,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         potenciaModulo: currentDimensioning.potenciaModulo,
         irradiacaoMensal: currentDimensioning.irradiacaoMensal,
         eficienciaSistema: currentDimensioning.eficienciaSistema,
-        potenciaPico: currentDimensioning.potenciaPico,
-        areaEstimada: currentDimensioning.areaEstimada,
-        geracaoEstimadaAnual: currentDimensioning.geracaoEstimadaAnual,
-        geracaoEstimadaMensal: currentDimensioning.geracaoEstimadaMensal
+        potenciaPico: (currentDimensioning as any).potenciaPico || 0,
+        areaEstimada: (currentDimensioning as any).areaEstimada || 0,
+        geracaoEstimadaAnual: (currentDimensioning as any).geracaoEstimadaAnual || 0,
+        geracaoEstimadaMensal: (currentDimensioning as any).geracaoEstimadaMensal || Array(12).fill(0)
       });
       
       // Se os dados não estão calculados, chamar a rota novamente
@@ -872,7 +872,9 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
               formData={currentDimensioning}
               onDimensioningChange={(newData) => {
                 console.log('🔄 Atualizando dados do dimensionamento:', newData);
-                handleFormChange(newData);
+                Object.entries(newData).forEach(([key, value]) => {
+                  handleFormChange(key, value);
+                });
               }}
             />
             <FinancialForm 

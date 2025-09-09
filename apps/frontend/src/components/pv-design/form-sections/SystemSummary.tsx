@@ -135,7 +135,7 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '',
           // Se Python funcionou, aguardar um pouco para garantir que o resultado foi setado
           await new Promise(resolve => setTimeout(resolve, 100));
         } catch (error) {
-          logger.warning('Python', 'Cálculo Python não disponível, usando fallback local', { error: error?.toString() });
+          logger.info('Python', 'Cálculo Python não disponível, usando fallback local', { error: error?.toString() });
         }
         
         logger.context('Resumo', 'Calculando resumo automático do sistema fotovoltaico', {
@@ -179,7 +179,7 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '',
               perdaCabeamento: formData.perdaCabeamento,
               perdaSujeira: formData.perdaSujeira,
               perdaInversor: formData.perdaInversor,
-              perdaTemperatura: formData.perdaTemperatura
+              temperatura: formData.perdaTemperatura
             },
             dimensionamentoPercentual: formData.dimensionamentoPercentual || 100,
             consumoAnual: consumoTotalAnual > 0 ? consumoTotalAnual : undefined,
@@ -229,7 +229,7 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '',
               perdaCabeamento: formData.perdaCabeamento,
               perdaSujeira: formData.perdaSujeira,
               perdaInversor: formData.perdaInversor,
-              perdaTemperatura: formData.perdaTemperatura
+              temperatura: formData.perdaTemperatura
             },
             dimensionamentoPercentual: formData.dimensionamentoPercentual || 100,
             consumoAnual: consumoTotalAnual > 0 ? consumoTotalAnual : undefined,
@@ -254,6 +254,7 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '',
               numeroModulos: formData.numeroModulos || 0,
               areaEstimada: 0,
               geracaoEstimadaAnual: 0,
+              geracaoEstimadaMensal: Array(12).fill(0),
               irradiacaoMediaAnual: formData.irradiacaoMensal ? formData.irradiacaoMensal.reduce((a: number, b: number) => a + b, 0) / 12 : 4.5,
               coberturaConsumo: undefined,
               usedPVLIB: false

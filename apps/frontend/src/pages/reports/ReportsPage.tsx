@@ -35,12 +35,19 @@ interface ReportCard {
   status: 'available' | 'generating' | 'error';
 }
 
+interface StatsData {
+  projects: number;
+  revenue: number;
+  clients: number;
+  conversion: number;
+}
+
 const ReportsPage: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [selectedType, setSelectedType] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState<StatsData | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -125,10 +132,10 @@ const ReportsPage: React.FC = () => {
   ];
 
   const quickStats = stats ? [
-    { label: 'Projetos Ativos', value: stats.projects.toString(), change: '+2 este mês', color: 'bg-blue-500' },
-    { label: 'Receita Total', value: `R$ ${stats.revenue}k`, change: '+12% vs mês anterior', color: 'bg-green-500' },
-    { label: 'Novos Clientes', value: stats.clients.toString(), change: '+3 esta semana', color: 'bg-purple-500' },
-    { label: 'Taxa Conversão', value: `${stats.conversion}%`, change: '+5% vs mês anterior', color: 'bg-orange-500' }
+    { label: 'Projetos Ativos', value: stats.projects?.toString() || '0', change: '+2 este mês', color: 'bg-blue-500' },
+    { label: 'Receita Total', value: `R$ ${stats.revenue || 0}k`, change: '+12% vs mês anterior', color: 'bg-green-500' },
+    { label: 'Novos Clientes', value: stats.clients?.toString() || '0', change: '+3 esta semana', color: 'bg-purple-500' },
+    { label: 'Taxa Conversão', value: `${stats.conversion || 0}%`, change: '+5% vs mês anterior', color: 'bg-orange-500' }
   ] : [];
 
   const getStatusColor = (status: string) => {

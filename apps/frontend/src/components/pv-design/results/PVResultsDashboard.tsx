@@ -142,15 +142,30 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             <SystemSummary results={{
               potenciaPico: results.potenciaPico,
               numeroModulos: results.numeroModulos,
-              areaEstimada: results.areaEstimada,
-              geracaoEstimadaAnual: results.geracaoEstimadaAnual
+              areaEstimada: 0,
+              geracaoEstimadaAnual: results.geracaoEstimadaMensal ? results.geracaoEstimadaMensal.reduce((a: number, b: number) => a + b, 0) : 0
             }} />
           </Section>
 
           {/* Advanced Solar Analysis */}
           {results.advancedSolar && (
             <Section title="Análise Solar Avançada" delay={2}>
-              <AdvancedSolarAnalysis results={results} />
+              <AdvancedSolarAnalysis results={{
+                ...results,
+                advancedSolar: {
+                  ...results.advancedSolar,
+                  perdas: {
+                    temperatura: results.advancedSolar.perdas.temperatura || Array(12).fill(0),
+                    sombreamento: results.advancedSolar.perdas.sombreamento || Array(12).fill(0),
+                    mismatch: (results.advancedSolar.perdas as any).mismatch || Array(12).fill(0),
+                    cabeamento: (results.advancedSolar.perdas as any).cabeamento || Array(12).fill(0),
+                    sujeira: results.advancedSolar.perdas.sujeira || Array(12).fill(0),
+                    inversor: (results.advancedSolar.perdas as any).inversor || Array(12).fill(0),
+                    outras: (results.advancedSolar.perdas as any).outras || Array(12).fill(0),
+                    total: results.advancedSolar.perdas.total || Array(12).fill(0)
+                  }
+                }
+              }} />
             </Section>
           )}
 
