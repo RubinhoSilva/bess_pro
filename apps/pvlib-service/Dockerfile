@@ -19,8 +19,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Create cache directory with proper permissions
+RUN mkdir -p /app/cache_pvgis && \
+    chmod 777 /app/cache_pvgis
+
 # Create non-root user for security
-RUN useradd --create-home --shell /bin/bash pvlib
+RUN useradd --create-home --shell /bin/bash pvlib && \
+    chown -R pvlib:pvlib /app
 USER pvlib
 
 # Expose port
