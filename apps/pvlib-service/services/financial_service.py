@@ -301,32 +301,40 @@ class FinancialCalculationService:
     def _calculate_scenario_analysis(input_data: FinancialInput) -> ScenarioAnalysis:
         """Calcula análise de cenários"""
         
+        # Helper para calcular apenas os indicadores principais sem recursão
+        def calculate_basic_indicators(data: FinancialInput):
+            cash_flow = FinancialCalculationService._calculate_detailed_cash_flow(data)
+            vpl = FinancialCalculationService._calculate_npv(cash_flow, data.taxa_desconto) - data.investimento_inicial
+            tir = FinancialCalculationService._calculate_irr(cash_flow, data.investimento_inicial)
+            payback = FinancialCalculationService._calculate_simple_payback(cash_flow)
+            return {"vpl": round(vpl, 2), "tir": round(tir, 2), "payback": round(payback, 2)}
+        
         # Cenário base
-        base_results = FinancialCalculationService.calculate_advanced_financials(input_data)
+        base_results = calculate_basic_indicators(input_data)
         
         # Cenário otimista (+10% tarifa, -1% taxa desconto, -20% investimento)
         input_otimista = input_data.copy()
         input_otimista.tarifa_energia *= 1.10
-        input_otimista.taxa_desconto -= 1.0
+        input_otimista.taxa_desconto = max(1.0, input_otimista.taxa_desconto - 1.0)  # Evitar taxa negativa
         input_otimista.investimento_inicial *= 0.80
-        otimista_results = FinancialCalculationService.calculate_advanced_financials(input_otimista)
+        otimista_results = calculate_basic_indicators(input_otimista)
         
         # Cenário conservador (-5% tarifa, +1% taxa desconto)
         input_conservador = input_data.copy()
         input_conservador.tarifa_energia *= 0.95
         input_conservador.taxa_desconto += 1.0
-        conservador_results = FinancialCalculationService.calculate_advanced_financials(input_conservador)
+        conservador_results = calculate_basic_indicators(input_conservador)
         
         # Cenário pessimista (-10% tarifa, +2% taxa desconto, +20% investimento)
         input_pessimista = input_data.copy()
         input_pessimista.tarifa_energia *= 0.90
         input_pessimista.taxa_desconto += 2.0
         input_pessimista.investimento_inicial *= 1.20
-        pessimista_results = FinancialCalculationService.calculate_advanced_financials(input_pessimista)
+        pessimista_results = calculate_basic_indicators(input_pessimista)
         
         return ScenarioAnalysis(
-            base={"vpl": base_results.vpl, "tir": base_results.tir, "payback": base_results.payback_simples},
-            otimista={"vpl": otimista_results.vpl, "tir": otimista_results.tir, "payback": otimista_results.payback_simples},
-            conservador={"vpl": conservador_results.vpl, "tir": conservador_results.tir, "payback": conservador_results.payback_simples},
-            pessimista={"vpl": pessimista_results.vpl, "tir": pessimista_results.tir, "payback": pessimista_results.payback_simples}
+            base=base_results,
+            otimista=otimista_results,
+            conservador=conservador_results,
+            pessimista=pessimista_results
         )

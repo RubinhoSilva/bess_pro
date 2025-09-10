@@ -220,6 +220,25 @@ export const apiClient = {
     // Generic post method for calculations
     post: (endpoint: string, data: any) => api.post(endpoint, data),
   },
+
+  // Solar Analysis (integração com pvlib-service)
+  solarAnalysis: {
+    // Cálculo avançado de módulos
+    calculateAdvancedModules: (data: any) =>
+      api.post('/solar-analysis/calculate-advanced-modules', data),
+    
+    // Análise de irradiação mensal
+    analyzeMonthlyIrradiation: (data: any) =>
+      api.post('/solar-analysis/analyze-monthly-irradiation', data),
+    
+    // Análise financeira avançada via Python
+    calculateAdvancedFinancial: (data: any) =>
+      api.post('/solar-analysis/calculate-advanced-financial', data),
+    
+    // Dados de análise aprimorados
+    getEnhancedAnalysisData: (params: any) =>
+      api.get('/solar-analysis/enhanced-analysis-data', { params }),
+  },
 };
 
 export default api;

@@ -34,6 +34,10 @@ async def api_info():
                 "POST /modules/calculate": "Cálculo de módulos necessários",
                 "GET /modules/calculate": "Cálculo via query parameters"
             },
+            "financial": {
+                "POST /financial/calculate-advanced": "Análise financeira avançada",
+                "POST /financial/calculate-simple": "Análise financeira simplificada"
+            },
             "admin": {
                 "GET /admin/health": "Health check",
                 "GET /admin/cache/stats": "Estatísticas do cache",

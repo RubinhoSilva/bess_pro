@@ -35,6 +35,9 @@ export const createSolarAnalysisRoutes = (container: Container): Router => {
   
   // Enhanced analysis data endpoint (irradiation + losses)
   router.get('/enhanced-analysis-data', solarAnalysisController.getEnhancedAnalysisData.bind(solarAnalysisController));
+  
+  // Advanced financial analysis endpoint
+  router.post('/calculate-advanced-financial', solarAnalysisController.calculateAdvancedFinancialAnalysis.bind(solarAnalysisController));
 
   return router;
 };

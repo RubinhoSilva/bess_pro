@@ -88,29 +88,36 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   } = useDimensioning();
 
 
-  // Função para chamar a API financeira do Python
+  // Função para chamar a API financeira do Python via backend
   const callPythonFinancialAPI = async (financialData: any) => {
     try {
-      console.log('🐍 Chamando API financeira Python:', financialData);
+      console.log('🐍 Chamando API financeira Python via backend:', financialData);
       
-      const response = await fetch('http://localhost:8110/financial/calculate-advanced', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(financialData)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Python API Error: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('✅ Resultado API Python:', result);
+      // Importar a API client
+      const { apiClient } = await import('@/lib/api');
       
-      return result.data || result;
+      // Mapear dados para o formato esperado
+      const financialInput = {
+        investimento_inicial: financialData.investimentoInicial,
+        geracao_mensal: financialData.geracaoMensal,
+        consumo_mensal: financialData.consumoMensal,
+        tarifa_energia: financialData.tarifaEnergia,
+        custo_fio_b: financialData.custoFioB,
+        vida_util: financialData.vidaUtil,
+        taxa_desconto: financialData.taxaDesconto,
+        inflacao_energia: financialData.inflacaoEnergia,
+        degradacao_modulos: financialData.degradacaoModulos,
+        custo_om: financialData.custoOM,
+        inflacao_om: financialData.inflacaoOM,
+        modalidade_tarifaria: financialData.modalidadeTarifaria || 'convencional'
+      };
+      
+      const response = await apiClient.solarAnalysis.calculateAdvancedFinancial(financialInput);
+      console.log('✅ Resultado API Python via backend:', response.data);
+      
+      return response.data.data || response.data;
     } catch (error) {
-      console.error('❌ Erro ao chamar API financeira Python:', error);
+      console.error('❌ Erro ao chamar API financeira Python via backend:', error);
       // Fallback para cálculos locais se a API falhar
       return null;
     }

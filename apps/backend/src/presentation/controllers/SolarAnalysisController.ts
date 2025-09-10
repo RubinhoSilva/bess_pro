@@ -487,4 +487,111 @@ export class SolarAnalysisController extends BaseController {
       return this.internalServerError(res, 'Erro interno na busca de dados de análise');
     }
   }
+
+  async calculateAdvancedFinancialAnalysis(req: Request, res: Response): Promise<Response> {
+    try {
+      const params = req.body;
+      
+      console.log('🔄 Recebendo requisição de análise financeira avançada:', JSON.stringify(params, null, 2));
+
+      // Validação dos parâmetros obrigatórios
+      if (!params.investimento_inicial || !params.geracao_mensal || !params.consumo_mensal || !params.tarifa_energia) {
+        return this.badRequest(res, 'Parâmetros obrigatórios ausentes: investimento_inicial, geracao_mensal, consumo_mensal, tarifa_energia');
+      }
+
+      // URL do serviço PVLIB (Python)
+      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+
+      // Mapear campos do frontend para o formato esperado pela API Python
+      const financialInput = {
+        investimento_inicial: params.investimento_inicial,
+        geracao_mensal: params.geracao_mensal,
+        consumo_mensal: params.consumo_mensal,
+        tarifa_energia: params.tarifa_energia,
+        custo_fio_b: params.custo_fio_b || 0.3,
+        vida_util: params.vida_util || 25,
+        taxa_desconto: params.taxa_desconto || 8.0,
+        inflacao_energia: params.inflacao_energia || 4.5,
+        degradacao_modulos: params.degradacao_modulos || 0.5,
+        custo_om: params.custo_om || 0,
+        inflacao_om: params.inflacao_om || 4.0,
+        modalidade_tarifaria: params.modalidade_tarifaria || 'convencional'
+      };
+
+      console.log('🚀 Enviando para API Python (análise financeira):', JSON.stringify(financialInput, null, 2));
+      
+      // Chamar a API Python (Análise Financeira Avançada)
+      const response = await axios.post(
+        `${pythonServiceUrl}/api/v1/financial/calculate-advanced`,
+        financialInput,
+        {
+          timeout: 60000, // 1 minuto para cálculos financeiros
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('✅ Resposta da API Python (análise financeira):', {
+        status: response.status,
+        success: response.data.success,
+        vpl: response.data.data?.vpl,
+        tir: response.data.data?.tir
+      });
+
+      // Padronizar resposta para o frontend
+      const financialData = response.data.data;
+      
+      const standardizedData = {
+        // Indicadores principais
+        vpl: financialData.vpl,
+        tir: financialData.tir,
+        payback_simples: financialData.payback_simples,
+        payback_descontado: financialData.payback_descontado,
+        economia_total_25_anos: financialData.economia_total_25_anos,
+        economia_anual_media: financialData.economia_anual_media,
+        lucratividade_index: financialData.lucratividade_index,
+        
+        // Fluxo de caixa detalhado
+        cash_flow: financialData.cash_flow,
+        
+        // Indicadores de performance
+        indicadores: financialData.indicadores,
+        
+        // Análise de sensibilidade
+        sensibilidade: financialData.sensibilidade,
+        
+        // Análise de cenários
+        cenarios: financialData.cenarios
+      };
+
+      return res.status(200).json({
+        success: true,
+        data: standardizedData,
+        timestamp: new Date().toISOString(),
+        message: 'Análise financeira avançada calculada com sucesso'
+      });
+
+    } catch (error: any) {
+      console.error('❌ Erro ao calcular análise financeira avançada:', error);
+      
+      if (error.code === 'ECONNREFUSED') {
+        return this.internalServerError(res, 'Serviço PVLIB indisponível. Tente novamente em alguns instantes.');
+      }
+      
+      if (error.response?.status === 422) {
+        return this.badRequest(res, error.response.data.detail || 'Parâmetros inválidos');
+      }
+
+      if (error.response?.status === 500) {
+        return this.internalServerError(res, 'Erro interno no serviço de cálculos financeiros.');
+      }
+      
+      if (error.response?.data?.error) {
+        return this.internalServerError(res, error.response.data.error);
+      }
+      
+      return this.internalServerError(res, 'Erro interno na análise financeira avançada');
+    }
+  }
 }
