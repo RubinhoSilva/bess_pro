@@ -46,7 +46,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python) - usar nome do container Docker
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://bess-pro-pvlib:8100';
+      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8100';
       
       // Chamar o serviço Python
       const response = await axios.post(
@@ -96,7 +96,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python) - usar nome do container Docker
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://bess-pro-pvlib:8100';
+      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8100';
       
       // Chamar o serviço Python
       const response = await axios.post(
@@ -144,7 +144,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python) - usar nome do container Docker
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://bess-pro-pvlib:8100';
+      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8100';
       
       // Chamar o serviço Python
       const response = await axios.post(
@@ -195,7 +195,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python)
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://bess-pro-pvlib:8100';
+      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8100';
       
       // Função para incluir apenas campos definidos
       const mapField = (value: any) => value !== undefined && value !== null ? value : undefined;
@@ -375,7 +375,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python) - usar nome do container Docker
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://bess-pro-pvlib:8100';
+      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8100';
       
       // Preparar parâmetros para a API Python (seguindo o schema IrradiationAnalysisRequest)
       const pythonParams = {
@@ -452,7 +452,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python)
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://bess-pro-pvlib:8100';
+      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8100';
       
       // Buscar dados de irradiação mensal
       const irradiationResponse = await axios.post(
