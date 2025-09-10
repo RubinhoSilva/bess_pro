@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     
     # Cache e armazenamento
     CACHE_DIR: Path = Field(
-        default_factory=lambda: Path("cache_pvgis"),
+        default_factory=lambda: Path("/tmp/cache_pvgis"),
         description="Diretório para cache dos dados PVGIS"
     )
     
@@ -91,6 +91,9 @@ class Settings(BaseSettings):
         # Converter CACHE_DIR para Path se for string
         if isinstance(self.CACHE_DIR, str):
             self.CACHE_DIR = Path(self.CACHE_DIR)
+        
+        # Criar diretório de cache se não existir
+        self.CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Instância global das configurações
 settings = Settings()
