@@ -100,7 +100,7 @@ services:
     container_name: bess-pro-pvlib
     restart: unless-stopped
     ports:
-      - "8100:8100"
+      - "8110:8100"
     volumes:
       - ./apps/pvlib-service:/app
     networks:
@@ -122,4 +122,5 @@ volumes:
 
 networks:
   bess-network:
+    name: bess-network
     driver: bridge

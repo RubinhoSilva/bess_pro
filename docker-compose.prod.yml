@@ -12,7 +12,7 @@ services:
     environment:
       - NODE_ENV=production
     networks:
-      - bess-prod-network
+      - bess-network
     depends_on:
       - backend
 
@@ -34,7 +34,7 @@ services:
       - uploads:/app/uploads
       - logs:/app/logs
     networks:
-      - bess-prod-network
+      - bess-network
     depends_on:
       - mongodb
       - redis
@@ -60,7 +60,7 @@ services:
       - mongodb_prod_data:/data/db
       - mongodb_config:/data/configdb
     networks:
-      - bess-prod-network
+      - bess-network
 
   # Redis ARM64
   redis:
@@ -72,7 +72,7 @@ services:
     volumes:
       - redis_prod_data:/data
     networks:
-      - bess-prod-network
+      - bess-network
 
   # Python PVLIB Service
   pvlib-service:
@@ -92,7 +92,7 @@ services:
     volumes:
       - pvlib_cache:/app/cache_pvgis
     networks:
-      - bess-prod-network
+      - bess-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8100/admin/health"]
       interval: 30s
@@ -110,7 +110,7 @@ services:
       - "1026:1025"  # SMTP port
       - "8026:8025"  # Web UI port
     networks:
-      - bess-prod-network
+      - bess-network
 
 volumes:
   mongodb_prod_data:
@@ -121,5 +121,7 @@ volumes:
   logs:
 
 networks:
-  bess-prod-network:
+  bess-network:
+    name: bess-network
     driver: bridge
+    external: true
