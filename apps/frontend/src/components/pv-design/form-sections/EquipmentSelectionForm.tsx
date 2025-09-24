@@ -29,8 +29,8 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
   const { data: solarModulesData, isLoading: loadingModules } = useSolarModules({ pageSize: 100 });
   const { data: invertersData, isLoading: loadingInverters } = useInverters({ pageSize: 100 });
 
-  const solarModules = solarModulesData?.data?.modules || [];
-  const inverters = invertersData?.data?.inverters || [];
+  const solarModules = solarModulesData?.modules || [];
+  const inverters = invertersData?.inverters || [];
 
   const selectedModules: SelectedModule[] = formData.selectedModules || [];
   const selectedInverters: SelectedInverter[] = formData.selectedInverters || [];
