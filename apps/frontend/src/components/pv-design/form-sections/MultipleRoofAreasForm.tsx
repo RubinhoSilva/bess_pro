@@ -1,29 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Home, Plus, Trash2, ChevronDown, ChevronUp, Sun, Compass, Triangle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { SolarSystemService } from '@/lib/solarSystemService';
 
 export interface AguaTelhado {
   id: string;
   nome: string;
   orientacao: number; // 0-360° (0=Norte, 90=Leste, 180=Sul, 270=Oeste)
   inclinacao: number; // 0-90°
-  areaDisponivel?: number; // m²
   numeroModulos: number;
-  sombreamentoParcial: number; // % específico desta área
+  sombreamentoParcial?: number; // % específico desta área (removido para MVP)
+  // Dados calculados da geração
+  areaCalculada?: number; // m² calculado pela API
+  geracaoAnual?: number; // kWh/ano calculado pela API
+  isCalculando?: boolean; // Estado de carregamento
 }
 
 interface MultipleRoofAreasFormProps {
   aguasTelhado: AguaTelhado[];
   onAguasChange: (aguas: AguaTelhado[]) => void;
   potenciaModulo: number;
+  numeroModulosCalculados?: number; // Total de módulos calculado pela API
+  areaEstimada?: number; // Área total estimada pela API
+  geracaoEstimadaAnual?: number; // Geração anual estimada pela API
+  latitude?: number; // Para chamada da API
+  longitude?: number; // Para chamada da API
 }
 
 const orientacaoOptions = [
@@ -40,9 +47,40 @@ const orientacaoOptions = [
 const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
   aguasTelhado,
   onAguasChange,
-  potenciaModulo
+  potenciaModulo,
+  numeroModulosCalculados,
+  areaEstimada,
+  geracaoEstimadaAnual,
+  latitude,
+  longitude
 }) => {
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
+
+  // Atualizar primeira água de telhado com dados da API quando disponível
+  useEffect(() => {
+    if (numeroModulosCalculados && areaEstimada && geracaoEstimadaAnual && aguasTelhado.length > 0) {
+      const primeiraAgua = aguasTelhado[0];
+      
+      // Só atualizar se ainda não tiver dados calculados
+      if (!primeiraAgua.areaCalculada && !primeiraAgua.geracaoAnual) {
+        const aguasAtualizadas = [...aguasTelhado];
+        aguasAtualizadas[0] = {
+          ...primeiraAgua,
+          numeroModulos: numeroModulosCalculados,
+          areaCalculada: Math.round(areaEstimada),
+          geracaoAnual: Math.round(geracaoEstimadaAnual)
+        };
+        
+        console.log('🏠 [MultipleRoofAreasForm] Atualizando primeira água com dados da API:', {
+          numeroModulos: numeroModulosCalculados,
+          areaEstimada: Math.round(areaEstimada),
+          geracaoAnual: Math.round(geracaoEstimadaAnual)
+        });
+        
+        onAguasChange(aguasAtualizadas);
+      }
+    }
+  }, [numeroModulosCalculados, areaEstimada, geracaoEstimadaAnual, aguasTelhado, onAguasChange]);
 
   const toggleExpanded = (id: string) => {
     const newExpanded = new Set(expandedAreas);
@@ -54,15 +92,95 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
     setExpandedAreas(newExpanded);
   };
 
+
+  // Função para atualizar geração de uma água específica
+  const handleAtualizarGeracao = async (areaId: string) => {
+    if (!latitude || !longitude) {
+      console.warn('Latitude/longitude não disponíveis para cálculo');
+      return;
+    }
+
+    const area = aguasTelhado.find(a => a.id === areaId);
+    if (!area) return;
+
+    // Marcar como calculando
+    const updatedAreas = aguasTelhado.map(a => 
+      a.id === areaId ? { ...a, isCalculando: true } : a
+    );
+    onAguasChange(updatedAreas);
+
+    try {
+      console.log('🏠 Calculando geração para água:', {
+        nome: area.nome,
+        orientacao: area.orientacao,
+        inclinacao: area.inclinacao,
+        numeroModulos: area.numeroModulos,
+        latitude,
+        longitude
+      });
+
+      // Preparar dados para o cálculo usando o mesmo formato do SystemSummary
+      const dimensioningData = {
+        latitude,
+        longitude,
+        orientacao: area.orientacao,
+        inclinacao: area.inclinacao,
+        numeroModulos: area.numeroModulos,
+        num_modules: area.numeroModulos, // Campo específico para forçar uso deste número no Python
+        potenciaModulo,
+        energyBills: [{ 
+          consumoMensal: [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500] // 6000 kWh/ano
+        }],
+        selectedModules: [{
+          fabricante: 'Canadian Solar',
+          modelo: 'CS3W-540MS',
+          potenciaNominal: potenciaModulo
+        }],
+        inverters: [{
+          fabricante: 'WEG',
+          modelo: 'SIW500H-M',
+          potenciaSaidaCa: 5000
+        }]
+      };
+
+      // Chamar API de cálculo avançado
+      const dados = await SolarSystemService.calculateAdvancedFromDimensioning(dimensioningData);
+        
+      // Atualizar água com dados calculados
+      const finalAreas = aguasTelhado.map(a => 
+        a.id === areaId ? {
+          ...a,
+          areaCalculada: dados.area_necessaria_m2,
+          geracaoAnual: dados.energia_total_anual_kwh,
+          isCalculando: false
+        } : a
+      );
+        
+        console.log('✅ Geração calculada:', {
+          area: dados.area_necessaria_m2,
+          geracao: dados.energia_total_anual_kwh
+        });
+        
+        onAguasChange(finalAreas);
+        
+    } catch (error) {
+      console.error('❌ Erro ao calcular geração:', error);
+      
+      // Remover estado de carregamento
+      const finalAreas = aguasTelhado.map(a => 
+        a.id === areaId ? { ...a, isCalculando: false } : a
+      );
+      onAguasChange(finalAreas);
+    }
+  };
+
   const addNewArea = () => {
     const newArea: AguaTelhado = {
       id: `area_${Date.now()}`,
       nome: `Água ${aguasTelhado.length + 1}`,
-      orientacao: 180, // Sul como padrão
-      inclinacao: 23, // Inclinação típica do Brasil
-      numeroModulos: 10,
-      sombreamentoParcial: 0,
-      areaDisponivel: 25 // Estimativa inicial
+      orientacao: 0,
+      inclinacao: 0,
+      numeroModulos: 0
     };
     
     onAguasChange([...aguasTelhado, newArea]);
@@ -87,7 +205,8 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
   };
 
   const getTotalModulos = () => {
-    return aguasTelhado.reduce((total, area) => total + area.numeroModulos, 0);
+    // Usar número calculado pela API se disponível, senão somar das águas
+    return numeroModulosCalculados || aguasTelhado.reduce((total, area) => total + area.numeroModulos, 0);
   };
 
   const getTotalPotencia = () => {
@@ -95,7 +214,7 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
   };
 
   const getTotalArea = () => {
-    return aguasTelhado.reduce((total, area) => total + (area.areaDisponivel || area.numeroModulos * 2.5), 0);
+    return aguasTelhado.reduce((total, area) => total + (area.areaCalculada || area.numeroModulos * 2.5), 0);
   };
 
   return (
@@ -192,99 +311,124 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
                         {/* Orientação */}
                         <div className="space-y-2">
                           <Label htmlFor={`orientacao-${area.id}`}>Orientação</Label>
-                          <Select 
-                            value={area.orientacao.toString()} 
-                            onValueChange={(value) => updateArea(area.id, 'orientacao', parseInt(value))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {orientacaoOptions.map((opt) => (
-                                <SelectItem key={opt.value} value={opt.value.toString()}>
-                                  <div className="flex items-center gap-2">
-                                    <span>{opt.icon}</span>
-                                    <span>{opt.label}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="relative">
+                            <Input
+                              id={`orientacao-${area.id}`}
+                              type="number"
+                              min="0"
+                              max="360"
+                              value={area.orientacao}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value) || 0;
+                                const clampedValue = Math.max(0, Math.min(360, value));
+                                updateArea(area.id, 'orientacao', clampedValue);
+                              }}
+                              onBlur={(e) => {
+                                // Validação adicional no blur para garantir range
+                                const value = parseInt(e.target.value) || 0;
+                                const clampedValue = Math.max(0, Math.min(360, value));
+                                if (value !== clampedValue) {
+                                  updateArea(area.id, 'orientacao', clampedValue);
+                                }
+                              }}
+                              className="pr-8"
+                              placeholder="0-360"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                              °
+                            </span>
+                          </div>
                         </div>
 
                         {/* Inclinação */}
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor={`inclinacao-${area.id}`}>Inclinação</Label>
-                            <Badge variant="outline">{area.inclinacao}°</Badge>
-                          </div>
-                          <Slider
-                            id={`inclinacao-${area.id}`}
-                            min={0}
-                            max={90}
-                            step={1}
-                            value={[area.inclinacao]}
-                            onValueChange={(value) => updateArea(area.id, 'inclinacao', value[0])}
-                            className="w-full"
-                          />
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>0° (Horizontal)</span>
-                            <span>45° (Típico)</span>
-                            <span>90° (Vertical)</span>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* Número de Módulos */}
-                          <div className="space-y-2">
-                            <Label htmlFor={`modulos-${area.id}`}>Número de Módulos</Label>
+                        <div className="space-y-2">
+                          <Label htmlFor={`inclinacao-${area.id}`}>Inclinação</Label>
+                          <div className="relative">
                             <Input
-                              id={`modulos-${area.id}`}
-                              type="number"
-                              min="1"
-                              max="100"
-                              value={area.numeroModulos}
-                              onChange={(e) => updateArea(area.id, 'numeroModulos', parseInt(e.target.value) || 0)}
-                            />
-                          </div>
-
-                          {/* Área Disponível */}
-                          <div className="space-y-2">
-                            <Label htmlFor={`area-${area.id}`}>Área Estimada (m²)</Label>
-                            <Input
-                              id={`area-${area.id}`}
+                              id={`inclinacao-${area.id}`}
                               type="number"
                               min="0"
-                              step="0.1"
-                              value={area.areaDisponivel || area.numeroModulos * 2.5}
-                              onChange={(e) => updateArea(area.id, 'areaDisponivel', parseFloat(e.target.value) || 0)}
+                              max="90"
+                              value={area.inclinacao}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value) || 0;
+                                const clampedValue = Math.max(0, Math.min(90, value));
+                                updateArea(area.id, 'inclinacao', clampedValue);
+                              }}
+                              onBlur={(e) => {
+                                // Validação adicional no blur para garantir range
+                                const value = parseInt(e.target.value) || 0;
+                                const clampedValue = Math.max(0, Math.min(90, value));
+                                if (value !== clampedValue) {
+                                  updateArea(area.id, 'inclinacao', clampedValue);
+                                }
+                              }}
+                              className="pr-8"
+                              placeholder="0-90"
                             />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                              °
+                            </span>
                           </div>
                         </div>
 
-                        {/* Sombreamento */}
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor={`sombreamento-${area.id}`}>Sombreamento Específico (%)</Label>
-                            <Badge variant={area.sombreamentoParcial > 10 ? "destructive" : "secondary"}>
-                              {area.sombreamentoParcial}%
-                            </Badge>
-                          </div>
-                          <Slider
-                            id={`sombreamento-${area.id}`}
-                            min={0}
-                            max={50}
-                            step={1}
-                            value={[area.sombreamentoParcial]}
-                            onValueChange={(value) => updateArea(area.id, 'sombreamentoParcial', value[0])}
-                            className="w-full"
+                        {/* Número de Módulos */}
+                        <div className="space-y-2">
+                          <Label htmlFor={`modulos-${area.id}`}>Número de Módulos</Label>
+                          <Input
+                            id={`modulos-${area.id}`}
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={area.numeroModulos}
+                            onChange={(e) => updateArea(area.id, 'numeroModulos', parseInt(e.target.value) || 0)}
                           />
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>0% (Sem sombra)</span>
-                            <span>25% (Moderado)</span>
-                            <span>50% (Alto)</span>
-                          </div>
                         </div>
+
+                        {/* Botão Atualizar Geração */}
+                        <div className="pt-4">
+                          <Button 
+                            onClick={() => handleAtualizarGeracao(area.id)}
+                            className="w-full bg-green-600 hover:bg-green-700"
+                            size="sm"
+                            disabled={area.isCalculando}
+                          >
+                            {area.isCalculando ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                                Calculando...
+                              </>
+                            ) : (
+                              <>
+                                <Sun className="w-4 h-4 mr-2" />
+                                Atualizar Geração
+                              </>
+                            )}
+                          </Button>
+                        </div>
+
+                        {/* Resumo da Geração - só aparece após calcular */}
+                        {(area.areaCalculada || area.geracaoAnual) && (
+                          <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                            <h5 className="text-sm font-semibold text-green-800 dark:text-green-300 mb-2">
+                              Geração Calculada
+                            </h5>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div>
+                                <span className="text-green-600 dark:text-green-400">Área:</span>
+                                <div className="font-mono text-green-800 dark:text-green-200">
+                                  {area.areaCalculada?.toFixed(1) || '—'} m²
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-green-600 dark:text-green-400">Geração Anual:</span>
+                                <div className="font-mono text-green-800 dark:text-green-200">
+                                  {area.geracaoAnual?.toFixed(0) || '—'} kWh/ano
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Resumo da Água */}
                         <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
@@ -297,15 +441,15 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
                             </div>
                             <div className="text-center">
                               <div className="font-semibold text-green-600">
-                                {(area.areaDisponivel || area.numeroModulos * 2.5).toFixed(1)} m²
+                                {(area.areaCalculada || area.numeroModulos * 2.5).toFixed(1)} m²
                               </div>
                               <div className="text-xs text-muted-foreground">Área</div>
                             </div>
                             <div className="text-center">
                               <div className="font-semibold text-orange-600">
-                                {(100 - area.sombreamentoParcial).toFixed(0)}%
+                                {area.geracaoAnual ? `${(area.geracaoAnual / 1000).toFixed(1)} MWh/ano` : '—'}
                               </div>
-                              <div className="text-xs text-muted-foreground">Eficiência</div>
+                              <div className="text-xs text-muted-foreground">Geração</div>
                             </div>
                           </div>
                         </div>

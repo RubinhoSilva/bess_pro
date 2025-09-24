@@ -143,7 +143,10 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
               potenciaPico: results.potenciaPico,
               numeroModulos: results.numeroModulos,
               areaEstimada: 0,
-              geracaoEstimadaAnual: results.geracaoEstimadaMensal ? results.geracaoEstimadaMensal.reduce((a: number, b: number) => a + b, 0) : 0
+              geracaoEstimadaAnual: results.geracaoEstimadaMensal ? results.geracaoEstimadaMensal.reduce((a: number, b: number) => a + b, 0) : 0,
+              selectedInverters: results.selectedInverters,
+              selectedModule: results.selectedModule,
+              consumoTotalAnual: results.consumoTotalAnual
             }} />
           </Section>
 

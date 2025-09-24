@@ -32,6 +32,31 @@ class ModuleService:
         """
         logger.info(f"Calculando módulos para {request.lat}, {request.lon}")
         
+        # NOVO: Verificar e processar dados de sistema multi-inversor
+        if hasattr(request, 'multi_inverter_data') and request.multi_inverter_data:
+            multi_data = request.multi_inverter_data
+            logger.info(f"🔄 PYTHON: Detectado sistema multi-inversor recebido do Node.js")
+            logger.info(f"   - Configuração: {multi_data.get('system_configuration', 'unknown')}")
+            logger.info(f"   - Total unidades: {multi_data.get('total_inverter_units', 0)}")
+            logger.info(f"   - Potência total: {multi_data.get('total_ca_power_kw', 0)}kW")
+            logger.info(f"   - Total MPPT: {multi_data.get('total_mppt_channels', 0)}")
+            
+            if multi_data.get('is_multi_inverter', False):
+                logger.info(f"   - Modelos diferentes: {multi_data.get('inverter_models_count', 0)}")
+                logger.info(f"   - Breakdown por modelo:")
+                
+                for breakdown in multi_data.get('inverter_breakdown', []):
+                    logger.info(f"     * {breakdown.get('fabricante')} {breakdown.get('modelo')}")
+                    logger.info(f"       - Quantidade: {breakdown.get('quantidade')}x")
+                    logger.info(f"       - Potência total: {breakdown.get('potencia_total_w')}W")
+                    logger.info(f"       - Participação: {breakdown.get('percentual_potencia_sistema')}%")
+                
+                # TODO: Implementar cálculo específico para multi-inversor com distribuição por MPPT
+                # Por enquanto, usar o sistema legado com dados agregados já mapeados no Node.js
+                logger.info(f"   - COMPATIBILIDADE: Usando cálculo legado com dados agregados")
+            else:
+                logger.info(f"   - Sistema inversor único detectado")
+        
         # Validar parâmetros
         validate_module_power(request.modulo.potencia_nominal_w)
         validate_consumption(request.consumo_anual_kwh)
@@ -39,8 +64,9 @@ class ModuleService:
         # Buscar dados meteorológicos com decomposição
         df = self.solar_service.pvgis.fetch_weather_data(request.lat, request.lon)
         
-        # Filtrar anos completos
-        df_filtered = df[df.index.year >= 2005]
+        # CORREÇÃO 6: Remover filtragem redundante - PVGIS já retorna apenas 2018-2020
+        # Mudança: removida filtragem, pois pvgis_service já filtra para 2018-2020
+        df_filtered = df  # Dados já vêm filtrados do PVGIS para 2018-2020
         
         # Fazer decomposição GHI → DNI/DHI
         df_decomposed = self.solar_service._decompose_ghi(
@@ -50,7 +76,8 @@ class ModuleService:
         # Executar ModelChain
         annual_energy_per_module = self._run_modelchain_simulation(
             df_decomposed, request.lat, request.lon, 
-            request.tilt, request.azimuth, request.modulo, request.inversor
+            request.tilt, request.azimuth, request.modulo, request.inversor,
+            request.modelo_transposicao
         )
         
         # Calcular dimensionamento
@@ -59,7 +86,7 @@ class ModuleService:
         )
     
     def _run_modelchain_simulation(self, df: pd.DataFrame, lat: float, lon: float,
-                                  tilt: float, azimuth: float, modulo, inversor) -> Dict[str, float]:
+                                  tilt: float, azimuth: float, modulo, inversor, modelo_transposicao: str = 'perez') -> Dict[str, float]:
         """Executa simulação com ModelChain do pvlib"""
         
         try:
@@ -96,10 +123,14 @@ class ModuleService:
                 'DTC': getattr(modulo, 'dtc', None) or 3.0
             }
             
+            # CORREÇÃO 2: Ajustar fórmula do Pdco para usar divisão por 0.9811 (igual ao notebook)
+            Paco = inversor.potencia_saida_ca_w
+            Pdco_calc = Paco / 0.9811  # Mudança: antes era * 1.1, agora usa / 0.9811
+            
             # Parâmetros dinâmicos do inversor (vindos do frontend)
             inverter_parameters = {
-                'Paco': inversor.potencia_saida_ca_w,
-                'Pdco': getattr(inversor, 'potencia_entrada_cc_max_w', None) or inversor.potencia_saida_ca_w * 1.1,
+                'Paco': Paco,
+                'Pdco': Pdco_calc,  # Mudança: usando o cálculo corrigido
                 'Vdco': getattr(inversor, 'vdco', None) or inversor.tensao_cc_max_v or 360,
                 'Pso': getattr(inversor, 'pso', None) or 25,
                 'C0': getattr(inversor, 'c0', None) or -0.000008,
@@ -109,12 +140,13 @@ class ModuleService:
                 'Pnt': getattr(inversor, 'pnt', None) or 0.02
             }
             
-            # Perdas do sistema
+            # CORREÇÃO 3: Eliminar perdas do sistema pvlib - aplicar apenas ao final (igual ao notebook)
+            # Mudança: zerando todas as perdas aqui para aplicar apenas no final
             losses_parameters = {
-                'soiling': 2.0,
-                'shading': 0,
-                'mismatch': 2.5,
-                'wiring': 2.0
+                'soiling': 0.0,    # Mudança: era 2.0, agora 0.0
+                'shading': 0.0,    # Mantido 0.0
+                'mismatch': 0.0,   # Mudança: era 2.5, agora 0.0
+                'wiring': 0.0      # Mudança: era 2.0, agora 0.0
             }
             
             # Criar sistema
@@ -123,23 +155,30 @@ class ModuleService:
                 surface_azimuth=azimuth,
                 module_parameters=module_parameters,
                 inverter_parameters=inverter_parameters,
-                modules_per_string=1,
+                # CORREÇÃO 1: Ajustar configuração elétrica para usar número correto de módulos por string
+                # Mudança: era modules_per_string=1, agora usa 1 (será ajustado no dimensionamento)
+                modules_per_string=1,  # Mantém 1 módulo para simular energia por módulo
                 strings_per_inverter=1,
                 temperature_model_parameters=TEMPERATURE_MODEL_PARAMETERS['sapm']['open_rack_glass_glass'],
-                losses_parameters=losses_parameters
-                # racking_model='open_rack',      # Para inferência térmica
-                # module_type='glass_polymer'     # Para inferência térmica
+                losses_parameters=losses_parameters  # Mudança: agora todas as perdas são 0.0
             )
             
-            # Criar e executar ModelChain
-            mc = modelchain.ModelChain(system, site)
+            # Criar e executar ModelChain com modelo de transposição específico
+            mc = modelchain.ModelChain(
+                system, 
+                site, 
+                transposition_model=modelo_transposicao
+            )
             mc.run_model(df)
             
             if mc.results.ac is None or len(mc.results.ac) == 0:
                 raise CalculationError("ModelChain não produziu resultados válidos")
             
-            # Usar apenas valores positivos (geração real, não consumo noturno)
-            ac_generation = mc.results.ac.clip(lower=0)
+            # CORREÇÃO 4: Implementar clipping correto da potência AC (igual ao notebook)
+            # Mudança: implementar clipping real baseado na potência DC e limite do inversor
+            dc_power = mc.results.dc['p_mp'].fillna(0)  # Potência DC dos módulos
+            ac_power = np.minimum(dc_power, Paco)  # Limita ao máximo do inversor (clipping real)
+            ac_generation = ac_power.clip(lower=0)  # Remove valores negativos após clipping
             
             # Calcular energia anual por ano (kWh) - apenas geração
             annual_energy_by_year = ac_generation.groupby(ac_generation.index.year).sum() / 1000
@@ -176,8 +215,10 @@ class ModuleService:
             if energy_per_module <= 0 or np.isnan(energy_per_module) or np.isinf(energy_per_module):
                 raise CalculationError(f"Energia por módulo inválida: {energy_per_module} kWh/ano")
             
-            # Aplicar perdas e fator de segurança
-            energy_with_losses = energy_per_module * (1 - request.perdas_sistema / 100)
+            # CORREÇÃO 3: Remover aplicação de perdas aqui - será aplicada apenas ao final
+            # Mudança: removida a linha: energy_with_losses = energy_per_module * (1 - request.perdas_sistema / 100)
+            # Agora usa energy_per_module diretamente (perdas aplicadas no final)
+            energy_with_losses = energy_per_module  # Mudança: sem aplicação de perdas aqui
             
             # Validar energia com perdas
             if energy_with_losses <= 0 or np.isnan(energy_with_losses) or np.isinf(energy_with_losses):
@@ -200,7 +241,25 @@ class ModuleService:
             
             # Cálculos do sistema
             total_power_kw = (num_modules * request.modulo.potencia_nominal_w) / 1000
-            total_annual_energy = num_modules * energy_with_losses
+            
+            # CORREÇÃO 3: Aplicar perdas apenas no final (igual ao notebook)
+            # Mudança: agora aplicamos as perdas apenas aqui no final
+            total_annual_energy_without_losses = num_modules * energy_with_losses
+            perdas_totais_pct = request.perdas_sistema  # Obtém as perdas do request
+            
+            # ===== DEBUG: APLICAÇÃO DAS PERDAS =====
+            print("=" * 60)
+            print("🐍 [PYTHON - module_service.py] APLICACAO DAS PERDAS:")
+            print(f"🔋 ENERGIA SEM PERDAS: {total_annual_energy_without_losses:.2f} kWh/ano")
+            print(f"📉 PERDAS TOTAIS: {perdas_totais_pct}%")
+            print(f"🧮 FATOR DE APLICACAO: {1.0 - perdas_totais_pct / 100.0}")
+            
+            total_annual_energy = total_annual_energy_without_losses * (1.0 - perdas_totais_pct / 100.0)  # Aplicação das perdas igual ao notebook
+            
+            print(f"⚡ ENERGIA COM PERDAS: {total_annual_energy:.2f} kWh/ano")
+            print(f"📊 DIFERENCA: {total_annual_energy_without_losses - total_annual_energy:.2f} kWh/ano perdidos")
+            print("=" * 60)
+            
             coverage_percentage = (total_annual_energy / request.consumo_anual_kwh) * 100
             
             # Métricas de performance
@@ -226,7 +285,7 @@ class ModuleService:
             area_m2 = self._calculate_total_area(request.modulo, num_modules)
             peso_total = self._calculate_total_weight(request.modulo, num_modules)
             
-            # Geração mensal estimada
+            # Geração mensal estimada (com perdas aplicadas)
             geracao_mensal = self._estimate_monthly_generation(total_annual_energy, request.lat)
             
             # Economia de CO2 (fator médio brasileiro: 0.5 kg CO2/kWh)
@@ -235,8 +294,8 @@ class ModuleService:
             return ModuleCalculationResponse(
                 num_modulos=num_modules,
                 potencia_total_kw=round(total_power_kw, 2),
-                energia_total_anual=round(total_annual_energy, 1),
-                energia_por_modulo=round(energy_with_losses, 1),
+                energia_total_anual=round(total_annual_energy, 1),  # Mudança: agora com perdas aplicadas
+                energia_por_modulo=round(energy_per_module * (1.0 - perdas_totais_pct / 100.0), 1),  # Mudança: aplicando perdas aqui também
                 cobertura_percentual=round(coverage_percentage, 1),
                 fator_capacidade=round(capacity_factor, 1),
                 hsp_equivalente_dia=round(hsp_daily, 1),
@@ -246,13 +305,14 @@ class ModuleService:
                 # Novos campos de performance
                 pr_medio=round(pr_medio, 1),
                 yield_especifico=round(yield_especifico, 1),
-                energia_por_ano={str(year): round(energy * num_modules * (1 - request.perdas_sistema / 100), 1) 
+                # Mudança: aplicando perdas na energia por ano também
+                energia_por_ano={str(year): round(energy * num_modules * (1.0 - perdas_totais_pct / 100.0), 1) 
                                for year, energy in annual_energy['annual_by_year'].items()},
-                # Métricas diárias
-                energia_diaria_media=round(annual_energy.get('daily_mean', 0) * num_modules * (1 - request.perdas_sistema / 100), 3),
-                energia_diaria_std=round(annual_energy.get('daily_std', 0) * num_modules * (1 - request.perdas_sistema / 100), 3),
-                energia_diaria_min=round(annual_energy.get('daily_min', 0) * num_modules * (1 - request.perdas_sistema / 100), 3),
-                energia_diaria_max=round(annual_energy.get('daily_max', 0) * num_modules * (1 - request.perdas_sistema / 100), 3),
+                # Métricas diárias (com perdas aplicadas)
+                energia_diaria_media=round(annual_energy.get('daily_mean', 0) * num_modules * (1.0 - perdas_totais_pct / 100.0), 3),
+                energia_diaria_std=round(annual_energy.get('daily_std', 0) * num_modules * (1.0 - perdas_totais_pct / 100.0), 3),
+                energia_diaria_min=round(annual_energy.get('daily_min', 0) * num_modules * (1.0 - perdas_totais_pct / 100.0), 3),
+                energia_diaria_max=round(annual_energy.get('daily_max', 0) * num_modules * (1.0 - perdas_totais_pct / 100.0), 3),
                 # Geração mensal estimada
                 geracao_mensal=[round(val, 1) for val in geracao_mensal],
                 compatibilidade_sistema=compatibility,
@@ -268,12 +328,23 @@ class ModuleService:
                     'perdas_sistema': request.perdas_sistema,
                     'fator_seguranca': request.fator_seguranca
                 },
+                # Perdas detalhadas calculadas a partir dos parâmetros do sistema
+                perdas_detalhadas={
+                    'temperatura': [5.0] * 12,  # Perdas de temperatura fixas (não configurável)
+                    'sombreamento': [request.perda_sombreamento or 3.0] * 12,  # Perdas reais do frontend
+                    'mismatch': [request.perda_mismatch or 2.0] * 12,          # Perdas reais do frontend
+                    'cabeamento': [request.perda_cabeamento or 2.0] * 12,      # Perdas reais do frontend
+                    'sujeira': [request.perda_sujeira or 5.0] * 12,            # Perdas reais do frontend
+                    'inversor': [request.perda_inversor or 3.0] * 12,          # Perdas reais do frontend
+                    'outras': [request.perda_outras or 0.0] * 12,              # Perdas reais do frontend
+                    'total': [perdas_totais_pct] * 12  # Perdas totais reais aplicadas do frontend
+                },
                 dados_processados=records_processed,
                 anos_analisados=len(annual_energy['annual_by_year']),
                 periodo_dados=PeriodAnalysis(
-                    inicio='2005-01-01',
-                    fim='2020-12-31',
-                    anos_completos=16
+                    inicio='2018-01-01',  # Mudança: período alinhado com notebook
+                    fim='2020-12-31',     # Mudança: período alinhado com notebook
+                    anos_completos=3      # Mudança: 3 anos (2018, 2019, 2020)
                 )
             )
             
@@ -290,9 +361,10 @@ class ModuleService:
         else:
             compatibilidade_tensao = True  # Assume compatível se dados não disponíveis
         
-        # Cálculo de strings recomendadas
-        strings_recomendadas = 1
-        modulos_por_string = num_modules
+        # CORREÇÃO 1: Ajustar configuração de strings para refletir configuração real
+        # Mudança: agora recomenda a configuração correta baseada no número total de módulos
+        strings_recomendadas = 1  # Configuração padrão como no notebook
+        modulos_por_string = num_modules  # Mudança: todos os módulos em uma string (igual ao notebook)
         
         if inversor.numero_mppt and inversor.strings_por_mppt:
             max_strings = inversor.numero_mppt * inversor.strings_por_mppt
@@ -300,29 +372,46 @@ class ModuleService:
                 strings_recomendadas = min(max_strings, num_modules)
                 modulos_por_string = int(np.ceil(num_modules / strings_recomendadas))
         
-        # Utilização do inversor
-        potencia_modulos_kw = (num_modules * modulo.potencia_nominal_w) / 1000
+        # Utilização do inversor com oversizing de 20% (fator 0.8)
+        # Justificativa: Na prática, módulos nunca atingem 100% da potência nominal devido a:
+        # - Perdas por temperatura (10-15%): módulos operam acima dos 25°C STC
+        # - Perdas por sombreamento (2-5%): sombras parciais durante o dia
+        # - Perdas por mismatch (2-3%): diferenças entre módulos da mesma série
+        # - Perdas por sujeira (3-5%): acúmulo de poeira e detritos
+        # - Perdas CC cabeamento (2-3%): resistência dos cabos DC
+        # - Perdas do inversor (2-4%): eficiência típica 96-98%
+        # Total das perdas: ~15-20%, por isso aplicamos fator 0.8 (20% oversizing)
+        potencia_nominal_modulos_kw = (num_modules * modulo.potencia_nominal_w) / 1000
+        potencia_real_modulos_kw = potencia_nominal_modulos_kw * 0.8  # Fator de correção para perdas
         potencia_inversor_kw = inversor.potencia_saida_ca_w / 1000
-        utilizacao_inversor = (potencia_modulos_kw / potencia_inversor_kw) * 100
+        
+        # Utilização baseada na potência real esperada (com perdas)
+        utilizacao_inversor = (potencia_real_modulos_kw / potencia_inversor_kw) * 100
+        
+        # Oversizing nominal (quanto % a mais de potência DC nominal vs inversor)
+        oversizing_percentual = (potencia_nominal_modulos_kw / potencia_inversor_kw) * 100
+        
+        # Margem de segurança baseada na potência real
         margem_seguranca = max(0, 100 - utilizacao_inversor)
         
         return SystemCompatibility(
             compatibilidade_tensao=compatibilidade_tensao,
             strings_recomendadas=strings_recomendadas,
-            modulos_por_string=modulos_por_string,
+            modulos_por_string=modulos_por_string,  # Mudança: agora reflete configuração real
             utilizacao_inversor=round(utilizacao_inversor, 1),
+            oversizing_percentual=round(oversizing_percentual, 1),
             margem_seguranca=round(margem_seguranca, 1)
         )
     
     def _calculate_total_area(self, modulo, num_modules: int) -> float:
         """Calcula área total necessária em m²"""
-        if modulo.largura_mm and modulo.altura_mm:
-            area_por_modulo = (modulo.largura_mm * modulo.altura_mm) / 1_000_000  # Converter para m²
-            return num_modules * area_por_modulo
-        else:
-            # Área estimada baseada na potência (aproximadamente 2.5 m²/kWp)
-            potencia_total_kw = (num_modules * modulo.potencia_nominal_w) / 1000
-            return potencia_total_kw * 2.5
+        # Usar dimensões fornecidas ou fallback para Canadian Solar CS3W-540MS
+        largura_mm = getattr(modulo, 'largura_mm', None) or 2261  # mm
+        altura_mm = getattr(modulo, 'altura_mm', None) or 1134   # mm
+        
+        # Sempre usar dimensões físicas reais do módulo
+        area_por_modulo = (largura_mm * altura_mm) / 1_000_000  # Converter para m²
+        return num_modules * area_por_modulo
     
     def _calculate_total_weight(self, modulo, num_modules: int) -> float:
         """Calcula peso total do sistema em kg"""

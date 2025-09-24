@@ -197,38 +197,6 @@ const CRMDashboardPage: React.FC = () => {
         />
       </motion.div>
 
-      {/* Insights e ações rápidas */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="mt-8"
-      >
-        <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">
-            Próximos Passos Recomendados
-          </h3>
-          <div className="grid md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <h4 className="font-medium text-blue-800 mb-2">📈 Melhore sua conversão:</h4>
-              <ul className="space-y-1 text-blue-700">
-                <li>• Revise leads parados há mais de 7 dias</li>
-                <li>• Acompanhe leads com prazos próximos</li>
-                <li>• Analise motivos de perda nos leads cancelados</li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-medium text-blue-800 mb-2">🎯 Foque nos resultados:</h4>
-              <ul className="space-y-1 text-blue-700">
-                <li>• Priorize leads B2B com maior valor</li>
-                <li>• Automatize follow-ups regulares</li>
-                <li>• Monitore o tempo médio por estágio</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </motion.div>
 
       {/* Modal de Novo Lead */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

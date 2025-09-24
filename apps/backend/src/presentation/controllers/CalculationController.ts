@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import axios from 'axios';
 import { BaseController } from './BaseController';
 import { Container } from '@/infrastructure/di/Container';
 import { CalculateSolarSystemUseCase, AnalyzeFinancialUseCase } from '@/application';
@@ -56,7 +57,7 @@ export class CalculationController extends BaseController {
 
   private async executeStandaloneCalculation(data: any) {
     const { CalculationLogger } = require('@/domain/services/CalculationLogger');
-    const { SolarCalculationService, FinancialAnalysisService, AreaCalculationService } = require('@/domain/services');
+    const { SolarCalculationService, AreaCalculationService } = require('@/domain/services');
     
     const logger = new CalculationLogger(`standalone-calc-${Date.now()}`);
     
@@ -91,7 +92,8 @@ export class CalculationController extends BaseController {
         2.1 // Área padrão do módulo
       );
 
-      const co2Savings = FinancialAnalysisService.calculateCO2Savings(annualGeneration);
+      // Cálculo inline simples de economia de CO2
+      const co2Savings = annualGeneration * 0.074; // 0.074 kg CO2/kWh (média Brasil)
 
       const orientationLoss = AreaCalculationService.calculateOrientationLosses(
         data.systemParams.inclinacao,
@@ -121,7 +123,37 @@ export class CalculationController extends BaseController {
           taxaDesconto: data.financialParams.taxaDesconto || 8.0,
         };
 
-        financialAnalysis = FinancialAnalysisService.calculateAdvancedFinancials(financialData);
+        try {
+          // Usar API Python para cálculos financeiros
+          const pythonApiInput = {
+            investimento_inicial: financialData.totalInvestment,
+            geracao_mensal: financialData.geracaoEstimadaMensal,
+            consumo_mensal: financialData.consumoMensal,
+            tarifa_energia: financialData.tarifaEnergiaB,
+            custo_fio_b: financialData.custoFioB,
+            vida_util: financialData.vidaUtil,
+            taxa_desconto: financialData.taxaDesconto,
+            inflacao_energia: financialData.inflacaoEnergia,
+            degradacao_modulos: 0.5,
+            custo_om: financialData.totalInvestment * 0.01,
+            inflacao_om: 4.0,
+            modalidade_tarifaria: 'convencional'
+          };
+
+          const response = await axios.post(
+            `${process.env.PVLIB_SERVICE_URL || 'http://localhost:8110'}/financial/calculate-advanced`,
+            pythonApiInput,
+            {
+              headers: { 'Content-Type': 'application/json' },
+              timeout: 30000
+            }
+          );
+          
+          financialAnalysis = response.data;
+        } catch (error) {
+          logger.warning('Sistema', 'Erro ao calcular análise financeira via API Python, continuando sem análise financeira', { error: error instanceof Error ? error.message : 'Unknown error' });
+          financialAnalysis = null;
+        }
       }
 
       logger.result('Sistema', 'Cálculos standalone finalizados com sucesso', {

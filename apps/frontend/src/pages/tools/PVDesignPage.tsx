@@ -23,7 +23,7 @@ function PVDesignPageContent() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const { currentProject } = useProject();
-  const { loadDimensioning, updateDimensioning } = useDimensioning();
+  const { loadDimensioning, updateDimensioning, forceCleanStart } = useDimensioning();
   const { toast } = useToast();
 
   // Carregar dados do projeto quando houver projectId na URL
@@ -35,8 +35,8 @@ function PVDesignPageContent() {
       loadProjectData(projectId);
     } else {
       console.log('✨ Acessando PV Design sem parâmetros - novo dimensionamento');
-      // Garantir que não há dados residuais quando acessar diretamente
-      sessionStorage.removeItem('continueDimensioning');
+      // Força limpeza completa quando acessar diretamente sem parâmetros
+      forceCleanStart();
     }
   }, [searchParams]);
 

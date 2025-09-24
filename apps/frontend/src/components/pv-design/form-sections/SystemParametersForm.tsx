@@ -7,9 +7,10 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Settings, Info, Plus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useSolarModules, useInverters } from '@/hooks/equipment-hooks';
+import { useSolarModules } from '@/hooks/equipment-hooks';
 import { AddSolarModuleModal } from '../modals/AddSolarModuleModal';
 import { AddInverterModal } from '../modals/AddInverterModal';
+import { MultipleInvertersSelector } from './MultipleInvertersSelector';
 // MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
 // import MultipleRoofAreasForm from './MultipleRoofAreasForm';
 // import { AguaTelhado } from '@/contexts/DimensioningContext';
@@ -30,15 +31,6 @@ const SOLAR_MODULES = [
   { id: 'custom', name: 'Personalizado', power: 0, efficiency: 0, voltage: 0, current: 0 },
 ];
 
-// Inversores comuns
-const INVERTERS = [
-  { id: 'fronius-8k', name: 'Fronius Primo 8.2kW', power: 8200, efficiency: 96.8, mpptChannels: 2 },
-  { id: 'sma-8k', name: 'SMA Sunny Boy 8.0kW', power: 8000, efficiency: 97.1, mpptChannels: 2 },
-  { id: 'abb-8k', name: 'ABB UNO-DM-8.0kW', power: 8000, efficiency: 96.5, mpptChannels: 2 },
-  { id: 'growatt-10k', name: 'Growatt MIN 10000TL-X', power: 10000, efficiency: 98.4, mpptChannels: 2 },
-  { id: 'huawei-10k', name: 'Huawei SUN2000-10KTL-M1', power: 10000, efficiency: 98.6, mpptChannels: 2 },
-  { id: 'custom-inv', name: 'Personalizado', power: 0, efficiency: 0, mpptChannels: 1 },
-];
 
 const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, onFormChange }) => {
   const [showModuleModal, setShowModuleModal] = useState(false);
@@ -46,7 +38,6 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
   
   // Fetch equipment data from API
   const { data: solarModules = { modules: [], total: 0 }, refetch: refetchModules } = useSolarModules({ pageSize: 100 });
-  const { data: inverters = { inverters: [], total: 0 }, refetch: refetchInverters } = useInverters({ pageSize: 100 });
 
   const handleModuleChange = (moduleId: string) => {
     if (moduleId === 'custom') {
@@ -84,65 +75,9 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
     }
   };
 
-  const handleInverterChange = (inverterId: string) => {
-    if (inverterId === 'custom-inv') {
-      // Reset to allow custom input
-      onFormChange('inversorSelecionado', inverterId);
-      onFormChange('potenciaInversor', 0);
-      onFormChange('eficienciaInversor', 0);
-      onFormChange('canaisMppt', 1);
-      
-      // Update inverters array as well
-      onFormChange('inverters', [{
-        id: crypto.randomUUID(),
-        selectedInverterId: inverterId,
-        quantity: 1
-      }]);
-      return;
-    }
-
-    // First check hardcoded inverters for backward compatibility
-    const hardcodedInverter = INVERTERS.find(i => i.id === inverterId);
-    if (hardcodedInverter) {
-      onFormChange('inversorSelecionado', inverterId);
-      onFormChange('potenciaInversor', hardcodedInverter.power);
-      onFormChange('eficienciaInversor', hardcodedInverter.efficiency);
-      onFormChange('canaisMppt', hardcodedInverter.mpptChannels);
-      onFormChange('totalInverterPower', hardcodedInverter.power);
-      
-      // Update inverters array as well
-      onFormChange('inverters', [{
-        id: crypto.randomUUID(),
-        selectedInverterId: inverterId,
-        quantity: 1
-      }]);
-      return;
-    }
-
-    // Then check API inverters
-    const selectedInverter = inverters.inverters?.find((i: any) => i.id === inverterId);
-    if (selectedInverter) {
-      onFormChange('inversorSelecionado', inverterId);
-      onFormChange('potenciaInversor', selectedInverter.potenciaSaidaCA);
-      onFormChange('eficienciaInversor', selectedInverter.eficienciaMax || 0);
-      onFormChange('canaisMppt', selectedInverter.numeroMppt || 2);
-      onFormChange('totalInverterPower', selectedInverter.potenciaSaidaCA);
-      
-      // Update inverters array as well
-      onFormChange('inverters', [{
-        id: crypto.randomUUID(),
-        selectedInverterId: inverterId,
-        quantity: 1
-      }]);
-    }
-  };
 
   const handleModuleAdded = () => {
     refetchModules();
-  };
-
-  const handleInverterAdded = () => {
-    refetchInverters();
   };
 
   const handleModuleSelected = (moduleId: string) => {
@@ -152,12 +87,6 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
     });
   };
 
-  const handleInverterSelected = (inverterId: string) => {
-    // Wait for refetch to complete, then select the inverter
-    refetchInverters().then(() => {
-      handleInverterChange(inverterId);
-    });
-  };
 
   return (
     <TooltipProvider>
@@ -214,66 +143,24 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
             </div>
 
 
-            <div className="space-y-2">
-              <Label htmlFor="numeroModulos">Número de Módulos</Label>
-              <Input
-                id="numeroModulos"
-                type="number"
-                value={formData.numeroModulos || ''}
-                onChange={(e) => onFormChange('numeroModulos', parseInt(e.target.value) || 0)}
-                placeholder="Deixe vazio para dimensionamento automático"
-              />
-              <p className="text-xs text-gray-500">
-                Se não especificado, será calculado automaticamente baseado no consumo
-              </p>
-            </div>
           </div>
 
-          {/* Inversores */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700">Inversor</h3>
-            
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Modelo do Inversor</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowInverterModal(true)}
-                  className="flex items-center gap-1"
-                >
-                  <Plus className="w-4 h-4" />
-                  Adicionar Inversor
-                </Button>
-              </div>
-              <Select 
-                onValueChange={handleInverterChange} 
-                value={formData.inversorSelecionado || (formData.inverters && formData.inverters.length > 0 ? formData.inverters[0].selectedInverterId : '') || ''}
-                required
-              >
-                <SelectTrigger className={(formData.inversorSelecionado || (formData.inverters && formData.inverters.length > 0 ? formData.inverters[0].selectedInverterId : '')) ? "" : "border-red-300 focus:border-red-500"}>
-                  <SelectValue placeholder="Selecione o inversor *" />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Hardcoded inverters for backward compatibility */}
-                  {INVERTERS.map(inverter => (
-                    <SelectItem key={inverter.id} value={inverter.id}>
-                      {inverter.name} {inverter.power > 0 && `- ${inverter.power/1000}kW`}
-                    </SelectItem>
-                  ))}
-                  
-                  {/* API inverters */}
-                  {inverters.inverters?.map((inverter: any) => (
-                    <SelectItem key={inverter.id} value={inverter.id}>
-                      {inverter.fabricante} {inverter.modelo} - {(inverter.potenciaSaidaCA/1000).toFixed(1)}kW
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Sistema Multi-Inversor */}
+          <MultipleInvertersSelector
+            selectedInverters={formData.selectedInverters || []}
+            onInvertersChange={(inverters) => onFormChange('selectedInverters', inverters)}
+            onTotalPowerChange={(totalPower) => {
+              onFormChange('totalInverterPower', totalPower);
+              // Manter compatibilidade com código legado
+              onFormChange('potenciaInversor', totalPower);
+            }}
+            onTotalMpptChannelsChange={(totalChannels) => {
+              onFormChange('totalMpptChannels', totalChannels);
+              // Manter compatibilidade com código legado
+              onFormChange('canaisMppt', totalChannels);
+            }}
+          />
 
-          </div>
 
           {/* Parâmetros Gerais do Sistema */}
           <div className="space-y-4">
@@ -423,28 +310,9 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
               </div>
             </div>
 
+
           </div>
 
-          {/* Resumo */}
-          {formData.potenciaModulo > 0 && formData.numeroModulos > 0 && (
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h4 className="font-semibold text-blue-800 mb-2">Resumo do Sistema</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-blue-600">Potência Total: </span>
-                  <span className="font-semibold">
-                    {((formData.potenciaModulo * formData.numeroModulos) / 1000).toFixed(2)} kWp
-                  </span>
-                </div>
-                <div>
-                  <span className="text-blue-600">Área Estimada: </span>
-                  <span className="font-semibold">
-                    {(formData.numeroModulos * 2.5).toFixed(0)} m²
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
 
 
           {/* MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO */}
@@ -467,13 +335,15 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
         onModuleAdded={handleModuleAdded}
         onModuleSelected={handleModuleSelected}
       />
-      
+
       <AddInverterModal
         open={showInverterModal}
         onOpenChange={setShowInverterModal}
-        onInverterAdded={handleInverterAdded}
-        onInverterSelected={handleInverterSelected}
+        onInverterAdded={() => {
+          // Refetch will happen automatically via useInverters hook
+        }}
       />
+      
     </TooltipProvider>
   );
 };

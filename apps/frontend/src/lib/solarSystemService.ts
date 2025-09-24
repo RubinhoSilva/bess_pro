@@ -34,6 +34,7 @@ export interface ModuleCalculationParams {
   tilt?: number;
   azimuth?: number;
   modelo_decomposicao?: string;
+  modelo_transposicao?: string;
   consumo_anual_kwh: number;
   modulo: {
     fabricante: string;
@@ -156,7 +157,7 @@ export class SolarSystemService {
     try {
       console.log('🔄 Chamando serviço de cálculo solar com parâmetros:', params);
       
-      const response = await api.post('/solar/calculate-system', params);
+      const response = await api.post('/solar-analysis/calculate-system', params);
       
       if (response.data && response.data.data) {
         console.log('✅ Resultado do cálculo solar:', response.data);
@@ -214,7 +215,7 @@ export class SolarSystemService {
     try {
       console.log('🔄 Chamando cálculo de irradiação corrigida com parâmetros:', params);
       
-      const response = await api.post('/solar/calculate-irradiation-correction', params);
+      const response = await api.post('/solar-analysis/calculate-irradiation-correction', params);
       
       if (response.data && response.data.data) {
         console.log('✅ Resultado da irradiação corrigida:', response.data);
@@ -248,7 +249,7 @@ export class SolarSystemService {
     try {
       console.log('🔄 Chamando cálculo de número de módulos com parâmetros:', params);
       
-      const response = await api.post('/solar/calculate-module-count', params);
+      const response = await api.post('/solar-analysis/calculate-module-count', params);
       
       if (response.data && response.data.data) {
         console.log('✅ Resultado do número de módulos:', response.data);
@@ -292,7 +293,7 @@ export class SolarSystemService {
     try {
       console.log('🔄 Buscando dados de análise avançada:', params);
       
-      const response = await api.get('/solar/enhanced-analysis-data', {
+      const response = await api.get('/solar-analysis/enhanced-analysis-data', {
         params: {
           lat: params.lat,
           lon: params.lon,
@@ -320,7 +321,7 @@ export class SolarSystemService {
       console.log('🔄 Chamando cálculo avançado de módulos com parâmetros:', params);
       
       // Fazer chamada através do backend Node.js
-      const response = await api.post('/solar/calculate-advanced-modules', params);
+      const response = await api.post('/solar-analysis/calculate-advanced-modules', params);
       
       console.log('✅ Resultado bruto da API:', response.data);
       
@@ -347,6 +348,17 @@ export class SolarSystemService {
    * Calcula sistema avançado a partir dos dados do dimensionamento
    */
   static async calculateAdvancedFromDimensioning(dimensioningData: any): Promise<AdvancedModuleCalculationResult> {
+    // ===== DEBUG: DADOS RECEBIDOS NO SOLARSYSTEMSERVICE =====
+    console.log('📥 [SolarSystemService] Dados recebidos para cálculo:', dimensioningData);
+    console.log('🔧 [SolarSystemService] Perdas recebidas:', {
+      perdaSombreamento: dimensioningData.perdaSombreamento,
+      perdaMismatch: dimensioningData.perdaMismatch,
+      perdaCabeamento: dimensioningData.perdaCabeamento,
+      perdaSujeira: dimensioningData.perdaSujeira,
+      perdaInversor: dimensioningData.perdaInversor,
+      perdaOutras: dimensioningData.perdaOutras
+    });
+    
     // Calcular consumo anual
     const consumoAnual = dimensioningData.energyBills?.reduce((total: number, bill: any) => {
       return total + bill.consumoMensal?.reduce((sum: number, consumo: number) => sum + consumo, 0) || 0;
@@ -361,8 +373,8 @@ export class SolarSystemService {
       fabricante: moduloSelecionado.fabricante || "Canadian Solar",
       modelo: moduloSelecionado.modelo || "CS3W-540MS", 
       potencia_nominal_w: moduloSelecionado.potenciaNominal || 540,
-      largura_mm: moduloSelecionado.larguraMm,
-      altura_mm: moduloSelecionado.alturaMm,
+      largura_mm: moduloSelecionado.larguraMm || 2261, // Garantir dimensões padrão
+      altura_mm: moduloSelecionado.alturaMm || 1134,   // Garantir dimensões padrão
       vmpp: moduloSelecionado.vmpp,
       impp: moduloSelecionado.impp,
       eficiencia: moduloSelecionado.eficiencia,
@@ -391,8 +403,8 @@ export class SolarSystemService {
       fabricante: "Canadian Solar",
       modelo: "CS3W-540MS",
       potencia_nominal_w: 540,
-      largura_mm: 2256,
-      altura_mm: 1133,
+      largura_mm: 2261, // Dimensões padronizadas
+      altura_mm: 1134,  // Dimensões padronizadas
       vmpp: 41.4,
       impp: 13.05,
       eficiencia: 20.9,
@@ -420,8 +432,8 @@ export class SolarSystemService {
     const inversor = inversorSelecionado ? {
       fabricante: inversorSelecionado.fabricante || "WEG",
       modelo: inversorSelecionado.modelo || "SIW500H-M",
-      potencia_saida_ca_w: inversorSelecionado.potenciaSaidaCA || 5000,
-      tipo_rede: inversorSelecionado.tipoRede || "Monofásico 220V",
+      potencia_saida_ca_w: inversorSelecionado.potencia_saida_ca_w || inversorSelecionado.potenciaSaidaCA || 5000,
+      tipo_rede: inversorSelecionado.tipo_rede || inversorSelecionado.tipoRede || "Monofásico 220V",
       potencia_fv_max_w: inversorSelecionado.potenciaFvMax,
       tensao_cc_max_v: inversorSelecionado.tensaoCcMax,
       numero_mppt: inversorSelecionado.numeroMppt,
@@ -460,14 +472,45 @@ export class SolarSystemService {
       lon: dimensioningData.longitude || -47.8822,
       tilt: dimensioningData.inclinacao || 20,
       azimuth: dimensioningData.orientacao || 180,
-      modelo_decomposicao: 'erbs',
+      modelo_decomposicao: 'louche',
+      modelo_transposicao: 'perez',
       consumo_anual_kwh: consumoAnual,
       modulo,
       inversor,
-      perdas_sistema: 14.0,
+      perdas_sistema: (dimensioningData.perdaSombreamento || 3) + 
+                      (dimensioningData.perdaMismatch || 2) + 
+                      (dimensioningData.perdaCabeamento || 2) + 
+                      (dimensioningData.perdaSujeira || 5) + 
+                      (dimensioningData.perdaInversor || 3) + 
+                      (dimensioningData.perdaOutras || 0),
+      // Perdas individuais para o Python poder retornar corretamente
+      perda_sombreamento: dimensioningData.perdaSombreamento || 3,
+      perda_mismatch: dimensioningData.perdaMismatch || 2,
+      perda_cabeamento: dimensioningData.perdaCabeamento || 2,
+      perda_sujeira: dimensioningData.perdaSujeira || 5,
+      perda_inversor: dimensioningData.perdaInversor || 3,
+      perda_outras: dimensioningData.perdaOutras || 0,
       fator_seguranca: 1.1,
       num_modules: dimensioningData.num_modules // Incluir num_modules se fornecido
     };
+
+    // ===== DEBUG: PERDAS CALCULADAS E ENVIADAS PARA PVLIB =====
+    const perdasTotal = (dimensioningData.perdaSombreamento || 3) + 
+                       (dimensioningData.perdaMismatch || 2) + 
+                       (dimensioningData.perdaCabeamento || 2) + 
+                       (dimensioningData.perdaSujeira || 5) + 
+                       (dimensioningData.perdaInversor || 3) + 
+                       (dimensioningData.perdaOutras || 0);
+    console.log('🎯 [SolarSystemService] Perdas TOTAIS sendo enviadas para PVLIB:', perdasTotal + '%');
+    console.log('🔧 [SolarSystemService] Breakdown das perdas:', {
+      sombreamento: dimensioningData.perdaSombreamento || 3,
+      mismatch: dimensioningData.perdaMismatch || 2,
+      cabeamento: dimensioningData.perdaCabeamento || 2,
+      sujeira: dimensioningData.perdaSujeira || 5,
+      inversor: dimensioningData.perdaInversor || 3,
+      outras: dimensioningData.perdaOutras || 0,
+      TOTAL: perdasTotal
+    });
 
     console.log('🔧 Parâmetros completos sendo enviados:', {
       modulo: modulo.fabricante + ' ' + modulo.modelo,

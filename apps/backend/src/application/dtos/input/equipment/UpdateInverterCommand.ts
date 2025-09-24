@@ -43,4 +43,13 @@ export interface UpdateInverterCommand {
   garantiaAnos?: number;
   datasheetUrl?: string;
   precoReferencia?: number;
+  
+  // Parâmetros Sandia para simulação precisa
+  vdco?: number;
+  pso?: number;
+  c0?: number;
+  c1?: number;
+  c2?: number;
+  c3?: number;
+  pnt?: number;
 }

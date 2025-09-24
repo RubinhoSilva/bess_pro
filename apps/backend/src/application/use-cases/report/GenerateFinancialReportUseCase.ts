@@ -1,8 +1,8 @@
+import axios from 'axios';
 import { IUseCase } from "@/application/common/IUseCase";
 import { Result } from "@/application/common/Result";
 import { IProjectRepository, IUserRepository } from "@/domain/repositories";
 import { ReportGenerationService, ReportData } from "@/domain/services/ReportGenerationService";
-import { FinancialAnalysisService } from "@/domain/services/FinancialAnalysisService";
 import { UserPermissionService } from "@/domain/services";
 import { ProjectId } from "@/domain/value-objects/ProjectId";
 import { UserId } from "@/domain/value-objects/UserId";
@@ -135,8 +135,37 @@ export class GenerateFinancialReportUseCase implements IUseCase<GenerateFinancia
         taxaDesconto: command.reportParams.taxaDesconto || 10,
       };
 
-      // Realizar análise financeira
-      const financialAnalysis = FinancialAnalysisService.calculateAdvancedFinancials(financialData);
+      // Realizar análise financeira via API Python
+      let financialAnalysis;
+      try {
+        const pythonApiInput = {
+          investimento_inicial: financialData.totalInvestment,
+          geracao_mensal: financialData.geracaoEstimadaMensal,
+          consumo_mensal: financialData.consumoMensal,
+          tarifa_energia: financialData.tarifaEnergiaB,
+          custo_fio_b: financialData.custoFioB,
+          vida_util: financialData.vidaUtil,
+          taxa_desconto: financialData.taxaDesconto,
+          inflacao_energia: financialData.inflacaoEnergia,
+          degradacao_modulos: 0.5,
+          custo_om: financialData.totalInvestment * 0.01,
+          inflacao_om: 4.0,
+          modalidade_tarifaria: 'convencional'
+        };
+
+        const response = await axios.post(
+          `${process.env.PVLIB_SERVICE_URL || 'http://localhost:8110'}/financial/calculate-advanced`,
+          pythonApiInput,
+          {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 30000
+          }
+        );
+        
+        financialAnalysis = response.data;
+      } catch (error) {
+        return Result.failure('Erro ao calcular análise financeira para o relatório');
+      }
 
       // Preparar dados do relatório
       const reportData: ReportData = {

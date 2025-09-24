@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { ChevronLeft, ChevronRight, Sun, User, Zap, MapPin, Settings, Calculator, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sun, User, Zap, MapPin, Settings, Calculator, CheckCircle, Home, Compass } from 'lucide-react';
 import { useDimensioning } from '@/contexts/DimensioningContext';
-import { calculateAdvancedFinancials } from '@/lib/financialCalculations';
 import { AdvancedSolarCalculator, SolarCalculationOptions } from '@/lib/solarCalculations';
-import { AdvancedFinancialAnalyzer, AdvancedFinancialInput } from '@/lib/advancedFinancialAnalysis';
+import { AdvancedFinancialInput } from '@/types/financial';
+import { apiClient } from '@/lib/api';
 import { useCalculationLogger } from '@/hooks/useCalculationLogger';
 import { BackendCalculationService, shouldUseBackendCalculations } from '@/lib/backendCalculations';
 import { FrontendCalculationLogger } from '@/lib/calculationLogger';
@@ -18,8 +19,8 @@ import CustomerDataForm from '../form-sections/CustomerDataForm';
 import ConsumptionForm from '../form-sections/ConsumptionForm';
 import LocationForm from '../form-sections/LocationForm';
 import SystemParametersForm from '../form-sections/SystemParametersForm';
-import EquipmentSelectionForm from '../form-sections/EquipmentSelectionForm';
-import SystemSummary from '../form-sections/SystemSummary';
+import MultipleRoofAreasForm from '../form-sections/MultipleRoofAreasForm';
+import { WaterSelectionForm } from '../form-sections/WaterSelectionForm';
 import FinancialForm from '../form-sections/FinancialForm';
 import PaymentConditionsForm from '../form-sections/PaymentConditionsForm';
 import { PVResultsDashboard } from '../results/PVResultsDashboard';
@@ -60,13 +61,20 @@ const steps = [
   },
   {
     id: 5,
-    title: 'Resumo e Orçamento',
+    title: 'Águas de Telhado',
+    description: 'Configuração das águas do telhado',
+    icon: Home,
+    component: 'roof'
+  },
+  {
+    id: 6,
+    title: 'Orçamento',
     description: 'Custos e condições financeiras',
     icon: Calculator,
     component: 'summary'
   },
   {
-    id: 6,
+    id: 7,
     title: 'Resultados',
     description: 'Cálculos e análises finais',
     icon: CheckCircle,
@@ -98,24 +106,29 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       
       // Mapear dados para o formato esperado
       const financialInput = {
-        investimento_inicial: financialData.investimentoInicial,
-        geracao_mensal: financialData.geracaoMensal,
-        consumo_mensal: financialData.consumoMensal,
-        tarifa_energia: financialData.tarifaEnergia,
-        custo_fio_b: financialData.custoFioB,
-        vida_util: financialData.vidaUtil,
-        taxa_desconto: financialData.taxaDesconto,
-        inflacao_energia: financialData.inflacaoEnergia,
-        degradacao_modulos: financialData.degradacaoModulos,
-        custo_om: financialData.custoOM,
-        inflacao_om: financialData.inflacaoOM,
-        modalidade_tarifaria: financialData.modalidadeTarifaria || 'convencional'
+        investimento_inicial: financialData.investimento_inicial,
+        geracao_mensal: financialData.geracao_mensal,
+        consumo_mensal: financialData.consumo_mensal,
+        tarifa_energia: financialData.tarifa_energia,
+        custo_fio_b: financialData.custo_fio_b,
+        vida_util: financialData.vida_util,
+        taxa_desconto: financialData.taxa_desconto,
+        inflacao_energia: financialData.inflacao_energia,
+        degradacao_modulos: financialData.degradacao_modulos,
+        custo_om: financialData.custo_om,
+        inflacao_om: financialData.inflacao_om,
+        modalidade_tarifaria: financialData.modalidade_tarifaria || 'convencional'
       };
+      
+      console.log('🔍 Dados mapeados para a API:', financialInput);
       
       const response = await apiClient.solarAnalysis.calculateAdvancedFinancial(financialInput);
       console.log('✅ Resultado API Python via backend:', response.data);
       
-      return response.data.data || response.data;
+      // Extrair apenas os dados da API Python, não o wrapper do backend
+      const apiData = response.data.data || response.data;
+      console.log('🔍 Dados extraídos da API financeira:', apiData);
+      return apiData;
     } catch (error) {
       console.error('❌ Erro ao chamar API financeira Python via backend:', error);
       // Fallback para cálculos locais se a API falhar
@@ -150,10 +163,15 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         return hasCoordinates && hasValidIrradiation;
       case 4:
         const hasModule = currentDimensioning.moduloSelecionado || currentDimensioning.selectedModuleId;
+        // Verificar tanto o formato novo (selectedInverters) quanto o legado (inversorSelecionado/inverters)
         const hasInverter = currentDimensioning.inversorSelecionado || 
-                           (currentDimensioning.inverters && currentDimensioning.inverters.length > 0 && currentDimensioning.inverters[0].selectedInverterId);
+                           (currentDimensioning.inverters && currentDimensioning.inverters.length > 0 && currentDimensioning.inverters[0].selectedInverterId) ||
+                           (currentDimensioning.selectedInverters && currentDimensioning.selectedInverters.length > 0);
         return !!(hasModule && hasInverter && currentDimensioning.potenciaModulo > 0 && currentDimensioning.eficienciaSistema > 0);
       case 5:
+        // Águas de telhado é opcional, sempre válido
+        return true;
+      case 6:
         return totalInvestment > 0;
       default:
         return true;
@@ -178,17 +196,36 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       return;
     }
 
-    // Auto-save progress
+    // Auto-save progress - bloquear avanço se falhar
     if (currentDimensioning.customer && currentDimensioning.dimensioningName?.trim()) {
       try {
         await saveDimensioning();
-      } catch (error) {
-        console.log('Auto-save failed, but continuing...', error);
+      } catch (error: any) {
+        console.error('Auto-save failed, blocking navigation:', error);
+        
+        let errorMessage = "Erro ao salvar o progresso.";
+        
+        if (error?.response?.status === 429) {
+          errorMessage = "Muitas requisições. Aguarde um momento antes de continuar.";
+        } else if (error?.response?.status === 401) {
+          errorMessage = "Sessão expirada. Faça login novamente.";
+        } else if (error?.response?.status === 500) {
+          errorMessage = "Erro no servidor. Tente novamente.";
+        }
+        
+        toast({
+          variant: "destructive",
+          title: "Erro ao salvar",
+          description: `${errorMessage} Não é possível avançar sem salvar o progresso.`
+        });
+        
+        // Bloquear navegação - não continuar
+        return;
       }
     }
 
-    if (currentStep === 5) {
-      // Calculate results before going to step 6
+    if (currentStep === 6) {
+      // Calculate results before going to step 7
       await handleCalculate();
     } else {
       setCurrentStep(prev => Math.min(prev + 1, steps.length));
@@ -412,6 +449,40 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       // Se os dados não estão calculados, chamar a rota novamente
       let potenciaPico, numeroModulos, areaEstimada, geracaoEstimadaAnual, geracaoEstimadaMensal;
       let apiResult = null;
+
+      // Verificar se há dados das águas de telhado para usar nos cálculos
+      const hasAguasTelhado = currentDimensioning.aguasTelhado && 
+                             currentDimensioning.aguasTelhado.length > 0 && 
+                             currentDimensioning.aguasTelhado.some((agua: any) => agua.geracaoAnual > 0);
+      
+      if (hasAguasTelhado) {
+        // Usar dados das águas de telhado para cálculos financeiros
+        const totalModulosAguas = currentDimensioning.aguasTelhado.reduce((total: number, agua: any) => total + agua.numeroModulos, 0);
+        const totalGeracaoAguas = currentDimensioning.aguasTelhado.reduce((total: number, agua: any) => total + (agua.geracaoAnual || 0), 0);
+        const totalAreaAguas = currentDimensioning.aguasTelhado.reduce((total: number, agua: any) => total + (agua.areaCalculada || 0), 0);
+        
+        console.log('🏠 === USANDO DADOS DAS ÁGUAS DE TELHADO ===');
+        console.log('📊 Dados calculados das águas de telhado:', {
+          totalModulos: totalModulosAguas,
+          totalGeracao: `${totalGeracaoAguas.toFixed(0)} kWh/ano`,
+          totalArea: `${totalAreaAguas.toFixed(2)} m²`,
+          numeroAguas: currentDimensioning.aguasTelhado.length
+        });
+        
+        // Sobrescrever variáveis com dados das águas de telhado
+        numeroModulos = totalModulosAguas;
+        geracaoEstimadaAnual = totalGeracaoAguas;
+        areaEstimada = totalAreaAguas;
+        potenciaPico = (numeroModulos * (currentDimensioning.potenciaModulo || 550)) / 1000;
+        geracaoEstimadaMensal = Array(12).fill(geracaoEstimadaAnual / 12);
+        
+        console.log('🔄 Valores atualizados com águas de telhado:', {
+          potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
+          numeroModulos: `${numeroModulos} unidades`,
+          areaEstimada: `${areaEstimada.toFixed(2)} m²`,
+          geracaoAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`
+        });
+      }
       
       // Calcular perdas totais do sistema
       const perdasSistema = (currentDimensioning.perdaSombreamento || 3) + 
@@ -431,11 +502,13 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         total: `${perdasSistema}%`
       });
 
-      // Chamar a mesma rota que funciona no resumo: /api/v1/solar/calculate-advanced-modules
-      console.log('🔄 Chamando a rota que funciona: /api/v1/solar/calculate-advanced-modules');
-      
-      try {
-        const response = await fetch('http://localhost:8010/api/v1/solar/calculate-advanced-modules', {
+      // Se não há águas de telhado, chamar API para calcular dados
+      if (!hasAguasTelhado) {
+        // Chamar a mesma rota que funciona no resumo: /api/v1/solar-analysis/calculate-advanced-modules
+        console.log('🔄 Chamando a rota que funciona: /api/v1/solar-analysis/calculate-advanced-modules');
+        
+        try {
+        const response = await fetch('http://localhost:8010/api/v1/solar-analysis/calculate-advanced-modules', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -446,7 +519,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
             lon: currentDimensioning.longitude || -53.3116,
             tilt: currentDimensioning.inclinacao || 23,
             azimuth: currentDimensioning.orientacao || 180,
-            modelo_decomposicao: "erbs",
+            modelo_decomposicao: "louche",
+            modelo_transposicao: "perez",
             consumo_anual_kwh: consumoTotalAnual || 6000,
             modulo: {
               fabricante: "Canadian Solar",
@@ -513,7 +587,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
             yieldEspecifico: `${apiResult.data.yield_especifico} kWh/kWp`,
             fatorCapacidade: `${apiResult.data.fator_capacidade}%`,
             energiaDiariaMedia: `${apiResult.data.energia_diaria_media} kWh/dia`,
-            origem: 'API /api/v1/solar/calculate-advanced-modules'
+            origem: 'API /api/v1/solar-analysis/calculate-advanced-modules'
           });
         } else {
           throw new Error('API retornou erro');
@@ -527,6 +601,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         geracaoEstimadaAnual = 6806;
         geracaoEstimadaMensal = Array(12).fill(geracaoEstimadaAnual / 12);
       }
+      } // Fechamento do if (!hasAguasTelhado)
       
       console.log('✅ Dados do resumo utilizados:', {
         potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
@@ -572,16 +647,24 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         taxaDesconto: `${currentDimensioning.taxaDesconto || 8.0}%`
       });
 
-      const financialResults = calculateAdvancedFinancials({
-        totalInvestment,
-        geracaoEstimadaMensal,
-        consumoMensal: totalConsumoMensal,
-        tarifaEnergiaB: tarifaB,
-        custoFioB: custoFioB,
-        vidaUtil: currentDimensioning.vidaUtil || 25,
-        inflacaoEnergia: currentDimensioning.inflacaoEnergia || 4.5,
-        taxaDesconto: currentDimensioning.taxaDesconto || 8.0,
-      });
+      // Usar API Python para cálculos financeiros básicos
+      const basicFinancialInput = {
+        investimento_inicial: totalInvestment,
+        geracao_mensal: geracaoEstimadaMensal,
+        consumo_mensal: totalConsumoMensal,
+        tarifa_energia: tarifaB,
+        custo_fio_b: custoFioB,
+        vida_util: currentDimensioning.vidaUtil || 25,
+        taxa_desconto: currentDimensioning.taxaDesconto || 8.0,
+        inflacao_energia: currentDimensioning.inflacaoEnergia || 4.5,
+        degradacao_modulos: 0.5,
+        custo_om: totalInvestment * 0.01,
+        inflacao_om: 4.0,
+        modalidade_tarifaria: 'convencional'
+      };
+      
+      const financialApiResponse = await apiClient.solarAnalysis.calculateAdvancedFinancial(basicFinancialInput);
+      const financialResults = financialApiResponse.data;
 
       console.log('💵 === RESULTADOS FINANCEIROS BÁSICOS ===');
       if (financialResults) {
@@ -624,8 +707,25 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         modalidadeTarifaria: 'convencional'
       };
 
-      const advancedFinancialResults = AdvancedFinancialAnalyzer.calculateAdvancedFinancials(advancedFinancialInput);
-      const scenarioAnalysis = AdvancedFinancialAnalyzer.analyzeScenarios(advancedFinancialInput);
+      // Usar API Python para cálculos financeiros
+      const advancedFinancialApiResponse = await apiClient.solarAnalysis.calculateAdvancedFinancial({
+        investimento_inicial: advancedFinancialInput.investimentoInicial,
+        geracao_mensal: advancedFinancialInput.geracaoMensal,
+        consumo_mensal: advancedFinancialInput.consumoMensal,
+        tarifa_energia: advancedFinancialInput.tarifaEnergia,
+        custo_fio_b: advancedFinancialInput.custoFioB,
+        vida_util: advancedFinancialInput.vidaUtil,
+        taxa_desconto: advancedFinancialInput.taxaDesconto,
+        inflacao_energia: advancedFinancialInput.inflacaoEnergia,
+        degradacao_modulos: advancedFinancialInput.degradacaoModulos,
+        custo_om: advancedFinancialInput.custoOM,
+        inflacao_om: advancedFinancialInput.inflacaoOM,
+        modalidade_tarifaria: advancedFinancialInput.modalidadeTarifaria || 'convencional'
+      });
+      const advancedFinancialResults = advancedFinancialApiResponse.data;
+      
+      // Análise de cenários também via API
+      const scenarioAnalysis = null; // TODO: Implementar endpoint de cenários na API Python
 
       console.log('📊 === VALORES FINAIS DO SISTEMA ===');
       console.log('📊 Valores calculados:', {
@@ -685,6 +785,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
           ...advancedFinancialResults,
           scenarios: scenarioAnalysis
         },
+        selectedInverters: currentDimensioning.selectedInverters || [],
+        selectedModule: currentDimensioning.moduloSelecionado,
         ...financialResults,
       };
 
@@ -806,7 +908,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       console.log('🧙‍♀️ === WIZARD: CÁLCULO CONCLUÍDO COM SUCESSO ===');
 
       setCalculationResults(results);
-      setCurrentStep(6);
+      setCurrentStep(7);
 
       if (onComplete) {
         onComplete(results);
@@ -865,9 +967,40 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
               formData={currentDimensioning} 
               onFormChange={handleFormChange} 
             />
-            <EquipmentSelectionForm 
-              formData={currentDimensioning} 
-              onFormChange={handleFormChange} 
+          </div>
+        );
+      
+      case 'roof':
+        // Verificar se há dados calculados no sistema
+        const hasSystemCalculated = (currentDimensioning.numeroModulosCalculado && currentDimensioning.numeroModulosCalculado > 0) || 
+                                   (currentDimensioning.numeroModulos && currentDimensioning.numeroModulos > 0) ||
+                                   (currentDimensioning.potenciaPico && currentDimensioning.potenciaPico > 0);
+        
+        
+        console.log('🏠 [SolarSizingWizard] Renderizando step roof com águas:', {
+          currentDimensioningAguasTelhado: currentDimensioning.aguasTelhado,
+          aguasLength: currentDimensioning.aguasTelhado?.length || 0
+        });
+        
+        return (
+          <div className="space-y-6">
+            {/* Configuração das Águas de Telhado com MPPT */}
+            <WaterSelectionForm 
+              aguasTelhado={currentDimensioning.aguasTelhado || []}
+              selectedInverters={currentDimensioning.selectedInverters || []}
+              onAguasChange={(aguas) => handleFormChange('aguasTelhado', aguas)}
+              latitude={currentDimensioning.latitude}
+              longitude={currentDimensioning.longitude}
+              potenciaModulo={currentDimensioning.potenciaModulo || 550}
+              consumoAnualTotal={currentDimensioning.energyBills?.reduce((acc: number, bill: any) => {
+                return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
+              }, 0) || 0}
+              perdaSombreamento={currentDimensioning.perdaSombreamento}
+              perdaMismatch={currentDimensioning.perdaMismatch}
+              perdaCabeamento={currentDimensioning.perdaCabeamento}
+              perdaSujeira={currentDimensioning.perdaSujeira}
+              perdaInversor={currentDimensioning.perdaInversor}
+              perdaOutras={currentDimensioning.perdaOutras}
             />
           </div>
         );
@@ -875,15 +1008,58 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       case 'summary':
         return (
           <div className="space-y-6">
-            <SystemSummary 
-              formData={currentDimensioning}
-              onDimensioningChange={(newData) => {
-                console.log('🔄 Atualizando dados do dimensionamento:', newData);
-                Object.entries(newData).forEach(([key, value]) => {
-                  handleFormChange(key, value);
-                });
-              }}
-            />
+            {/* Divisão por Águas de Telhado */}
+            {currentDimensioning.aguasTelhado && currentDimensioning.aguasTelhado.length > 0 && (
+              <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
+                    <Home className="w-5 h-5 text-green-500" />
+                    Divisão por Águas de Telhado
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {currentDimensioning.aguasTelhado.map((agua: any, index: number) => (
+                      <div key={agua.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-semibold text-gray-800 dark:text-gray-200">{agua.nome}</h4>
+                          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                            <Compass className="w-4 h-4" />
+                            <span>{agua.orientacao}° / {agua.inclinacao}°</span>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-blue-600">{agua.numeroModulos}</div>
+                            <div className="text-xs text-gray-500">Módulos</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-purple-600">
+                              {((agua.numeroModulos * (currentDimensioning.potenciaModulo || 550)) / 1000).toFixed(2)} kWp
+                            </div>
+                            <div className="text-xs text-gray-500">Potência</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-green-600">
+                              {agua.geracaoAnual ? Math.round(agua.geracaoAnual).toLocaleString() : '—'} kWh/ano
+                            </div>
+                            <div className="text-xs text-gray-500">Geração</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-orange-600">
+                              {agua.areaCalculada ? agua.areaCalculada.toFixed(1) : '—'} m²
+                            </div>
+                            <div className="text-xs text-gray-500">Área</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             <FinancialForm 
               formData={currentDimensioning} 
               onFormChange={handleFormChange} 
@@ -1002,7 +1178,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         </AnimatePresence>
 
         {/* Navigation */}
-        {currentStep < 6 && (
+        {currentStep < 7 && (
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t dark:border-slate-700">
             <Button
               onClick={currentStep === 1 ? onBack : handlePrevious}
@@ -1035,7 +1211,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Salvando...
                 </div>
-              ) : currentStep === 5 ? (
+              ) : currentStep === 6 ? (
                 <>
                   Calcular Resultados
                   <Calculator className="w-4 h-4 ml-2" />
@@ -1051,10 +1227,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         )}
 
         {/* Results Navigation */}
-        {currentStep === 6 && calculationResults && (
+        {currentStep === 7 && calculationResults && (
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-6 border-t dark:border-slate-700">
             <Button
-              onClick={() => setCurrentStep(5)}
+              onClick={() => setCurrentStep(6)}
               variant="outline"
               className="w-full sm:w-auto"
             >

@@ -107,7 +107,10 @@
       "Bash(docker ps:*)",
       "Bash(cd:*)",
       "Bash(cd:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(docker:*)",
+      "WebFetch(domain:re.jrc.ec.europa.eu)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

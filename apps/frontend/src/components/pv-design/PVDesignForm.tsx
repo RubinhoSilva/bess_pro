@@ -6,9 +6,9 @@ import { Sun, BarChart, FilePlus } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
 import { useDimensioning } from '@/contexts/DimensioningContext';
 import { ProjectType } from '@/types/project';
-import { calculateAdvancedFinancials } from '@/lib/financialCalculations';
 import { AdvancedSolarCalculator, SolarCalculationOptions } from '@/lib/solarCalculations';
-import { AdvancedFinancialAnalyzer, AdvancedFinancialInput } from '@/lib/advancedFinancialAnalysis';
+import { AdvancedFinancialInput } from '@/types/financial';
+import { apiClient } from '@/lib/api';
 import { NotificationManager } from '@/lib/notificationSystem';
 import { useCalculationLogger } from '@/hooks/useCalculationLogger';
 import { BackendCalculationService, shouldUseBackendCalculations } from '@/lib/backendCalculations';
@@ -19,7 +19,6 @@ import ConsumptionForm from './form-sections/ConsumptionForm';
 import LocationForm from './form-sections/LocationForm';
 import SystemParametersForm from './form-sections/SystemParametersForm';
 import EquipmentSelectionForm from './form-sections/EquipmentSelectionForm';
-import SystemSummary from './form-sections/SystemSummary';
 import FinancialForm from './form-sections/FinancialForm';
 import PaymentConditionsForm from './form-sections/PaymentConditionsForm';
 import ValidationPanel from './validation/ValidationPanel';
@@ -358,7 +357,24 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         const tarifaEfetiva = parametrosFinanceiros.tarifaEnergiaB - parametrosFinanceiros.custoFioB;
         console.log(`💡 Tarifa efetiva (energia - fio B): R$ ${tarifaEfetiva.toFixed(4)}/kWh`);
         
-        const financialResults = calculateAdvancedFinancials(parametrosFinanceiros);
+        // Usar API Python para cálculos financeiros básicos
+        const basicFinancialApiInput = {
+          investimento_inicial: parametrosFinanceiros.totalInvestment,
+          geracao_mensal: parametrosFinanceiros.geracaoEstimadaMensal,
+          consumo_mensal: parametrosFinanceiros.consumoMensal,
+          tarifa_energia: parametrosFinanceiros.tarifaEnergiaB,
+          custo_fio_b: parametrosFinanceiros.custoFioB,
+          vida_util: parametrosFinanceiros.vidaUtil,
+          taxa_desconto: parametrosFinanceiros.taxaDesconto,
+          inflacao_energia: parametrosFinanceiros.inflacaoEnergia,
+          degradacao_modulos: 0.5,
+          custo_om: parametrosFinanceiros.totalInvestment * 0.01,
+          inflacao_om: 4.0,
+          modalidade_tarifaria: 'convencional'
+        };
+        
+        const financialApiResponse = await apiClient.solarAnalysis.calculateAdvancedFinancial(basicFinancialApiInput);
+        const financialResults = financialApiResponse.data;
         console.log('📊 === RESULTADOS FINANCEIROS CALCULADOS ===');
         if (financialResults) {
           console.log(`💰 Payback calculado: ${(financialResults.payback || 0).toFixed(2)} anos`);
@@ -385,8 +401,25 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           modalidadeTarifaria: 'convencional'
         };
 
-        const advancedFinancialResults = AdvancedFinancialAnalyzer.calculateAdvancedFinancials(advancedFinancialInput);
-        const scenarioAnalysis = AdvancedFinancialAnalyzer.analyzeScenarios(advancedFinancialInput);
+        // Usar API Python para cálculos financeiros
+        const financialApiInput = {
+          investimento_inicial: advancedFinancialInput.investimentoInicial,
+          geracao_mensal: advancedFinancialInput.geracaoMensal,
+          consumo_mensal: advancedFinancialInput.consumoMensal,
+          tarifa_energia: advancedFinancialInput.tarifaEnergia,
+          custo_fio_b: advancedFinancialInput.custoFioB,
+          vida_util: advancedFinancialInput.vidaUtil,
+          taxa_desconto: advancedFinancialInput.taxaDesconto,
+          inflacao_energia: advancedFinancialInput.inflacaoEnergia,
+          degradacao_modulos: advancedFinancialInput.degradacaoModulos,
+          custo_om: advancedFinancialInput.custoOM,
+          inflacao_om: advancedFinancialInput.inflacaoOM,
+          modalidade_tarifaria: advancedFinancialInput.modalidadeTarifaria || 'convencional'
+        };
+        
+        const advancedFinancialApiResponse = await apiClient.solarAnalysis.calculateAdvancedFinancial(financialApiInput);
+        const advancedFinancialResults = advancedFinancialApiResponse.data;
+        const scenarioAnalysis = null; // TODO: Implementar endpoint de cenários na API Python
 
 
         let results = {
@@ -658,9 +691,6 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
             <ConsumptionForm 
               formData={currentDimensioning} 
               onFormChange={handleFormChange} 
-            />
-            <SystemSummary 
-              formData={currentDimensioning}
             />
             <FinancialForm 
               formData={currentDimensioning} 

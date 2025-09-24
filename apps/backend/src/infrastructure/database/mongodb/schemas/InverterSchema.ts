@@ -45,6 +45,15 @@ export interface IInverterDocument extends Document {
   datasheetUrl?: string;
   precoReferencia?: number;
   
+  // Parâmetros Sandia para simulação precisa
+  vdco?: number;
+  pso?: number;
+  c0?: number;
+  c1?: number;
+  c2?: number;
+  c3?: number;
+  pnt?: number;
+  
   createdAt: Date;
   updatedAt: Date;
 }
@@ -191,6 +200,43 @@ const InverterSchema = new Schema<IInverterDocument>({
   precoReferencia: {
     type: Number,
     min: 0
+  },
+  
+  // Parâmetros Sandia para simulação precisa
+  vdco: {
+    type: Number,
+    min: 100,
+    max: 1000
+  },
+  pso: {
+    type: Number,
+    min: 0,
+    max: 100
+  },
+  c0: {
+    type: Number,
+    min: -1,
+    max: 1
+  },
+  c1: {
+    type: Number,
+    min: -1,
+    max: 1
+  },
+  c2: {
+    type: Number,
+    min: -1,
+    max: 1
+  },
+  c3: {
+    type: Number,
+    min: -1,
+    max: 1
+  },
+  pnt: {
+    type: Number,
+    min: 0,
+    max: 1
   }
 }, {
   timestamps: true,

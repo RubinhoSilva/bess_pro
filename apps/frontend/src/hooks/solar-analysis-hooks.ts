@@ -116,7 +116,7 @@ export const useSolarAnalysis = () => {
 
   return useMutation<SolarAnalysisResult, Error, SolarAnalysisRequest>({
     mutationFn: async (request) => {
-      const response = await api.post('/solar/analyze', request);
+      const response = await api.post('/solar-analysis/analyze', request);
       return response.data.data;
     },
     onSuccess: (data, variables) => {
@@ -150,7 +150,7 @@ export const useSolarPotential = (latitude?: number, longitude?: number) => {
         throw new Error('Latitude e longitude são obrigatórias');
       }
       
-      const response = await api.get('/solar/potential', {
+      const response = await api.get('/solar-analysis/potential', {
         params: { latitude, longitude }
       });
       return response.data.data;
@@ -170,7 +170,7 @@ export const useSolarRecommendations = (latitude?: number, longitude?: number) =
         throw new Error('Latitude e longitude são obrigatórias');
       }
       
-      const response = await api.get(`/solar/recommendations/${latitude}/${longitude}`);
+      const response = await api.get(`/solar-analysis/recommendations/${latitude}/${longitude}`);
       return response.data.data;
     },
     enabled: Boolean(latitude && longitude),
@@ -183,7 +183,7 @@ export const useSolarRecommendations = (latitude?: number, longitude?: number) =
 export const useBulkSolarAnalysis = () => {
   return useMutation<BulkAnalysisResult, Error, { locations: BulkAnalysisLocation[] }>({
     mutationFn: async ({ locations }) => {
-      const response = await api.post('/solar/bulk-analyze', { locations });
+      const response = await api.post('/solar-analysis/bulk-analyze', { locations });
       return response.data.data;
     },
   });

@@ -16,30 +16,58 @@ interface PVGISIntegrationProps {
     latitude: number;
     longitude: number;
     cidade: string;
+    pvgisResponseData?: any; // Dados completos da resposta PVGIS
   }) => void;
   formData?: {
-    orientacao?: number;
-    inclinacao?: number;
+    latitude?: number;
+    longitude?: number;
+    cidade?: string;
+    irradiacaoMensal?: number[];
+    pvgisResponseData?: any;
   };
-  onFormChange?: (field: string, value: number) => void;
 }
 
 const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({ 
-  onDataReceived, 
-  formData, 
-  onFormChange 
+  onDataReceived,
+  formData
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<PVGISLocation | null>(null);
-  const [manualLat, setManualLat] = useState('');
-  const [manualLng, setManualLng] = useState('');
+  // Verificar se há dados válidos e completos para restaurar o estado
+  const hasValidSavedData = formData?.latitude && 
+                           formData?.longitude && 
+                           formData?.irradiacaoMensal && 
+                           formData?.irradiacaoMensal.length === 12 &&
+                           formData?.irradiacaoMensal.some(value => value > 0);
+
+  const [selectedLocation, setSelectedLocation] = useState<PVGISLocation | null>(
+    hasValidSavedData 
+      ? { latitude: formData.latitude, longitude: formData.longitude }
+      : null
+  );
+  const [manualLat, setManualLat] = useState(hasValidSavedData ? formData.latitude.toString() : '');
+  const [manualLng, setManualLng] = useState(hasValidSavedData ? formData.longitude.toString() : '');
   const [irradiationData, setIrradiationData] = useState<{
     irradiacaoMensal: number[];
     latitude: number;
     longitude: number;
     cidade: string;
-  } | null>(null);
+    mediaAnual?: number;
+    maximo?: number;
+    minimo?: number;
+    variacaoSazonal?: number;
+    configuracao?: any;
+  } | null>(
+    hasValidSavedData
+      ? {
+          irradiacaoMensal: formData.irradiacaoMensal,
+          latitude: formData.latitude,
+          longitude: formData.longitude,
+          cidade: formData.cidade || `Lat: ${formData.latitude.toFixed(4)}, Lon: ${formData.longitude.toFixed(4)}`,
+          ...formData.pvgisResponseData
+        }
+      : null
+  );
   
 
   const handleLocationSelect = (location: { lat: number; lng: number }) => {
@@ -92,35 +120,24 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
     setIsLoading(true);
 
     try {
-      // Usar parâmetros de orientação e inclinação se disponíveis
-      const parameters = formData ? {
-        tilt: formData.inclinacao || 0,
-        azimuth: formData.orientacao || 0
-      } : {
-        tilt: 0,
-        azimuth: 0
-      };
-      
       console.log('🔧 Parâmetros PVGIS sendo enviados via backend:', {
         location,
-        parameters,
-        formData
+        parameters: { tilt: 0, azimuth: 0 }
       });
       
       // Chamar o backend Node.js que se comunica com a API Python
-      const response = await api.post('/solar/analyze-monthly-irradiation', {
+      // Sempre usar 0° (horizontal) para buscar dados PVGIS diretos sem decomposição
+      const response = await api.post('/solar-analysis/analyze-monthly-irradiation', {
         lat: location.latitude,
         lon: location.longitude,
-        tilt: parameters.tilt,
-        azimuth: parameters.azimuth,
-        modelo_decomposicao: 'erbs'
+        tilt: 0,
+        azimuth: 0,
+        modelo_decomposicao: 'louche'
       });
 
       console.log('✅ Resposta do backend recebida:', response.data);
       
-      const orientacaoText = parameters.tilt > 0 || parameters.azimuth > 0 ? 
-        ` (${parameters.azimuth}°/${parameters.tilt}°)` : '';
-      const formattedCity = `Lat: ${response.data.data.coordenadas.lat.toFixed(4)}, Lon: ${response.data.data.coordenadas.lon.toFixed(4)}${orientacaoText}`;
+      const formattedCity = `Lat: ${response.data.data.coordenadas.lat.toFixed(4)}, Lon: ${response.data.data.coordenadas.lon.toFixed(4)}`;
       
       const data = {
         irradiacaoMensal: response.data.data.irradiacaoMensal,
@@ -138,8 +155,20 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
       // Armazenar dados para exibição
       setIrradiationData(data);
       
-      // Enviar dados para o componente pai
-      onDataReceived(data);
+      // Enviar dados para o componente pai incluindo dados completos da resposta
+      onDataReceived({
+        irradiacaoMensal: data.irradiacaoMensal,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        cidade: data.cidade,
+        pvgisResponseData: {
+          mediaAnual: data.mediaAnual,
+          maximo: data.maximo,
+          minimo: data.minimo,
+          variacaoSazonal: data.variacaoSazonal,
+          configuracao: data.configuracao
+        }
+      });
 
       toast.success(`${response.data.data.message}`, {
         duration: 4000,
@@ -177,7 +206,7 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
       
       <p className="text-sm text-muted-foreground mb-4">
         Obtenha dados precisos de irradiação solar do PVGIS (Photovoltaic Geographical Information System) 
-        da Comissão Europeia. Selecione a localização no mapa ou insira coordenadas manualmente.
+        da Comissão Europeia. Os dados são coletados para superficie horizontal (0° inclinação, 0° orientação).
       </p>
 
       <div className="space-y-4">
@@ -242,61 +271,6 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
           </div>
         </div>
 
-        {/* Parâmetros de Orientação e Inclinação */}
-        {onFormChange && (
-          <div>
-            <Label className="text-foreground mb-2 block">Parâmetros do Sistema Solar</Label>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="orientacao">Orientação (graus)</Label>
-                <Input
-                  id="orientacao"
-                  type="number"
-                  min="0"
-                  max="360"
-                  value={formData?.orientacao || 0}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    // Garantir que orientação esteja entre 0 e 360
-                    const clampedValue = Math.max(0, Math.min(360, value));
-                    onFormChange('orientacao', clampedValue);
-                  }}
-                  placeholder="0 (Norte)"
-                  className="bg-background border-border text-foreground"
-                  disabled={isLoading}
-                />
-                <p className="text-xs text-muted-foreground">0°=Norte, 90°=Leste, 180°=Sul, 270°=Oeste</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="inclinacao">Inclinação (graus)</Label>
-                <Input
-                  id="inclinacao"
-                  type="number"
-                  min="0"
-                  max="90"
-                  value={formData?.inclinacao || 0}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    // Garantir que inclinação esteja entre 0 e 90
-                    const clampedValue = Math.max(0, Math.min(90, value));
-                    onFormChange('inclinacao', clampedValue);
-                  }}
-                  placeholder="0 (Horizontal)"
-                  className="bg-background border-border text-foreground"
-                  disabled={isLoading}
-                />
-                <p className="text-xs text-muted-foreground">0°=Horizontal, 90°=Vertical</p>
-              </div>
-            </div>
-            <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-xs text-amber-700">
-                <strong>💡 Dica:</strong> A orientação e inclinação afetam a quantidade de radiação solar recebida. 
-                Estes parâmetros serão utilizados nas consultas PVGIS para obter dados mais precisos.
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* Localização selecionada */}
         {selectedLocation && (

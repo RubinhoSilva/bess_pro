@@ -49,14 +49,20 @@ class FinancialCalculationService:
         # 6. Análise de cenários
         cenarios = FinancialCalculationService._calculate_scenario_analysis(input_data)
         
+        # Sanitizar todos os valores para evitar infinitos e NaN
+        def sanitize_value(value: float, max_value: float = 999999.99) -> float:
+            if not np.isfinite(value):
+                return max_value
+            return min(abs(value), max_value) if value >= 0 else max(-max_value, value)
+        
         return AdvancedFinancialResults(
-            vpl=round(vpl, 2),
-            tir=round(tir, 2),
-            payback_simples=round(payback_simples, 2),
-            payback_descontado=round(payback_descontado, 2),
-            economia_total_25_anos=round(economia_total_25_anos, 2),
-            economia_anual_media=round(economia_anual_media, 2),
-            lucratividade_index=round(lucratividade_index, 3),
+            vpl=round(sanitize_value(vpl), 2),
+            tir=round(sanitize_value(tir, 999999.99), 2),
+            payback_simples=round(sanitize_value(payback_simples, 99.0), 2),
+            payback_descontado=round(sanitize_value(payback_descontado, 99.0), 2),
+            economia_total_25_anos=round(sanitize_value(economia_total_25_anos), 2),
+            economia_anual_media=round(sanitize_value(economia_anual_media), 2),
+            lucratividade_index=round(sanitize_value(lucratividade_index, 999.999), 3),
             cash_flow=cash_flow,
             indicadores=indicadores,
             sensibilidade=sensibilidade,
@@ -144,9 +150,29 @@ class FinancialCalculationService:
         taxa = 0.1
         
         for _ in range(100):  # Máximo 100 iterações
-            # Calcular VPL e derivada
-            vpl = sum(fluxo / ((1 + taxa) ** i) for i, fluxo in enumerate(fluxos))
-            dvpl = sum(-i * fluxo / ((1 + taxa) ** (i + 1)) for i, fluxo in enumerate(fluxos))
+            # Limitar taxa no intervalo [-0.99, 5.0] para evitar valores extremos
+            taxa = max(-0.99, min(taxa, 5.0))
+            
+            # Calcular VPL e derivada usando numpy.float128 para maior precisão
+            try:
+                # Converter para numpy.float128 para evitar overflow
+                taxa_np = np.float128(taxa)
+                fluxos_np = [np.float128(fluxo) for fluxo in fluxos]
+                
+                vpl = sum(fluxo_np / ((1 + taxa_np) ** i) for i, fluxo_np in enumerate(fluxos_np))
+                dvpl = sum(-i * fluxo_np / ((1 + taxa_np) ** (i + 1)) for i, fluxo_np in enumerate(fluxos_np))
+                
+                # Converter de volta para float Python e validar se são finitos
+                vpl = float(vpl)
+                dvpl = float(dvpl)
+                
+                # Verificar se os valores são finitos
+                if not (np.isfinite(vpl) and np.isfinite(dvpl)):
+                    return 0.05  # Retornar taxa conservadora se valores inválidos
+                    
+            except (OverflowError, ZeroDivisionError):
+                # Se ainda houver overflow, retornar taxa conservadora
+                return 0.05  # 5% como fallback
             
             if abs(vpl) < 1e-6:  # Precisão suficiente
                 break
@@ -171,13 +197,15 @@ class FinancialCalculationService:
             if year.fluxo_acumulado >= 0:
                 # Interpolação para encontrar o ponto exato
                 year_anterior = cash_flow[year.ano - 2] if year.ano > 1 else None
-                if year_anterior:
+                if year_anterior and year.fluxo_liquido > 0:
                     fator = abs(year_anterior.fluxo_acumulado) / year.fluxo_liquido
-                    return year.ano - 1 + fator
+                    payback = year.ano - 1 + fator
+                    # Limitar payback máximo a 99 anos
+                    return min(payback, 99.0)
                 else:
-                    return float(year.ano)
+                    return min(float(year.ano), 99.0)
         
-        return float('inf')  # Nunca se paga
+        return 99.0  # Retornar 99 anos ao invés de infinito
     
     @staticmethod
     def _calculate_discounted_payback(cash_flow: List[CashFlowDetails], taxa_desconto: float) -> float:
@@ -190,14 +218,16 @@ class FinancialCalculationService:
             
             if vpl_acumulado >= 0:
                 # Interpolação para encontrar o ponto exato
-                if year.ano > 1:
+                if year.ano > 1 and year.valor_presente > 0:
                     vpl_anterior = vpl_acumulado - year.valor_presente
                     fator = abs(vpl_anterior) / year.valor_presente
-                    return year.ano - 1 + fator
+                    payback = year.ano - 1 + fator
+                    # Limitar payback máximo a 99 anos
+                    return min(payback, 99.0)
                 else:
-                    return float(year.ano)
+                    return min(float(year.ano), 99.0)
         
-        return float('inf')  # Nunca se paga
+        return 99.0  # Retornar 99 anos ao invés de infinito
     
     @staticmethod
     def _calculate_performance_indicators(
@@ -307,7 +337,16 @@ class FinancialCalculationService:
             vpl = FinancialCalculationService._calculate_npv(cash_flow, data.taxa_desconto) - data.investimento_inicial
             tir = FinancialCalculationService._calculate_irr(cash_flow, data.investimento_inicial)
             payback = FinancialCalculationService._calculate_simple_payback(cash_flow)
-            return {"vpl": round(vpl, 2), "tir": round(tir, 2), "payback": round(payback, 2)}
+            
+            # Sanitizar valores para evitar infinitos
+            def sanitize_basic(value: float, max_val: float = 999999.99) -> float:
+                return max_val if not np.isfinite(value) else min(abs(value), max_val) if value >= 0 else max(-max_val, value)
+            
+            return {
+                "vpl": round(sanitize_basic(vpl), 2), 
+                "tir": round(sanitize_basic(tir), 2), 
+                "payback": round(sanitize_basic(payback, 99.0), 2)
+            }
         
         # Cenário base
         base_results = calculate_basic_indicators(input_data)

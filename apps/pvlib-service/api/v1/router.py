@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from api.v1.endpoints import irradiation, modules, admin
+from api.v1.endpoints import irradiation, modules, admin, multi_inverter
 from api.financial_router import router as financial_router
 
 # Router principal da API v1
@@ -9,6 +9,7 @@ api_router = APIRouter()
 # Incluir routers dos endpoints
 api_router.include_router(irradiation.router)
 api_router.include_router(modules.router)
+api_router.include_router(multi_inverter.router)
 api_router.include_router(admin.router)
 api_router.include_router(financial_router)
 
@@ -24,15 +25,20 @@ async def api_info():
     return {
         "name": "Solar Energy API v1",
         "version": "1.0.0",
-        "description": "API para análise de irradiação solar e dimensionamento fotovoltaico",
+        "description": "API para análise de irradiação solar, dimensionamento fotovoltaico e sistemas multi-inversor",
         "endpoints": {
             "irradiation": {
                 "POST /irradiation/monthly": "Análise de irradiação mensal",
                 "GET /irradiation/monthly": "Análise via query parameters"
             },
             "modules": {
-                "POST /modules/calculate": "Cálculo de módulos necessários",
-                "GET /modules/calculate": "Cálculo via query parameters"
+                "POST /modules/calculate": "Cálculo de módulos necessários (legado)",
+                "GET /modules/calculate": "Cálculo via query parameters (legado)"
+            },
+            "multi-inverter": {
+                "POST /multi-inverter/calculate": "Cálculo de sistema multi-inversor",
+                "GET /multi-inverter/validate-system": "Validação de compatibilidade",
+                "GET /multi-inverter/system-info": "Informações do sistema"
             },
             "financial": {
                 "POST /financial/calculate-advanced": "Análise financeira avançada",

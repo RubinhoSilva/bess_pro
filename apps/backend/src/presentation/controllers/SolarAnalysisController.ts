@@ -48,9 +48,9 @@ export class SolarAnalysisController extends BaseController {
       // URL do serviço PVLIB (Python) - usar nome do container Docker
       const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
       
-      // Chamar o serviço Python
+      // Chamar o serviço Python - CORRIGIDO: usar endpoint que existe
       const response = await axios.post(
-        `${pythonServiceUrl}/calculate-solar-system`,
+        `${pythonServiceUrl}/api/v1/modules/calculate`,
         params,
         {
           timeout: 10000, // 10 segundos
@@ -98,9 +98,9 @@ export class SolarAnalysisController extends BaseController {
       // URL do serviço PVLIB (Python) - usar nome do container Docker
       const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
       
-      // Chamar o serviço Python
+      // Chamar o serviço Python - CORRIGIDO: usar endpoint que existe
       const response = await axios.post(
-        `${pythonServiceUrl}/calculate-irradiation-correction`,
+        `${pythonServiceUrl}/api/v1/irradiation/monthly`,
         params,
         {
           timeout: 10000, // 10 segundos
@@ -146,9 +146,9 @@ export class SolarAnalysisController extends BaseController {
       // URL do serviço PVLIB (Python) - usar nome do container Docker
       const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
       
-      // Chamar o serviço Python
+      // Chamar o serviço Python - CORRIGIDO: usar endpoint que existe  
       const response = await axios.post(
-        `${pythonServiceUrl}/calculate-module-count`,
+        `${pythonServiceUrl}/api/v1/modules/calculate`,
         params,
         {
           timeout: 10000, // 10 segundos
@@ -205,6 +205,56 @@ export class SolarAnalysisController extends BaseController {
         }
       };
 
+      // NOVO: Verificar se está usando sistema multi-inversor (selectedInverters)
+      let isMultiInverterSystem = false;
+      let totalInverterCapacity = 0;
+      let totalMpptChannels = 0;
+      
+      if (params.selectedInverters && params.selectedInverters.length > 0) {
+        isMultiInverterSystem = true;
+        console.log('🔄 MULTI-INVERSOR: Detectado sistema com múltiplos inversores:', params.selectedInverters.length);
+        
+        // Calcular totais do sistema multi-inversor
+        params.selectedInverters.forEach((inverter: any, index: number) => {
+          const inverterCapacity = inverter.potenciaSaidaCA * inverter.quantity;
+          const mpptChannels = inverter.numeroMppt * inverter.quantity;
+          totalInverterCapacity += inverterCapacity;
+          totalMpptChannels += mpptChannels;
+          
+          console.log(`📊 Inversor ${index + 1}: ${inverter.fabricante} ${inverter.modelo}`);
+          console.log(`   - Quantidade: ${inverter.quantity}x`);
+          console.log(`   - Potência unitária: ${inverter.potenciaSaidaCA}W`);
+          console.log(`   - Potência total: ${inverterCapacity}W`);
+          console.log(`   - MPPT por unidade: ${inverter.numeroMppt}`);
+          console.log(`   - Total MPPT: ${mpptChannels}`);
+        });
+        
+        console.log(`⚡ TOTAIS DO SISTEMA:`);
+        console.log(`   - Potência total dos inversores: ${totalInverterCapacity}W`);
+        console.log(`   - Total de canais MPPT: ${totalMpptChannels}`);
+        
+        // TODO: Implementar integração completa com multi-inverter service Python
+        // Por enquanto, usar o primeiro inversor para compatibilidade com a API legada
+        const primeiroInversor = params.selectedInverters[0];
+        
+        // Mapear do formato selectedInverters para o formato legado 'inversor'
+        // IMPORTANTE: Usar o primeiro inversor como referência, mas adicionar dados agregados
+        params.inversor = {
+          fabricante: primeiroInversor.fabricante,
+          modelo: `${primeiroInversor.modelo} (Sistema Multi-Inversor)`,
+          potenciaSaidaCA: totalInverterCapacity, // Usar potência total do sistema
+          numeroMppt: totalMpptChannels, // Usar total de MPPTs
+          stringsPorMppt: primeiroInversor.stringsPorMppt,
+          tensaoCcMax: primeiroInversor.tensaoCcMax,
+          // Adicionar flags para identificar sistema multi-inversor
+          isMultiInverterSystem: true,
+          originalSinglePower: primeiroInversor.potenciaSaidaCA,
+          totalUnits: params.selectedInverters.reduce((sum: number, inv: any) => sum + inv.quantity, 0)
+        };
+        
+        console.log('📌 COMPATIBILIDADE: Dados agregados para API legada:', params.inversor);
+      }
+
       // Mapear campos do frontend (camelCase) para Python (snake_case)
       const mappedInversor: any = {
         fabricante: params.inversor.fabricante,
@@ -231,18 +281,80 @@ export class SolarAnalysisController extends BaseController {
       const pythonParams = {
         ...params,
         inversor: mappedInversor,
-        // Incluir num_modules se fornecido (para uso específico do slider)
-        num_modules: params.num_modules || params.numeroModulos || undefined
+        // Prioridade: numeroModulosUsuario > num_modules > numeroModulos > cálculo automático
+        num_modules: params.numeroModulosUsuario || params.num_modules || params.numeroModulos || undefined,
+        // Garantir que o modelo de transposição seja repassado
+        modelo_transposicao: params.modelo_transposicao || 'perez',
+        
+        // NOVO: Incluir dados de múltiplos inversores para futura integração
+        multi_inverter_data: params.selectedInverters ? {
+          is_multi_inverter: true,
+          system_configuration: 'multi_inverter',
+          total_inverter_units: params.selectedInverters.reduce((sum: number, inv: any) => sum + inv.quantity, 0),
+          total_ca_power_w: totalInverterCapacity,
+          total_ca_power_kw: totalInverterCapacity / 1000,
+          total_mppt_channels: totalMpptChannels,
+          inverter_models_count: params.selectedInverters.length,
+          // Breakdown detalhado por modelo de inversor
+          inverter_breakdown: params.selectedInverters.map((inv: any, index: number) => ({
+            inverter_id: index + 1,
+            fabricante: inv.fabricante,
+            modelo: inv.modelo,
+            quantidade: inv.quantity,
+            potencia_unitaria_w: inv.potenciaSaidaCA,
+            potencia_total_w: inv.potenciaSaidaCA * inv.quantity,
+            numero_mppt_unitario: inv.numeroMppt,
+            total_mppt_channels: inv.numeroMppt * inv.quantity,
+            strings_por_mppt: inv.stringsPorMppt,
+            tensao_cc_max_v: inv.tensaoCcMax,
+            // Capacidade relativa no sistema
+            percentual_potencia_sistema: ((inv.potenciaSaidaCA * inv.quantity) / totalInverterCapacity * 100).toFixed(1)
+          })),
+          // Dados para distribuição de módulos por MPPT (futura implementação)
+          mppt_distribution_ready: true,
+          roof_areas_assigned: false, // Será true quando implementarmos distribuição por águas do telhado
+          // Dados completos originais para debugging
+          raw_selected_inverters: params.selectedInverters
+        } : {
+          is_multi_inverter: false,
+          system_configuration: 'single_inverter',
+          total_inverter_units: 1,
+          total_ca_power_w: params.inversor?.potenciaSaidaCA || 0,
+          total_ca_power_kw: (params.inversor?.potenciaSaidaCA || 0) / 1000,
+          total_mppt_channels: params.inversor?.numeroMppt || 2
+        }
       };
 
-      // Log específico quando num_modules é fornecido
-      if (pythonParams.num_modules) {
-        console.log('🎯 SLIDER: Usando número específico de módulos:', pythonParams.num_modules);
+      // Log específico baseado na origem do número de módulos
+      if (params.numeroModulosUsuario) {
+        console.log('👤 USUÁRIO: Usando número de módulos definido pelo usuário:', params.numeroModulosUsuario);
+      } else if (params.num_modules) {
+        console.log('🎯 SLIDER: Usando número específico de módulos:', params.num_modules);
+      } else if (params.numeroModulos) {
+        console.log('📊 LEGACY: Usando número de módulos do campo legado:', params.numeroModulos);
       } else {
-        console.log('🔢 AUTO: Calculando número de módulos automaticamente');
+        console.log('🔢 AUTO: Calculando número de módulos automaticamente baseado no consumo');
       }
       
-      console.log('🚀 Enviando para API Python (módulos avançados):', JSON.stringify(pythonParams, null, 2));
+      // Log detalhado dos dados sendo enviados ao Python
+      console.log('🚀 Enviando para API Python (módulos avançados):');
+      console.log('📍 Localização:', { lat: pythonParams.lat, lon: pythonParams.lon });
+      console.log('📐 Orientação:', { tilt: pythonParams.tilt, azimuth: pythonParams.azimuth });
+      console.log('🔋 Módulo:', pythonParams.modulo.fabricante, pythonParams.modulo.modelo);
+      console.log('⚡ Sistema inversor:', pythonParams.multi_inverter_data.system_configuration);
+      
+      if (isMultiInverterSystem) {
+        console.log('🔢 Multi-inversor stats:');
+        console.log(`   - Total de unidades: ${pythonParams.multi_inverter_data.total_inverter_units}`);
+        console.log(`   - Potência total: ${pythonParams.multi_inverter_data.total_ca_power_kw}kW`);
+        console.log(`   - Total MPPT: ${pythonParams.multi_inverter_data.total_mppt_channels}`);
+        console.log(`   - Modelos diferentes: ${pythonParams.multi_inverter_data.inverter_models_count}`);
+      } else {
+        console.log('🔌 Inversor único:', pythonParams.inversor.fabricante, pythonParams.inversor.modelo);
+      }
+      
+      console.log('🎯 Consumo anual alvo:', pythonParams.consumo_anual_kwh, 'kWh');
+      console.log('📊 Payload completo:', JSON.stringify(pythonParams, null, 2));
       
       // Chamar a API Python (Cálculo avançado de módulos)
       const response = await axios.post(
@@ -256,14 +368,34 @@ export class SolarAnalysisController extends BaseController {
         }
       );
 
-      console.log('✅ Resposta da API Python (módulos):', {
-        status: response.status,
-        numModulos: response.data.num_modulos,
-        potenciaTotal: response.data.potencia_total_kw
-      });
+      console.log('✅ Resposta da API Python (módulos):');
+      console.log('📊 Resultado do dimensionamento:');
+      console.log(`   - Status: ${response.status}`);
+      console.log(`   - Módulos calculados: ${response.data.num_modulos}`);
+      console.log(`   - Potência total: ${response.data.potencia_total_kw}kW`);
+      console.log(`   - Energia anual: ${response.data.energia_total_anual}kWh`);
+      console.log(`   - Cobertura: ${response.data.cobertura_percentual}%`);
+      
+      if (isMultiInverterSystem) {
+        console.log('🔄 Sistema multi-inversor processado com sucesso!');
+        console.log(`   - Capacidade total inversores: ${totalInverterCapacity}W`);
+        console.log(`   - Canais MPPT disponíveis: ${totalMpptChannels}`);
+        console.log(`   - Razão módulo/inversor: ${(response.data.potencia_total_kw * 1000 / totalInverterCapacity).toFixed(2)}`);
+      }
 
       // Padronizar resposta: converter W para kW e organizar formato
       const pythonData = response.data;
+      
+      // ===== DEBUG: PERDAS_DETALHADAS =====
+      console.log('==========================================');
+      console.log('🔍 [DEBUG] pythonData keys:', Object.keys(pythonData));
+      console.log('🔍 [DEBUG] pythonData.perdas_detalhadas existe?', 'perdas_detalhadas' in pythonData);
+      console.log('🔍 [DEBUG] pythonData.perdas_detalhadas valor:', pythonData.perdas_detalhadas);
+      console.log('🔍 [DEBUG] pythonData.perdas_detalhadas tipo:', typeof pythonData.perdas_detalhadas);
+      if (pythonData.perdas_detalhadas) {
+        console.log('🔍 [DEBUG] perdas_detalhadas.total:', pythonData.perdas_detalhadas.total);
+      }
+      console.log('==========================================');
       
       // Calcular breakdown detalhado de perdas
       const systemLosses: SystemLosses = {
@@ -301,8 +433,8 @@ export class SolarAnalysisController extends BaseController {
         area_necessaria_m2: pythonData.area_necessaria_m2,
         peso_total_kg: pythonData.peso_total_kg,
         economia_anual_co2: pythonData.economia_anual_co2,
-        // Breakdown detalhado de perdas
-        perdas_detalhadas: detailedLosses,
+        // Breakdown detalhado de perdas (usar dados do Python se disponíveis, senão usar calculados pelo Node.js)
+        perdas_detalhadas: pythonData.perdas_detalhadas || detailedLosses,
         parametros_completos: {
           consumo_anual_kwh: pythonData.parametros_completos.consumo_anual_kwh,
           localizacao: pythonData.parametros_completos.localizacao,
@@ -328,11 +460,67 @@ export class SolarAnalysisController extends BaseController {
         },
         dados_processados: pythonData.dados_processados,
         anos_analisados: pythonData.anos_analisados,
-        periodo_dados: pythonData.periodo_dados
+        periodo_dados: pythonData.periodo_dados,
+        
+        // NOVO: Informações do sistema de inversores para o frontend
+        sistema_inversores: isMultiInverterSystem ? {
+          tipo_sistema: 'multi_inverter',
+          total_unidades: params.selectedInverters.reduce((sum: number, inv: any) => sum + inv.quantity, 0),
+          total_potencia_ca_kw: totalInverterCapacity / 1000,
+          total_canais_mppt: totalMpptChannels,
+          modelos_diferentes: params.selectedInverters.length,
+          configuracao_detalhada: params.selectedInverters.map((inv: any, index: number) => ({
+            id: index + 1,
+            fabricante: inv.fabricante,
+            modelo: inv.modelo,
+            quantidade: inv.quantity,
+            potencia_unitaria_kw: inv.potenciaSaidaCA / 1000,
+            potencia_total_kw: (inv.potenciaSaidaCA * inv.quantity) / 1000,
+            mppt_unitario: inv.numeroMppt,
+            mppt_total: inv.numeroMppt * inv.quantity,
+            percentual_sistema: ((inv.potenciaSaidaCA * inv.quantity) / totalInverterCapacity * 100).toFixed(1) + '%'
+          })),
+          razao_modulo_inversor: (pythonData.potencia_total_kw * 1000 / totalInverterCapacity).toFixed(2),
+          compatibilidade_ok: (pythonData.potencia_total_kw * 1000) <= (totalInverterCapacity * 1.3), // Tolerância 30%
+          // Dados para futura implementação de distribuição por MPPT
+          distribuicao_mppt_ready: true,
+          aguas_telhado_assigned: false
+        } : {
+          tipo_sistema: 'single_inverter',
+          total_unidades: 1,
+          total_potencia_ca_kw: (params.inversor?.potenciaSaidaCA || 0) / 1000,
+          total_canais_mppt: params.inversor?.numeroMppt || 2,
+          modelos_diferentes: 1,
+          configuracao_detalhada: [{
+            id: 1,
+            fabricante: params.inversor?.fabricante || 'N/A',
+            modelo: params.inversor?.modelo || 'N/A',
+            quantidade: 1,
+            potencia_unitaria_kw: (params.inversor?.potenciaSaidaCA || 0) / 1000,
+            potencia_total_kw: (params.inversor?.potenciaSaidaCA || 0) / 1000,
+            mppt_unitario: params.inversor?.numeroMppt || 2,
+            mppt_total: params.inversor?.numeroMppt || 2,
+            percentual_sistema: '100%'
+          }],
+          razao_modulo_inversor: params.inversor?.potenciaSaidaCA ? 
+            (pythonData.potencia_total_kw * 1000 / params.inversor.potenciaSaidaCA).toFixed(2) : '0',
+          compatibilidade_ok: true
+        }
       };
 
       // Limpar campos undefined
       const cleanData = JSON.parse(JSON.stringify(standardizedData));
+      
+      // Log final do sistema processado
+      if (isMultiInverterSystem) {
+        console.log('🎉 SUCESSO: Sistema multi-inversor processado e respondido ao frontend');
+        console.log(`   - Total de ${cleanData.sistema_inversores.total_unidades} inversores configurados`);
+        console.log(`   - Potência total: ${cleanData.sistema_inversores.total_potencia_ca_kw}kW`);
+        console.log(`   - Compatibilidade: ${cleanData.sistema_inversores.compatibilidade_ok ? 'OK' : 'ATENÇÃO'}`);
+        console.log(`   - Dados prontos para distribuição MPPT: ${cleanData.sistema_inversores.distribuicao_mppt_ready}`);
+      } else {
+        console.log('✅ Sistema inversor único processado com sucesso');
+      }
 
       return res.status(200).json({
         success: true,

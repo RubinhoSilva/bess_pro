@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from core.config import settings
 
 class LocationRequest(BaseModel):
@@ -54,6 +54,11 @@ class IrradiationAnalysisRequest(LocationRequest):
         default='erbs',
         description="Modelo para decomposição GHI → DNI/DHI (usado apenas se tilt > 0 ou azimuth ≠ 0)",
         example='erbs'
+    )
+    modelo_transposicao: Literal['perez', 'klucher'] = Field(
+        default='perez',
+        description="Modelo para transposição de irradiação para plano inclinado",
+        example='perez'
     )
 
     @validator('azimuth')
@@ -274,7 +279,7 @@ class InverterData(BaseModel):
 
 
 
-# Renomear para ser a versão principal
+# Versão legada para compatibilidade - usar MultiInverterCalculationRequest para novos sistemas
 class ModuleCalculationRequest(IrradiationAnalysisRequest):
     """Requisição avançada para cálculo de módulos com dados completos"""
     
@@ -298,6 +303,14 @@ class ModuleCalculationRequest(IrradiationAnalysisRequest):
         le=30, 
         description="Perdas totais do sistema (%)"
     )
+    
+    # Perdas detalhadas individuais (opcionais)
+    perda_sombreamento: Optional[float] = Field(default=3.0, ge=0, le=30, description="Perdas por sombreamento (%)")
+    perda_mismatch: Optional[float] = Field(default=2.0, ge=0, le=10, description="Perdas por mismatch (%)")
+    perda_cabeamento: Optional[float] = Field(default=2.0, ge=0, le=10, description="Perdas por cabeamento (%)")
+    perda_sujeira: Optional[float] = Field(default=5.0, ge=0, le=20, description="Perdas por sujeira (%)")
+    perda_inversor: Optional[float] = Field(default=3.0, ge=0, le=10, description="Perdas do inversor (%)")
+    perda_outras: Optional[float] = Field(default=0.0, ge=0, le=15, description="Outras perdas (%)")
     fator_seguranca: Optional[float] = Field(
         default=1.1, 
         ge=1.0, 
@@ -309,6 +322,12 @@ class ModuleCalculationRequest(IrradiationAnalysisRequest):
         ge=1,
         le=1000,
         description="Número específico de módulos (se fornecido, usa este valor ao invés de calcular automaticamente)"
+    )
+    
+    # NOVO: Dados de sistema multi-inversor para futura integração completa
+    multi_inverter_data: Optional[dict] = Field(
+        default=None,
+        description="Dados do sistema multi-inversor enviados pelo Node.js backend"
     )
 
     @validator('consumo_anual_kwh')
@@ -339,6 +358,215 @@ class ModuleCalculationRequest(IrradiationAnalysisRequest):
                     "tipo_rede": "Monofásico 220V",
                     "eficiencia_max": 97.6
                 },
+                "perdas_sistema": 14.0,
+                "fator_seguranca": 1.1
+            }
+        }
+
+class SelectedInverterData(BaseModel):
+    """Dados de um inversor selecionado no sistema multi-inversor"""
+    
+    id: str = Field(..., description="ID único do inversor selecionado")
+    inverter_id: str = Field(..., description="ID do inversor no banco de dados")
+    fabricante: str = Field(..., description="Fabricante do inversor")
+    modelo: str = Field(..., description="Modelo do inversor")
+    potencia_saida_ca_w: float = Field(..., ge=500, le=100000, description="Potência nominal CA (W)")
+    numero_mppt: int = Field(..., ge=1, le=12, description="Número de MPPTs")
+    strings_por_mppt: int = Field(..., ge=1, le=4, description="Strings por MPPT")
+    tensao_cc_max_v: float = Field(..., ge=100, le=1500, description="Máxima tensão CC (V)")
+    quantity: int = Field(..., ge=1, le=10, description="Quantidade de unidades")
+    
+    # Dados opcionais para cálculos avançados
+    inverter_data: Optional[InverterData] = Field(None, description="Dados completos do inversor")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "id": "sel_inv_001",
+                "inverter_id": "inv_001",
+                "fabricante": "WEG",
+                "modelo": "SIW500H-M",
+                "potencia_saida_ca_w": 5000,
+                "numero_mppt": 2,
+                "strings_por_mppt": 2,
+                "tensao_cc_max_v": 600,
+                "quantity": 2
+            }
+        }
+
+class AguaTelhadoData(BaseModel):
+    """Dados de uma água de telhado (seção de telhado)"""
+    
+    id: str = Field(..., description="ID único da água de telhado")
+    nome: str = Field(..., description="Nome da água de telhado")
+    orientacao: float = Field(
+        ..., 
+        ge=0, 
+        le=360, 
+        description="Orientação em graus (0° = Norte, 180° = Sul)"
+    )
+    inclinacao: float = Field(
+        ..., 
+        ge=0, 
+        le=90, 
+        description="Inclinação em graus (0° = horizontal, 90° = vertical)"
+    )
+    numero_modulos: int = Field(
+        ..., 
+        ge=1, 
+        le=100, 
+        description="Número de módulos nesta água"
+    )
+    area_disponivel: Optional[float] = Field(
+        None, 
+        ge=1, 
+        le=1000, 
+        description="Área disponível em m²"
+    )
+    sombreamento_parcial: Optional[float] = Field(
+        default=0, 
+        ge=0, 
+        le=100, 
+        description="Percentual de sombreamento (%)"
+    )
+    
+    # Associação MPPT
+    inversor_id: Optional[str] = Field(None, description="ID do inversor associado")
+    mppt_numero: Optional[int] = Field(None, ge=1, le=12, description="Número do MPPT associado")
+    
+    @validator('orientacao')
+    def normalize_orientacao(cls, v):
+        """Normaliza orientação para range 0-360"""
+        return float(v % 360)
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "id": "agua_001",
+                "nome": "Água Principal",
+                "orientacao": 180,
+                "inclinacao": 20,
+                "numero_modulos": 10,
+                "area_disponivel": 25,
+                "sombreamento_parcial": 0,
+                "inversor_id": "sel_inv_001_unit1",
+                "mppt_numero": 1
+            }
+        }
+
+class MultiInverterCalculationRequest(IrradiationAnalysisRequest):
+    """Requisição para cálculo de sistema com múltiplos inversores"""
+    
+    # Dados do sistema
+    consumo_anual_kwh: float = Field(
+        ...,
+        ge=settings.MIN_CONSUMPTION,
+        le=settings.MAX_CONSUMPTION,
+        description="Consumo anual de energia em kWh",
+        example=4800
+    )
+    
+    # Dados do módulo solar (único para todo o sistema)
+    modulo: SolarModuleData = Field(..., description="Dados do módulo solar")
+    
+    # Múltiplos inversores selecionados
+    inversores_selecionados: List[SelectedInverterData] = Field(
+        ..., 
+        min_items=1,
+        max_items=10,
+        description="Lista de inversores selecionados"
+    )
+    
+    # Múltiplas águas de telhado
+    aguas_telhado: List[AguaTelhadoData] = Field(
+        ..., 
+        min_items=1,
+        max_items=50,
+        description="Lista de águas de telhado"
+    )
+    
+    # Parâmetros do sistema
+    perdas_sistema: Optional[float] = Field(
+        default=14.0, 
+        ge=0, 
+        le=30, 
+        description="Perdas totais do sistema (%)"
+    )
+    fator_seguranca: Optional[float] = Field(
+        default=1.1, 
+        ge=1.0, 
+        le=1.5, 
+        description="Fator de segurança para dimensionamento"
+    )
+    
+    @validator('aguas_telhado')
+    def validate_aguas_mppt_assignment(cls, v, values):
+        """Valida se todas as águas têm MPPT associado sem conflitos"""
+        if 'inversores_selecionados' not in values:
+            return v
+            
+        # Verificar se todas as águas têm MPPT associado
+        for agua in v:
+            if not agua.inversor_id or agua.mppt_numero is None:
+                raise ValueError(f"Água '{agua.nome}' deve ter um MPPT associado")
+        
+        # Verificar duplicação de MPPTs
+        mppt_assignments = set()
+        for agua in v:
+            mppt_key = f"{agua.inversor_id}_mppt{agua.mppt_numero}"
+            if mppt_key in mppt_assignments:
+                raise ValueError(f"MPPT {mppt_key} já está sendo usado por outra água")
+            mppt_assignments.add(mppt_key)
+        
+        return v
+    
+    @validator('consumo_anual_kwh')
+    def round_consumption(cls, v):
+        """Arredonda consumo para 1 casa decimal"""
+        return round(float(v), 1)
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "lat": -15.7942,
+                "lon": -47.8822,
+                "tilt": 20,
+                "azimuth": 180,
+                "modelo_decomposicao": "erbs",
+                "consumo_anual_kwh": 4800,
+                "modulo": {
+                    "fabricante": "Canadian Solar",
+                    "modelo": "CS3W-540MS",
+                    "potencia_nominal_w": 540,
+                    "eficiencia": 20.9,
+                    "temp_coef_pmax": -0.37
+                },
+                "inversores_selecionados": [
+                    {
+                        "id": "sel_inv_001",
+                        "inverter_id": "inv_001",
+                        "fabricante": "WEG",
+                        "modelo": "SIW500H-M",
+                        "potencia_saida_ca_w": 5000,
+                        "numero_mppt": 2,
+                        "strings_por_mppt": 2,
+                        "tensao_cc_max_v": 600,
+                        "quantity": 2
+                    }
+                ],
+                "aguas_telhado": [
+                    {
+                        "id": "agua_001",
+                        "nome": "Água Principal",
+                        "orientacao": 180,
+                        "inclinacao": 20,
+                        "numero_modulos": 10,
+                        "area_disponivel": 25,
+                        "sombreamento_parcial": 0,
+                        "inversor_id": "sel_inv_001_unit1",
+                        "mppt_numero": 1
+                    }
+                ],
                 "perdas_sistema": 14.0,
                 "fator_seguranca": 1.1
             }

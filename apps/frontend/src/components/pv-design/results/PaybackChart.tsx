@@ -4,25 +4,33 @@ import { useTheme, getChartColors } from '@/hooks/use-theme';
 
 interface PaybackChartProps {
   results: {
-    fluxoCaixa: Array<{
+    cash_flow: Array<{
       ano: number;
-      fluxoLiquido: number;
+      fluxo_liquido: number;
+      fluxo_acumulado: number;
+      economia_energia: number;
+      custos_om: number;
+      valor_presente: number;
+      geracao_anual: number;
     }>;
   };
 }
 
 export const PaybackChart: React.FC<PaybackChartProps> = ({ results }) => {
-  const { fluxoCaixa } = results;
+  const { cash_flow: fluxoCaixa } = results;
   const { isDark } = useTheme();
   const colors = getChartColors(isDark);
 
-  const chartData = fluxoCaixa
+  const chartData = (fluxoCaixa || [])
     .filter(item => item.ano >= 1) // Começar do ano 1
     .map((item, index) => ({
       ...item,
-      fluxoAcumulado: fluxoCaixa
-        .filter(f => f.ano >= 1 && f.ano <= item.ano)
-        .reduce((acc, curr) => acc + curr.fluxoLiquido, 0)
+      // Usar o fluxo_acumulado da API se existir, senão calcular manualmente
+      fluxo_acumulado: item.fluxo_acumulado !== undefined ? 
+        item.fluxo_acumulado : 
+        (fluxoCaixa || [])
+          .filter(f => f.ano >= 1 && f.ano <= item.ano)
+          .reduce((acc, curr) => acc + curr.fluxo_liquido, 0)
     }));
 
   return (
@@ -66,11 +74,11 @@ export const PaybackChart: React.FC<PaybackChartProps> = ({ results }) => {
           />
           <Legend wrapperStyle={{ color: colors.legend }} />
           <ReferenceLine y={0} stroke={isDark ? "#64748b" : "#9ca3af"} strokeDasharray="3 3" />
-          <Bar dataKey="fluxoAcumulado" name="Fluxo de Caixa Acumulado">
+          <Bar dataKey="fluxo_acumulado" name="Fluxo de Caixa Acumulado">
             {chartData.map((entry, index) => (
               <Cell 
                 key={`cell-${index}`} 
-                fill={entry.fluxoAcumulado >= 0 
+                fill={entry.fluxo_acumulado >= 0 
                   ? (isDark ? '#22c55e' : '#16a34a') 
                   : (isDark ? '#ef4444' : '#dc2626')
                 } 

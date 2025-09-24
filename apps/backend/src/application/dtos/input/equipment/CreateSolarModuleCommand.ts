@@ -21,4 +21,25 @@ export interface CreateSolarModuleCommand {
   certificacoes?: string[];
   garantiaAnos?: number;
   tolerancia?: string;
+  
+  // Parâmetros para modelo espectral
+  material?: string;
+  technology?: string;
+  
+  // Parâmetros do modelo de diodo único
+  aRef?: number;
+  iLRef?: number;
+  iORef?: number;
+  rS?: number;
+  rShRef?: number;
+  
+  // Coeficientes de temperatura críticos
+  alphaSc?: number;
+  betaOc?: number;
+  gammaR?: number;
+  
+  // Parâmetros SAPM térmicos
+  a0?: number; a1?: number; a2?: number; a3?: number; a4?: number;
+  b0?: number; b1?: number; b2?: number; b3?: number; b4?: number; b5?: number;
+  dtc?: number;
 }

@@ -3,16 +3,18 @@ import toast from 'react-hot-toast';
 import axios from 'axios';
 import { calculateSystemEfficiency, SystemLosses } from '@/lib/pvDimensioning';
 
-// FUNCIONALIDADE DE MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
-// export interface AguaTelhado {
-//   id: string;
-//   nome: string;
-//   orientacao: number; // 0-360° (0=Norte, 90=Leste, 180=Sul, 270=Oeste)
-//   inclinacao: number; // 0-90°
-//   areaDisponivel?: number; // m²
-//   numeroModulos: number;
-//   sombreamentoParcial: number; // % específico desta área
-// }
+export interface AguaTelhado {
+  id: string;
+  nome: string;
+  orientacao: number; // 0-360° (0=Norte, 90=Leste, 180=Sul, 270=Oeste)
+  inclinacao: number; // 0-90° (0=Horizontal, 90=Vertical)
+  numeroModulos: number;
+  areaDisponivel: number; // m²
+  sombreamentoParcial: number; // %
+  // Associação com MPPT específico
+  inversorId?: string; // Qual inversor será usado nesta água
+  mpptNumero?: number; // Qual MPPT deste inversor (1, 2, 3, 4...)
+}
 
 // Função utilitária para converter dados do contexto para SystemLosses
 const convertToSystemLosses = (data: DimensioningData): SystemLosses => ({
@@ -45,10 +47,16 @@ export interface EnergyBill {
   consumoMensal: number[];
 }
 
-export interface Inverter {
-  id: string;
-  selectedInverterId: string;
-  quantity: number;
+export interface SelectedInverter {
+  id: string; // ID único para esta seleção
+  inverterId: string; // ID do inversor do equipamento
+  fabricante: string;
+  modelo: string;
+  potenciaSaidaCA: number;
+  numeroMppt: number;
+  stringsPorMppt: number;
+  tensaoCcMax: number;
+  quantity: number; // Quantidade deste inversor
 }
 
 export interface CableSizing {
@@ -90,10 +98,13 @@ interface DimensioningData {
   
   // Sistema fotovoltaico
   potenciaModulo: number;
-  numeroModulos: number;
+  numeroModulos: number; // calculado automaticamente (deprecated, use numeroModulosCalculado)
+  numeroModulosUsuario?: number; // definido pelo usuário
+  isModuleCountManual?: boolean; // flag indicando se o número foi definido manualmente
+  numeroModulosCalculado?: number; // resultado do cálculo automático
   eficienciaSistema: number; // deprecated, use systemLosses
-  // MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
-  // aguasTelhado: AguaTelhado[];
+  // Múltiplas águas de telhado
+  aguasTelhado: AguaTelhado[];
   // Perdas específicas do sistema
   perdaSombreamento?: number;
   perdaMismatch?: number;
@@ -114,9 +125,12 @@ interface DimensioningData {
   latitude?: number;
   longitude?: number;
   
-  // Inversores
-  inverters: Inverter[];
+  // Inversores - Sistema Multi-Inversor
+  selectedInverters: SelectedInverter[];
   totalInverterPower: number;
+  totalMpptChannels: number; // Total de canais MPPT disponíveis
+  
+  // Campos legados (manter compatibilidade)
   inversorSelecionado?: string;
   potenciaInversor?: number;
   eficienciaInversor?: number;
@@ -181,6 +195,7 @@ interface DimensioningContextType {
   clearDimensioning: () => void;
   saveDimensioning: () => Promise<void>;
   createNewDimensioning: (customerId: string, customerData: Customer) => void;
+  forceCleanStart: () => void; // Nova função para forçar limpeza completa
   
   // State
   isSaving: boolean;
@@ -190,20 +205,20 @@ const DimensioningContext = createContext<DimensioningContextType | undefined>(u
 
 const getInitialDimensioningData = (): DimensioningData => ({
   dimensioningName: '',
-  irradiacaoMensal: Array(12).fill(4.5),
+  irradiacaoMensal: [], // deve ser preenchido via PVGIS
   potenciaModulo: 550,
   numeroModulos: 0,
   eficienciaSistema: 85, // deprecated
-  // ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
-  // aguasTelhado: [{
-  //   id: 'agua_principal',
-  //   nome: 'Água Principal',
-  //   orientacao: 180, // Sul
-  //   inclinacao: 23, // Ângulo ótimo para Brasil
-  //   numeroModulos: 20,
-  //   sombreamentoParcial: 0,
-  //   areaDisponivel: 50
-  // }],
+  // Águas de telhado com configuração padrão
+  aguasTelhado: [{
+    id: 'agua_principal',
+    nome: 'Água Principal',
+    orientacao: 0,
+    inclinacao: 0,
+    numeroModulos: 0,
+    areaDisponivel: 50,
+    sombreamentoParcial: 0
+  }],
   // Perdas padrão específicas
   perdaSombreamento: 3,
   perdaMismatch: 2,
@@ -220,25 +235,23 @@ const getInitialDimensioningData = (): DimensioningData => ({
   dimensionamentoPercentual: 100,
   vidaUtil: 25,
   degradacaoAnual: 0.5,
-  orientacao: 180, // Norte geográfico (padrão ótimo para Brasil)
-  inclinacao: 23,  // Ângulo ótimo para latitude média do Brasil
+  orientacao: 0, // Horizontal (0° orientação - padrão PVGIS)
+  inclinacao: 0,  // Horizontal (0° inclinação - padrão PVGIS)
   
-  // Localização padrão (São Paulo) para habilitar PVLIB
-  latitude: -23.5505,
-  longitude: -46.6333,
+  // Localização - deve ser definida pelo usuário (sem padrão)
+  latitude: undefined,
+  longitude: undefined,
   
-  // Dados do inversor
+  // Sistema Multi-Inversor
+  selectedInverters: [],
+  totalInverterPower: 0,
+  totalMpptChannels: 0,
+  
+  // Dados do inversor (legado)
   inversorSelecionado: '',
   potenciaInversor: 0,
   eficienciaInversor: 0,
   canaisMppt: 2,
-  
-  inverters: [{
-    id: crypto.randomUUID(),
-    selectedInverterId: '',
-    quantity: 1
-  }],
-  totalInverterPower: 0,
   
   energyBills: [{
     id: crypto.randomUUID(),
@@ -277,21 +290,31 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
   const [currentDimensioning, setCurrentDimensioning] = useState<DimensioningData>(() => {
     // Verificar se deve continuar um dimensionamento existente
     const shouldContinue = sessionStorage.getItem('continueDimensioning');
+    const savedData = localStorage.getItem('currentDimensioning');
     
-    if (shouldContinue === 'true') {
-      const saved = localStorage.getItem('currentDimensioning');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          console.log('📂 Carregando dimensionamento salvo do localStorage');
-          return { ...getInitialDimensioningData(), ...parsed };
-        } catch (e) {
-          console.warn('Error parsing saved dimensioning data:', e);
-        }
+    console.log('🔍 [INIT] Estado inicial do storage:', {
+      shouldContinue,
+      hasSavedData: !!savedData,
+      url: window.location.href
+    });
+    
+    if (shouldContinue === 'true' && savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        console.log('📂 [INIT] Carregando dimensionamento salvo:', {
+          hasLatLng: !!(parsed.latitude && parsed.longitude),
+          hasIrradiation: parsed.irradiacaoMensal?.length > 0,
+          latitude: parsed.latitude,
+          longitude: parsed.longitude,
+          irradiationLength: parsed.irradiacaoMensal?.length
+        });
+        return { ...getInitialDimensioningData(), ...parsed };
+      } catch (e) {
+        console.warn('Error parsing saved dimensioning data:', e);
       }
     }
     
-    console.log('✨ Iniciando novo dimensionamento limpo');
+    console.log('✨ [INIT] Iniciando novo dimensionamento limpo');
     return getInitialDimensioningData();
   });
   
@@ -342,27 +365,24 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
       ...getInitialDimensioningData(), // Start with defaults
       ...data, // Override with loaded data
       // Ensure arrays are properly initialized
-      irradiacaoMensal: data.irradiacaoMensal || Array(12).fill(4.5),
-      inverters: data.inverters || [{
-        id: crypto.randomUUID(),
-        selectedInverterId: '',
-        quantity: 1
-      }],
+      irradiacaoMensal: data.irradiacaoMensal || [],
+      selectedInverters: data.selectedInverters || [],
+      totalInverterPower: data.totalInverterPower || 0,
+      totalMpptChannels: data.totalMpptChannels || 0,
       energyBills: data.energyBills || [{
         id: crypto.randomUUID(),
         name: 'Conta Principal',
         consumoMensal: Array(12).fill(500)
       }],
-      // ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
-      // aguasTelhado: data.aguasTelhado || [{
-      //   id: 'agua_principal',
-      //   nome: 'Água Principal',
-      //   orientacao: 180,
-      //   inclinacao: 23,
-      //   numeroModulos: 20,
-      //   sombreamentoParcial: 0,
-      //   areaDisponivel: 50
-      // }]
+      aguasTelhado: data.aguasTelhado || [{
+        id: 'agua_principal',
+        nome: 'Água Principal',
+        orientacao: 180,
+        inclinacao: 23,
+        numeroModulos: 20,
+        sombreamentoParcial: 0,
+        areaDisponivel: 50
+      }]
     };
     
     setCurrentDimensioning(loadedData);
@@ -518,18 +538,44 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
         errorMessage = "Sessão expirada. Faça login novamente.";
       } else if (error.response?.status === 400) {
         errorMessage = error.response.data?.message || "Dados inválidos. Verifique os campos.";
+      } else if (error.response?.status === 429) {
+        errorMessage = "Muitas requisições. Aguarde um momento e tente novamente.";
       } else if (error.response?.status === 500) {
         errorMessage = "Erro interno do servidor. Tente novamente.";
+      } else if (error.code === 'NETWORK_ERROR' || !error.response) {
+        errorMessage = "Erro de conexão. Verifique sua internet e tente novamente.";
       }
       
       toast.error(`Erro ao salvar: ${errorMessage}`, {
         duration: 5000,
         position: 'top-right',
       });
+      
+      // Re-lançar o erro para que o wizard possa capturar e bloquear navegação
+      throw error;
     } finally {
       setIsSaving(false);
     }
   }, [currentDimensioning, dimensioningId]);
+
+  // Função para forçar limpeza completa - útil para debug e reset
+  const forceCleanStart = useCallback(() => {
+    console.log('🧹 [FORCE CLEAN] Forçando limpeza completa de todos os dados...');
+    
+    // Limpar todos os storages
+    sessionStorage.removeItem('continueDimensioning');
+    localStorage.removeItem('currentDimensioning');
+    localStorage.removeItem('isDimensioningLoaded');
+    localStorage.removeItem('dimensioningId');
+    
+    // Resetar state para dados iniciais limpos
+    const cleanData = getInitialDimensioningData();
+    setCurrentDimensioning(cleanData);
+    setIsDimensioningLoaded(false);
+    setDimensioningId(null);
+    
+    console.log('✨ [FORCE CLEAN] Limpeza completa realizada - estado zerado');
+  }, []);
 
   const contextValue: DimensioningContextType = {
     currentDimensioning,
@@ -541,6 +587,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     clearDimensioning,
     saveDimensioning,
     createNewDimensioning,
+    forceCleanStart,
     
     isSaving
   };

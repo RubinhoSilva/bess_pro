@@ -84,9 +84,13 @@ const FinancialMetricCard: React.FC<{
 };
 
 const CashFlowChart: React.FC<{ cashFlow: any[] }> = ({ cashFlow }) => {
-  const maxValue = Math.max(...cashFlow.map(cf => Math.max(cf.fluxoLiquido, cf.fluxoAcumulado)));
-  const minValue = Math.min(...cashFlow.map(cf => Math.min(cf.fluxoLiquido, cf.fluxoAcumulado)));
-  const range = maxValue - minValue;
+  if (!cashFlow || cashFlow.length === 0) {
+    return <div>Dados de fluxo de caixa não disponíveis</div>;
+  }
+  
+  const maxValue = Math.max(...cashFlow.map(cf => Math.max(cf.fluxo_liquido || 0, cf.fluxo_acumulado || 0)));
+  const minValue = Math.min(...cashFlow.map(cf => Math.min(cf.fluxo_liquido || 0, cf.fluxo_acumulado || 0)));
+  const range = maxValue - minValue || 1;
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
@@ -115,7 +119,7 @@ const CashFlowChart: React.FC<{ cashFlow: any[] }> = ({ cashFlow }) => {
             stroke="url(#gradientBlue)"
             strokeWidth="3"
             points={cashFlow.map((cf, index) => 
-              `${(index / (cashFlow.length - 1)) * 800},${200 - ((cf.fluxoLiquido - minValue) / range) * 200}`
+              `${(index / (cashFlow.length - 1)) * 800},${200 - (((cf.fluxo_liquido || 0) - minValue) / range) * 200}`
             ).join(' ')}
           />
           
@@ -124,7 +128,7 @@ const CashFlowChart: React.FC<{ cashFlow: any[] }> = ({ cashFlow }) => {
             stroke="url(#gradientGreen)"
             strokeWidth="3"
             points={cashFlow.map((cf, index) => 
-              `${(index / (cashFlow.length - 1)) * 800},${200 - ((cf.fluxoAcumulado - minValue) / range) * 200}`
+              `${(index / (cashFlow.length - 1)) * 800},${200 - (((cf.fluxo_acumulado || 0) - minValue) / range) * 200}`
             ).join(' ')}
           />
           
@@ -333,20 +337,20 @@ export const AdvancedFinancialAnalysis: React.FC<AdvancedFinancialAnalysisProps>
         
         <FinancialMetricCard
           title="Payback Simples"
-          value={`${formatNumber(advancedFinancial.paybackSimples, 1)} anos`}
+          value={`${formatNumber(advancedFinancial.payback_simples, 1)} anos`}
           subtitle="Tempo para recuperar o investimento"
           icon={<Calendar className="w-6 h-6" />}
           color="from-purple-500 to-violet-600"
-          trend={getTrendForMetric(advancedFinancial.paybackSimples, 'payback')}
+          trend={getTrendForMetric(advancedFinancial.payback_simples, 'payback')}
         />
         
         <FinancialMetricCard
           title="Índice de Lucratividade"
-          value={formatNumber(advancedFinancial.lucratividadeIndex, 2)}
-          subtitle={advancedFinancial.lucratividadeIndex > 1 ? "Projeto lucrativo" : "Projeto não lucrativo"}
+          value={formatNumber(advancedFinancial.lucratividade_index, 2)}
+          subtitle={advancedFinancial.lucratividade_index > 1 ? "Projeto lucrativo" : "Projeto não lucrativo"}
           icon={<BarChart3 className="w-6 h-6" />}
           color="from-orange-500 to-amber-600"
-          trend={advancedFinancial.lucratividadeIndex > 1 ? 'up' : 'down'}
+          trend={advancedFinancial.lucratividade_index > 1 ? 'up' : 'down'}
         />
       </div>
 
@@ -354,7 +358,7 @@ export const AdvancedFinancialAnalysis: React.FC<AdvancedFinancialAnalysisProps>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <FinancialMetricCard
           title="Economia Total (25 anos)"
-          value={formatCurrency(advancedFinancial.economiaTotal25Anos)}
+          value={formatCurrency(advancedFinancial.economia_total_25_anos)}
           subtitle="Economia total projetada"
           icon={<DollarSign className="w-6 h-6" />}
           color="from-cyan-500 to-blue-600"
@@ -363,7 +367,7 @@ export const AdvancedFinancialAnalysis: React.FC<AdvancedFinancialAnalysisProps>
         
         <FinancialMetricCard
           title="LCOE"
-          value={`${formatCurrency(advancedFinancial.indicadores.custoNiveladoEnergia)}/kWh`}
+          value={`${formatCurrency(advancedFinancial.indicadores?.custo_nivelado_energia || 0)}/kWh`}
           subtitle="Custo nivelado da energia"
           icon={<Activity className="w-6 h-6" />}
           color="from-teal-500 to-green-600"
@@ -372,20 +376,20 @@ export const AdvancedFinancialAnalysis: React.FC<AdvancedFinancialAnalysisProps>
         
         <FinancialMetricCard
           title="ROI"
-          value={formatPercentage(advancedFinancial.indicadores.retornoSobreInvestimento)}
+          value={formatPercentage(advancedFinancial.indicadores?.retorno_sobre_investimento || 0)}
           subtitle="Retorno sobre o investimento"
           icon={<LineChart className="w-6 h-6" />}
           color="from-pink-500 to-rose-600"
-          trend={getTrendForMetric(advancedFinancial.indicadores.retornoSobreInvestimento, 'roi')}
+          trend={getTrendForMetric(advancedFinancial.indicadores?.retorno_sobre_investimento || 0, 'roi')}
         />
         
         <FinancialMetricCard
           title="Payback Descontado"
-          value={`${formatNumber(advancedFinancial.paybackDescontado, 1)} anos`}
+          value={`${formatNumber(advancedFinancial.payback_descontado, 1)} anos`}
           subtitle="Considerando valor presente"
           icon={<PieChart className="w-6 h-6" />}
           color="from-indigo-500 to-purple-600"
-          trend={getTrendForMetric(advancedFinancial.paybackDescontado, 'payback')}
+          trend={getTrendForMetric(advancedFinancial.payback_descontado, 'payback')}
         />
       </div>
 
@@ -420,7 +424,7 @@ export const AdvancedFinancialAnalysis: React.FC<AdvancedFinancialAnalysisProps>
       {/* Tab Content */}
       <div className="mt-8">
         {activeTab === 'cashflow' && (
-          <CashFlowChart cashFlow={advancedFinancial.cashFlow} />
+          <CashFlowChart cashFlow={advancedFinancial.cash_flow || []} />
         )}
         
         {activeTab === 'sensitivity' && (
@@ -433,7 +437,7 @@ export const AdvancedFinancialAnalysis: React.FC<AdvancedFinancialAnalysisProps>
         
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <CashFlowChart cashFlow={advancedFinancial.cashFlow.slice(0, 10)} />
+            <CashFlowChart cashFlow={(advancedFinancial.cash_flow || []).slice(0, 10)} />
             <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Indicadores Financeiros Principais
@@ -442,19 +446,19 @@ export const AdvancedFinancialAnalysis: React.FC<AdvancedFinancialAnalysisProps>
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-slate-300">Investimento Inicial:</span>
                   <span className="font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(advancedFinancial.cashFlow[0]?.valorPresente * -1 || 0)}
+                    {formatCurrency((advancedFinancial.cash_flow || [])[0]?.valor_presente * -1 || 0)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-slate-300">Economia Anual Média:</span>
                   <span className="font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(advancedFinancial.economiaAnualMedia)}
+                    {formatCurrency(advancedFinancial.economia_anual_media)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-slate-300">Eficiência do Investimento:</span>
                   <span className="font-medium text-gray-900 dark:text-white">
-                    {formatPercentage(advancedFinancial.indicadores.eficienciaInvestimento)}
+                    {formatPercentage(advancedFinancial.indicadores?.eficiencia_investimento || 0)}
                   </span>
                 </div>
                 <hr className="border-gray-200 dark:border-slate-700" />

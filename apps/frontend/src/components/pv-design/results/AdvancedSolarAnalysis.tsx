@@ -151,7 +151,7 @@ export const AdvancedSolarAnalysis: React.FC<AdvancedSolarAnalysisProps> = ({ re
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <MetricCard
           title="Performance Ratio (PR)"
-          value={formatPercentage(performance.prMedio * 100)}
+          value={formatPercentage(performance.prMedio)}
           subtitle="Razão entre energia real e teórica"
           icon={<Sun className="w-6 h-6" />}
           color="from-orange-500 to-yellow-500"
@@ -173,7 +173,7 @@ export const AdvancedSolarAnalysis: React.FC<AdvancedSolarAnalysisProps> = ({ re
       </div>
 
       {/* Generation Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <MetricCard
           title="Geração Anual Total"
           value={`${formatNumber(geracaoEstimada.anual)} kWh`}
@@ -188,35 +188,8 @@ export const AdvancedSolarAnalysis: React.FC<AdvancedSolarAnalysisProps> = ({ re
           icon={<CloudRain className="w-6 h-6" />}
           color="from-blue-400 to-cyan-500"
         />
-        <MetricCard
-          title="Perdas Totais Médias"
-          value={formatPercentage(perdas.total.reduce((a, b) => a + b, 0) / 12)}
-          subtitle="Perdas médias mensais do sistema"
-          icon={<TrendingDown className="w-6 h-6" />}
-          color="from-red-500 to-pink-500"
-        />
       </div>
 
-      {/* Detailed Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="relative">
-          <MonthlyChart
-            data={advancedSolar.irradiacaoInclinada}
-            label="Irradiação Corrigida por Inclinação"
-            color="bg-gradient-to-r from-yellow-400 to-orange-500"
-            suffix=" kWh/m²"
-          />
-          {results.advancedSolar && (
-            <div className="absolute top-2 right-2">
-              <div className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded-full border border-green-200 dark:border-green-700/50">
-                PVLIB
-              </div>
-            </div>
-          )}
-        </div>
-        
-        <LossesBreakdown perdas={perdas} />
-      </div>
 
       {/* Monthly Generation vs Irradiation */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">

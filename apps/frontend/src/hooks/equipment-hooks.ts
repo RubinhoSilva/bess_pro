@@ -189,7 +189,7 @@ const solarModuleApi = {
     });
     
     const response = await api.get(`/solar-modules?${params.toString()}`);
-    return response.data.data; // API returns { success: true, data: {...} }
+    return response.data.data.modules || []; // API returns { success: true, data: { modules: [...] } }
   },
 
   async createModule(data: SolarModuleInput) {
@@ -217,7 +217,7 @@ const inverterApi = {
     });
     
     const response = await api.get(`/inverters?${params.toString()}`);
-    return response.data.data; // API returns { success: true, data: {...} }
+    return response.data.data.inverters || []; // API returns { success: true, data: { inverters: [...] } }
   },
 
   async createInverter(data: InverterInput) {

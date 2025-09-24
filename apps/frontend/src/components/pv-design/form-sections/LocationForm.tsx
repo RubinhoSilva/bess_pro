@@ -14,11 +14,16 @@ const LocationForm: React.FC<LocationFormProps> = ({ formData, onFormChange }) =
     latitude: number;
     longitude: number;
     cidade: string;
+    pvgisResponseData?: any;
   }) => {
     onFormChange('irradiacaoMensal', data.irradiacaoMensal);
     onFormChange('latitude', data.latitude);
     onFormChange('longitude', data.longitude);
     onFormChange('cidade', data.cidade);
+    // Salvar dados completos da resposta PVGIS para restauração
+    if (data.pvgisResponseData) {
+      onFormChange('pvgisResponseData', data.pvgisResponseData);
+    }
   };
 
   return (
@@ -33,7 +38,6 @@ const LocationForm: React.FC<LocationFormProps> = ({ formData, onFormChange }) =
         <PVGISIntegration 
           onDataReceived={handlePVGISData}
           formData={formData}
-          onFormChange={onFormChange}
         />
       </CardContent>
     </Card>

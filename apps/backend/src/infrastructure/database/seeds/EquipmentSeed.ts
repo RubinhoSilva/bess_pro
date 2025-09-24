@@ -24,7 +24,28 @@ export class EquipmentSeed {
       pesoKg: 27.5,
       certificacoes: ['IEC 61215', 'IEC 61730', 'UL 1703', 'CEC'],
       garantiaAnos: 25,
-      tolerancia: '+5/-0%'
+      tolerancia: '+5/-0%',
+      
+      // Parâmetros para modelo espectral
+      material: 'c-Si',
+      technology: 'mono-Si',
+      
+      // Parâmetros do modelo de diodo único
+      aRef: 1.8,
+      iLRef: 13.91,
+      iORef: 3.712e-12,
+      rS: 0.348,
+      rShRef: 381.68,
+      
+      // Coeficientes de temperatura críticos
+      alphaSc: 0.0004,
+      betaOc: -0.0028,
+      gammaR: -0.0044,
+      
+      // Parâmetros SAPM térmicos
+      a0: -3.56, a1: -0.075, a2: 0.0, a3: 0.0, a4: 0.0,
+      b0: 0.0, b1: 0.0, b2: 0.0, b3: 0.0, b4: 0.0, b5: 0.0,
+      dtc: 3.0
     },
     {
       fabricante: 'Canadian Solar',
@@ -46,7 +67,28 @@ export class EquipmentSeed {
       pesoKg: 27.2,
       certificacoes: ['IEC 61215', 'IEC 61730', 'UL 1703', 'CEC'],
       garantiaAnos: 25,
-      tolerancia: '+5/-0%'
+      tolerancia: '+5/-0%',
+      
+      // Parâmetros para modelo espectral
+      material: 'c-Si',
+      technology: 'mono-Si',
+      
+      // Parâmetros do modelo de diodo único
+      aRef: 1.75,
+      iLRef: 13.8,
+      iORef: 3.5e-12,
+      rS: 0.35,
+      rShRef: 400.0,
+      
+      // Coeficientes de temperatura críticos
+      alphaSc: 0.00038,
+      betaOc: -0.0027,
+      gammaR: -0.0042,
+      
+      // Parâmetros SAPM térmicos
+      a0: -3.47, a1: -0.0725, a2: 0.0, a3: 0.0, a4: 0.0,
+      b0: 0.0, b1: 0.0, b2: 0.0, b3: 0.0, b4: 0.0, b5: 0.0,
+      dtc: 3.0
     },
     {
       fabricante: 'Trina Solar',
@@ -168,7 +210,16 @@ export class EquipmentSeed {
       pesoKg: 22.0,
       temperaturaOperacao: '-25°C a +60°C',
       garantiaAnos: 5,
-      tipoFase: 'monofásico' as const
+      tipoFase: 'monofásico' as const,
+      
+      // Parâmetros Sandia para simulação precisa
+      vdco: 480,
+      pso: 25,
+      c0: -0.000008,
+      c1: -0.000120,
+      c2: 0.001400,
+      c3: -0.020000,
+      pnt: 0.02
     },
     {
       fabricante: 'SMA',
@@ -199,7 +250,16 @@ export class EquipmentSeed {
       pesoKg: 24.5,
       temperaturaOperacao: '-25°C a +60°C',
       garantiaAnos: 5,
-      tipoFase: 'monofásico' as const
+      tipoFase: 'monofásico' as const,
+      
+      // Parâmetros Sandia para simulação precisa
+      vdco: 500,
+      pso: 30,
+      c0: -0.000010,
+      c1: -0.000100,
+      c2: 0.001350,
+      c3: -0.018000,
+      pnt: 0.025
     },
     {
       fabricante: 'ABB',

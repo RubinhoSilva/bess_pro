@@ -43,6 +43,15 @@ export interface InverterResponseDto {
   datasheetUrl?: string;
   precoReferencia?: number;
   
+  // Parâmetros Sandia para simulação precisa
+  vdco?: number;
+  pso?: number;
+  c0?: number;
+  c1?: number;
+  c2?: number;
+  c3?: number;
+  pnt?: number;
+  
   // Campos calculados
   maxModulosSuportados?: number; // Baseado na potência FV máxima
   maxStringsTotal?: number; // Total de strings suportadas

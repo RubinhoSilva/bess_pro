@@ -34,7 +34,6 @@ import { PaymentGatewayService } from '../external-apis/PaymentGatewayService';
 // Domain Services
 import { ProjectDomainService } from '../../domain/services/ProjectDomainService';
 import { SolarCalculationService } from '../../domain/services/SolarCalculationService';
-import { FinancialAnalysisService } from '../../domain/services/FinancialAnalysisService';
 import { UserPermissionService } from '../../domain/services/UserPermissionService';
 import { LocationService } from '../../domain/services/LocationService';
 import { Model3DValidationService } from '../../domain/services/Model3DValidationService';
@@ -251,7 +250,6 @@ export class ContainerSetup {
     // Domain Services (Singletons)
     container.register('ProjectDomainService', ProjectDomainService, true);
     container.register('SolarCalculationService', SolarCalculationService, true);
-    container.register('FinancialAnalysisService', FinancialAnalysisService, true);
     container.register('UserPermissionService', UserPermissionService, true);
     container.register('LocationService', LocationService, true);
     container.register('Model3DValidationService', Model3DValidationService, true);

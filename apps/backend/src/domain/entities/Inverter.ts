@@ -47,6 +47,15 @@ export interface InverterData extends SoftDeleteProps {
   datasheetUrl?: string;
   precoReferencia?: number;
   
+  // Parâmetros Sandia para simulação precisa
+  vdco?: number; // Tensão DC nominal de operação (V)
+  pso?: number; // Potência de standby/consumo próprio (W)
+  c0?: number; // Coeficiente 0 da curva de eficiência
+  c1?: number; // Coeficiente 1 da curva de eficiência
+  c2?: number; // Coeficiente 2 da curva de eficiência
+  c3?: number; // Coeficiente 3 da curva de eficiência
+  pnt?: number; // Potência threshold normalizada (fração de Paco)
+  
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -99,6 +108,13 @@ export class Inverter extends BaseEntity {
   get certificacoes(): string[] | undefined { return this.data.certificacoes; }
   get garantiaAnos(): number | undefined { return this.data.garantiaAnos; }
   get datasheetUrl(): string | undefined { return this.data.datasheetUrl; }
+  get vdco(): number | undefined { return this.data.vdco; }
+  get pso(): number | undefined { return this.data.pso; }
+  get c0(): number | undefined { return this.data.c0; }
+  get c1(): number | undefined { return this.data.c1; }
+  get c2(): number | undefined { return this.data.c2; }
+  get c3(): number | undefined { return this.data.c3; }
+  get pnt(): number | undefined { return this.data.pnt; }
   get createdAt(): Date | undefined { return this.data.createdAt; }
   get updatedAt(): Date | undefined { return this.data.updatedAt; }
 

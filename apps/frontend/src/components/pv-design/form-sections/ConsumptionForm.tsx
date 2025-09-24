@@ -192,7 +192,17 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
         {totalAnualConsumption > 0 && (
           <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-700">
             <h4 className="font-semibold text-green-800 dark:text-green-200 mb-3">Resumo Total do Consumo</h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="text-center">
+                <div className="text-green-600 dark:text-green-400 font-medium">Total Anual</div>
+                <div className="text-xl font-bold text-green-800 dark:text-green-200">{totalAnualConsumption.toLocaleString('pt-BR')}</div>
+                <div className="text-xs text-green-600 dark:text-green-400">kWh/ano</div>
+              </div>
+              <div className="text-center">
+                <div className="text-green-600 dark:text-green-400 font-medium">Média Mensal</div>
+                <div className="text-xl font-bold text-green-800 dark:text-green-200">{(totalAnualConsumption / 12).toFixed(0)}</div>
+                <div className="text-xs text-green-600 dark:text-green-400">kWh/mês</div>
+              </div>
               <div className="text-center">
                 <div className="text-green-600 dark:text-green-400 font-medium">Média Diária</div>
                 <div className="text-xl font-bold text-green-800 dark:text-green-200">{(totalAnualConsumption / 365).toFixed(0)}</div>
@@ -204,6 +214,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
                 <div className="text-xs text-green-600 dark:text-green-400">kWh/mês</div>
               </div>
             </div>
+            
           </div>
         )}
       </CardContent>

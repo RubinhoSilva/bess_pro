@@ -9,7 +9,6 @@ import { useToast } from '../../components/ui/use-toast';
 import { 
   BarChart3, 
   Download, 
-  Calendar,
   Users,
   DollarSign,
   TrendingUp,
@@ -342,9 +341,8 @@ const ReportsPage: React.FC = () => {
 
       {/* Reports Section */}
       <Tabs defaultValue="reports" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-1">
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
-          <TabsTrigger value="scheduled">Agendados</TabsTrigger>
         </TabsList>
 
         <TabsContent value="reports" className="space-y-4">
@@ -475,22 +473,6 @@ const ReportsPage: React.FC = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="scheduled" className="space-y-4">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Calendar className="w-12 h-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Relatórios Agendados
-              </h3>
-              <p className="text-gray-600 text-center max-w-md">
-                Configure relatórios para serem gerados automaticamente em intervalos regulares.
-              </p>
-              <Button className="mt-4">
-                Criar Agendamento
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );

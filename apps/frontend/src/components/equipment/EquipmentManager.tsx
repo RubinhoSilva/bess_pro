@@ -50,14 +50,32 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   const [moduleForm, setModuleForm] = useState<SolarModuleInput>({
     fabricante: '', 
     modelo: '', 
-    potenciaNominal: 0
+    potenciaNominal: 0,
+    eficiencia: 0,
+    vmpp: 0,
+    impp: 0,
+    voc: 0,
+    isc: 0,
+    tipoCelula: '',
+    numeroCelulas: 0,
+    garantiaAnos: 25,
+    larguraMm: 0,
+    alturaMm: 0,
+    espessuraMm: 0,
+    pesoKg: 0,
   });
   
   const [inverterForm, setInverterForm] = useState<InverterInput>({
     fabricante: '',
     modelo: '', 
     potenciaSaidaCA: 0, 
-    tipoRede: ''
+    tipoRede: '',
+    potenciaFvMax: 0,
+    tensaoCcMax: 0,
+    numeroMppt: 0,
+    eficienciaMax: 0,
+    correnteEntradaMax: 0,
+    potenciaAparenteMax: 0,
   });
   
   // API Hooks
@@ -95,7 +113,23 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       
       setIsModuleDialogOpen(false);
       setCurrentModule(null);
-      setModuleForm({ fabricante: '', modelo: '', potenciaNominal: 0 });
+      setModuleForm({ 
+        fabricante: '', 
+        modelo: '', 
+        potenciaNominal: 0,
+        eficiencia: 0,
+        vmpp: 0,
+        impp: 0,
+        voc: 0,
+        isc: 0,
+        tipoCelula: '',
+        numeroCelulas: 0,
+        garantiaAnos: 25,
+        larguraMm: 0,
+        alturaMm: 0,
+        espessuraMm: 0,
+        pesoKg: 0,
+      });
       onUpdate?.();
     } catch (error) {
       // Error handling is done in the hooks with toast
@@ -123,7 +157,18 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       
       setIsInverterDialogOpen(false);
       setCurrentInverter(null);
-      setInverterForm({ fabricante: '', modelo: '', potenciaSaidaCA: 0, tipoRede: '' });
+      setInverterForm({ 
+        fabricante: '', 
+        modelo: '', 
+        potenciaSaidaCA: 0, 
+        tipoRede: '',
+        potenciaFvMax: 0,
+        tensaoCcMax: 0,
+        numeroMppt: 0,
+        eficienciaMax: 0,
+        correnteEntradaMax: 0,
+        potenciaAparenteMax: 0,
+      });
       onUpdate?.();
     } catch (error) {
       const errorMessage = (error as any)?.response?.data?.message || (error as any)?.message || 'Verifique os dados e tente novamente.';
@@ -226,13 +271,40 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
 
   const handleNewModule = () => {
     setCurrentModule(null);
-    setModuleForm({ fabricante: '', modelo: '', potenciaNominal: 0 });
+    setModuleForm({ 
+      fabricante: '', 
+      modelo: '', 
+      potenciaNominal: 0,
+      eficiencia: 0,
+      vmpp: 0,
+      impp: 0,
+      voc: 0,
+      isc: 0,
+      tipoCelula: '',
+      numeroCelulas: 0,
+      garantiaAnos: 25,
+      larguraMm: 0,
+      alturaMm: 0,
+      espessuraMm: 0,
+      pesoKg: 0,
+    });
     setIsModuleDialogOpen(true);
   };
 
   const handleNewInverter = () => {
     setCurrentInverter(null);
-    setInverterForm({ fabricante: '', modelo: '', potenciaSaidaCA: 0, tipoRede: '' });
+    setInverterForm({ 
+      fabricante: '', 
+      modelo: '', 
+      potenciaSaidaCA: 0, 
+      tipoRede: '',
+      potenciaFvMax: 0,
+      tensaoCcMax: 0,
+      numeroMppt: 0,
+      eficienciaMax: 0,
+      correnteEntradaMax: 0,
+      potenciaAparenteMax: 0,
+    });
     setIsInverterDialogOpen(true);
   };
 
@@ -369,111 +441,236 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
 
       {/* Dialog para Módulos */}
       <Dialog open={isModuleDialogOpen} onOpenChange={setIsModuleDialogOpen}>
-        <DialogContent className="bg-background border-border max-w-4xl">
+        <DialogContent className="bg-background border-border max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{currentModule?.id ? 'Editar' : 'Adicionar'} Módulo Fotovoltaico</DialogTitle>
             <DialogDescription>Insira os parâmetros técnicos ou extraia de um datasheet.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Fabricante *</Label>
-                <Input 
-                  value={moduleForm.fabricante || ''} 
-                  onChange={e => setModuleForm(prev => ({ ...prev, fabricante: e.target.value }))} 
-                  className="bg-background border-border" 
-                  placeholder="Ex: Canadian Solar"
-                />
+          <form className="space-y-6">
+            <div className="space-y-6 py-4">
+            {/* Informações Básicas */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Informações Básicas</h3>
+              
+                <div className="space-y-2">
+                  <Label htmlFor="fabricante">Fabricante *</Label>
+                  <Select onValueChange={(value) => setModuleForm(prev => ({ ...prev, fabricante: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o fabricante" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Jinko Solar">Jinko Solar</SelectItem>
+                      <SelectItem value="Canadian Solar">Canadian Solar</SelectItem>
+                      <SelectItem value="Trina Solar">Trina Solar</SelectItem>
+                      <SelectItem value="Risen Energy">Risen Energy</SelectItem>
+                      <SelectItem value="JA Solar">JA Solar</SelectItem>
+                      <SelectItem value="LONGi Solar">LONGi Solar</SelectItem>
+                      <SelectItem value="BYD">BYD</SelectItem>
+                      <SelectItem value="GCL">GCL</SelectItem>
+                      <SelectItem value="Hanwha Q CELLS">Hanwha Q CELLS</SelectItem>
+                      <SelectItem value="First Solar">First Solar</SelectItem>
+                      <SelectItem value="Outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="modelo">Modelo *</Label>
+                  <Input
+                    id="modelo"
+                    value={moduleForm.modelo}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, modelo: e.target.value }))}
+                    placeholder="ex: Tiger Pro 72HC 550W"
+                    required
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Modelo *</Label>
-                <Input 
-                  value={moduleForm.modelo || ''} 
-                  onChange={e => setModuleForm(prev => ({ ...prev, modelo: e.target.value }))} 
-                  className="bg-background border-border" 
-                  placeholder="Ex: CS3W-400MS"
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="potenciaNominal">Potência Nominal (W) *</Label>
+                  <Input
+                    id="potenciaNominal"
+                    type="number"
+                    value={moduleForm.potenciaNominal || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, potenciaNominal: parseFloat(e.target.value) || 0 }))}
+                    placeholder="550"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="eficiencia">Eficiência (%)</Label>
+                  <Input
+                    id="eficiencia"
+                    type="number"
+                    step="0.1"
+                    value={moduleForm.eficiencia || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, eficiencia: parseFloat(e.target.value) || 0 }))}
+                    placeholder="21.0"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Potência Nominal (W) *</Label>
-                <Input 
-                  type="number" 
-                  value={moduleForm.potenciaNominal || ''} 
-                  onChange={e => setModuleForm(prev => ({ ...prev, potenciaNominal: parseFloat(e.target.value) || 0 }))} 
-                  className="bg-background border-border" 
-                  placeholder="400"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Largura (mm)</Label>
-                <Input 
-                  type="number" 
-                  value={moduleForm.larguraMm || ''} 
-                  onChange={e => setModuleForm(prev => ({ ...prev, larguraMm: parseFloat(e.target.value) || undefined }))} 
-                  className="bg-background border-border" 
-                  placeholder="2000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Altura (mm)</Label>
-                <Input 
-                  type="number" 
-                  value={moduleForm.alturaMm || ''} 
-                  onChange={e => setModuleForm(prev => ({ ...prev, alturaMm: parseFloat(e.target.value) || undefined }))} 
-                  className="bg-background border-border" 
-                  placeholder="1000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo de Célula</Label>
-                <Input 
-                  value={moduleForm.tipoCelula || ''} 
-                  onChange={e => setModuleForm(prev => ({ ...prev, tipoCelula: e.target.value }))} 
-                  className="bg-background border-border" 
-                  placeholder="Monocristalino"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Eficiência (%)</Label>
-                <Input 
-                  type="number" 
-                  step="0.1"
-                  value={moduleForm.eficiencia || ''} 
-                  onChange={e => setModuleForm(prev => ({ ...prev, eficiencia: parseFloat(e.target.value) || undefined }))} 
-                  className="bg-background border-border" 
-                  placeholder="21.5"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Vmpp (V)</Label>
-                <Input 
-                  type="number" 
-                  step="0.1"
-                  value={moduleForm.vmpp || ''} 
-                  onChange={e => setModuleForm(prev => ({ ...prev, vmpp: parseFloat(e.target.value) || undefined }))} 
-                  className="bg-background border-border" 
-                  placeholder="40.5"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Impp (A)</Label>
-                <Input 
-                  type="number" 
-                  step="0.1"
-                  value={moduleForm.impp || ''} 
-                  onChange={e => setModuleForm(prev => ({ ...prev, impp: parseFloat(e.target.value) || undefined }))} 
-                  className="bg-background border-border" 
-                  placeholder="9.88"
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tipoCelula">Tipo de Célula</Label>
+                  <Select onValueChange={(value) => setModuleForm(prev => ({ ...prev, tipoCelula: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo de célula" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Monocristalino">Monocristalino</SelectItem>
+                      <SelectItem value="Policristalino">Policristalino</SelectItem>
+                      <SelectItem value="Perc">Perc</SelectItem>
+                      <SelectItem value="HJT">HJT</SelectItem>
+                      <SelectItem value="TOPCon">TOPCon</SelectItem>
+                      <SelectItem value="Bifacial">Bifacial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="numeroCelulas">Número de Células</Label>
+                  <Input
+                    id="numeroCelulas"
+                    type="number"
+                    value={moduleForm.numeroCelulas || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, numeroCelulas: parseInt(e.target.value) || 0 }))}
+                    placeholder="144"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleSaveModule} disabled={isLoading}>
-              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} 
-              Salvar Módulo
-            </Button>
-          </DialogFooter>
+
+            {/* Especificações Elétricas */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Especificações Elétricas</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="vmpp">Tensão MPP (V)</Label>
+                  <Input
+                    id="vmpp"
+                    type="number"
+                    step="0.1"
+                    value={moduleForm.vmpp || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, vmpp: parseFloat(e.target.value) || 0 }))}
+                    placeholder="41.8"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="impp">Corrente MPP (A)</Label>
+                  <Input
+                    id="impp"
+                    type="number"
+                    step="0.1"
+                    value={moduleForm.impp || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, impp: parseFloat(e.target.value) || 0 }))}
+                    placeholder="13.16"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="voc">Tensão Circuito Aberto (V)</Label>
+                  <Input
+                    id="voc"
+                    type="number"
+                    step="0.1"
+                    value={moduleForm.voc || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, voc: parseFloat(e.target.value) || 0 }))}
+                    placeholder="49.8"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="isc">Corrente Curto-Circuito (A)</Label>
+                  <Input
+                    id="isc"
+                    type="number"
+                    step="0.1"
+                    value={moduleForm.isc || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, isc: parseFloat(e.target.value) || 0 }))}
+                    placeholder="13.90"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Dimensões e Físicas */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Dimensões e Características Físicas</h3>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="larguraMm">Largura (mm)</Label>
+                  <Input
+                    id="larguraMm"
+                    type="number"
+                    value={moduleForm.larguraMm || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, larguraMm: parseInt(e.target.value) || 0 }))}
+                    placeholder="1134"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="alturaMm">Altura (mm)</Label>
+                  <Input
+                    id="alturaMm"
+                    type="number"
+                    value={moduleForm.alturaMm || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, alturaMm: parseInt(e.target.value) || 0 }))}
+                    placeholder="2274"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="espessuraMm">Espessura (mm)</Label>
+                  <Input
+                    id="espessuraMm"
+                    type="number"
+                    value={moduleForm.espessuraMm || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, espessuraMm: parseInt(e.target.value) || 0 }))}
+                    placeholder="35"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pesoKg">Peso (kg)</Label>
+                  <Input
+                    id="pesoKg"
+                    type="number"
+                    step="0.1"
+                    value={moduleForm.pesoKg || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, pesoKg: parseFloat(e.target.value) || 0 }))}
+                    placeholder="27.5"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="garantiaAnos">Garantia (anos)</Label>
+                  <Input
+                    id="garantiaAnos"
+                    type="number"
+                    value={moduleForm.garantiaAnos || 25}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, garantiaAnos: parseInt(e.target.value) || 25 }))}
+                    placeholder="25"
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleSaveModule} disabled={isLoading}>
+                {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} 
+                Salvar Módulo
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -484,7 +681,8 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
             <DialogTitle>{currentInverter?.id ? 'Editar' : 'Adicionar'} Inversor</DialogTitle>
             <DialogDescription>Insira os parâmetros técnicos do inversor.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-2">
+          <form className="space-y-6">
+            <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Fabricante *</Label>
@@ -543,7 +741,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                   <Input 
                     type="number" 
                     value={inverterForm.potenciaFvMax || ''} 
-                    onChange={e => setInverterForm(prev => ({ ...prev, potenciaFvMax: parseFloat(e.target.value) || undefined }))} 
+                    onChange={e => setInverterForm(prev => ({ ...prev, potenciaFvMax: parseFloat(e.target.value) || 0 }))} 
                     className="bg-background border-border" 
                     placeholder="12300"
                   />
@@ -553,7 +751,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                   <Input 
                     type="number" 
                     value={inverterForm.tensaoCcMax || ''} 
-                    onChange={e => setInverterForm(prev => ({ ...prev, tensaoCcMax: parseFloat(e.target.value) || undefined }))} 
+                    onChange={e => setInverterForm(prev => ({ ...prev, tensaoCcMax: parseFloat(e.target.value) || 0 }))} 
                     className="bg-background border-border" 
                     placeholder="1000"
                   />
@@ -563,7 +761,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                   <Input 
                     type="number" 
                     value={inverterForm.numeroMppt || ''} 
-                    onChange={e => setInverterForm(prev => ({ ...prev, numeroMppt: parseFloat(e.target.value) || undefined }))} 
+                    onChange={e => setInverterForm(prev => ({ ...prev, numeroMppt: parseInt(e.target.value) || 0 }))} 
                     className="bg-background border-border" 
                     placeholder="2"
                   />
@@ -574,22 +772,46 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                     type="number" 
                     step="0.1"
                     value={inverterForm.eficienciaMax || ''} 
-                    onChange={e => setInverterForm(prev => ({ ...prev, eficienciaMax: parseFloat(e.target.value) || undefined }))} 
+                    onChange={e => setInverterForm(prev => ({ ...prev, eficienciaMax: parseFloat(e.target.value) || 0 }))} 
                     className="bg-background border-border" 
                     placeholder="97.1"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Corrente Entrada Máx (A)</Label>
+                  <Input 
+                    type="number" 
+                    step="0.1"
+                    value={inverterForm.correnteEntradaMax || ''} 
+                    onChange={e => setInverterForm(prev => ({ ...prev, correnteEntradaMax: parseFloat(e.target.value) || 0 }))} 
+                    className="bg-background border-border" 
+                    placeholder="18.5"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Potência Aparente Máx (VA)</Label>
+                  <Input 
+                    type="number" 
+                    value={inverterForm.potenciaAparenteMax || ''} 
+                    onChange={e => setInverterForm(prev => ({ ...prev, potenciaAparenteMax: parseFloat(e.target.value) || 0 }))} 
+                    className="bg-background border-border" 
+                    placeholder="8200"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleSaveInverter} disabled={isLoading}>
-              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} 
-              Salvar Inversor
-            </Button>
-          </DialogFooter>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleSaveInverter} disabled={isLoading}>
+                {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} 
+                Salvar Inversor
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
   );
 };
+
+export default EquipmentManager;

@@ -62,6 +62,17 @@ async def calculate_required_modules(
                    f"{request.modulo.fabricante} {request.modulo.modelo} {request.modulo.potencia_nominal_w}W, "
                    f"{request.consumo_anual_kwh} kWh/ano")
         
+        # ===== DEBUG: PERDAS RECEBIDAS NO PYTHON =====
+        print("=" * 60)
+        print("🐍 [PYTHON - modules.py] DADOS RECEBIDOS:")
+        print(f"🔧 PERDAS DO SISTEMA: {request.perdas_sistema}%")
+        print(f"📊 CONSUMO ANUAL: {request.consumo_anual_kwh} kWh")
+        print(f"📍 COORDENADAS: {request.lat}, {request.lon}")
+        print(f"🔋 MÓDULO: {request.modulo.fabricante} {request.modulo.modelo} - {request.modulo.potencia_nominal_w}W")
+        if hasattr(request, 'num_modules') and request.num_modules:
+            print(f"🧮 NÚMERO ESPECÍFICO DE MÓDULOS: {request.num_modules}")
+        print("=" * 60)
+        
         result = module_service.calculate_required_modules(request)
         
         logger.info(f"Cálculo concluído: {result.num_modulos} módulos, "

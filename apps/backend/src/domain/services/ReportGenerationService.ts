@@ -1,4 +1,25 @@
-import { AdvancedFinancialResult } from './FinancialAnalysisService';
+// Interface extraída para evitar dependência do FinancialAnalysisService
+interface AdvancedFinancialResult {
+  economiaAnualEstimada: number;
+  vpl: number;
+  tir: number;
+  payback: number;
+  fluxoCaixa: CashFlowItem[];
+}
+
+interface CashFlowItem {
+  ano: number;
+  year: number;
+  fioBPercentage: number;
+  generationAfterDegradation: number;
+  economia: number;
+  savings: number;
+  fluxoLiquido: number;
+  cashFlow: number;
+  accumulatedCashFlow: number;
+  custoSemFV: number;
+  custoComFV: number;
+}
 
 export interface ReportData {
   projectInfo: {

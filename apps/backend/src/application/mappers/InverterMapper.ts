@@ -49,6 +49,15 @@ export class InverterMapper {
       datasheetUrl: inverter.datasheetUrl,
       precoReferencia: inverter.toJSON().precoReferencia,
       
+      // Parâmetros Sandia para simulação precisa
+      vdco: inverter.vdco,
+      pso: inverter.pso,
+      c0: inverter.c0,
+      c1: inverter.c1,
+      c2: inverter.c2,
+      c3: inverter.c3,
+      pnt: inverter.pnt,
+      
       // Campos calculados
       maxModulosSuportados,
       maxStringsTotal,

@@ -126,13 +126,233 @@ class SystemCompatibility(BaseModel):
     compatibilidade_tensao: bool = Field(..., description="Se módulo e inversor são compatíveis em tensão")
     strings_recomendadas: int = Field(..., description="Número de strings recomendado")
     modulos_por_string: int = Field(..., description="Módulos por string recomendado")
-    utilizacao_inversor: float = Field(..., description="% de utilização da capacidade do inversor")
+    utilizacao_inversor: float = Field(..., description="% de utilização da capacidade do inversor (com perdas consideradas)")
+    oversizing_percentual: float = Field(..., description="% de oversizing nominal (potência DC nominal vs inversor)")
     margem_seguranca: float = Field(..., description="Margem de segurança do dimensionamento")
 
 
 
 
-# Renomear para ser a versão principal
+class InverterResults(BaseModel):
+    """Resultados específicos de um inversor no sistema multi-inversor"""
+    
+    inverter_id: str = Field(..., description="ID do inversor selecionado")
+    fabricante: str = Field(..., description="Fabricante do inversor")
+    modelo: str = Field(..., description="Modelo do inversor")
+    potencia_ca_w: float = Field(..., description="Potência CA do inversor (W)")
+    quantidade_unidades: int = Field(..., description="Quantidade de unidades")
+    potencia_total_ca_w: float = Field(..., description="Potência total CA (W)")
+    
+    # Resultados específicos
+    aguas_conectadas: List[str] = Field(..., description="IDs das águas conectadas")
+    modulos_conectados: int = Field(..., description="Total de módulos conectados")
+    potencia_dc_conectada_w: float = Field(..., description="Potência DC conectada (W)")
+    oversizing_percentual: float = Field(..., description="% de oversizing (DC/CA nominal)")
+    energia_anual_kwh: float = Field(..., description="Energia anual gerada (kWh)")
+    utilizacao_percentual: float = Field(..., description="% de utilização da capacidade")
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "inverter_id": "sel_inv_001",
+                "fabricante": "WEG",
+                "modelo": "SIW500H-M",
+                "potencia_ca_w": 5000,
+                "quantidade_unidades": 2,
+                "potencia_total_ca_w": 10000,
+                "aguas_conectadas": ["agua_001", "agua_002"],
+                "modulos_conectados": 20,
+                "potencia_dc_conectada_w": 10800,
+                "oversizing_percentual": 108.0,
+                "energia_anual_kwh": 15867.0,
+                "utilizacao_percentual": 95.2
+            }
+        }
+
+class AguaTelhadoResults(BaseModel):
+    """Resultados específicos de uma água de telhado"""
+    
+    agua_id: str = Field(..., description="ID da água de telhado")
+    nome: str = Field(..., description="Nome da água")
+    orientacao: float = Field(..., description="Orientação (graus)")
+    inclinacao: float = Field(..., description="Inclinação (graus)")
+    numero_modulos: int = Field(..., description="Número de módulos")
+    potencia_dc_w: float = Field(..., description="Potência DC total (W)")
+    
+    # Resultados específicos
+    inverter_associado: str = Field(..., description="ID do inversor associado")
+    mppt_numero: int = Field(..., description="Número do MPPT")
+    energia_anual_kwh: float = Field(..., description="Energia anual gerada (kWh)")
+    irradiacao_media_diaria: float = Field(..., description="Irradiação média diária (kWh/m²/dia)")
+    pr_medio: float = Field(..., description="Performance Ratio médio (%)")
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "agua_id": "agua_001",
+                "nome": "Água Principal",
+                "orientacao": 180,
+                "inclinacao": 20,
+                "numero_modulos": 10,
+                "potencia_dc_w": 5400,
+                "inverter_associado": "sel_inv_001_unit1",
+                "mppt_numero": 1,
+                "energia_anual_kwh": 7933.5,
+                "irradiacao_media_diaria": 4.2,
+                "pr_medio": 85.3
+            }
+        }
+
+class MultiInverterSystemCompatibility(BaseModel):
+    """Análise de compatibilidade do sistema multi-inversor"""
+    
+    sistema_compativel: bool = Field(..., description="Se o sistema está compatível")
+    alertas: List[str] = Field(..., description="Lista de alertas ou problemas")
+    total_potencia_dc_w: float = Field(..., description="Potência DC total do sistema (W)")
+    total_potencia_ca_w: float = Field(..., description="Potência CA total do sistema (W)")
+    oversizing_global: float = Field(..., description="Oversizing global do sistema (%)")
+    total_mppts_utilizados: int = Field(..., description="Total de MPPTs utilizados")
+    total_mppts_disponiveis: int = Field(..., description="Total de MPPTs disponíveis")
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "sistema_compativel": True,
+                "alertas": [],
+                "total_potencia_dc_w": 21600,
+                "total_potencia_ca_w": 20000,
+                "oversizing_global": 108.0,
+                "total_mppts_utilizados": 4,
+                "total_mppts_disponiveis": 8
+            }
+        }
+
+class MultiInverterCalculationResponse(BaseModel):
+    """Resposta avançada do cálculo de sistema multi-inversor"""
+    
+    # Resultados principais do sistema
+    num_modulos_total: int = Field(..., description="Número total de módulos")
+    potencia_total_dc_kw: float = Field(..., description="Potência total DC em kWp")
+    potencia_total_ca_kw: float = Field(..., description="Potência total CA em kW")
+    energia_total_anual: float = Field(..., description="Geração anual total estimada em kWh")
+    cobertura_percentual: float = Field(..., description="Porcentagem de cobertura do consumo")
+    
+    # Métricas de performance globais
+    fator_capacidade_medio: float = Field(..., description="Fator de capacidade médio do sistema em %")
+    pr_medio_sistema: float = Field(..., description="Performance Ratio médio do sistema em %")
+    yield_especifico_medio: float = Field(..., description="Yield específico médio em kWh/kWp")
+    oversizing_global: float = Field(..., description="Oversizing global do sistema em %")
+    
+    # Resultados por inversor
+    resultados_inversores: List[InverterResults] = Field(
+        ..., 
+        description="Resultados específicos de cada inversor"
+    )
+    
+    # Resultados por água de telhado
+    resultados_aguas: List[AguaTelhadoResults] = Field(
+        ..., 
+        description="Resultados específicos de cada água de telhado"
+    )
+    
+    # Análise de compatibilidade
+    compatibilidade_sistema: MultiInverterSystemCompatibility = Field(
+        ..., 
+        description="Análise de compatibilidade do sistema"
+    )
+    
+    # Geração mensal total
+    geracao_mensal_total: List[float] = Field(
+        ..., 
+        description="Geração mensal total estimada em kWh"
+    )
+    
+    # Dados do sistema
+    area_total_necessaria_m2: float = Field(..., description="Área total necessária (m²)")
+    peso_total_kg: float = Field(..., description="Peso total do sistema (kg)")
+    economia_anual_co2: float = Field(..., description="Economia anual de CO2 (kg)")
+    
+    # Parâmetros de entrada
+    parametros_sistema: Dict = Field(..., description="Parâmetros do sistema utilizados")
+    
+    # Dados de processamento
+    dados_processados: int = Field(..., description="Número de registros processados")
+    anos_analisados: int = Field(..., description="Número de anos analisados")
+    periodo_dados: PeriodAnalysis = Field(..., description="Período dos dados utilizados")
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "num_modulos_total": 40,
+                "potencia_total_dc_kw": 21.6,
+                "potencia_total_ca_kw": 20.0,
+                "energia_total_anual": 31735.0,
+                "cobertura_percentual": 661.1,
+                "fator_capacidade_medio": 16.8,
+                "pr_medio_sistema": 85.3,
+                "yield_especifico_medio": 1469.2,
+                "oversizing_global": 108.0,
+                "resultados_inversores": [
+                    {
+                        "inverter_id": "sel_inv_001",
+                        "fabricante": "WEG",
+                        "modelo": "SIW500H-M",
+                        "potencia_ca_w": 5000,
+                        "quantidade_unidades": 2,
+                        "potencia_total_ca_w": 10000,
+                        "aguas_conectadas": ["agua_001", "agua_002"],
+                        "modulos_conectados": 20,
+                        "potencia_dc_conectada_w": 10800,
+                        "oversizing_percentual": 108.0,
+                        "energia_anual_kwh": 15867.0,
+                        "utilizacao_percentual": 95.2
+                    }
+                ],
+                "resultados_aguas": [
+                    {
+                        "agua_id": "agua_001",
+                        "nome": "Água Principal",
+                        "orientacao": 180,
+                        "inclinacao": 20,
+                        "numero_modulos": 10,
+                        "potencia_dc_w": 5400,
+                        "inverter_associado": "sel_inv_001_unit1",
+                        "mppt_numero": 1,
+                        "energia_anual_kwh": 7933.5,
+                        "irradiacao_media_diaria": 4.2,
+                        "pr_medio": 85.3
+                    }
+                ],
+                "compatibilidade_sistema": {
+                    "sistema_compativel": True,
+                    "alertas": [],
+                    "total_potencia_dc_w": 21600,
+                    "total_potencia_ca_w": 20000,
+                    "oversizing_global": 108.0,
+                    "total_mppts_utilizados": 4,
+                    "total_mppts_disponiveis": 8
+                },
+                "geracao_mensal_total": [2850.2, 2645.8, 2756.1, 2298.4, 1897.3, 1456.7, 1542.9, 2134.6, 2487.2, 2891.5, 3021.8, 3130.5],
+                "area_total_necessaria_m2": 102.4,
+                "peso_total_kg": 1100,
+                "economia_anual_co2": 15867.5,
+                "parametros_sistema": {
+                    "consumo_anual_kwh": 4800,
+                    "numero_inversores": 1,
+                    "numero_aguas": 4,
+                    "localizacao": {"lat": -15.7942, "lon": -47.8822}
+                },
+                "dados_processados": 140256,
+                "anos_analisados": 16,
+                "periodo_dados": {
+                    "inicio": "2005-01-01",
+                    "fim": "2020-12-31",
+                    "anos_completos": 16
+                }
+            }
+        }
+
+# Versão legada para compatibilidade - usar MultiInverterCalculationResponse para novos sistemas
 class ModuleCalculationResponse(BaseModel):
     """Resposta avançada do cálculo de módulos fotovoltaicos"""
     
@@ -172,6 +392,9 @@ class ModuleCalculationResponse(BaseModel):
     
     # Parâmetros de entrada completos
     parametros_completos: Dict = Field(..., description="Todos os parâmetros utilizados no cálculo")
+    
+    # Perdas detalhadas do sistema
+    perdas_detalhadas: Optional[Dict[str, List[float]]] = Field(None, description="Perdas detalhadas por tipo e mês")
     
     # Dados para análises
     dados_processados: int = Field(..., description="Número de registros processados")

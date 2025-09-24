@@ -18,8 +18,10 @@ class PVGISService:
     def __init__(self):
         self.base_url = settings.PVGIS_BASE_URL
         self.timeout = settings.PVGIS_TIMEOUT
-        self.start_year = settings.PVGIS_START_YEAR
-        self.end_year = settings.PVGIS_END_YEAR
+        # CORREÇÃO 6: Alinhar período de dados PVGIS para 2018-2020 (igual ao notebook)
+        # Mudança: período específico 2018-2020 ao invés de usar configuração geral
+        self.start_year = 2018  # Mudança: era settings.PVGIS_START_YEAR (provavelmente 2005)
+        self.end_year = 2020    # Mudança: era settings.PVGIS_END_YEAR (provavelmente 2020)
     
     def fetch_weather_data(self, lat: float, lon: float, use_cache: bool = True) -> pd.DataFrame:
         """
@@ -66,12 +68,14 @@ class PVGISService:
     def _download_pvgis_data(self, lat: float, lon: float) -> pd.DataFrame:
         """Download e processamento dos dados PVGIS"""
         
+        # Mudança: agora usa período específico 2018-2020 diretamente na URL
         url = (f"{self.base_url}/seriescalc?"
                f"lat={lat}&lon={lon}&"
-               f"startyear={self.start_year}&endyear={self.end_year}&"
+               f"startyear={self.start_year}&endyear={self.end_year}&"  # Agora: 2018-2020
                f"outputformat=json&usehorizon=1&selectrad=1&angle=0&aspect=0")
         
         logger.info(f"Fazendo requisição para PVGIS: {url}")
+        logger.info(f"Período solicitado: {self.start_year}-{self.end_year}")  # Log do período
         
         try:
             response = requests.get(url, timeout=self.timeout)
@@ -88,7 +92,7 @@ class PVGISService:
             raise PVGISError("Formato de resposta PVGIS inválido", url)
         
         hourly_data = data['outputs']['hourly']
-        logger.info(f"Recebidos {len(hourly_data)} registros do PVGIS")
+        logger.info(f"Recebidos {len(hourly_data)} registros do PVGIS para período {self.start_year}-{self.end_year}")
         
         # Processar dados
         return self._process_pvgis_data(hourly_data)
@@ -108,6 +112,11 @@ class PVGISService:
                 day = int(time_str[6:8])
                 hour = int(time_str[9:11])
                 minute = int(time_str[11:13])
+                
+                # CORREÇÃO 6: Validar se ano está no período esperado 2018-2020
+                # Mudança: adicionar validação para garantir período correto
+                if not (2018 <= year <= 2020):
+                    continue  # Pula registros fora do período esperado
                 
                 # Criar datetime
                 dt = pd.Timestamp(year=year, month=month, day=day,
@@ -154,7 +163,9 @@ class PVGISService:
         df.set_index('datetime', inplace=True)
         df.index = df.index.tz_convert('America/Sao_Paulo')
         
-        logger.info(f"Processados {len(df)} registros ({errors} erros ignorados)")
+        # Mudança: log específico do período processado
+        years_processed = sorted(df.index.year.unique())
+        logger.info(f"Processados {len(df)} registros para anos {years_processed} ({errors} erros ignorados)")
         
         return df
     
@@ -169,7 +180,9 @@ class PVGISService:
                 "periodo": {
                     "inicio": df.index.min().strftime('%Y-%m-%d'),
                     "fim": df.index.max().strftime('%Y-%m-%d'),
-                    "total_registros": len(df)
+                    "total_registros": len(df),
+                    # Mudança: adicionar informação sobre anos processados
+                    "anos_processados": sorted(df.index.year.unique().tolist())
                 },
                 "estatisticas": {
                     "ghi_medio": round(df['ghi'].mean(), 1),
