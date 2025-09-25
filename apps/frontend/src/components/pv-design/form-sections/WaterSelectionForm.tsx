@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AguaTelhado, SelectedInverter } from '@/contexts/DimensioningContext';
 import { SolarSystemService } from '@/lib/solarSystemService';
+import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
 
 interface WaterSelectionFormProps {
   aguasTelhado: AguaTelhado[];
@@ -28,6 +29,12 @@ interface WaterSelectionFormProps {
   perdaSujeira?: number;
   perdaInversor?: number;
   perdaOutras?: number;
+  // Props para MPPT calculations
+  selectedModule?: {
+    potenciaNominal: number;
+    vocStc?: number;
+    tempCoefVoc?: number;
+  };
 }
 
 export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
@@ -43,7 +50,8 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
   perdaCabeamento = 2,
   perdaSujeira = 5,
   perdaInversor = 3,
-  perdaOutras = 0
+  perdaOutras = 0,
+  selectedModule
 }) => {
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -180,6 +188,58 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     if (orientacao > 292.5 && orientacao <= 337.5) return 'Noroeste';
     return 'Norte';
   };
+
+  // Preparar dados para MPPT calculations
+  const invertersForMPPT = selectedInverters.map(inv => ({
+    id: inv.id || inv.inverterId,
+    fabricante: inv.fabricante,
+    modelo: inv.modelo,
+    potenciaSaidaCA: inv.potenciaSaidaCA,
+    tensaoCcMax: inv.tensaoCcMaxV,
+    numeroMppt: inv.numeroMppt,
+    stringsPorMppt: inv.stringsPorMppt,
+    correnteEntradaMax: inv.correnteEntradaMaxA,
+    faixaMpptMin: inv.faixaMpptMinV,
+    faixaMpptMax: inv.faixaMpptMaxV,
+    tipoRede: inv.tipoRede
+  })) || [];
+
+  const defaultModule = {
+    potenciaNominal: potenciaModulo,
+    vocStc: 49.7,
+    tempCoefVoc: -0.27
+  };
+
+  const defaultCoordinates = {
+    latitude: latitude || -15.7942,
+    longitude: longitude || -47.8822
+  };
+
+  // Hook para calcular limites MPPT
+  const mpptLimits = useMultipleMPPTCalculations(
+    invertersForMPPT,
+    selectedModule || defaultModule,
+    defaultCoordinates,
+    Boolean(selectedModule?.vocStc && selectedModule?.tempCoefVoc && selectedInverters?.length)
+  );
+
+  // Calcular limite máximo de módulos baseado nos inversores
+  const calculateMaxModules = () => {
+    if (!selectedInverters?.length) return 50; // Fallback
+    
+    let totalMaxModules = 0;
+    selectedInverters.forEach(inverter => {
+      const inverterId = inverter.id || inverter.inverterId;
+      const limit = mpptLimits[inverterId];
+      if (limit && !limit.isLoading && !limit.error) {
+        totalMaxModules += limit.modulosTotal * (inverter.quantity || 1);
+      }
+    });
+    
+    return totalMaxModules || 50;
+  };
+
+  const maxModules = calculateMaxModules();
 
   // Função para calcular geração de uma água específica via Python
   const handleCalculateGeneration = async (aguaId: string) => {
@@ -483,18 +543,101 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
 
                       {/* Número de módulos */}
                       <div className="space-y-2">
-                        <Label className="flex items-center gap-2">
-                          <Settings className="w-4 h-4" />
-                          Módulos
-                        </Label>
+                        <div className="flex items-center justify-between">
+                          <Label className="flex items-center gap-2">
+                            <Settings className="w-4 h-4" />
+                            Módulos
+                          </Label>
+                          {hasValidMppt && (() => {
+                            // Obter limite específico do MPPT selecionado
+                            const inverterData = selectedInverters.find(inv => 
+                              (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
+                            );
+                            if (!inverterData) return null;
+                            
+                            const inverterId = inverterData.id || inverterData.inverterId;
+                            const limit = mpptLimits[inverterId];
+                            
+                            if (limit && !limit.isLoading && !limit.error) {
+                              return (
+                                <span className="text-xs text-muted-foreground">
+                                  Máx: {limit.modulosPorMppt} módulos/MPPT
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
                         <Input
                           type="number"
                           min="0"
-                          max="100"
+                          max={hasValidMppt ? (() => {
+                            const inverterData = selectedInverters.find(inv => 
+                              (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
+                            );
+                            if (!inverterData) return 100;
+                            
+                            const inverterId = inverterData.id || inverterData.inverterId;
+                            const limit = mpptLimits[inverterId];
+                            
+                            return limit && !limit.isLoading && !limit.error ? limit.modulosPorMppt : 100;
+                          })() : 100}
                           value={agua.numeroModulos}
-                          onChange={(e) => handleUpdateAgua(agua.id, { numeroModulos: parseInt(e.target.value) || 0 })}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value) || 0;
+                            
+                            let maxLimit = 100; // Fallback
+                            if (hasValidMppt) {
+                              const inverterData = selectedInverters.find(inv => 
+                                (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
+                              );
+                              if (inverterData) {
+                                const inverterId = inverterData.id || inverterData.inverterId;
+                                const limit = mpptLimits[inverterId];
+                                if (limit && !limit.isLoading && !limit.error) {
+                                  maxLimit = limit.modulosPorMppt;
+                                }
+                              }
+                            }
+                            
+                            const limitedValue = Math.min(value, maxLimit);
+                            handleUpdateAgua(agua.id, { numeroModulos: limitedValue });
+                          }}
                           placeholder="0"
+                          className={hasValidMppt && (() => {
+                            const inverterData = selectedInverters.find(inv => 
+                              (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
+                            );
+                            if (!inverterData) return '';
+                            
+                            const inverterId = inverterData.id || inverterData.inverterId;
+                            const limit = mpptLimits[inverterId];
+                            
+                            if (limit && !limit.isLoading && !limit.error) {
+                              return agua.numeroModulos > limit.modulosPorMppt ? 'border-red-500' : '';
+                            }
+                            return '';
+                          })()}
                         />
+                        {hasValidMppt && (() => {
+                          const inverterData = selectedInverters.find(inv => 
+                            (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
+                          );
+                          if (!inverterData) return null;
+                          
+                          const inverterId = inverterData.id || inverterData.inverterId;
+                          const limit = mpptLimits[inverterId];
+                          
+                          if (limit && !limit.isLoading && !limit.error && agua.numeroModulos > limit.modulosPorMppt) {
+                            return (
+                              <p className="text-xs text-red-500 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                Excede limite máximo ({limit.modulosPorMppt} módulos por MPPT)
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -615,13 +758,33 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                 </div>
                 
                 <div className="text-center p-3">
-                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-2">
-                    <Settings className="w-6 h-6 text-blue-600" />
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ${
+                    aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) > maxModules 
+                      ? 'bg-red-100' 
+                      : 'bg-blue-100'
+                  }`}>
+                    <Settings className={`w-6 h-6 ${
+                      aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) > maxModules
+                        ? 'text-red-600'
+                        : 'text-blue-600'
+                    }`} />
                   </div>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className={`text-2xl font-bold ${
+                    aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) > maxModules
+                      ? 'text-red-600'
+                      : 'text-blue-600'
+                  }`}>
                     {aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0)}
+                    {maxModules && ` / ${maxModules}`}
                   </p>
-                  <p className="text-sm text-gray-600">Total de Módulos</p>
+                  <p className={`text-sm ${
+                    aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) > maxModules
+                      ? 'text-red-600'
+                      : 'text-gray-600'
+                  }`}>
+                    Total de Módulos
+                    {aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) > maxModules && ' (Excede!)'}
+                  </p>
                   <p className="text-xs text-gray-500">
                     {((aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) * potenciaModulo) / 1000).toFixed(1)} kWp
                   </p>
@@ -737,6 +900,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         )}
         </CardContent>
       </Card>
+      
     </TooltipProvider>
   );
 };

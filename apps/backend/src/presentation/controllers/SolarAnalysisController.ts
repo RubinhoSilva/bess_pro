@@ -782,4 +782,65 @@ export class SolarAnalysisController extends BaseController {
       return this.internalServerError(res, 'Erro interno na análise financeira avançada');
     }
   }
+
+  async calculateMPPTLimits(req: Request, res: Response): Promise<Response> {
+    try {
+      const params = req.body;
+      
+      console.log('🔄 Recebendo requisição de cálculo MPPT:', JSON.stringify(params, null, 2));
+
+      // Validação dos parâmetros obrigatórios
+      if (!params.fabricante || !params.modelo || !params.potencia_modulo_w || !params.voc_stc || !params.temp_coef_voc || !params.latitude || !params.longitude) {
+        return this.badRequest(res, 'Parâmetros obrigatórios ausentes: fabricante, modelo, potencia_modulo_w, voc_stc, temp_coef_voc, latitude, longitude');
+      }
+
+      // URL do serviço PVLIB (Python)
+      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+
+      console.log('🚀 Enviando para API Python (MPPT):', JSON.stringify(params, null, 2));
+      
+      // Chamar a API Python (MPPT Calculation)
+      const response = await axios.post(
+        `${pythonServiceUrl}/api/v1/mppt/calculate-modules-per-mppt`,
+        params,
+        {
+          timeout: 30000, // 30 segundos para cálculos MPPT
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('✅ Resposta da API Python (MPPT):', {
+        status: response.status,
+        modulos_por_mppt: response.data.modulos_por_mppt,
+        modulos_total_sistema: response.data.modulos_total_sistema,
+        limitacao_principal: response.data.limitacao_principal
+      });
+
+      // Retornar diretamente a resposta da API Python (já está no formato correto)
+      return res.status(200).json(response.data);
+
+    } catch (error: any) {
+      console.error('❌ Erro ao calcular limites MPPT:', error);
+      
+      if (error.code === 'ECONNREFUSED') {
+        return this.internalServerError(res, 'Serviço PVLIB indisponível. Tente novamente em alguns instantes.');
+      }
+      
+      if (error.response?.status === 422) {
+        return this.badRequest(res, error.response.data.detail || 'Parâmetros inválidos para cálculo MPPT');
+      }
+
+      if (error.response?.status === 500) {
+        return this.internalServerError(res, 'Erro interno no serviço de cálculos MPPT.');
+      }
+      
+      if (error.response?.data?.detail) {
+        return this.badRequest(res, error.response.data.detail);
+      }
+      
+      return this.internalServerError(res, 'Erro interno no cálculo de limites MPPT');
+    }
+  }
 }

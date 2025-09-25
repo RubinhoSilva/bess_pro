@@ -39,6 +39,9 @@ export const createSolarAnalysisRoutes = (container: Container): Router => {
   // Advanced financial analysis endpoint
   router.post('/calculate-advanced-financial', solarAnalysisController.calculateAdvancedFinancialAnalysis.bind(solarAnalysisController));
 
+  // MPPT calculation endpoint
+  router.post('/pvlib/mppt/calculate-modules-per-mppt', solarAnalysisController.calculateMPPTLimits.bind(solarAnalysisController));
+
   return router;
 };
 
