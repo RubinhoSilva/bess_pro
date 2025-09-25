@@ -15,15 +15,15 @@ interface EconomyProjectionChartProps {
 }
 
 export const EconomyProjectionChart: React.FC<EconomyProjectionChartProps> = ({ results }) => {
-  const { cash_flow: fluxoCaixa } = results;
+  const { fluxoCaixa } = results;
   const { isDark } = useTheme();
   const colors = getChartColors(isDark);
 
   const chartData = (fluxoCaixa || [])
     .filter(item => item.ano >= 1) // Começar do ano 1
-    .map((item, index) => {
+    .map((item: any, index: any) => {
       // Estimar custo sem FV baseado na economia + custos O&M
-      const custoSemFV = (item.economia_energia || 0) + (item.custos_om || 0);
+      const custoSemFV = (item.custoSemFV || 0) + (item.custoComFV || 0);
       
       return {
         ano: item.ano, // Usar número simples para melhor ordenação

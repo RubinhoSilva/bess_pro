@@ -142,6 +142,11 @@ function PVDesignPageContent() {
           mountingAreas: project.projectData.mountingAreas,
           measurements: project.projectData.measurements,
           
+          // Required properties for DimensioningData interface
+          aguasTelhado: project.projectData.aguasTelhado || [],
+          selectedInverters: project.projectData.selectedInverters || [],
+          totalMpptChannels: project.projectData.totalMpptChannels || 0,
+          
           createdAt: project.createdAt || project.savedAt,
           updatedAt: project.updatedAt || project.savedAt
         };

@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SelectedInverter } from '@/contexts/DimensioningContext';
 import { useInverters, Inverter } from '@/hooks/equipment-hooks';
 import { useMultipleInverters } from '@/hooks/multiple-inverters-hooks';
+import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
 import { AddInverterModal } from '../modals/AddInverterModal';
 
 interface MultipleInvertersSelectorProps {
@@ -17,25 +18,82 @@ interface MultipleInvertersSelectorProps {
   onInvertersChange: (inverters: SelectedInverter[]) => void;
   onTotalPowerChange: (totalPower: number) => void;
   onTotalMpptChannelsChange: (totalChannels: number) => void;
+  // Props opcionais para MPPT calculations
+  selectedModule?: {
+    potenciaNominal: number;
+    vocStc?: number;
+    tempCoefVoc?: number;
+  };
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+  showMPPTLimits?: boolean;
 }
 
 export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps> = ({
   selectedInverters,
   onInvertersChange,
   onTotalPowerChange,
-  onTotalMpptChannelsChange
+  onTotalMpptChannelsChange,
+  selectedModule,
+  coordinates,
+  showMPPTLimits = false
 }) => {
   const [selectedInverterId, setSelectedInverterId] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [showInverterModal, setShowInverterModal] = useState(false);
   
-  const { data: inverters = [], isLoading: loadingInverters } = useInverters({});
+  const { data: invertersData, isLoading: loadingInverters } = useInverters({});
   const {
     addInverter,
     calculateTotalPower,
     calculateTotalMpptChannels,
     validateInverterSelection
   } = useMultipleInverters();
+
+  // Extrair array de inversores da resposta da API
+  const invertersArray = invertersData?.inverters || [];
+
+  // Preparar dados para MPPT calculations
+  const invertersForMPPT = selectedInverters.map((inv: SelectedInverter) => ({
+    id: inv.id,
+    fabricante: inv.fabricante,
+    modelo: inv.modelo,
+    potenciaSaidaCA: inv.potenciaSaidaCA,
+    tensaoCcMax: inv.tensaoCcMax,
+    numeroMppt: inv.numeroMppt,
+    stringsPorMppt: inv.stringsPorMppt,
+    correnteEntradaMax: (inv as any).correnteEntradaMax || 0,
+    faixaMpptMin: (inv as any).faixaMpptMin || 0,
+    faixaMpptMax: (inv as any).faixaMpptMax || 0,
+    tipoRede: (inv as any).tipoRede || ''
+  }));
+
+  const defaultModule = {
+    potenciaNominal: 540,
+    vocStc: 49.7,
+    tempCoefVoc: -0.27
+  };
+
+  const defaultCoordinates = {
+    latitude: -15.7942,
+    longitude: -47.8822
+  };
+
+  // Hook para calcular limites MPPT
+  const moduleToUse = selectedModule && 
+                     typeof selectedModule.vocStc === 'number' && 
+                     typeof selectedModule.tempCoefVoc === 'number' 
+    ? selectedModule 
+    : defaultModule;
+  
+  const mpptLimits = useMultipleMPPTCalculations(
+    invertersForMPPT,
+    moduleToUse as { potenciaNominal: number; vocStc: number; tempCoefVoc: number; },
+    coordinates || defaultCoordinates,
+    showMPPTLimits && Boolean(selectedModule?.vocStc && selectedModule?.tempCoefVoc)
+  );
 
   // Calcular totais sempre que selectedInverters mudar
   useEffect(() => {
@@ -49,7 +107,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   const handleAddInverter = () => {
     if (!selectedInverterId) return;
 
-    const inverter = inverters.find(inv => inv.id === selectedInverterId);
+    const inverter = invertersArray.find((inv: any) => inv.id === selectedInverterId);
     if (!inverter) return;
 
     const newSelectedInverter = addInverter(inverter, quantity);
@@ -61,14 +119,14 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   };
 
   const handleRemoveInverter = (id: string) => {
-    const updatedList = selectedInverters.filter(inv => inv.id !== id);
+    const updatedList = selectedInverters.filter((inv: SelectedInverter) => inv.id !== id);
     onInvertersChange(updatedList);
   };
 
   const handleUpdateQuantity = (id: string, newQuantity: number) => {
     if (newQuantity <= 0) return;
     
-    const updatedList = selectedInverters.map(inv => 
+    const updatedList = selectedInverters.map((inv: SelectedInverter) => 
       inv.id === id ? { ...inv, quantity: newQuantity } : inv
     );
     onInvertersChange(updatedList);
@@ -79,7 +137,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   const totalMpptChannels = calculateTotalMpptChannels(selectedInverters);
 
   // Filtrar inversores já selecionados para evitar duplicação
-  const availableInverters = inverters.filter(inverter => 
+  const availableInverters = invertersArray.filter((inverter: any) => 
     !selectedInverters.some(selected => selected.inverterId === inverter.id)
   );
 
@@ -117,7 +175,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
                   {loadingInverters ? (
                     <SelectItem value="loading" disabled>Carregando...</SelectItem>
                   ) : (
-                    availableInverters.map(inverter => (
+                    availableInverters.map((inverter: any) => (
                       <SelectItem key={inverter.id} value={inverter.id}>
                         {inverter.fabricante} {inverter.modelo} - {(inverter.potenciaSaidaCA / 1000).toFixed(1)}kW
                       </SelectItem>
@@ -170,6 +228,19 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
                             {inverter.numeroMppt} MPPTs
                           </span>
                           <span>{inverter.stringsPorMppt} strings/MPPT</span>
+                          
+                          {/* Display MPPT Limits */}
+                          {showMPPTLimits && mpptLimits[inverter.id] && (
+                            <span className="flex items-center gap-1 text-blue-600 font-medium">
+                              {mpptLimits[inverter.id].isLoading ? (
+                                <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+                              ) : mpptLimits[inverter.id].error ? (
+                                <span className="text-red-500">Erro MPPT</span>
+                              ) : (
+                                <span>Máx: {mpptLimits[inverter.id].modulosTotal} módulos</span>
+                              )}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

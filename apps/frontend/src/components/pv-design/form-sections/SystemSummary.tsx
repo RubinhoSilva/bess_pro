@@ -164,7 +164,7 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '',
         {/* Seções de especificações técnicas e localização removidas */}
 
         {/* Cobertura do Consumo */}
-        {consumoTotalAnual > 0 && finalCoberturaConsumo > 0 && (
+        {consumoTotalAnual > 0 && finalCoberturaConsumo !== undefined && finalCoberturaConsumo > 0 && (
           <>
             <Separator className="bg-border/50" />
             <div className="bg-green-100/60 dark:bg-green-900/20 border border-green-300/60 dark:border-green-700/50 rounded-lg p-4">

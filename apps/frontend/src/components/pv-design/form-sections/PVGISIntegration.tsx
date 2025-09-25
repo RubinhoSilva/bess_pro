@@ -41,12 +41,12 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
                            formData?.irradiacaoMensal.some(value => value > 0);
 
   const [selectedLocation, setSelectedLocation] = useState<PVGISLocation | null>(
-    hasValidSavedData 
+    hasValidSavedData && formData.latitude !== undefined && formData.longitude !== undefined
       ? { latitude: formData.latitude, longitude: formData.longitude }
       : null
   );
-  const [manualLat, setManualLat] = useState(hasValidSavedData ? formData.latitude.toString() : '');
-  const [manualLng, setManualLng] = useState(hasValidSavedData ? formData.longitude.toString() : '');
+  const [manualLat, setManualLat] = useState(hasValidSavedData && formData.latitude !== undefined ? formData.latitude.toString() : '');
+  const [manualLng, setManualLng] = useState(hasValidSavedData && formData.longitude !== undefined ? formData.longitude.toString() : '');
   const [irradiationData, setIrradiationData] = useState<{
     irradiacaoMensal: number[];
     latitude: number;
@@ -58,7 +58,7 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
     variacaoSazonal?: number;
     configuracao?: any;
   } | null>(
-    hasValidSavedData
+    hasValidSavedData && formData.latitude !== undefined && formData.longitude !== undefined
       ? {
           irradiacaoMensal: formData.irradiacaoMensal,
           latitude: formData.latitude,

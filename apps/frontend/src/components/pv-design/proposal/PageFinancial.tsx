@@ -98,7 +98,17 @@ export const PageFinancial: React.FC<PageFinancialProps> = ({ results, profile }
       <div className="mt-10">
         <h3 className="proposal-subtitle">Fluxo de Caixa Projetado</h3>
         <div className="mt-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
-          <PaybackChart results={results} />
+          <PaybackChart results={{
+            cash_flow: results.fluxoCaixa.map(item => ({
+              ano: item.ano,
+              fluxo_liquido: item.fluxoLiquido,
+              fluxo_acumulado: 0, // Default value, should be calculated
+              economia_energia: 0, // Default value
+              custos_om: 0, // Default value
+              valor_presente: 0, // Default value
+              geracao_anual: 0 // Default value
+            }))
+          }} />
         </div>
       </div>
 

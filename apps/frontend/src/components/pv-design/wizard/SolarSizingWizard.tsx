@@ -165,7 +165,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         const hasModule = currentDimensioning.moduloSelecionado || currentDimensioning.selectedModuleId;
         // Verificar tanto o formato novo (selectedInverters) quanto o legado (inversorSelecionado/inverters)
         const hasInverter = currentDimensioning.inversorSelecionado || 
-                           (currentDimensioning.inverters && currentDimensioning.inverters.length > 0 && currentDimensioning.inverters[0].selectedInverterId) ||
                            (currentDimensioning.selectedInverters && currentDimensioning.selectedInverters.length > 0);
         return !!(hasModule && hasInverter && currentDimensioning.potenciaModulo > 0 && currentDimensioning.eficienciaSistema > 0);
       case 5:
@@ -694,8 +693,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
       const advancedFinancialInput: AdvancedFinancialInput = {
         investimentoInicial: totalInvestment,
-        geracaoMensal: geracaoEstimadaMensal,
-        consumoMensal: totalConsumoMensal,
+        geracaoMensal: geracaoEstimadaMensal || Array(12).fill(0),
+        consumoMensal: totalConsumoMensal || Array(12).fill(0),
         tarifaEnergia: tarifaEnergia,
         custoFioB: currentDimensioning.custoFioB || custoFioBCalculado,
         vidaUtil: currentDimensioning.vidaUtil || 25,
@@ -974,7 +973,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         // Verificar se há dados calculados no sistema
         const hasSystemCalculated = (currentDimensioning.numeroModulosCalculado && currentDimensioning.numeroModulosCalculado > 0) || 
                                    (currentDimensioning.numeroModulos && currentDimensioning.numeroModulos > 0) ||
-                                   (currentDimensioning.potenciaPico && currentDimensioning.potenciaPico > 0);
+                                   ((currentDimensioning as any).potenciaPico && (currentDimensioning as any).potenciaPico > 0);
         
         
         console.log('🏠 [SolarSizingWizard] Renderizando step roof com águas:', {
@@ -1001,6 +1000,11 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
               perdaSujeira={currentDimensioning.perdaSujeira}
               perdaInversor={currentDimensioning.perdaInversor}
               perdaOutras={currentDimensioning.perdaOutras}
+              selectedModule={{
+                potenciaNominal: currentDimensioning.potenciaModulo || 550,
+                vocStc: currentDimensioning.tensaoModulo || 49.7,
+                tempCoefVoc: -0.27 // Default value - could be made configurable
+              }}
             />
           </div>
         );

@@ -14,6 +14,10 @@ export interface AguaTelhado {
   // Associação com MPPT específico
   inversorId?: string; // Qual inversor será usado nesta água
   mpptNumero?: number; // Qual MPPT deste inversor (1, 2, 3, 4...)
+  // Dados calculados
+  isCalculando?: boolean;
+  geracaoAnual?: number;
+  areaCalculada?: number;
 }
 
 // Função utilitária para converter dados do contexto para SystemLosses

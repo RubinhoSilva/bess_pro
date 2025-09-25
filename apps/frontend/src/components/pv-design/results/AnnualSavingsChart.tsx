@@ -16,15 +16,15 @@ interface AnnualSavingsChartProps {
 }
 
 export const AnnualSavingsChart: React.FC<AnnualSavingsChartProps> = ({ results }) => {
-  const { cash_flow: fluxoCaixa, formData } = results;
+  const { fluxoCaixa, formData } = results;
   const { isDark } = useTheme();
   const colors = getChartColors(isDark);
 
   const chartData = (fluxoCaixa || [])
     .filter(item => item.ano >= 1) // Começar do ano 1
-    .map(item => ({
+    .map((item: any) => ({
       ano: item.ano,
-      economia: item.economia_energia || 0
+      economia: item.economia || 0
     }));
 
   return (

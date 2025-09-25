@@ -195,13 +195,13 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     fabricante: inv.fabricante,
     modelo: inv.modelo,
     potenciaSaidaCA: inv.potenciaSaidaCA,
-    tensaoCcMax: inv.tensaoCcMaxV,
+    tensaoCcMax: inv.tensaoCcMax,
     numeroMppt: inv.numeroMppt,
     stringsPorMppt: inv.stringsPorMppt,
-    correnteEntradaMax: inv.correnteEntradaMaxA,
-    faixaMpptMin: inv.faixaMpptMinV,
-    faixaMpptMax: inv.faixaMpptMaxV,
-    tipoRede: inv.tipoRede
+    correnteEntradaMax: (inv as any).correnteEntradaMax || 0,
+    faixaMpptMin: (inv as any).faixaMpptMin || 0,
+    faixaMpptMax: (inv as any).faixaMpptMax || 0,
+    tipoRede: (inv as any).tipoRede || ''
   })) || [];
 
   const defaultModule = {
@@ -216,9 +216,15 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
   };
 
   // Hook para calcular limites MPPT
+  const moduleToUse = selectedModule && 
+                     typeof selectedModule.vocStc === 'number' && 
+                     typeof selectedModule.tempCoefVoc === 'number' 
+    ? selectedModule 
+    : defaultModule;
+    
   const mpptLimits = useMultipleMPPTCalculations(
     invertersForMPPT,
-    selectedModule || defaultModule,
+    moduleToUse as { potenciaNominal: number; vocStc: number; tempCoefVoc: number; },
     defaultCoordinates,
     Boolean(selectedModule?.vocStc && selectedModule?.tempCoefVoc && selectedInverters?.length)
   );
@@ -291,7 +297,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
           fabricante: selectedInverters[0].fabricante,
           modelo: selectedInverters[0].modelo,
           potencia_saida_ca_w: selectedInverters[0].potenciaSaidaCA,
-          tipo_rede: selectedInverters[0].tipoRede || "Monofásico 220V"
+          tipo_rede: (selectedInverters[0] as any).tipoRede || "Monofásico 220V"
         }] : [{
           fabricante: 'WEG',
           modelo: 'SIW500H-M',
@@ -604,7 +610,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                             handleUpdateAgua(agua.id, { numeroModulos: limitedValue });
                           }}
                           placeholder="0"
-                          className={hasValidMppt && (() => {
+                          className={hasValidMppt ? (() => {
                             const inverterData = selectedInverters.find(inv => 
                               (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
                             );
@@ -617,7 +623,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                               return agua.numeroModulos > limit.modulosPorMppt ? 'border-red-500' : '';
                             }
                             return '';
-                          })()}
+                          })() : ''}
                         />
                         {hasValidMppt && (() => {
                           const inverterData = selectedInverters.find(inv => 

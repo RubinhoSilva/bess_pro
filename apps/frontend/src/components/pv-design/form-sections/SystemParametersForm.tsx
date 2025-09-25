@@ -159,6 +159,16 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
               // Manter compatibilidade com código legado
               onFormChange('canaisMppt', totalChannels);
             }}
+            selectedModule={{
+              potenciaNominal: formData.potenciaModulo || 540,
+              vocStc: formData.tensaoModulo || 49.7,
+              tempCoefVoc: -0.27 // Default value - could be made configurable
+            }}
+            coordinates={{
+              latitude: formData.latitude || -15.7942,
+              longitude: formData.longitude || -47.8822
+            }}
+            showMPPTLimits={Boolean(formData.potenciaModulo && formData.tensaoModulo)}
           />
 
 

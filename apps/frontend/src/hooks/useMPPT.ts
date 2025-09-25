@@ -1,5 +1,6 @@
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { SolarSystemService, MPPTCalculationRequest, MPPTCalculationResponse } from '@/lib/solarSystemService';
+import { SolarSystemService } from '@/lib/solarSystemService';
+import type { MPPTCalculationRequest, MPPTCalculationResponse } from '@/lib/solarSystemService';
 
 export interface MPPTCalculationParams {
   inversor: {
@@ -59,14 +60,8 @@ export function useMPPTCalculation(params: MPPTCalculationParams) {
              Boolean(params.coordinates.latitude) &&
              Boolean(params.coordinates.longitude),
     staleTime: 5 * 60 * 1000, // 5 minutos
-    cacheTime: 10 * 60 * 1000, // 10 minutos
-    retry: 2,
-    onSuccess: (data) => {
-      console.log('✅ Cálculo MPPT concluído:', data);
-    },
-    onError: (error) => {
-      console.error('❌ Erro no cálculo MPPT:', error);
-    }
+    gcTime: 10 * 60 * 1000, // 10 minutos 
+    retry: 2
   });
 }
 
@@ -136,7 +131,7 @@ export function useMultipleMPPTCalculations(
       },
       enabled: enabled && Boolean(inverter.id) && Boolean(modulo.vocStc) && Boolean(modulo.tempCoefVoc),
       staleTime: 5 * 60 * 1000, // 5 minutos
-      cacheTime: 10 * 60 * 1000, // 10 minutos
+      gcTime: 10 * 60 * 1000, // 10 minutos
       retry: 2
     }))
   });

@@ -146,7 +146,8 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
               geracaoEstimadaAnual: results.geracaoEstimadaMensal ? results.geracaoEstimadaMensal.reduce((a: number, b: number) => a + b, 0) : 0,
               selectedInverters: results.selectedInverters,
               selectedModule: results.selectedModule,
-              consumoTotalAnual: results.consumoTotalAnual
+              consumoTotalAnual: results.formData?.energyBills?.reduce((total: number, bill: any) => 
+                total + (bill.consumoMensal?.reduce((sum: number, val: number) => sum + val, 0) || 0), 0) || 0
             }} />
           </Section>
 
@@ -181,7 +182,17 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
 
           <Section title="Gráficos de Desempenho" delay={4}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <PaybackChart results={results} />
+              <PaybackChart results={{
+                cash_flow: results.fluxoCaixa.map((item: any) => ({
+                  ano: item.ano,
+                  fluxo_liquido: item.fluxoLiquido || item.fluxo_liquido || 0,
+                  fluxo_acumulado: item.fluxo_acumulado || 0,
+                  economia_energia: item.economia || item.economia_energia || 0,
+                  custos_om: item.custos_om || 0,
+                  valor_presente: item.valorPresente || item.valor_presente || 0,
+                  geracao_anual: item.geracao_anual || 0
+                }))
+              }} />
               <EconomyProjectionChart results={results} />
             </div>
           </Section>

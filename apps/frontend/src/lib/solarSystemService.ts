@@ -149,6 +149,60 @@ export interface ModuleCountResult {
   message?: string;
 }
 
+// MPPT Calculation Types
+export interface MPPTCalculationRequest {
+  fabricante: string;
+  modelo: string;
+  potencia_modulo_w: number;
+  voc_stc: number;
+  temp_coef_voc: number;
+  latitude: number;
+  longitude: number;
+  potencia_saida_ca_w: number;
+  tensao_cc_max_v?: number;
+  numero_mppt?: number;
+  strings_por_mppt?: number;
+  corrente_entrada_max_a?: number;
+  faixa_mppt_min_v?: number;
+  faixa_mppt_max_v?: number;
+  tipo_rede?: string;
+}
+
+export interface MPPTCalculationResponse {
+  modulos_por_mppt: number;
+  modulos_total_sistema: number;
+  limitacao_principal: string;
+  analise_detalhada: {
+    limite_tensao: string;
+    limite_corrente: string;
+    limite_potencia: string;
+    limite_strings: string;
+    configuracao_otima: string;
+  };
+  configuracao_recomendada: {
+    strings_por_mppt: number;
+    modulos_por_string: number;
+    total_mppt_utilizados: number;
+    total_strings_sistema: number;
+    distribuicao: string;
+  };
+  parametros_entrada: {
+    fabricante: string;
+    modelo: string;
+    potencia_modulo_w: number;
+    voc_stc: number;
+    temp_coef_voc: number;
+    potencia_saida_ca_w: number;
+    numero_mppt: number;
+    strings_por_mppt: number;
+    tensao_cc_max_v: number;
+    temperatura_minima: number;
+    voc_cold_calculado: number;
+    limitacao_potencia: number;
+    limitacao_tensao: number;
+  };
+}
+
 export class SolarSystemService {
   /**
    * Calcula parâmetros do sistema solar via serviço Python
@@ -483,13 +537,6 @@ export class SolarSystemService {
                       (dimensioningData.perdaSujeira || 5) + 
                       (dimensioningData.perdaInversor || 3) + 
                       (dimensioningData.perdaOutras || 0),
-      // Perdas individuais para o Python poder retornar corretamente
-      perda_sombreamento: dimensioningData.perdaSombreamento || 3,
-      perda_mismatch: dimensioningData.perdaMismatch || 2,
-      perda_cabeamento: dimensioningData.perdaCabeamento || 2,
-      perda_sujeira: dimensioningData.perdaSujeira || 5,
-      perda_inversor: dimensioningData.perdaInversor || 3,
-      perda_outras: dimensioningData.perdaOutras || 0,
       fator_seguranca: 1.1,
       num_modules: dimensioningData.num_modules // Incluir num_modules se fornecido
     };
@@ -531,6 +578,40 @@ export class SolarSystemService {
     });
 
     return this.calculateAdvancedModules(params);
+  }
+
+  /**
+   * Calcula limite de módulos por MPPT
+   */
+  static async calculateMPPTLimits(params: MPPTCalculationRequest): Promise<MPPTCalculationResponse> {
+    try {
+      console.log('🔄 Calculando limites MPPT com parâmetros:', params);
+      
+      // Temporariamente chamar direto o serviço Python até o backend ser reiniciado
+      const response = await fetch('http://localhost:8110/api/v1/mppt/calculate-modules-per-mppt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(params),
+      }).then(res => res.json());
+      
+      console.log('✅ Resultado do cálculo MPPT:', response);
+      
+      if (response) {
+        return response;
+      }
+      
+      throw new Error('Resposta inválida do serviço MPPT');
+    } catch (error: any) {
+      console.error('❌ Erro ao calcular limites MPPT:', error);
+      
+      if (error.message?.includes('fetch')) {
+        throw new Error('Erro de conexão com o servidor MPPT');
+      }
+      
+      throw new Error('Erro interno no cálculo de limites MPPT');
+    }
   }
 }
 

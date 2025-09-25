@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Home, Plus, Trash2, ChevronDown, ChevronUp, Sun, Compass, Triangle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SolarSystemService } from '@/lib/solarSystemService';
+import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
 
 export interface AguaTelhado {
   id: string;
@@ -31,6 +32,14 @@ interface MultipleRoofAreasFormProps {
   geracaoEstimadaAnual?: number; // Geração anual estimada pela API
   latitude?: number; // Para chamada da API
   longitude?: number; // Para chamada da API
+  // Props para MPPT limits
+  selectedInverters?: any[];
+  selectedModule?: {
+    potenciaNominal: number;
+    vocStc?: number;
+    tempCoefVoc?: number;
+  };
+  maxModulosPerMPPT?: number; // Limite máximo calculado
 }
 
 const orientacaoOptions = [
@@ -52,9 +61,70 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
   areaEstimada,
   geracaoEstimadaAnual,
   latitude,
-  longitude
+  longitude,
+  selectedInverters,
+  selectedModule,
+  maxModulosPerMPPT
 }) => {
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
+
+  // Preparar dados para MPPT calculations
+  const invertersForMPPT = selectedInverters?.map(inv => ({
+    id: inv.id || inv.inverterId,
+    fabricante: inv.fabricante,
+    modelo: inv.modelo,
+    potenciaSaidaCA: inv.potenciaSaidaCA,
+    tensaoCcMax: inv.tensaoCcMaxV,
+    numeroMppt: inv.numeroMppt,
+    stringsPorMppt: inv.stringsPorMppt,
+    correnteEntradaMax: inv.correnteEntradaMaxA,
+    faixaMpptMin: inv.faixaMpptMinV,
+    faixaMpptMax: inv.faixaMpptMaxV,
+    tipoRede: inv.tipoRede
+  })) || [];
+
+  const defaultModule = {
+    potenciaNominal: 540,
+    vocStc: 49.7,
+    tempCoefVoc: -0.27
+  };
+
+  const defaultCoordinates = {
+    latitude: latitude || -15.7942,
+    longitude: longitude || -47.8822
+  };
+
+  // Hook para calcular limites MPPT
+  const moduleToUse = selectedModule && 
+                     typeof selectedModule.vocStc === 'number' && 
+                     typeof selectedModule.tempCoefVoc === 'number' 
+    ? selectedModule 
+    : defaultModule;
+    
+  const mpptLimits = useMultipleMPPTCalculations(
+    invertersForMPPT,
+    moduleToUse as { potenciaNominal: number; vocStc: number; tempCoefVoc: number; },
+    defaultCoordinates,
+    Boolean(selectedModule?.vocStc && selectedModule?.tempCoefVoc && selectedInverters?.length)
+  );
+
+  // Calcular limite máximo de módulos baseado nos inversores
+  const calculateMaxModules = () => {
+    if (!selectedInverters?.length) return maxModulosPerMPPT || 50; // Fallback
+    
+    let totalMaxModules = 0;
+    selectedInverters.forEach(inverter => {
+      const inverterId = inverter.id || inverter.inverterId;
+      const limit = mpptLimits[inverterId];
+      if (limit && !limit.isLoading && !limit.error) {
+        totalMaxModules += limit.modulosTotal * (inverter.quantity || 1);
+      }
+    });
+    
+    return totalMaxModules || maxModulosPerMPPT || 50;
+  };
+
+  const maxModules = calculateMaxModules();
 
   // Atualizar primeira água de telhado com dados da API quando disponível
   useEffect(() => {
@@ -184,7 +254,7 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
     };
     
     onAguasChange([...aguasTelhado, newArea]);
-    setExpandedAreas(new Set([...expandedAreas, newArea.id]));
+    setExpandedAreas(new Set([...Array.from(expandedAreas), newArea.id]));
   };
 
   const removeArea = (id: string) => {
@@ -233,7 +303,9 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
           
           {/* Resumo Geral */}
           {aguasTelhado.length > 0 && (
-            <div className="bg-gradient-to-r from-blue-50 to-green-50 p-4 rounded-lg border border-blue-200">
+            <div className={`bg-gradient-to-r from-blue-50 to-green-50 p-4 rounded-lg border ${
+              getTotalModulos() > maxModules ? 'border-red-300 bg-gradient-to-r from-red-50 to-orange-50' : 'border-blue-200'
+            }`}>
               <h4 className="font-semibold text-blue-800 mb-3">Resumo do Sistema Multi-Água</h4>
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div className="text-center">
@@ -241,14 +313,31 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
                   <div className="text-blue-500">Águas</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{getTotalModulos()}</div>
-                  <div className="text-green-500">Módulos</div>
+                  <div className={`text-2xl font-bold ${
+                    getTotalModulos() > maxModules ? 'text-red-600' : 'text-green-600'
+                  }`}>
+                    {getTotalModulos()}
+                    {maxModules && ` / ${maxModules}`}
+                  </div>
+                  <div className={getTotalModulos() > maxModules ? 'text-red-500' : 'text-green-500'}>
+                    Módulos {getTotalModulos() > maxModules && '(Excede Limite!)'}
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-orange-600">{getTotalPotencia().toFixed(2)} kWp</div>
                   <div className="text-orange-500">Potência</div>
                 </div>
               </div>
+              {getTotalModulos() > maxModules && (
+                <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded-lg">
+                  <p className="text-red-700 text-sm font-medium">
+                    ⚠️ Total de módulos ({getTotalModulos()}) excede o limite máximo do sistema ({maxModules})
+                  </p>
+                  <p className="text-red-600 text-xs mt-1">
+                    Baseado nos inversores selecionados e parâmetros dos módulos
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -374,15 +463,32 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
 
                         {/* Número de Módulos */}
                         <div className="space-y-2">
-                          <Label htmlFor={`modulos-${area.id}`}>Número de Módulos</Label>
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor={`modulos-${area.id}`}>Número de Módulos</Label>
+                            {maxModules && (
+                              <span className="text-xs text-muted-foreground">
+                                Máx: {maxModules} módulos (sistema total)
+                              </span>
+                            )}
+                          </div>
                           <Input
                             id={`modulos-${area.id}`}
                             type="number"
                             min="1"
-                            max="100"
+                            max={maxModules || 100}
                             value={area.numeroModulos}
-                            onChange={(e) => updateArea(area.id, 'numeroModulos', parseInt(e.target.value) || 0)}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value) || 0;
+                              const limitedValue = Math.min(value, maxModules || 100);
+                              updateArea(area.id, 'numeroModulos', limitedValue);
+                            }}
+                            className={area.numeroModulos > maxModules ? 'border-red-500' : ''}
                           />
+                          {area.numeroModulos > maxModules && (
+                            <p className="text-xs text-red-500">
+                              ⚠️ Número excede limite máximo do sistema ({maxModules} módulos)
+                            </p>
+                          )}
                         </div>
 
                         {/* Botão Atualizar Geração */}
@@ -480,7 +586,7 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
           {/* Adicionar Nova Água */}
           <Button
             onClick={addNewArea}
-            variant="dashed"
+            variant="outline"
             className="w-full border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 text-gray-600 hover:text-blue-600"
           >
             <Plus className="w-4 h-4 mr-2" />

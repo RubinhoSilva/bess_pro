@@ -604,22 +604,22 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
       potenciaModulo: 550,
       eficienciaSistema: 85,
       numeroModulos: 0,
-      energyBills: [{
-        id: crypto.randomUUID(),
-        name: 'Conta Principal',
-        consumoMensal: Array(12).fill(500)
-      }],
       custoEquipamento: 0,
       custoMateriais: 0,
       custoMaoDeObra: 0,
       bdi: 25,
       tarifaEnergiaB: 0.75,
       custoFioB: 0.30,
-      inverters: [{
+      selectedInverters: [],
+      totalInverterPower: 0,
+      totalMpptChannels: 0,
+      aguasTelhado: [],
+      energyBills: [{
         id: crypto.randomUUID(),
-        selectedInverterId: '',
-        quantity: 1
+        name: 'Conta Principal',
+        consumoMensal: Array(12).fill(500)
       }],
+      grupoTarifario: 'B' as const,
     });
     
     toast({ 
