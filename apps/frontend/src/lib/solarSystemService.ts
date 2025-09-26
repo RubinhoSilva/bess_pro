@@ -588,7 +588,7 @@ export class SolarSystemService {
       console.log('🔄 Calculando limites MPPT com parâmetros:', params);
       
       // Chamar via backend Node.js
-      const response = await api.post('/api/v1/mppt/calculate-modules-per-mppt', params);
+      const response = await api.post('/solar-analysis/pvlib/mppt/calculate-modules-per-mppt', params);
       
       console.log('✅ Resultado do cálculo MPPT:', response.data);
       
