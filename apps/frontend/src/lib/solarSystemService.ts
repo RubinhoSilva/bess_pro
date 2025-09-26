@@ -587,19 +587,13 @@ export class SolarSystemService {
     try {
       console.log('🔄 Calculando limites MPPT com parâmetros:', params);
       
-      // Temporariamente chamar direto o serviço Python até o backend ser reiniciado
-      const response = await fetch('http://localhost:8110/api/v1/mppt/calculate-modules-per-mppt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(params),
-      }).then(res => res.json());
+      // Chamar via backend Node.js
+      const response = await api.post('/api/v1/mppt/calculate-modules-per-mppt', params);
       
-      console.log('✅ Resultado do cálculo MPPT:', response);
+      console.log('✅ Resultado do cálculo MPPT:', response.data);
       
-      if (response) {
-        return response;
+      if (response.data) {
+        return response.data;
       }
       
       throw new Error('Resposta inválida do serviço MPPT');
