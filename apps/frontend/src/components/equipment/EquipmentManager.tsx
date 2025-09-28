@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +50,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   
   // Form states
   const [moduleForm, setModuleForm] = useState<SolarModuleInput>({
+    manufacturerId: '',
     fabricante: '', 
     modelo: '', 
     potenciaNominal: 0,
@@ -60,6 +61,14 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
     isc: 0,
     tipoCelula: '',
     numeroCelulas: 0,
+    tempCoefPmax: 0,
+    tempCoefVoc: 0,
+    tempCoefIsc: 0,
+    aRef: 1.8,
+    iLRef: 0,
+    iORef: 2.5e-12,
+    rS: 0,
+    rShRef: 0,
     garantiaAnos: 25,
     larguraMm: 0,
     alturaMm: 0,
@@ -68,6 +77,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   });
   
   const [inverterForm, setInverterForm] = useState<InverterInput>({
+    manufacturerId: '',
     fabricante: '',
     modelo: '', 
     potenciaSaidaCA: 0, 
@@ -99,6 +109,13 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   const moduleManufacturersList = moduleManufacturers || [];
   const inverterManufacturersList = inverterManufacturers || [];
 
+  // Auto-populate iLRef when isc changes
+  useEffect(() => {
+    if (moduleForm.isc && moduleForm.isc > 0 && (!moduleForm.iLRef || moduleForm.iLRef === 0)) {
+      setModuleForm(prev => ({ ...prev, iLRef: prev.isc }));
+    }
+  }, [moduleForm.isc]);
+
   // Handlers
   const handleSaveModule = async () => {
     if (!moduleForm.modelo || !moduleForm.fabricante || moduleForm.potenciaNominal <= 0) {
@@ -120,6 +137,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       setIsModuleDialogOpen(false);
       setCurrentModule(null);
       setModuleForm({ 
+        manufacturerId: '',
         fabricante: '', 
         modelo: '', 
         potenciaNominal: 0,
@@ -130,6 +148,14 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
         isc: 0,
         tipoCelula: '',
         numeroCelulas: 0,
+        tempCoefPmax: 0,
+        tempCoefVoc: 0,
+        tempCoefIsc: 0,
+        aRef: 1.8,
+        iLRef: 0,
+        iORef: 2.5e-12,
+        rS: 0,
+        rShRef: 0,
         garantiaAnos: 25,
         larguraMm: 0,
         alturaMm: 0,
@@ -164,6 +190,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       setIsInverterDialogOpen(false);
       setCurrentInverter(null);
       setInverterForm({ 
+        manufacturerId: '',
         fabricante: '', 
         modelo: '', 
         potenciaSaidaCA: 0, 
@@ -217,6 +244,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   const handleEditModule = (module: SolarModule) => {
     setCurrentModule(module);
     setModuleForm({
+      manufacturerId: module.manufacturerId || '',
       fabricante: module.fabricante,
       modelo: module.modelo,
       potenciaNominal: module.potenciaNominal,
@@ -233,6 +261,11 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       tempCoefPmax: module.tempCoefPmax,
       tempCoefVoc: module.tempCoefVoc,
       tempCoefIsc: module.tempCoefIsc,
+      aRef: module.aRef || 1.8,
+      iLRef: module.iLRef || module.isc || 0,
+      iORef: module.iORef || 2.5e-12,
+      rS: module.rS || 0,
+      rShRef: module.rShRef || 0,
       pesoKg: module.pesoKg,
       datasheetUrl: module.datasheetUrl,
       certificacoes: module.certificacoes,
@@ -245,6 +278,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   const handleEditInverter = (inverter: Inverter) => {
     setCurrentInverter(inverter);
     setInverterForm({
+      manufacturerId: inverter.manufacturerId || '',
       fabricante: inverter.fabricante,
       modelo: inverter.modelo,
       potenciaSaidaCA: inverter.potenciaSaidaCA,
@@ -278,6 +312,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   const handleNewModule = () => {
     setCurrentModule(null);
     setModuleForm({ 
+      manufacturerId: '',
       fabricante: '', 
       modelo: '', 
       potenciaNominal: 0,
@@ -288,6 +323,14 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       isc: 0,
       tipoCelula: '',
       numeroCelulas: 0,
+      tempCoefPmax: 0,
+      tempCoefVoc: 0,
+      tempCoefIsc: 0,
+      aRef: 1.8,
+      iLRef: 0,
+      iORef: 2.5e-12,
+      rS: 0,
+      rShRef: 0,
       garantiaAnos: 25,
       larguraMm: 0,
       alturaMm: 0,
@@ -300,6 +343,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   const handleNewInverter = () => {
     setCurrentInverter(null);
     setInverterForm({ 
+      manufacturerId: '',
       fabricante: '', 
       modelo: '', 
       potenciaSaidaCA: 0, 
@@ -578,7 +622,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="voc">Tensão Circuito Aberto (V)</Label>
+                  <Label htmlFor="voc">Tensão de Circuito Aberto (Voc)</Label>
                   <Input
                     id="voc"
                     type="number"
@@ -590,7 +634,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="isc">Corrente Curto-Circuito (A)</Label>
+                  <Label htmlFor="isc">Corrente Curto-Circuito (Isc)</Label>
                   <Input
                     id="isc"
                     type="number"
@@ -598,6 +642,123 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                     value={moduleForm.isc || ''}
                     onChange={(e) => setModuleForm(prev => ({ ...prev, isc: parseFloat(e.target.value) || 0 }))}
                     placeholder="13.90"
+                  />
+                </div>
+              </div>
+
+              {/* Coeficientes de Temperatura */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tempCoefPmax">Coeficiente de Temperatura (Pmax)</Label>
+                  <div className="relative">
+                    <Input
+                      id="tempCoefPmax"
+                      type="number"
+                      step="0.1"
+                      value={moduleForm.tempCoefPmax || ''}
+                      onChange={(e) => setModuleForm(prev => ({ ...prev, tempCoefPmax: parseFloat(e.target.value) || 0 }))}
+                      placeholder="-0.40"
+                    />
+                    <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="tempCoefVoc">Coeficiente de Temperatura (Voc)</Label>
+                  <div className="relative">
+                    <Input
+                      id="tempCoefVoc"
+                      type="number"
+                      step="0.01"
+                      value={moduleForm.tempCoefVoc || ''}
+                      onChange={(e) => setModuleForm(prev => ({ ...prev, tempCoefVoc: parseFloat(e.target.value) || 0 }))}
+                      placeholder="-0.27"
+                    />
+                    <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="tempCoefIsc">Coeficiente de Temperatura (Isc)</Label>
+                  <div className="relative">
+                    <Input
+                      id="tempCoefIsc"
+                      type="number"
+                      step="0.001"
+                      value={moduleForm.tempCoefIsc || ''}
+                      onChange={(e) => setModuleForm(prev => ({ ...prev, tempCoefIsc: parseFloat(e.target.value) || 0 }))}
+                      placeholder="0.048"
+                    />
+                    <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Parâmetros do modelo de diodo único */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Parâmetros do modelo de diodo único</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="aRef">Fator de Idealidade</Label>
+                  <Input
+                    id="aRef"
+                    type="number"
+                    step="0.1"
+                    value={moduleForm.aRef || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, aRef: parseFloat(e.target.value) || 0 }))}
+                    placeholder="1.8"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="iLRef">Corrente de Luz Fotogerada (A)</Label>
+                  <Input
+                    id="iLRef"
+                    type="number"
+                    step="0.1"
+                    value={moduleForm.iLRef || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, iLRef: parseFloat(e.target.value) || 0 }))}
+                    placeholder="13.90"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="iORef">Corrente de Saturação do Diodo (A)</Label>
+                  <Input
+                    id="iORef"
+                    type="number"
+                    step="1e-15"
+                    value={moduleForm.iORef || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, iORef: parseFloat(e.target.value) || 0 }))}
+                    placeholder="2.5e-12"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rS">Resistência série (ohms)</Label>
+                  <Input
+                    id="rS"
+                    type="number"
+                    step="0.01"
+                    value={moduleForm.rS || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, rS: parseFloat(e.target.value) || 0 }))}
+                    placeholder="0.5"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rShRef">Resistência shunt (ohms)</Label>
+                  <Input
+                    id="rShRef"
+                    type="number"
+                    step="1"
+                    value={moduleForm.rShRef || ''}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, rShRef: parseFloat(e.target.value) || 0 }))}
+                    placeholder="500"
                   />
                 </div>
               </div>

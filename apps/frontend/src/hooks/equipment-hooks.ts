@@ -182,6 +182,11 @@ export interface SolarModuleInput {
   tempCoefPmax?: number;
   tempCoefVoc?: number;
   tempCoefIsc?: number;
+  aRef?: number;
+  iLRef?: number;
+  iORef?: number;
+  rS?: number;
+  rShRef?: number;
   pesoKg?: number;
   datasheetUrl?: string;
   certificacoes?: string[];

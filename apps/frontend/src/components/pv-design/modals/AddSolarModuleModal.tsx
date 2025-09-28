@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -46,6 +46,7 @@ const MANUFACTURERS = [
 
 export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModuleSelected }: AddSolarModuleModalProps) {
   const [formData, setFormData] = useState<SolarModuleInput>({
+    manufacturerId: '',
     fabricante: '',
     modelo: '',
     potenciaNominal: 0,
@@ -56,6 +57,14 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
     isc: 0,
     tipoCelula: '',
     numeroCelulas: 0,
+    tempCoefPmax: 0,
+    tempCoefVoc: 0,
+    tempCoefIsc: 0,
+    aRef: 1.8,
+    iLRef: 0,
+    iORef: 2.5e-12,
+    rS: 0,
+    rShRef: 0,
     garantiaAnos: 25,
     larguraMm: 0,
     alturaMm: 0,
@@ -64,6 +73,13 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
   });
 
   const createModule = useCreateSolarModule();
+
+  // Auto-populate iLRef when isc changes
+  useEffect(() => {
+    if (formData.isc && formData.isc > 0 && (!formData.iLRef || formData.iLRef === 0)) {
+      setFormData(prev => ({ ...prev, iLRef: prev.isc }));
+    }
+  }, [formData.isc]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +101,7 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
       
       // Reset form
       setFormData({
+        manufacturerId: '',
         fabricante: '',
         modelo: '',
         potenciaNominal: 0,
@@ -95,6 +112,14 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
         isc: 0,
         tipoCelula: '',
         numeroCelulas: 0,
+        tempCoefPmax: 0,
+        tempCoefVoc: 0,
+        tempCoefIsc: 0,
+        aRef: 1.8,
+        iLRef: 0,
+        iORef: 2.5e-12,
+        rS: 0,
+        rShRef: 0,
         garantiaAnos: 25,
         larguraMm: 0,
         alturaMm: 0,
@@ -245,7 +270,7 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="voc">Tensão Circuito Aberto (V)</Label>
+                <Label htmlFor="voc">Tensão de Circuito Aberto (Voc)</Label>
                 <Input
                   id="voc"
                   type="number"
@@ -257,7 +282,7 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="isc">Corrente Curto-Circuito (A)</Label>
+                <Label htmlFor="isc">Corrente Curto-Circuito (Isc)</Label>
                 <Input
                   id="isc"
                   type="number"
@@ -265,6 +290,123 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                   value={formData.isc || ''}
                   onChange={(e) => updateFormData('isc', parseFloat(e.target.value) || 0)}
                   placeholder="13.90"
+                />
+              </div>
+            </div>
+
+            {/* Coeficientes de Temperatura */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="tempCoefPmax">Coeficiente de Temperatura (Pmax)</Label>
+                <div className="relative">
+                  <Input
+                    id="tempCoefPmax"
+                    type="number"
+                    step="0.1"
+                    value={formData.tempCoefPmax || ''}
+                    onChange={(e) => updateFormData('tempCoefPmax', parseFloat(e.target.value) || 0)}
+                    placeholder="-0.40"
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tempCoefVoc">Coeficiente de Temperatura (Voc)</Label>
+                <div className="relative">
+                  <Input
+                    id="tempCoefVoc"
+                    type="number"
+                    step="0.01"
+                    value={formData.tempCoefVoc || ''}
+                    onChange={(e) => updateFormData('tempCoefVoc', parseFloat(e.target.value) || 0)}
+                    placeholder="-0.27"
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tempCoefIsc">Coeficiente de Temperatura (Isc)</Label>
+                <div className="relative">
+                  <Input
+                    id="tempCoefIsc"
+                    type="number"
+                    step="0.001"
+                    value={formData.tempCoefIsc || ''}
+                    onChange={(e) => updateFormData('tempCoefIsc', parseFloat(e.target.value) || 0)}
+                    placeholder="0.048"
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Parâmetros do modelo de diodo único */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Parâmetros do modelo de diodo único</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="aRef">Fator de Idealidade</Label>
+                <Input
+                  id="aRef"
+                  type="number"
+                  step="0.1"
+                  value={formData.aRef || ''}
+                  onChange={(e) => updateFormData('aRef', parseFloat(e.target.value) || 0)}
+                  placeholder="1.8"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="iLRef">Corrente de Luz Fotogerada (A)</Label>
+                <Input
+                  id="iLRef"
+                  type="number"
+                  step="0.1"
+                  value={formData.iLRef || ''}
+                  onChange={(e) => updateFormData('iLRef', parseFloat(e.target.value) || 0)}
+                  placeholder="13.90"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="iORef">Corrente de Saturação do Diodo (A)</Label>
+                <Input
+                  id="iORef"
+                  type="number"
+                  step="1e-15"
+                  value={formData.iORef || ''}
+                  onChange={(e) => updateFormData('iORef', parseFloat(e.target.value) || 0)}
+                  placeholder="2.5e-12"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rS">Resistência série (ohms)</Label>
+                <Input
+                  id="rS"
+                  type="number"
+                  step="0.01"
+                  value={formData.rS || ''}
+                  onChange={(e) => updateFormData('rS', parseFloat(e.target.value) || 0)}
+                  placeholder="0.5"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rShRef">Resistência shunt (ohms)</Label>
+                <Input
+                  id="rShRef"
+                  type="number"
+                  step="1"
+                  value={formData.rShRef || ''}
+                  onChange={(e) => updateFormData('rShRef', parseFloat(e.target.value) || 0)}
+                  placeholder="500"
                 />
               </div>
             </div>
