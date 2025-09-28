@@ -45,6 +45,7 @@ const MANUFACTURERS = [
 
 export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInverterSelected }: AddInverterModalProps) {
   const [formData, setFormData] = useState<InverterInput>({
+    manufacturerId: '',
     fabricante: '',
     modelo: '',
     potenciaSaidaCA: 0,
@@ -52,6 +53,7 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
     potenciaFvMax: 0,
     tensaoCcMax: 0,
     numeroMppt: 0,
+    stringsPorMppt: 0,
     eficienciaMax: 0,
     correnteEntradaMax: 0,
     potenciaAparenteMax: 0,
@@ -79,6 +81,7 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
       
       // Reset form
       setFormData({
+        manufacturerId: '',
         fabricante: '',
         modelo: '',
         potenciaSaidaCA: 0,
@@ -86,6 +89,7 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
         potenciaFvMax: 0,
         tensaoCcMax: 0,
         numeroMppt: 0,
+        stringsPorMppt: 0,
         eficienciaMax: 0,
         correnteEntradaMax: 0,
         potenciaAparenteMax: 0,
@@ -199,6 +203,16 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
                   onChange={e => updateFormData('numeroMppt', parseFloat(e.target.value) || 0)} 
                   className="bg-background border-border" 
                   placeholder="2"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Quantidade de strings por MPPT</Label>
+                <Input 
+                  type="number" 
+                  value={formData.stringsPorMppt || ''} 
+                  onChange={e => updateFormData('stringsPorMppt', parseInt(e.target.value) || 0)} 
+                  className="bg-background border-border" 
+                  placeholder="3"
                 />
               </div>
               <div className="space-y-2">

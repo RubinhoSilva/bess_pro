@@ -85,6 +85,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
     potenciaFvMax: 0,
     tensaoCcMax: 0,
     numeroMppt: 0,
+    stringsPorMppt: 0,
     eficienciaMax: 0,
     correnteEntradaMax: 0,
     potenciaAparenteMax: 0,
@@ -198,6 +199,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
         potenciaFvMax: 0,
         tensaoCcMax: 0,
         numeroMppt: 0,
+        stringsPorMppt: 0,
         eficienciaMax: 0,
         correnteEntradaMax: 0,
         potenciaAparenteMax: 0,
@@ -351,6 +353,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       potenciaFvMax: 0,
       tensaoCcMax: 0,
       numeroMppt: 0,
+      stringsPorMppt: 0,
       eficienciaMax: 0,
       correnteEntradaMax: 0,
       potenciaAparenteMax: 0,
@@ -937,6 +940,16 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                     onChange={e => setInverterForm(prev => ({ ...prev, numeroMppt: parseInt(e.target.value) || 0 }))} 
                     className="bg-background border-border" 
                     placeholder="2"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Quantidade de strings por MPPT</Label>
+                  <Input 
+                    type="number" 
+                    value={inverterForm.stringsPorMppt || ''} 
+                    onChange={e => setInverterForm(prev => ({ ...prev, stringsPorMppt: parseInt(e.target.value) || 0 }))} 
+                    className="bg-background border-border" 
+                    placeholder="3"
                   />
                 </div>
                 <div className="space-y-2">
