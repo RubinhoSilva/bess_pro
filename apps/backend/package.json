@@ -14,6 +14,7 @@
     "lint": "eslint src/**/*.ts",
     "clean": "rm -rf dist",
     "seed:equipment": "ts-node -r tsconfig-paths/register src/infrastructure/cli/seedEquipment.ts",
+    "seed:manufacturers": "ts-node -r tsconfig-paths/register src/infrastructure/cli/seedManufacturers.ts",
     "fix:project-index": "ts-node -r tsconfig-paths/register src/scripts/fix-project-name-index.ts"
   },
   "dependencies": {

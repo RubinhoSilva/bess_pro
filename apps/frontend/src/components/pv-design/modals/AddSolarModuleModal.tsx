@@ -219,7 +219,7 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="vmpp">Tensão MPP (V)</Label>
+                <Label htmlFor="vmpp">Tensão de Máxima Potência (VmP)</Label>
                 <Input
                   id="vmpp"
                   type="number"
@@ -231,7 +231,7 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="impp">Corrente MPP (A)</Label>
+                <Label htmlFor="impp">Corrente de Máxima Potência (ImP)</Label>
                 <Input
                   id="impp"
                   type="number"

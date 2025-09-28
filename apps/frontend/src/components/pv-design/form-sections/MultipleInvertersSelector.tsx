@@ -8,7 +8,7 @@ import { Trash2, Plus, Zap, Cpu, AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SelectedInverter } from '@/contexts/DimensioningContext';
-import { useInverters, Inverter } from '@/hooks/equipment-hooks';
+import { useInverters, useManufacturers, Inverter, ManufacturerType } from '@/hooks/equipment-hooks';
 import { useMultipleInverters } from '@/hooks/multiple-inverters-hooks';
 import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
 import { AddInverterModal } from '../modals/AddInverterModal';
@@ -40,11 +40,13 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   coordinates,
   showMPPTLimits = false
 }) => {
+  const [selectedManufacturerId, setSelectedManufacturerId] = useState<string>('');
   const [selectedInverterId, setSelectedInverterId] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [showInverterModal, setShowInverterModal] = useState(false);
   
   const { data: invertersData, isLoading: loadingInverters } = useInverters({});
+  const { data: manufacturersData, isLoading: loadingManufacturers } = useManufacturers({ type: ManufacturerType.INVERTER });
   const {
     addInverter,
     calculateTotalPower,
@@ -52,8 +54,21 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
     validateInverterSelection
   } = useMultipleInverters();
 
-  // Extrair array de inversores da resposta da API
+  // Extrair arrays da resposta da API
   const invertersArray = invertersData?.inverters || [];
+  const manufacturersArray = manufacturersData || [];
+  
+  // Debug temporário - logs iniciais
+  if (selectedManufacturerId && invertersArray.length > 0 && manufacturersArray.length > 0) {
+    console.log('🔍 Debug - Fabricante ID selecionado:', selectedManufacturerId);
+    console.log('🔍 Debug - Fabricantes disponíveis:', manufacturersArray.map(m => ({ id: m.id, name: m.name })));
+    console.log('🔍 Debug - Primeiro inversor:', {
+      id: invertersArray[0]?.id,
+      fabricante: invertersArray[0]?.fabricante,
+      manufacturerId: invertersArray[0]?.manufacturerId,
+      modelo: invertersArray[0]?.modelo
+    });
+  }
 
   // Preparar dados para MPPT calculations
   const invertersForMPPT = selectedInverters.map((inv: SelectedInverter) => ({
@@ -105,7 +120,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   }, [selectedInverters, calculateTotalPower, calculateTotalMpptChannels, onTotalPowerChange, onTotalMpptChannelsChange]);
 
   const handleAddInverter = () => {
-    if (!selectedInverterId) return;
+    if (!selectedInverterId || !selectedManufacturerId) return;
 
     const inverter = invertersArray.find((inv: any) => inv.id === selectedInverterId);
     if (!inverter) return;
@@ -114,6 +129,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
     const updatedList = [...selectedInverters, newSelectedInverter];
     
     onInvertersChange(updatedList);
+    setSelectedManufacturerId('');
     setSelectedInverterId('');
     setQuantity(1);
   };
@@ -136,10 +152,58 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   const totalPower = calculateTotalPower(selectedInverters);
   const totalMpptChannels = calculateTotalMpptChannels(selectedInverters);
 
-  // Filtrar inversores já selecionados para evitar duplicação
-  const availableInverters = invertersArray.filter((inverter: any) => 
-    !selectedInverters.some(selected => selected.inverterId === inverter.id)
-  );
+  // Filtrar inversores por fabricante selecionado e inversores já selecionados
+  const availableInverters = invertersArray.filter((inverter: any) => {
+    const notAlreadySelected = !selectedInverters.some(selected => selected.inverterId === inverter.id);
+    
+    // Se não há fabricante selecionado, mostrar todos os inversores disponíveis
+    if (!selectedManufacturerId) {
+      return notAlreadySelected;
+    }
+    
+    // Buscar o fabricante selecionado
+    const selectedManufacturer = manufacturersArray.find((m: any) => m.id === selectedManufacturerId);
+    if (!selectedManufacturer) {
+      return false;
+    }
+    
+    // Filtrar por manufacturerId se disponível, senão por nome do fabricante
+    const matchesManufacturer = 
+      inverter.manufacturerId === selectedManufacturerId ||
+      inverter.fabricante === selectedManufacturer.name;
+    
+    return notAlreadySelected && matchesManufacturer;
+  });
+
+  // Debug do estado após availableInverters ser declarado
+  useEffect(() => {
+    console.log('🔍 Estado atual:', {
+      selectedManufacturerId,
+      selectedInverterId,
+      availableInverters: availableInverters.length,
+      totalInverters: invertersArray.length
+    });
+  }, [selectedManufacturerId, selectedInverterId, availableInverters.length, invertersArray.length]);
+
+  // Reset seleção de inversor quando fabricante muda
+  useEffect(() => {
+    if (selectedManufacturerId && selectedInverterId && invertersArray.length > 0) {
+      const selectedInverter = invertersArray.find((inv: any) => inv.id === selectedInverterId);
+      const selectedManufacturer = manufacturersArray.find((m: any) => m.id === selectedManufacturerId);
+      
+      if (selectedInverter && selectedManufacturer) {
+        // Verificar se o inversor pertence ao fabricante selecionado
+        const belongsToManufacturer = 
+          selectedInverter.manufacturerId === selectedManufacturerId ||
+          selectedInverter.fabricante === selectedManufacturer.name;
+          
+        if (!belongsToManufacturer) {
+          console.log('🔄 Resetando seleção de inversor - não pertence ao fabricante selecionado');
+          setSelectedInverterId('');
+        }
+      }
+    }
+  }, [selectedManufacturerId, invertersArray, manufacturersArray]);
 
   return (
     <div className="space-y-6">
@@ -164,20 +228,51 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Seleção de novo inversor */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-gray-50">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg bg-gray-50">
             <div className="space-y-2">
-              <Label>Selecionar Inversor</Label>
-              <Select value={selectedInverterId} onValueChange={setSelectedInverterId}>
+              <Label>Fabricante</Label>
+              <Select value={selectedManufacturerId} onValueChange={setSelectedManufacturerId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Escolha um inversor" />
+                  <SelectValue placeholder="Selecione o fabricante" />
+                </SelectTrigger>
+                <SelectContent>
+                  {loadingManufacturers ? (
+                    <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                  ) : (
+                    manufacturersArray.map((manufacturer: any) => (
+                      <SelectItem key={manufacturer.id} value={manufacturer.id}>
+                        {manufacturer.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Inversor</Label>
+              <Select 
+                value={selectedInverterId} 
+                onValueChange={(value) => {
+                  console.log('🔧 Selecionando inversor:', value);
+                  setSelectedInverterId(value);
+                }}
+                disabled={!selectedManufacturerId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={selectedManufacturerId ? "Escolha um inversor" : "Selecione fabricante primeiro"} />
                 </SelectTrigger>
                 <SelectContent>
                   {loadingInverters ? (
                     <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                  ) : availableInverters.length === 0 ? (
+                    <SelectItem value="no-inverters" disabled>
+                      {selectedManufacturerId ? "Nenhum inversor disponível" : "Selecione um fabricante"}
+                    </SelectItem>
                   ) : (
                     availableInverters.map((inverter: any) => (
                       <SelectItem key={inverter.id} value={inverter.id}>
-                        {inverter.fabricante} {inverter.modelo} - {(inverter.potenciaSaidaCA / 1000).toFixed(1)}kW
+                        {inverter.modelo} - {(inverter.potenciaSaidaCA / 1000).toFixed(1)}kW
                       </SelectItem>
                     ))
                   )}
@@ -200,7 +295,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
             <div className="flex items-end">
               <Button 
                 onClick={handleAddInverter}
-                disabled={!selectedInverterId || loadingInverters}
+                disabled={!selectedInverterId || !selectedManufacturerId || loadingInverters || loadingManufacturers}
                 className="w-full"
               >
                 <Plus className="w-4 h-4 mr-2" />

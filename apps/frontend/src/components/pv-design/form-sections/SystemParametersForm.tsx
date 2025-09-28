@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Settings, Info, Plus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useSolarModules } from '@/hooks/equipment-hooks';
+import { useSolarModules, useInverters, useManufacturers, ManufacturerType } from '@/hooks/equipment-hooks';
+import { MultipleInvertersSelector } from './MultipleInvertersSelector';
 import { AddSolarModuleModal } from '../modals/AddSolarModuleModal';
 import { AddInverterModal } from '../modals/AddInverterModal';
-import { MultipleInvertersSelector } from './MultipleInvertersSelector';
 // MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
 // import MultipleRoofAreasForm from './MultipleRoofAreasForm';
 // import { AguaTelhado } from '@/contexts/DimensioningContext';
@@ -20,58 +19,38 @@ interface SystemParametersFormProps {
   onFormChange: (field: string, value: any) => void;
 }
 
-// Dados de módulos fotovoltaicos comuns
-const SOLAR_MODULES = [
-  { id: 'jinko-550', name: 'Jinko Solar 550W', power: 550, efficiency: 21.2, voltage: 41.8, current: 13.16 },
-  { id: 'canadian-540', name: 'Canadian Solar 540W', power: 540, efficiency: 20.9, voltage: 41.4, current: 13.04 },
-  { id: 'trina-545', name: 'Trina Solar 545W', power: 545, efficiency: 21.0, voltage: 41.6, current: 13.10 },
-  { id: 'risen-550', name: 'Risen Energy 550W', power: 550, efficiency: 21.3, voltage: 41.7, current: 13.19 },
-  { id: 'ja-550', name: 'JA Solar 550W', power: 550, efficiency: 21.1, voltage: 41.9, current: 13.13 },
-  { id: 'longi-545', name: 'LONGi Solar 545W', power: 545, efficiency: 21.0, voltage: 41.5, current: 13.13 },
-  { id: 'custom', name: 'Personalizado', power: 0, efficiency: 0, voltage: 0, current: 0 },
-];
 
 
 const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, onFormChange }) => {
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [showInverterModal, setShowInverterModal] = useState(false);
   
-  // Fetch equipment data from API
-  const { data: solarModules = { modules: [], total: 0 }, refetch: refetchModules } = useSolarModules({ pageSize: 100 });
+  // Equipment data
+  const { data: moduleManufacturers } = useManufacturers({ type: ManufacturerType.SOLAR_MODULE });
+  const { data: solarModulesData, refetch: refetchModules } = useSolarModules({ pageSize: 100 });
 
+  const solarModules = solarModulesData?.modules || [];
+  const moduleManufacturersList = moduleManufacturers || [];
+
+  // Get available modules based on selected manufacturer
+  const getAvailableModules = () => {
+    if (!formData.fabricanteModulo) return solarModules;
+    return solarModules.filter((module: any) => 
+      moduleManufacturersList.find((m: any) => m.id === formData.fabricanteModulo && m.name === module.fabricante)
+    );
+  };
+
+  // Update module data when selection changes
   const handleModuleChange = (moduleId: string) => {
-    if (moduleId === 'custom') {
-      // Reset to allow custom input
-      onFormChange('moduloSelecionado', moduleId);
-      onFormChange('selectedModuleId', moduleId);
-      onFormChange('potenciaModulo', 0);
-      onFormChange('eficienciaModulo', 0);
-      onFormChange('tensaoModulo', 0);
-      onFormChange('correnteModulo', 0);
-      return;
-    }
-
-    // First check hardcoded modules for backward compatibility
-    const hardcodedModule = SOLAR_MODULES.find(m => m.id === moduleId);
-    if (hardcodedModule) {
-      onFormChange('moduloSelecionado', moduleId);
-      onFormChange('selectedModuleId', moduleId);
-      onFormChange('potenciaModulo', hardcodedModule.power);
-      onFormChange('eficienciaModulo', hardcodedModule.efficiency);
-      onFormChange('tensaoModulo', hardcodedModule.voltage);
-      onFormChange('correnteModulo', hardcodedModule.current);
-      return;
-    }
-
-    // Then check API modules
-    const selectedModule = solarModules.modules?.find((m: any) => m.id === moduleId);
+    const selectedModule = solarModules.find((m: any) => m.id === moduleId);
     if (selectedModule) {
       onFormChange('moduloSelecionado', moduleId);
-      onFormChange('selectedModuleId', moduleId);
       onFormChange('potenciaModulo', selectedModule.potenciaNominal);
-      onFormChange('eficienciaModulo', selectedModule.eficiencia || 0);
-      onFormChange('tensaoModulo', selectedModule.vmpp || 0);
-      onFormChange('correnteModulo', selectedModule.impp || 0);
+      onFormChange('eficienciaModulo', selectedModule.eficiencia);
+      onFormChange('tensaoModulo', selectedModule.vmpp);
+      onFormChange('correnteModulo', selectedModule.impp);
+      onFormChange('fabricanteModuloNome', selectedModule.fabricante);
+      onFormChange('modeloModulo', selectedModule.modelo);
     }
   };
 
@@ -87,7 +66,6 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
     });
   };
 
-
   return (
     <TooltipProvider>
       <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
@@ -98,13 +76,16 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Módulos Fotovoltaicos */}
+
+
+          {/* Parâmetros Gerais do Sistema */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Módulos Fotovoltaicos</h3>
+            <h3 className="text-lg font-semibold text-gray-700">Parâmetros Gerais</h3>
             
-            <div className="space-y-2">
+            {/* Seleção de Equipamentos */}
+            <div className="space-y-4 p-4 border border-border/50 rounded-lg bg-card/30">
               <div className="flex items-center justify-between">
-                <Label>Modelo do Módulo</Label>
+                <h4 className="text-sm font-medium text-foreground">Módulos Fotovoltaicos</h4>
                 <Button
                   type="button"
                   variant="outline"
@@ -116,65 +97,58 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                   Adicionar Módulo
                 </Button>
               </div>
-              <Select 
-                onValueChange={handleModuleChange} 
-                value={formData.moduloSelecionado || formData.selectedModuleId || ''}
-                required
-              >
-                <SelectTrigger className={(formData.moduloSelecionado || formData.selectedModuleId) ? "" : "border-red-300 focus:border-red-500"}>
-                  <SelectValue placeholder="Selecione o módulo fotovoltaico *" />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Hardcoded modules for backward compatibility */}
-                  {SOLAR_MODULES.map(module => (
-                    <SelectItem key={module.id} value={module.id}>
-                      {module.name} {module.power > 0 && `- ${module.power}W`}
-                    </SelectItem>
-                  ))}
-                  
-                  {/* API modules */}
-                  {solarModules.modules?.map((module: any) => (
-                    <SelectItem key={module.id} value={module.id}>
-                      {module.fabricante} {module.modelo} - {module.potenciaNominal}W
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              
+              <div className="grid grid-cols-1 gap-4">
+                {/* Módulo Solar - ocupando largura total */}
+                <div className="space-y-3">
+                  {/* Fabricante e Módulo na mesma linha */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
+                    <div className="space-y-2">
+                      <Label htmlFor="fabricanteModulo">Fabricante do Módulo</Label>
+                      <Select 
+                        value={formData.fabricanteModulo || ''} 
+                        onValueChange={(value) => {
+                          onFormChange('fabricanteModulo', value);
+                          onFormChange('moduloSelecionado', ''); // Reset module selection
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o fabricante" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {moduleManufacturersList.map((manufacturer: any) => (
+                            <SelectItem key={manufacturer.id} value={manufacturer.id}>
+                              {manufacturer.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="moduloSelecionado">Módulo Solar</Label>
+                      <Select 
+                        value={formData.moduloSelecionado || ''} 
+                        onValueChange={handleModuleChange}
+                        disabled={!formData.fabricanteModulo}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o módulo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAvailableModules().map((module: any) => (
+                            <SelectItem key={module.id} value={module.id}>
+                              {module.modelo} - {module.potenciaNominal}W
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
             </div>
-
-
-          </div>
-
-          {/* Sistema Multi-Inversor */}
-          <MultipleInvertersSelector
-            selectedInverters={formData.selectedInverters || []}
-            onInvertersChange={(inverters) => onFormChange('selectedInverters', inverters)}
-            onTotalPowerChange={(totalPower) => {
-              onFormChange('totalInverterPower', totalPower);
-              // Manter compatibilidade com código legado
-              onFormChange('potenciaInversor', totalPower);
-            }}
-            onTotalMpptChannelsChange={(totalChannels) => {
-              onFormChange('totalMpptChannels', totalChannels);
-              // Manter compatibilidade com código legado
-              onFormChange('canaisMppt', totalChannels);
-            }}
-            selectedModule={{
-              potenciaNominal: formData.potenciaModulo || 540,
-              vocStc: formData.tensaoModulo || 49.7,
-              tempCoefVoc: -0.27 // Default value - could be made configurable
-            }}
-            coordinates={{
-              latitude: formData.latitude || -15.7942,
-              longitude: formData.longitude || -47.8822
-            }}
-            showMPPTLimits={Boolean(formData.potenciaModulo && formData.tensaoModulo)}
-          />
-
-
-          {/* Parâmetros Gerais do Sistema */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700">Parâmetros Gerais</h3>
             
             {/* Perdas Específicas do Sistema */}
             <div className="space-y-4 p-4 border border-border/50 rounded-lg bg-card/30">
@@ -323,7 +297,13 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
 
           </div>
 
-
+          {/* Sistema Multi-Inversor */}
+          <MultipleInvertersSelector
+            selectedInverters={formData.selectedInverters || []}
+            onInvertersChange={(inverters) => onFormChange('selectedInverters', inverters)}
+            onTotalPowerChange={(totalPower) => onFormChange('potenciaInversorTotal', totalPower)}
+            onTotalMpptChannelsChange={(totalChannels) => onFormChange('totalMpptChannels', totalChannels)}
+          />
 
           {/* MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO */}
           {/* 

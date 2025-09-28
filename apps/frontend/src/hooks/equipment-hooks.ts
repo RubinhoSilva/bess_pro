@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 // Types
 export interface SolarModule {
   id: string;
+  manufacturerId: string;
   fabricante: string;
   modelo: string;
   potenciaNominal: number;
@@ -53,8 +54,32 @@ export interface SolarModule {
   updatedAt: string;
 }
 
+export enum ManufacturerType {
+  SOLAR_MODULE = 'SOLAR_MODULE',
+  INVERTER = 'INVERTER',
+  BOTH = 'BOTH'
+}
+
+export interface Manufacturer {
+  id: string;
+  name: string;
+  type: ManufacturerType;
+  teamId?: string;
+  isDefault: boolean;
+  description?: string;
+  website?: string;
+  country?: string;
+  logoUrl?: string;
+  supportEmail?: string;
+  supportPhone?: string;
+  certifications?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Inverter {
   id: string;
+  manufacturerId: string;
   fabricante: string;
   modelo: string;
   potenciaSaidaCA: number;
@@ -100,10 +125,15 @@ export interface Inverter {
   updatedAt: string;
 }
 
+export interface ManufacturerFilters {
+  type?: ManufacturerType;
+}
+
 export interface SolarModuleFilters {
   page?: number;
   pageSize?: number;
   search?: string;
+  manufacturerId?: string;
   fabricante?: string;
   tipoCelula?: string;
   potenciaMin?: number;
@@ -114,6 +144,7 @@ export interface InverterFilters {
   page?: number;
   pageSize?: number;
   search?: string;
+  manufacturerId?: string;
   fabricante?: string;
   tipoRede?: string;
   potenciaMin?: number;
@@ -121,7 +152,20 @@ export interface InverterFilters {
   moduleReferencePower?: number;
 }
 
+export interface ManufacturerInput {
+  name: string;
+  type: ManufacturerType;
+  description?: string;
+  website?: string;
+  country?: string;
+  logoUrl?: string;
+  supportEmail?: string;
+  supportPhone?: string;
+  certifications?: string[];
+}
+
 export interface SolarModuleInput {
+  manufacturerId: string;
   fabricante: string;
   modelo: string;
   potenciaNominal: number;
@@ -146,6 +190,7 @@ export interface SolarModuleInput {
 }
 
 export interface InverterInput {
+  manufacturerId: string;
   fabricante: string;
   modelo: string;
   potenciaSaidaCA: number;
@@ -179,6 +224,39 @@ export interface InverterInput {
 }
 
 // API Functions
+const manufacturerApi = {
+  async getManufacturers(filters: ManufacturerFilters = {}) {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.append(key, value.toString());
+      }
+    });
+    
+    const response = await api.get(`/manufacturers?${params.toString()}`);
+    return response.data.data; // API returns { success: true, data: [...] }
+  },
+
+  async getManufacturer(id: string) {
+    const response = await api.get(`/manufacturers/${id}`);
+    return response.data.data;
+  },
+
+  async createManufacturer(data: ManufacturerInput) {
+    const response = await api.post('/manufacturers', data);
+    return response.data.data;
+  },
+
+  async updateManufacturer(id: string, data: Partial<ManufacturerInput>) {
+    const response = await api.put(`/manufacturers/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteManufacturer(id: string) {
+    await api.delete(`/manufacturers/${id}`);
+  }
+};
+
 const solarModuleApi = {
   async getModules(filters: SolarModuleFilters = {}) {
     const params = new URLSearchParams();
@@ -341,6 +419,70 @@ export function useDeleteInverter() {
     },
     onError: (error: any) => {
       toast.error(`Erro ao excluir inversor: ${error.response?.data?.message || error.message}`);
+    }
+  });
+}
+
+// Manufacturer Hooks
+export function useManufacturers(filters: ManufacturerFilters = {}) {
+  return useQuery({
+    queryKey: ['manufacturers', filters],
+    queryFn: () => manufacturerApi.getManufacturers(filters),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useManufacturer(id: string) {
+  return useQuery({
+    queryKey: ['manufacturers', id],
+    queryFn: () => manufacturerApi.getManufacturer(id),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useCreateManufacturer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: ManufacturerInput) => manufacturerApi.createManufacturer(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manufacturers'] });
+      toast.success('Fabricante criado com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao criar fabricante: ${error.response?.data?.message || error.message}`);
+    }
+  });
+}
+
+export function useUpdateManufacturer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string } & Partial<ManufacturerInput>) => 
+      manufacturerApi.updateManufacturer(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manufacturers'] });
+      toast.success('Fabricante atualizado com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao atualizar fabricante: ${error.response?.data?.message || error.message}`);
+    }
+  });
+}
+
+export function useDeleteManufacturer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => manufacturerApi.deleteManufacturer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manufacturers'] });
+      toast.success('Fabricante excluído com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao excluir fabricante: ${error.response?.data?.message || error.message}`);
     }
   });
 }

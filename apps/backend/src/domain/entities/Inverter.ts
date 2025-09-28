@@ -4,6 +4,7 @@ import { SoftDeleteProps } from "./base/ISoftDeletable";
 export interface InverterData extends SoftDeleteProps {
   id?: string;
   userId: string;
+  manufacturerId?: string;
   fabricante: string;
   modelo: string;
   potenciaSaidaCA: number; // Potência nominal de saída CA (W)
@@ -74,6 +75,10 @@ export class Inverter extends BaseEntity {
   }
 
   private validateRequired(): void {
+    // manufacturerId is optional for backward compatibility
+    // if (!this.data.manufacturerId?.trim()) {
+    //   throw new Error('ID do fabricante é obrigatório');
+    // }
     if (!this.data.fabricante?.trim()) {
       throw new Error('Fabricante é obrigatório');
     }
@@ -91,6 +96,7 @@ export class Inverter extends BaseEntity {
   // Getters
   get id(): string | undefined { return this.data.id; }
   get userId(): string { return this.data.userId; }
+  get manufacturerId(): string { return this.data.manufacturerId || ''; }
   get fabricante(): string { return this.data.fabricante; }
   get modelo(): string { return this.data.modelo; }
   get potenciaSaidaCA(): number { return this.data.potenciaSaidaCA; }

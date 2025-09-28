@@ -24,10 +24,12 @@ import {
   useCreateInverter,
   useUpdateInverter,
   useDeleteInverter,
+  useManufacturers,
   type SolarModule,
   type Inverter,
   type SolarModuleInput,
-  type InverterInput
+  type InverterInput,
+  ManufacturerType
 } from '@/hooks/equipment-hooks';
 
 interface EquipmentManagerProps {
@@ -81,6 +83,8 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   // API Hooks
   const { data: modulesData, isLoading: loadingModules } = useSolarModules({ search: searchTerm, pageSize: 50 });
   const { data: invertersData, isLoading: loadingInverters } = useInverters({ search: searchTerm, pageSize: 50 });
+  const { data: moduleManufacturers } = useManufacturers({ type: ManufacturerType.SOLAR_MODULE });
+  const { data: inverterManufacturers } = useManufacturers({ type: ManufacturerType.INVERTER });
   
   const createModuleMutation = useCreateSolarModule();
   const updateModuleMutation = useUpdateSolarModule();
@@ -92,6 +96,8 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   
   const modules = modulesData?.modules || [];
   const inverters = invertersData?.inverters || [];
+  const moduleManufacturersList = moduleManufacturers || [];
+  const inverterManufacturersList = inverterManufacturers || [];
 
   // Handlers
   const handleSaveModule = async () => {
@@ -454,22 +460,19 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
               
                 <div className="space-y-2">
                   <Label htmlFor="fabricante">Fabricante *</Label>
-                  <Select onValueChange={(value) => setModuleForm(prev => ({ ...prev, fabricante: value }))}>
+                  <Select 
+                    value={moduleForm.fabricante || ''} 
+                    onValueChange={(value) => setModuleForm(prev => ({ ...prev, fabricante: value }))}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o fabricante" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Jinko Solar">Jinko Solar</SelectItem>
-                      <SelectItem value="Canadian Solar">Canadian Solar</SelectItem>
-                      <SelectItem value="Trina Solar">Trina Solar</SelectItem>
-                      <SelectItem value="Risen Energy">Risen Energy</SelectItem>
-                      <SelectItem value="JA Solar">JA Solar</SelectItem>
-                      <SelectItem value="LONGi Solar">LONGi Solar</SelectItem>
-                      <SelectItem value="BYD">BYD</SelectItem>
-                      <SelectItem value="GCL">GCL</SelectItem>
-                      <SelectItem value="Hanwha Q CELLS">Hanwha Q CELLS</SelectItem>
-                      <SelectItem value="First Solar">First Solar</SelectItem>
-                      <SelectItem value="Outro">Outro</SelectItem>
+                      {moduleManufacturersList.map((manufacturer: any) => (
+                        <SelectItem key={manufacturer.id} value={manufacturer.name}>
+                          {manufacturer.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -549,7 +552,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="vmpp">Tensão MPP (V)</Label>
+                  <Label htmlFor="vmpp">Tensão de Máxima Potência (VmP)</Label>
                   <Input
                     id="vmpp"
                     type="number"
@@ -561,7 +564,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="impp">Corrente MPP (A)</Label>
+                  <Label htmlFor="impp">Corrente de Máxima Potência (ImP)</Label>
                   <Input
                     id="impp"
                     type="number"
@@ -686,12 +689,21 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Fabricante *</Label>
-                <Input 
+                <Select 
                   value={inverterForm.fabricante || ''} 
-                  onChange={e => setInverterForm(prev => ({ ...prev, fabricante: e.target.value }))} 
-                  className="bg-background border-border" 
-                  placeholder="Ex: Fronius"
-                />
+                  onValueChange={(value) => setInverterForm(prev => ({ ...prev, fabricante: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o fabricante" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {inverterManufacturersList.map((manufacturer: any) => (
+                      <SelectItem key={manufacturer.id} value={manufacturer.name}>
+                        {manufacturer.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Modelo *</Label>

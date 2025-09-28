@@ -16,6 +16,7 @@ import { TeamUserRoutes } from './TeamUserRoutes';
 import { KanbanRoutes } from './KanbanRoutes';
 import { SolarModuleRoutes } from './SolarModuleRoutes';
 import { InverterRoutes } from './InverterRoutes';
+import { ManufacturerRoutes } from './ManufacturerRoutes';
 import { ProposalTemplateRoutes } from './ProposalTemplateRoutes';
 import { ProposalSettingsRoutes } from './ProposalSettingsRoutes';
 import { ProjectBackupRoutes } from './ProjectBackupRoutes';
@@ -56,6 +57,7 @@ export class ApiRoutes {
     router.use('/alerts', AlertRoutes.create(container));
     router.use('/solar-modules', new SolarModuleRoutes(container).router);
     router.use('/inverters', new InverterRoutes(container).router);
+    router.use('/manufacturers', new ManufacturerRoutes(container).router);
     router.use('/proposal-templates', ProposalTemplateRoutes.create(container));
     router.use('/proposal-settings', ProposalSettingsRoutes.create(container));
     router.use('/project-backups', new ProjectBackupRoutes(container).getRouter());

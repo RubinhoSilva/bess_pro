@@ -110,7 +110,10 @@
       "Bash(cd:*)",
       "Bash(docker:*)",
       "WebFetch(domain:re.jrc.ec.europa.eu)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(MONGODB_URL=\"mongodb://admin:bess123456@localhost:27017/bess-pro?authSource=admin\" npm run seed:equipment)",
+      "Bash(cd:*)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

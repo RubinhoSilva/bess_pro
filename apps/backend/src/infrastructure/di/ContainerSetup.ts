@@ -13,6 +13,7 @@ import { MongoClientRepository } from '../database/mongodb/repositories/MongoCli
 import { MongoAlertRepository } from '../database/mongodb/repositories/MongoAlertRepository';
 import { MongoSolarModuleRepository } from '../database/mongodb/repositories/MongoSolarModuleRepository';
 import { MongoInverterRepository } from '../database/mongodb/repositories/MongoInverterRepository';
+import { MongoManufacturerRepository } from '../database/mongodb/repositories/MongoManufacturerRepository';
 import { MongoProposalTemplateRepository } from '../database/mongodb/repositories/MongoProposalTemplateRepository';
 import { MongoProposalSettingsRepository } from '../database/mongodb/repositories/MongoProposalSettingsRepository';
 import { MongoAdvancedProposalTemplateRepository } from '../database/mongodb/repositories/MongoAdvancedProposalTemplateRepository';
@@ -143,6 +144,13 @@ import { GetInvertersUseCase } from '../../application/use-cases/equipment/GetIn
 import { UpdateInverterUseCase } from '../../application/use-cases/equipment/UpdateInverterUseCase';
 import { DeleteInverterUseCase } from '../../application/use-cases/equipment/DeleteInverterUseCase';
 
+// Use Cases - Manufacturer
+import { CreateManufacturerUseCase } from '../../application/use-cases/manufacturer/CreateManufacturerUseCase';
+import { GetManufacturersUseCase } from '../../application/use-cases/manufacturer/GetManufacturersUseCase';
+import { GetManufacturerByIdUseCase } from '../../application/use-cases/manufacturer/GetManufacturerByIdUseCase';
+import { UpdateManufacturerUseCase } from '../../application/use-cases/manufacturer/UpdateManufacturerUseCase';
+import { DeleteManufacturerUseCase } from '../../application/use-cases/manufacturer/DeleteManufacturerUseCase';
+
 // Use Cases - Proposal Template
 import { CreateProposalTemplateUseCase } from '../../application/use-cases/proposal-template/CreateProposalTemplateUseCase';
 import { GetProposalTemplatesUseCase } from '../../application/use-cases/proposal-template/GetProposalTemplatesUseCase';
@@ -173,6 +181,7 @@ import { TeamController } from '../../presentation/controllers/TeamController';
 import { KanbanController } from '../../presentation/controllers/KanbanController';
 import { SolarModuleController } from '../../presentation/controllers/SolarModuleController';
 import { InverterController } from '../../presentation/controllers/InverterController';
+import { ManufacturerController } from '../../presentation/controllers/ManufacturerController';
 import { ProposalTemplateController } from '../../presentation/controllers/ProposalTemplateController';
 import { ProposalSettingsController } from '../../presentation/controllers/ProposalSettingsController';
 import { SolarAnalysisController } from '../../presentation/controllers/SolarAnalysisController';
@@ -196,6 +205,7 @@ export class ContainerSetup {
     container.register(ServiceTokens.AlertRepository, MongoAlertRepository, true);
     container.register(ServiceTokens.SolarModuleRepository, MongoSolarModuleRepository, true);
     container.register(ServiceTokens.InverterRepository, MongoInverterRepository, true);
+    container.register(ServiceTokens.ManufacturerRepository, MongoManufacturerRepository, true);
     container.register(ServiceTokens.ProposalTemplateRepository, MongoProposalTemplateRepository, true);
     container.register(ServiceTokens.ProposalSettingsRepository, MongoProposalSettingsRepository, true);
     container.register(ServiceTokens.AdvancedProposalTemplateRepository, MongoAdvancedProposalTemplateRepository, true);
@@ -415,6 +425,37 @@ export class ContainerSetup {
     container.registerFactory(ServiceTokens.DeleteInverterUseCase, () => {
       return new DeleteInverterUseCase(
         container.resolve(ServiceTokens.InverterRepository)
+      );
+    });
+
+    // Use Cases - Manufacturer
+    container.registerFactory(ServiceTokens.CreateManufacturerUseCase, () => {
+      return new CreateManufacturerUseCase(
+        container.resolve(ServiceTokens.ManufacturerRepository)
+      );
+    });
+
+    container.registerFactory(ServiceTokens.GetManufacturersUseCase, () => {
+      return new GetManufacturersUseCase(
+        container.resolve(ServiceTokens.ManufacturerRepository)
+      );
+    });
+
+    container.registerFactory(ServiceTokens.GetManufacturerByIdUseCase, () => {
+      return new GetManufacturerByIdUseCase(
+        container.resolve(ServiceTokens.ManufacturerRepository)
+      );
+    });
+
+    container.registerFactory(ServiceTokens.UpdateManufacturerUseCase, () => {
+      return new UpdateManufacturerUseCase(
+        container.resolve(ServiceTokens.ManufacturerRepository)
+      );
+    });
+
+    container.registerFactory(ServiceTokens.DeleteManufacturerUseCase, () => {
+      return new DeleteManufacturerUseCase(
+        container.resolve(ServiceTokens.ManufacturerRepository)
       );
     });
 
@@ -773,6 +814,16 @@ export class ContainerSetup {
         container.resolve(ServiceTokens.GetInvertersUseCase),
         container.resolve(ServiceTokens.UpdateInverterUseCase),
         container.resolve(ServiceTokens.DeleteInverterUseCase)
+      );
+    });
+
+    container.registerFactory(ServiceTokens.ManufacturerController, () => {
+      return new ManufacturerController(
+        container.resolve(ServiceTokens.CreateManufacturerUseCase),
+        container.resolve(ServiceTokens.GetManufacturersUseCase),
+        container.resolve(ServiceTokens.GetManufacturerByIdUseCase),
+        container.resolve(ServiceTokens.UpdateManufacturerUseCase),
+        container.resolve(ServiceTokens.DeleteManufacturerUseCase)
       );
     });
 

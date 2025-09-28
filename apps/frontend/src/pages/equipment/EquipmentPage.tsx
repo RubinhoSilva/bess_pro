@@ -2,10 +2,11 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Package, Unplug, Settings, Plus, Upload, Download } from 'lucide-react';
+import { ArrowLeft, Package, Unplug, Settings, Plus, Upload, Download, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { EquipmentManager } from '@/components/equipment/EquipmentManager';
-import { useSolarModules, useInverters } from '@/hooks/equipment-hooks';
+import { ManufacturerManager } from '@/components/equipment/ManufacturerManager';
+import { useSolarModules, useInverters, useManufacturers } from '@/hooks/equipment-hooks';
 
 export default function EquipmentPage() {
   const navigate = useNavigate();
@@ -13,9 +14,11 @@ export default function EquipmentPage() {
   // Get equipment statistics
   const { data: solarModulesData, isLoading: loadingSolarModules } = useSolarModules({ pageSize: 1 });
   const { data: invertersData, isLoading: loadingInverters } = useInverters({ pageSize: 1 });
+  const { data: manufacturersData, isLoading: loadingManufacturers } = useManufacturers();
 
   const totalSolarModules = solarModulesData?.total || 0;
   const totalInverters = invertersData?.total || 0;
+  const totalManufacturers = manufacturersData?.length || 0;
 
   const handleBackToDashboard = () => {
     navigate('/dashboard');
@@ -53,7 +56,7 @@ export default function EquipmentPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -103,6 +106,24 @@ export default function EquipmentPage() {
                     <p className="text-3xl font-bold">{totalSolarModules + totalInverters}</p>
                   </div>
                   <Settings className="w-10 h-10 text-green-100" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-100 text-sm font-medium">Fabricantes</p>
+                    <p className="text-3xl font-bold">{totalManufacturers}</p>
+                  </div>
+                  <Building2 className="w-10 h-10 text-orange-100" />
                 </div>
               </CardContent>
             </Card>
@@ -170,10 +191,19 @@ export default function EquipmentPage() {
           </Card>
         </motion.div>
 
+        {/* Manufacturer Management */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
+        >
+          <ManufacturerManager />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
         >
           <Card className="bg-white dark:bg-gray-800 shadow-lg">
             <CardHeader>

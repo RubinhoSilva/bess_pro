@@ -473,7 +473,7 @@ export class AdvancedValidator {
           if (mpptRange && (module.vmpp < mpptRange.min || module.vmpp > mpptRange.max)) {
             warnings.push({
               field: 'equipment',
-              message: `Tensão MPPT do módulo ${module.modelo} pode estar fora da faixa do inversor ${inverter.modelo}`,
+              message: `Tensão de máxima potência (VmP) do módulo ${module.modelo} pode estar fora da faixa do inversor ${inverter.modelo}`,
               severity: 'warning',
               suggestion: 'Verifique configuração de strings'
             });

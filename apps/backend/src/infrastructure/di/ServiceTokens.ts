@@ -13,6 +13,7 @@ export const ServiceTokens = {
   AlertRepository: 'AlertRepository',
   SolarModuleRepository: 'SolarModuleRepository',
   InverterRepository: 'InverterRepository',
+  ManufacturerRepository: 'ManufacturerRepository',
   ProposalTemplateRepository: 'ProposalTemplateRepository',
   ProposalSettingsRepository: 'ProposalSettingsRepository',
   AdvancedProposalTemplateRepository: 'AdvancedProposalTemplateRepository',
@@ -98,6 +99,13 @@ export const ServiceTokens = {
   UpdateInverterUseCase: 'UpdateInverterUseCase',
   DeleteInverterUseCase: 'DeleteInverterUseCase',
 
+  // Manufacturer Use Cases
+  CreateManufacturerUseCase: 'CreateManufacturerUseCase',
+  GetManufacturersUseCase: 'GetManufacturersUseCase',
+  GetManufacturerByIdUseCase: 'GetManufacturerByIdUseCase',
+  UpdateManufacturerUseCase: 'UpdateManufacturerUseCase',
+  DeleteManufacturerUseCase: 'DeleteManufacturerUseCase',
+
   // Proposal Template Use Cases
   CreateProposalTemplateUseCase: 'CreateProposalTemplateUseCase',
   GetProposalTemplatesUseCase: 'GetProposalTemplatesUseCase',
@@ -134,6 +142,7 @@ export const ServiceTokens = {
   KANBAN_CONTROLLER: 'KanbanController',
   SolarModuleController: 'SolarModuleController',
   InverterController: 'InverterController',
+  ManufacturerController: 'ManufacturerController',
   ProposalTemplateController: 'ProposalTemplateController',
   ProposalSettingsController: 'ProposalSettingsController',
   SolarAnalysisController: 'SolarAnalysisController',

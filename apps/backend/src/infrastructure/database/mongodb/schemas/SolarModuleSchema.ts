@@ -2,6 +2,7 @@ import { Schema, model, Document } from 'mongoose';
 
 export interface ISolarModuleDocument extends Document {
   userId: string;
+  manufacturerId?: string;
   fabricante: string;
   modelo: string;
   potenciaNominal: number;
@@ -53,6 +54,11 @@ const SolarModuleSchema = new Schema<ISolarModuleDocument>({
   userId: {
     type: String,
     required: true,
+    index: true
+  },
+  manufacturerId: {
+    type: String,
+    required: false,
     index: true
   },
   fabricante: {

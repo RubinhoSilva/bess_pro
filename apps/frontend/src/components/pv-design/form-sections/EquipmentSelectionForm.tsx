@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Package, Unplug, Plus, Trash2, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useSolarModules, useInverters, SolarModule, Inverter } from '@/hooks/equipment-hooks';
+import { useSolarModules, useInverters, useManufacturers, SolarModule, Inverter, Manufacturer, ManufacturerType } from '@/hooks/equipment-hooks';
 
 interface EquipmentSelectionFormProps {
   formData: any;
@@ -15,20 +15,26 @@ interface EquipmentSelectionFormProps {
 
 interface SelectedModule {
   id: string;
+  manufacturerId: string;
   moduleId: string;
   quantity: number;
 }
 
 interface SelectedInverter {
   id: string;
+  manufacturerId: string;
   inverterId: string;
   quantity: number;
 }
 
 const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formData, onFormChange }) => {
+  const { data: solarModuleManufacturers } = useManufacturers({ type: ManufacturerType.SOLAR_MODULE });
+  const { data: inverterManufacturers } = useManufacturers({ type: ManufacturerType.INVERTER });
   const { data: solarModulesData, isLoading: loadingModules } = useSolarModules({ pageSize: 100 });
   const { data: invertersData, isLoading: loadingInverters } = useInverters({ pageSize: 100 });
 
+  const moduleManufacturers = solarModuleManufacturers || [];
+  const inverterManufacturersList = inverterManufacturers || [];
   const solarModules = solarModulesData?.modules || [];
   const inverters = invertersData?.inverters || [];
 
@@ -38,6 +44,7 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
   const handleAddModule = () => {
     const newModule: SelectedModule = {
       id: crypto.randomUUID(),
+      manufacturerId: '',
       moduleId: '',
       quantity: 1
     };
@@ -49,9 +56,17 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
   };
 
   const handleUpdateModule = (id: string, field: string, value: any) => {
-    const updated = selectedModules.map(module => 
-      module.id === id ? { ...module, [field]: value } : module
-    );
+    const updated = selectedModules.map(module => {
+      if (module.id === id) {
+        const updatedModule = { ...module, [field]: value };
+        // Clear moduleId when manufacturer changes
+        if (field === 'manufacturerId') {
+          updatedModule.moduleId = '';
+        }
+        return updatedModule;
+      }
+      return module;
+    });
     onFormChange('selectedModules', updated);
 
     // Auto-update form data when module is selected
@@ -70,6 +85,7 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
   const handleAddInverter = () => {
     const newInverter: SelectedInverter = {
       id: crypto.randomUUID(),
+      manufacturerId: '',
       inverterId: '',
       quantity: 1
     };
@@ -81,9 +97,17 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
   };
 
   const handleUpdateInverter = (id: string, field: string, value: any) => {
-    const updated = selectedInverters.map(inverter => 
-      inverter.id === id ? { ...inverter, [field]: value } : inverter
-    );
+    const updated = selectedInverters.map(inverter => {
+      if (inverter.id === id) {
+        const updatedInverter = { ...inverter, [field]: value };
+        // Clear inverterId when manufacturer changes
+        if (field === 'manufacturerId') {
+          updatedInverter.inverterId = '';
+        }
+        return updatedInverter;
+      }
+      return inverter;
+    });
     onFormChange('selectedInverters', updated);
 
     // Auto-update form data when inverter is selected
@@ -130,36 +154,80 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
 
   const compatibility = getCompatibilityStatus();
 
-  // Não renderizar se não há equipamentos selecionados
-  if (selectedModules.length === 0 && selectedInverters.length === 0) {
-    return null;
-  }
-
   return (
     <TooltipProvider>
       <Card className="bg-card border border-border shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="w-5 h-5" />
+            Seleção de Equipamentos
+          </CardTitle>
+        </CardHeader>
         <CardContent className="space-y-6">
           {/* Módulos Solares */}
-          {selectedModules.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Módulos Solares</h3>
+              <Button
+                type="button"
+                onClick={handleAddModule}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Adicionar Módulo
+              </Button>
+            </div>
+            
+            {selectedModules.length > 0 && (
             <div className="space-y-4">
               {selectedModules.map((module) => {
               const moduleData = solarModules.find((m: any) => m.id === module.moduleId);
+              const selectedManufacturer = moduleManufacturers.find((m: any) => m.id === module.manufacturerId);
+              const availableModules = module.manufacturerId 
+                ? solarModules.filter((m: any) => m.manufacturerId === module.manufacturerId)
+                : [];
+
               return (
                 <div key={module.id} className="p-4 border border-gray-200 rounded-lg">
                   <div className="flex items-center gap-4 mb-3">
+                    <div className="flex-1">
+                      <Label>Fabricante</Label>
+                      <Select 
+                        value={module.manufacturerId} 
+                        onValueChange={(value) => handleUpdateModule(module.id, 'manufacturerId', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um fabricante" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {moduleManufacturers.map((manufacturer: any) => (
+                            <SelectItem key={manufacturer.id} value={manufacturer.id}>
+                              {manufacturer.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="flex-1">
                       <Label>Módulo</Label>
                       <Select 
                         value={module.moduleId} 
                         onValueChange={(value) => handleUpdateModule(module.id, 'moduleId', value)}
+                        disabled={!module.manufacturerId}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={loadingModules ? "Carregando..." : "Selecione um módulo"} />
+                          <SelectValue placeholder={
+                            !module.manufacturerId ? "Selecione primeiro o fabricante" :
+                            loadingModules ? "Carregando..." : 
+                            "Selecione um módulo"
+                          } />
                         </SelectTrigger>
                         <SelectContent>
-                          {solarModules.map((mod: any) => (
+                          {availableModules.map((mod: any) => (
                             <SelectItem key={mod.id} value={mod.id}>
-                              {mod.fabricante} {mod.modelo} - {mod.potenciaNominal}W
+                              {mod.modelo} - {mod.potenciaNominal}W
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -189,8 +257,8 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
                     <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                         <div><strong>Eficiência:</strong> {moduleData.eficiencia}%</div>
-                        <div><strong>Vmp:</strong> {moduleData.vmpp}V</div>
-                        <div><strong>Imp:</strong> {moduleData.impp}A</div>
+                        <div><strong>VmP:</strong> {moduleData.vmpp}V</div>
+                        <div><strong>ImP:</strong> {moduleData.impp}A</div>
                         <div><strong>Células:</strong> {moduleData.numeroCelulas}</div>
                       </div>
                       <div className="mt-2">
@@ -202,29 +270,73 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
               );
               })}
             </div>
-          )}
+            )}
+          </div>
 
           {/* Inversores */}
-          {selectedInverters.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Inversores</h3>
+              <Button
+                type="button"
+                onClick={handleAddInverter}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Adicionar Inversor
+              </Button>
+            </div>
+            
+            {selectedInverters.length > 0 && (
             <div className="space-y-4">
               {selectedInverters.map((inverter) => {
               const inverterData = inverters.find((i: any) => i.id === inverter.inverterId);
+              const selectedInverterManufacturer = inverterManufacturersList.find((m: any) => m.id === inverter.manufacturerId);
+              const availableInverters = inverter.manufacturerId 
+                ? inverters.filter((i: any) => i.manufacturerId === inverter.manufacturerId)
+                : [];
+
               return (
                 <div key={inverter.id} className="p-4 border border-gray-200 rounded-lg">
                   <div className="flex items-center gap-4 mb-3">
+                    <div className="flex-1">
+                      <Label>Fabricante</Label>
+                      <Select 
+                        value={inverter.manufacturerId} 
+                        onValueChange={(value) => handleUpdateInverter(inverter.id, 'manufacturerId', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um fabricante" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {inverterManufacturersList.map((manufacturer: any) => (
+                            <SelectItem key={manufacturer.id} value={manufacturer.id}>
+                              {manufacturer.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="flex-1">
                       <Label>Inversor</Label>
                       <Select 
                         value={inverter.inverterId} 
                         onValueChange={(value) => handleUpdateInverter(inverter.id, 'inverterId', value)}
+                        disabled={!inverter.manufacturerId}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={loadingInverters ? "Carregando..." : "Selecione um inversor"} />
+                          <SelectValue placeholder={
+                            !inverter.manufacturerId ? "Selecione primeiro o fabricante" :
+                            loadingInverters ? "Carregando..." : 
+                            "Selecione um inversor"
+                          } />
                         </SelectTrigger>
                         <SelectContent>
-                          {inverters.map((inv: any) => (
+                          {availableInverters.map((inv: any) => (
                             <SelectItem key={inv.id} value={inv.id}>
-                              {inv.fabricante} {inv.modelo} - {(inv.potenciaSaidaCA / 1000).toFixed(1)}kW
+                              {inv.modelo} - {(inv.potenciaSaidaCA / 1000).toFixed(1)}kW
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -267,7 +379,8 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
               );
               })}
             </div>
-          )}
+            )}
+          </div>
 
           {/* Resumo de Compatibilidade */}
           {compatibility && (

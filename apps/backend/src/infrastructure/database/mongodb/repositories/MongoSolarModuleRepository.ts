@@ -8,9 +8,11 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
     const moduleDoc = new SolarModuleModel(moduleData);
     const savedDoc = await moduleDoc.save();
     
+    const obj = savedDoc.toObject();
     return new SolarModule({
-      ...savedDoc.toObject(),
-      id: savedDoc._id?.toString().toString()
+      ...obj,
+      id: savedDoc._id?.toString().toString(),
+      manufacturerId: obj.manufacturerId || ''
     });
   }
 
@@ -18,9 +20,11 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
     const doc = await SolarModuleModel.findById(id);
     if (!doc) return null;
     
+    const obj = doc.toObject();
     return new SolarModule({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
+      ...obj,
+      id: doc._id?.toString().toString(),
+      manufacturerId: obj.manufacturerId || ''
     });
   }
 
@@ -79,10 +83,14 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
       SolarModuleModel.countDocuments(filter)
     ]);
 
-    const modules = docs.map(doc => new SolarModule({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    }));
+    const modules = docs.map(doc => {
+      const obj = doc.toObject();
+      return new SolarModule({
+        ...obj,
+        id: doc._id?.toString().toString(),
+        manufacturerId: obj.manufacturerId || ''
+      });
+    });
 
     return { modules, total };
   }
@@ -98,9 +106,11 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
       throw new Error('Módulo não encontrado');
     }
 
+    const obj = doc.toObject();
     return new SolarModule({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
+      ...obj,
+      id: doc._id?.toString().toString(),
+      manufacturerId: obj.manufacturerId || ''
     });
   }
 
@@ -122,9 +132,11 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
 
     if (!doc) return null;
 
+    const obj = doc.toObject();
     return new SolarModule({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
+      ...obj,
+      id: doc._id?.toString().toString(),
+      manufacturerId: obj.manufacturerId || ''
     });
   }
 
@@ -136,10 +148,14 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
       .sort({ createdAt: -1 })
       .limit(limit);
 
-    return docs.map(doc => new SolarModule({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    }));
+    return docs.map(doc => {
+      const obj = doc.toObject();
+      return new SolarModule({
+        ...obj,
+        id: doc._id?.toString().toString(),
+        manufacturerId: obj.manufacturerId || ''
+      });
+    });
   }
 
   async getModulesByPowerRange(
@@ -155,10 +171,14 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
       }
     }).sort({ potenciaNominal: 1 });
 
-    return docs.map(doc => new SolarModule({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    }));
+    return docs.map(doc => {
+      const obj = doc.toObject();
+      return new SolarModule({
+        ...obj,
+        id: doc._id?.toString().toString(),
+        manufacturerId: obj.manufacturerId || ''
+      });
+    });
   }
 
   async searchModules(userId: string, searchTerm: string): Promise<SolarModule[]> {
@@ -171,10 +191,14 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
       score: { $meta: 'textScore' }
     }).limit(20);
 
-    return docs.map(doc => new SolarModule({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    }));
+    return docs.map(doc => {
+      const obj = doc.toObject();
+      return new SolarModule({
+        ...obj,
+        id: doc._id?.toString().toString(),
+        manufacturerId: obj.manufacturerId || ''
+      });
+    });
   }
 
   async findByFilters(filters: {
@@ -250,10 +274,14 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
       SolarModuleModel.countDocuments(query)
     ]);
 
-    const modules = docs.map(doc => new SolarModule({
-      ...doc.toObject(),
-      id: doc._id?.toString()
-    }));
+    const modules = docs.map(doc => {
+      const obj = doc.toObject();
+      return new SolarModule({
+        ...obj,
+        id: doc._id?.toString(),
+        manufacturerId: obj.manufacturerId || ''
+      });
+    });
 
     return { modules, total };
   }

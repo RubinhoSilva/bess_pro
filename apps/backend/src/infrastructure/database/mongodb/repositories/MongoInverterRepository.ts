@@ -4,24 +4,27 @@ import { InverterModel } from '../schemas/InverterSchema';
 
 export class MongoInverterRepository implements IInverterRepository {
 
+  private toInverter(doc: any): Inverter {
+    const obj = doc.toObject();
+    return new Inverter({
+      ...obj,
+      id: doc._id?.toString().toString(),
+      manufacturerId: obj.manufacturerId || ''
+    });
+  }
+
   async create(inverterData: InverterData): Promise<Inverter> {
     const inverterDoc = new InverterModel(inverterData);
     const savedDoc = await inverterDoc.save();
     
-    return new Inverter({
-      ...savedDoc.toObject(),
-      id: savedDoc._id?.toString().toString()
-    });
+    return this.toInverter(savedDoc);
   }
 
   async findById(id: string): Promise<Inverter | null> {
     const doc = await InverterModel.findById(id);
     if (!doc) return null;
     
-    return new Inverter({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    });
+    return this.toInverter(doc);
   }
 
   async findByUserId(
@@ -84,10 +87,7 @@ export class MongoInverterRepository implements IInverterRepository {
       InverterModel.countDocuments(filter)
     ]);
 
-    const inverters = docs.map(doc => new Inverter({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    }));
+    const inverters = docs.map(doc => this.toInverter(doc));
 
     return { inverters, total };
   }
@@ -103,10 +103,7 @@ export class MongoInverterRepository implements IInverterRepository {
       throw new Error('Inversor não encontrado');
     }
 
-    return new Inverter({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    });
+    return this.toInverter(doc);
   }
 
   async delete(id: string): Promise<boolean> {
@@ -127,10 +124,7 @@ export class MongoInverterRepository implements IInverterRepository {
 
     if (!doc) return null;
 
-    return new Inverter({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    });
+    return this.toInverter(doc);
   }
 
   async getMostUsedInverters(userId: string, limit: number = 10): Promise<Inverter[]> {
@@ -141,10 +135,7 @@ export class MongoInverterRepository implements IInverterRepository {
       .sort({ createdAt: -1 })
       .limit(limit);
 
-    return docs.map(doc => new Inverter({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    }));
+    return docs.map(doc => this.toInverter(doc));
   }
 
   async getInvertersByPowerRange(
@@ -160,10 +151,7 @@ export class MongoInverterRepository implements IInverterRepository {
       }
     }).sort({ potenciaSaidaCA: 1 });
 
-    return docs.map(doc => new Inverter({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    }));
+    return docs.map(doc => this.toInverter(doc));
   }
 
   async getCompatibleInverters(
@@ -183,10 +171,7 @@ export class MongoInverterRepository implements IInverterRepository {
       }
     }).sort({ potenciaSaidaCA: 1 });
 
-    const inverters = docs.map(doc => new Inverter({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    }));
+    const inverters = docs.map(doc => this.toInverter(doc));
 
     // Filter by compatibility using business logic
     return inverters.filter(inverter => {
@@ -205,10 +190,7 @@ export class MongoInverterRepository implements IInverterRepository {
       score: { $meta: 'textScore' }
     }).limit(20);
 
-    return docs.map(doc => new Inverter({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    }));
+    return docs.map(doc => this.toInverter(doc));
   }
 
   async getInvertersByPhaseType(
@@ -234,10 +216,7 @@ export class MongoInverterRepository implements IInverterRepository {
       tipoRede: new RegExp(regexPattern, 'i')
     }).sort({ potenciaSaidaCA: 1 });
 
-    return docs.map(doc => new Inverter({
-      ...doc.toObject(),
-      id: doc._id?.toString().toString()
-    }));
+    return docs.map(doc => this.toInverter(doc));
   }
 
   async findByFilters(filters: {
