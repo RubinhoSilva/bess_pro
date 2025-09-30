@@ -31,6 +31,7 @@ import { LocalFileStorageService } from '../storage/LocalFileStorageService';
 import { S3FileStorageService } from '../storage/S3FileStorageService';
 import { PvgisApiService } from '../external-apis/PvgisApiService';
 import { PaymentGatewayService } from '../external-apis/PaymentGatewayService';
+import { PvlibServiceClient } from '../external-apis/PvlibServiceClient';
 
 // Domain Services
 import { ProjectDomainService } from '../../domain/services/ProjectDomainService';
@@ -84,6 +85,7 @@ import { CreateAreaMontagemUseCase } from '../../application/use-cases/area/Crea
 
 // Use Cases - Calculation
 import { CalculateSolarSystemUseCase } from '../../application/use-cases/calculation/CalculateSolarSystemUseCase';
+import { CalculateProjectFinancialsUseCase } from '../../application/use-cases/calculation/CalculateProjectFinancialsUseCase';
 
 // Use Cases - Financial
 import { AnalyzeFinancialUseCase } from '../../application/use-cases/financial/AnalyzeFinancialUseCase';
@@ -187,6 +189,7 @@ import { ProposalSettingsController } from '../../presentation/controllers/Propo
 import { SolarAnalysisController } from '../../presentation/controllers/SolarAnalysisController';
 import { AdvancedProposalTemplateController } from '../../presentation/controllers/AdvancedProposalTemplateController';
 import { ClientAlertController } from '../../presentation/controllers/ClientAlertController';
+import { FinancialCalculationController } from '../../presentation/controllers/FinancialCalculationController';
 
 // Middlewares
 import { AuthMiddleware } from '../../presentation/middleware/AuthMiddleware';
@@ -256,6 +259,14 @@ export class ContainerSetup {
       return new PvgisApiService(pvgisConfig);
     }, true);
     container.register(ServiceTokens.PAYMENT_GATEWAY_SERVICE, PaymentGatewayService, true);
+
+    // PvlibServiceClient (Python Financial Service)
+    container.registerFactory(ServiceTokens.PVLIB_SERVICE_CLIENT, () => {
+      const pvlibUrl = config.externalApis.pvlibService?.baseUrl || process.env.PVLIB_SERVICE_URL || 'http://localhost:8000';
+
+      console.log('🔧 PvlibServiceClient config:', { baseUrl: pvlibUrl });
+      return new PvlibServiceClient(pvlibUrl);
+    }, true);
 
     // Domain Services (Singletons)
     container.register('ProjectDomainService', ProjectDomainService, true);
@@ -622,6 +633,15 @@ export class ContainerSetup {
     // Use Cases - Calculation
     container.register(ServiceTokens.CALCULATE_SOLAR_SYSTEM_USE_CASE, CalculateSolarSystemUseCase);
 
+    // Use Cases - Financial Calculation (Python Service)
+    container.registerFactory(ServiceTokens.CalculateProjectFinancialsUseCase, () => {
+      return new CalculateProjectFinancialsUseCase(
+        container.resolve(ServiceTokens.PVLIB_SERVICE_CLIENT),
+        container.resolve(ServiceTokens.ProjectRepository),
+        container.resolve(ServiceTokens.USER_REPOSITORY)
+      );
+    });
+
     // Use Cases - Financial
     container.register(ServiceTokens.ANALYZE_FINANCIAL_USE_CASE, AnalyzeFinancialUseCase);
 
@@ -914,6 +934,13 @@ export class ContainerSetup {
     container.registerFactory(ServiceTokens.EnergyCompanyController, () => {
       return new EnergyCompanyController(
         container.resolve(ServiceTokens.EnergyCompanyRepository)
+      );
+    });
+
+    // Controllers - Financial Calculation
+    container.registerFactory(ServiceTokens.FinancialCalculationController, () => {
+      return new FinancialCalculationController(
+        container.resolve(ServiceTokens.CalculateProjectFinancialsUseCase)
       );
     });
 

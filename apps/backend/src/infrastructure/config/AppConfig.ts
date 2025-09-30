@@ -61,6 +61,9 @@ export interface AppConfig {
     pvgis: {
       baseUrl: string;
     };
+    pvlibService?: {
+      baseUrl: string;
+    };
     payment?: {
       stripeSecretKey: string;
       webhookSecret: string;
@@ -140,6 +143,9 @@ export function loadConfig(): AppConfig {
     externalApis: {
       pvgis: {
         baseUrl: process.env.PVGIS_BASE_URL || 'https://re.jrc.ec.europa.eu/api/v5_2',
+      },
+      pvlibService: {
+        baseUrl: process.env.PVLIB_SERVICE_URL || 'http://localhost:8000',
       },
       payment: {
         stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',

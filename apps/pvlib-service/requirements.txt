@@ -4,6 +4,7 @@ pydantic==2.5.0
 pydantic-settings==2.1.0
 pandas==2.1.4
 numpy==1.24.3
+numpy-financial==1.0.0
 requests==2.31.0
 pvlib==0.13.0
 python-multipart==0.0.6

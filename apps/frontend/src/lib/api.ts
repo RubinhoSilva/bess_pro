@@ -209,13 +209,20 @@ export const apiClient = {
     // NOVO: Endpoint standalone sem projeto
     solarSystemStandalone: (data: any) =>
       api.post(`/calculations/solar-system`, data),
-    
+
     // Endpoints legados (mantidos para compatibilidade)
     solarSystem: (projectId: string, data: any) =>
       api.post(`/calculations/projects/${projectId}/solar-system`, data),
-    
+
     financial: (projectId: string, data: any) =>
       api.post(`/calculations/projects/${projectId}/financial-analysis`, data),
+
+    // NOVO: Cálculos financeiros integrados (Node.js -> Python)
+    calculateProjectFinancials: (projectId: string, data: any, saveToProject = true) =>
+      api.post(`/calculations/projects/${projectId}/calculations/financial?save=${saveToProject}`, data),
+
+    getLastFinancialResults: (projectId: string) =>
+      api.get(`/calculations/projects/${projectId}/calculations/financial`),
 
     // Generic post method for calculations
     post: (endpoint: string, data: any) => api.post(endpoint, data),

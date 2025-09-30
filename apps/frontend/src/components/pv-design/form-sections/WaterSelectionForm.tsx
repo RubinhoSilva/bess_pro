@@ -195,8 +195,8 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     const newAgua: AguaTelhado = {
       id: crypto.randomUUID(),
       nome: `Água de telhado #${nextNumber}`,
-      orientacao: 0,
-      inclinacao: 0,
+      orientacao: 180, // Norte no Brasil (azimute 180°)
+      inclinacao: 20, // Inclinação padrão (~latitude média do Brasil)
       numeroModulos: 0, // Começar com 0 módulos
       areaDisponivel: 25,
       sombreamentoParcial: 0
@@ -344,20 +344,28 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
       // Calcular orientação e inclinação médias ponderadas por número de módulos
       let orientacaoMedia = 0;
       let inclinacaoMedia = 0;
-      
+
       if (totalModulos > 0) {
         let somaOrientacao = 0;
         let somaInclinacao = 0;
-        
+
         aguasTelhado.forEach(a => {
           if (a.numeroModulos > 0) {
-            somaOrientacao += a.orientacao * a.numeroModulos;
-            somaInclinacao += a.inclinacao * a.numeroModulos;
+            // Validar e clampar valores antes de calcular média ponderada
+            const orientacaoValida = Math.max(0, Math.min(360, a.orientacao));
+            const inclinacaoValida = Math.max(0, Math.min(90, a.inclinacao));
+
+            somaOrientacao += orientacaoValida * a.numeroModulos;
+            somaInclinacao += inclinacaoValida * a.numeroModulos;
           }
         });
-        
+
         orientacaoMedia = Math.round(somaOrientacao / totalModulos);
         inclinacaoMedia = Math.round(somaInclinacao / totalModulos);
+
+        // Garantir que os valores médios também estejam dentro dos limites
+        orientacaoMedia = Math.max(0, Math.min(360, orientacaoMedia));
+        inclinacaoMedia = Math.max(0, Math.min(90, inclinacaoMedia));
       }
 
       console.log('📐 Parâmetros médios ponderados:', {
@@ -699,13 +707,25 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                             type="number"
                             min="0"
                             max="360"
+                            step="1"
                             value={agua.orientacao}
-                            onChange={(e) => handleUpdateAgua(agua.id, { orientacao: parseInt(e.target.value) || 0 })}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value) || 0;
+                              // Clamp value between 0 and 360
+                              const clampedValue = Math.max(0, Math.min(360, value));
+                              handleUpdateAgua(agua.id, { orientacao: clampedValue });
+                            }}
                             placeholder="180"
-                            className="pr-12"
+                            className={`pr-12 ${agua.orientacao < 0 || agua.orientacao > 360 ? 'border-red-500 bg-red-50' : ''}`}
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">°</span>
                         </div>
+                        {(agua.orientacao < 0 || agua.orientacao > 360) && (
+                          <p className="text-xs text-red-500 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Orientação deve estar entre 0° e 360°
+                          </p>
+                        )}
                       </div>
 
                       {/* Inclinação */}
@@ -719,13 +739,25 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                             type="number"
                             min="0"
                             max="90"
+                            step="1"
                             value={agua.inclinacao}
-                            onChange={(e) => handleUpdateAgua(agua.id, { inclinacao: parseInt(e.target.value) || 0 })}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value) || 0;
+                              // Clamp value between 0 and 90
+                              const clampedValue = Math.max(0, Math.min(90, value));
+                              handleUpdateAgua(agua.id, { inclinacao: clampedValue });
+                            }}
                             placeholder="20"
-                            className="pr-12"
+                            className={`pr-12 ${agua.inclinacao < 0 || agua.inclinacao > 90 ? 'border-red-500 bg-red-50' : ''}`}
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">°</span>
                         </div>
+                        {(agua.inclinacao < 0 || agua.inclinacao > 90) && (
+                          <p className="text-xs text-red-500 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Inclinação deve estar entre 0° e 90°
+                          </p>
+                        )}
                       </div>
 
                       {/* Número de módulos */}

@@ -124,11 +124,64 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       
       const response = await apiClient.solarAnalysis.calculateAdvancedFinancial(financialInput);
       console.log('✅ Resultado API Python via backend:', response.data);
-      
+
       // Extrair apenas os dados da API Python, não o wrapper do backend
       const apiData = response.data.data || response.data;
-      console.log('🔍 Dados extraídos da API financeira:', apiData);
-      return apiData;
+      console.log('🔍 Dados extraídos da API financeira (snake_case):', apiData);
+
+      // Converter snake_case (Python) para camelCase (TypeScript)
+      const transformedData = {
+        vpl: apiData.vpl,
+        tir: apiData.tir,
+        paybackSimples: apiData.payback_simples,
+        paybackDescontado: apiData.payback_descontado,
+        economiaTotal25Anos: apiData.economia_total_25_anos,
+        economiaAnualMedia: apiData.economia_anual_media,
+        lucratividadeIndex: apiData.lucratividade_index,
+        cashFlow: apiData.cash_flow?.map((item: any) => ({
+          ano: item.ano,
+          geracaoAnual: item.geracao_anual,
+          economiaEnergia: item.economia_energia,
+          custosOM: item.custos_om,
+          fluxoLiquido: item.fluxo_liquido,
+          fluxoAcumulado: item.fluxo_acumulado,
+          valorPresente: item.valor_presente
+        })) || [],
+        indicadores: apiData.indicadores ? {
+          yieldEspecifico: apiData.indicadores.yield_especifico,
+          custoNiveladoEnergia: apiData.indicadores.custo_nivelado_energia,
+          eficienciaInvestimento: apiData.indicadores.eficiencia_investimento,
+          retornoSobreInvestimento: apiData.indicadores.retorno_sobre_investimento
+        } : {
+          yieldEspecifico: 0,
+          custoNiveladoEnergia: 0,
+          eficienciaInvestimento: 0,
+          retornoSobreInvestimento: 0
+        },
+        sensibilidade: apiData.sensibilidade ? {
+          vplVariacaoTarifa: apiData.sensibilidade.vpl_variacao_tarifa?.map((item: any) => ({
+            parametro: item.parametro,
+            vpl: item.vpl
+          })) || [],
+          vplVariacaoInflacao: apiData.sensibilidade.vpl_variacao_inflacao?.map((item: any) => ({
+            parametro: item.parametro,
+            vpl: item.vpl
+          })) || [],
+          vplVariacaoDesconto: apiData.sensibilidade.vpl_variacao_desconto?.map((item: any) => ({
+            parametro: item.parametro,
+            vpl: item.vpl
+          })) || []
+        } : {
+          vplVariacaoTarifa: [],
+          vplVariacaoInflacao: [],
+          vplVariacaoDesconto: []
+        },
+        // Mapear cenarios (Python) para scenarios (Frontend)
+        scenarios: apiData.cenarios || null
+      };
+
+      console.log('✨ Dados transformados (camelCase):', transformedData);
+      return transformedData;
     } catch (error) {
       console.error('❌ Erro ao chamar API financeira Python via backend:', error);
       // Fallback para cálculos locais se a API falhar
@@ -722,9 +775,9 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         modalidade_tarifaria: advancedFinancialInput.modalidadeTarifaria || 'convencional'
       });
       const advancedFinancialResults = advancedFinancialApiResponse.data;
-      
-      // Análise de cenários também via API
-      const scenarioAnalysis = null; // TODO: Implementar endpoint de cenários na API Python
+
+      // Mapear 'cenarios' (Python) para 'scenarios' (Frontend)
+      const scenarioAnalysis = (advancedFinancialResults as any)?.cenarios || null;
 
       console.log('📊 === VALORES FINAIS DO SISTEMA ===');
       console.log('📊 Valores calculados:', {
@@ -768,26 +821,41 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
             diarioMedio: apiResult?.data?.energia_diaria_media || (geracaoEstimadaAnual / 365)
           }
         },
-        advancedFinancial: await callPythonFinancialAPI({
-          investimento_inicial: totalInvestment,
-          geracao_mensal: geracaoEstimadaMensal,
-          consumo_mensal: totalConsumoMensal,
-          tarifa_energia: currentDimensioning.tarifaEnergiaB || 0.8,
-          custo_fio_b: currentDimensioning.custoFioB || 0.3,
-          vida_util: currentDimensioning.vidaUtil || 25,
-          taxa_desconto: currentDimensioning.taxaDesconto || 8.0,
-          inflacao_energia: currentDimensioning.inflacaoEnergia || 4.5,
-          degradacao_modulos: 0.5,
-          custo_om: totalInvestment * 0.01,
-          inflacao_om: 4.0
-        }) || {
-          ...advancedFinancialResults,
-          scenarios: scenarioAnalysis
-        },
-        selectedInverters: currentDimensioning.selectedInverters || [],
-        selectedModule: currentDimensioning.moduloSelecionado,
-        ...financialResults,
       };
+
+      // Chamar API Python e armazenar resultado transformado
+      const pythonFinancialData = await callPythonFinancialAPI({
+        investimento_inicial: totalInvestment,
+        geracao_mensal: geracaoEstimadaMensal,
+        consumo_mensal: totalConsumoMensal,
+        tarifa_energia: currentDimensioning.tarifaEnergiaB || 0.8,
+        custo_fio_b: currentDimensioning.custoFioB || 0.3,
+        vida_util: currentDimensioning.vidaUtil || 25,
+        taxa_desconto: currentDimensioning.taxaDesconto || 8.0,
+        inflacao_energia: currentDimensioning.inflacaoEnergia || 4.5,
+        degradacao_modulos: 0.5,
+        custo_om: totalInvestment * 0.01,
+        inflacao_om: 4.0
+      });
+
+      // Adicionar dados financeiros ao results
+      results.advancedFinancial = pythonFinancialData || {
+        ...advancedFinancialResults,
+        cashFlow: []
+      };
+
+      // Garantir que scenarios está sempre disponível (do pythonFinancialData ou scenarioAnalysis)
+      if (pythonFinancialData && !pythonFinancialData.scenarios) {
+        results.advancedFinancial.scenarios = scenarioAnalysis;
+      }
+
+      // Mapear cashFlow (camelCase) para fluxoCaixa (esperado pelos charts)
+      results.fluxoCaixa = pythonFinancialData?.cashFlow || [];
+
+      // Adicionar outros dados financeiros
+      results.selectedInverters = currentDimensioning.selectedInverters || [];
+      results.selectedModule = currentDimensioning.moduloSelecionado;
+      Object.assign(results, financialResults);
 
       // Log: Finalizando cálculos principais 
       console.log('✅ === CÁLCULOS FINALIZADOS ===');

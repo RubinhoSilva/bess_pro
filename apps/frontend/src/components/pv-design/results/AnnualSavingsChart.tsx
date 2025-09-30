@@ -24,7 +24,7 @@ export const AnnualSavingsChart: React.FC<AnnualSavingsChartProps> = ({ results 
     .filter(item => item.ano >= 1) // Começar do ano 1
     .map((item: any) => ({
       ano: item.ano,
-      economia: item.economia || 0
+      economia: item.economiaEnergia || item.economia_energia || item.economia || 0 // camelCase, snake_case ou fallback
     }));
 
   return (

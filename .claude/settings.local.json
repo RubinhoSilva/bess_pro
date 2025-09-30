@@ -113,7 +113,9 @@
       "Bash(sed:*)",
       "Bash(MONGODB_URL=\"mongodb://admin:bess123456@localhost:27017/bess-pro?authSource=admin\" npm run seed:equipment)",
       "Bash(cd:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(pip3 install:*)",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

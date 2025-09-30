@@ -31,6 +31,7 @@ export const ServiceTokens = {
   // External APIs
   PVGIS_API_SERVICE: 'PvgisApiService',
   PAYMENT_GATEWAY_SERVICE: 'PaymentGatewayService',
+  PVLIB_SERVICE_CLIENT: 'PvlibServiceClient',
 
   // WebSockets
   SOCKET_IO_SERVER: 'SocketIOServer',
@@ -79,6 +80,7 @@ export const ServiceTokens = {
   GenerateFinancialReportUseCase: 'GenerateFinancialReportUseCase',
   CalculateBessSystemUseCase: 'CalculateBessSystemUseCase',
   GetSolarIrradiationUseCase: 'GetSolarIrradiationUseCase',
+  CalculateProjectFinancialsUseCase: 'CalculateProjectFinancialsUseCase',
   CREATE_TEAM_USE_CASE: 'CreateTeamUseCase',
   GET_TEAMS_USE_CASE: 'GetTeamsUseCase',
   UPDATE_TEAM_USE_CASE: 'UpdateTeamUseCase',
@@ -148,7 +150,8 @@ export const ServiceTokens = {
   SolarAnalysisController: 'SolarAnalysisController',
   AdvancedProposalTemplateController: 'AdvancedProposalTemplateController',
   EnergyCompanyController: 'EnergyCompanyController',
-  
+  FinancialCalculationController: 'FinancialCalculationController',
+
   // Middlewares
   AuthMiddleware: 'AuthMiddleware',
 } as const;

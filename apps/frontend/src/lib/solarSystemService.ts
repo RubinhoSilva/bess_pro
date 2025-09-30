@@ -521,21 +521,36 @@ export class SolarSystemService {
       pnt: 0.02
     };
 
+    // Validar e clampar tilt e azimuth antes de enviar para API
+    const tiltValue = dimensioningData.inclinacao || 20;
+    const azimuthValue = dimensioningData.orientacao || 180;
+
+    // IMPORTANTE: tilt deve estar entre 0 e 90, azimuth entre 0 e 360
+    const validatedTilt = Math.max(0, Math.min(90, tiltValue));
+    const validatedAzimuth = Math.max(0, Math.min(360, azimuthValue));
+
+    if (validatedTilt !== tiltValue) {
+      console.warn(`⚠️ Tilt corrigido de ${tiltValue}° para ${validatedTilt}° (limite: 0-90°)`);
+    }
+    if (validatedAzimuth !== azimuthValue) {
+      console.warn(`⚠️ Azimuth corrigido de ${azimuthValue}° para ${validatedAzimuth}° (limite: 0-360°)`);
+    }
+
     const params: ModuleCalculationParams = {
       lat: dimensioningData.latitude || -15.7942,
       lon: dimensioningData.longitude || -47.8822,
-      tilt: dimensioningData.inclinacao || 20,
-      azimuth: dimensioningData.orientacao || 180,
+      tilt: validatedTilt,
+      azimuth: validatedAzimuth,
       modelo_decomposicao: 'louche',
       modelo_transposicao: 'perez',
       consumo_anual_kwh: consumoAnual,
       modulo,
       inversor,
-      perdas_sistema: (dimensioningData.perdaSombreamento || 3) + 
-                      (dimensioningData.perdaMismatch || 2) + 
-                      (dimensioningData.perdaCabeamento || 2) + 
-                      (dimensioningData.perdaSujeira || 5) + 
-                      (dimensioningData.perdaInversor || 3) + 
+      perdas_sistema: (dimensioningData.perdaSombreamento || 3) +
+                      (dimensioningData.perdaMismatch || 2) +
+                      (dimensioningData.perdaCabeamento || 2) +
+                      (dimensioningData.perdaSujeira || 5) +
+                      (dimensioningData.perdaInversor || 3) +
                       (dimensioningData.perdaOutras || 0),
       fator_seguranca: 1.1,
       num_modules: dimensioningData.num_modules // Incluir num_modules se fornecido

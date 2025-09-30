@@ -1,8 +1,10 @@
+# -*- coding: utf-8 -*-
 """
-Serviço de cálculos financeiros para sistemas fotovoltaicos
+Servico de calculos financeiros para sistemas fotovoltaicos
 """
 
 import numpy as np
+import numpy_financial as npf
 from typing import List, Dict, Tuple
 from models.financial_models import (
     FinancialInput, 
@@ -15,7 +17,7 @@ from models.financial_models import (
 )
 
 class FinancialCalculationService:
-    """Serviço para cálculos financeiros avançados"""
+    """Servico para calculos financeiros avancados"""
     
     @staticmethod
     def calculate_advanced_financials(input_data: FinancialInput) -> AdvancedFinancialResults:
@@ -71,45 +73,114 @@ class FinancialCalculationService:
     
     @staticmethod
     def _calculate_detailed_cash_flow(input_data: FinancialInput) -> List[CashFlowDetails]:
-        """Calcula fluxo de caixa detalhado ano a ano"""
+        """Calcula fluxo de caixa detalhado com processamento mensal"""
         
         cash_flow = []
-        geracao_anual_inicial = sum(input_data.geracao_mensal)
-        fluxo_acumulado = -input_data.investimento_inicial  # Investimento inicial negativo
+        fluxo_acumulado = -input_data.investimento_inicial
+
+        # Banco de creditos (persiste entre meses)
+        banco_local = 0.0
         
         for ano in range(1, input_data.vida_util + 1):
-            # Geração com degradação
-            fator_degradacao = (1 - input_data.degradacao_modulos / 100) ** (ano - 1)
-            geracao_anual = geracao_anual_inicial * fator_degradacao
+            economia_anual = 0.0
+            geracao_anual = 0.0
             
-            # Economia com energia (inflação da tarifa)
-            fator_inflacao_energia = (1 + input_data.inflacao_energia / 100) ** (ano - 1)
-            tarifa_ajustada = input_data.tarifa_energia * fator_inflacao_energia
-            custo_fio_ajustado = input_data.custo_fio_b * fator_inflacao_energia
+            for mes in range(12):
+                # Degradacao
+                fator_degradacao = (1 - input_data.degradacao_modulos / 100) ** (ano - 1)
+                gen_mes = input_data.geracao_mensal[mes] * fator_degradacao
+                geracao_anual += gen_mes
+                
+                # Inflacao
+                fator_inflacao = (1 + input_data.inflacao_energia / 100) ** (ano - 1)
+                tarifa_mes = input_data.tarifa_energia * fator_inflacao
+                fio_b_mes = input_data.custo_fio_b * fator_inflacao
+                
+                # Calcular economia local
+                economia_mes, banco_local = FinancialCalculationService._calculate_monthly_local_savings(
+                    gen_mes,
+                    input_data.consumo_mensal[mes],
+                    tarifa_mes,
+                    fio_b_mes,
+                    input_data.fator_simultaneidade,
+                    banco_local,
+                    ano,
+                    input_data.fio_b_schedule,
+                    input_data.base_year
+                )
+                
+                # GUARDAR BANCO INICIAL DO MES
+                banco_inicial_mes = banco_local
+                creditos_consumidos_total = 0.0
+                
+                # Autoconsumo remoto Grupo B
+                if input_data.autoconsumo_remoto_b:
+                    creditos_para_b = banco_inicial_mes * input_data.perc_creditos_b
+                    economia_b, sobra_b = FinancialCalculationService._calculate_remote_b_savings_v2(
+                        creditos_para_b,
+                        input_data.consumo_remoto_b_mensal[mes],
+                        input_data.tarifa_energia * fator_inflacao,
+                        input_data.tarifa_remoto_b * fator_inflacao,
+                        input_data.fio_b_remoto_b * fator_inflacao,
+                        ano,
+                        input_data.fio_b_schedule,
+                        input_data.base_year
+                    )
+                    economia_mes += economia_b
+                    creditos_consumidos_total += (creditos_para_b - sobra_b)
+                
+                # Autoconsumo remoto Grupo A Verde
+                if input_data.autoconsumo_remoto_a_verde:
+                    creditos_para_verde = banco_inicial_mes * input_data.perc_creditos_a_verde
+                    economia_verde, sobra_verde = FinancialCalculationService._calculate_remote_a_verde_savings_v2(
+                        creditos_para_verde,
+                        input_data.consumo_remoto_a_verde_fp_mensal[mes],
+                        input_data.consumo_remoto_a_verde_p_mensal[mes],
+                        input_data.tarifa_remoto_a_verde_fp * fator_inflacao,
+                        input_data.tarifa_remoto_a_verde_p * fator_inflacao,
+                        input_data.tusd_remoto_a_verde_fp * fator_inflacao,
+                        input_data.tusd_remoto_a_verde_p * fator_inflacao,
+                        input_data.te_ponta_a_verde,
+                        input_data.te_fora_ponta_a_verde
+                    )
+                    economia_mes += economia_verde
+                    creditos_consumidos_total += (creditos_para_verde - sobra_verde)
+                
+                # Autoconsumo remoto Grupo A Azul
+                if input_data.autoconsumo_remoto_a_azul:
+                    creditos_para_azul = banco_inicial_mes * input_data.perc_creditos_a_azul
+                    economia_azul, sobra_azul = FinancialCalculationService._calculate_remote_a_azul_savings_v2(
+                        creditos_para_azul,
+                        input_data.consumo_remoto_a_azul_fp_mensal[mes],
+                        input_data.consumo_remoto_a_azul_p_mensal[mes],
+                        input_data.tarifa_remoto_a_azul_fp * fator_inflacao,
+                        input_data.tarifa_remoto_a_azul_p * fator_inflacao,
+                        input_data.tusd_remoto_a_azul_fp * fator_inflacao,
+                        input_data.tusd_remoto_a_azul_p * fator_inflacao,
+                        input_data.te_ponta_a_azul,
+                        input_data.te_fora_ponta_a_azul
+                    )
+                    economia_mes += economia_azul
+                    creditos_consumidos_total += (creditos_para_azul - sobra_azul)
+                
+                # ATUALIZAR BANCO UMA VEZ SO NO FINAL
+                banco_local = banco_local - creditos_consumidos_total
+                
+                economia_anual += economia_mes
             
-            # Calcular economia considerando sistema de compensação
-            economia_energia = FinancialCalculationService._calculate_energy_savings(
-                geracao_anual, 
-                sum(input_data.consumo_mensal), 
-                tarifa_ajustada, 
-                custo_fio_ajustado
-            )
-            
-            # Custos de O&M
+            # Custos O&M
             fator_inflacao_om = (1 + input_data.inflacao_om / 100) ** (ano - 1)
             custos_om = input_data.custo_om * fator_inflacao_om
             
-            # Fluxo líquido
-            fluxo_liquido = economia_energia - custos_om
+            # Fluxo do ano
+            fluxo_liquido = economia_anual - custos_om
             fluxo_acumulado += fluxo_liquido
-            
-            # Valor presente
             valor_presente = fluxo_liquido / ((1 + input_data.taxa_desconto / 100) ** ano)
             
             cash_flow.append(CashFlowDetails(
                 ano=ano,
                 geracao_anual=round(geracao_anual, 1),
-                economia_energia=round(economia_energia, 2),
+                economia_energia=round(economia_anual, 2),
                 custos_om=round(custos_om, 2),
                 fluxo_liquido=round(fluxo_liquido, 2),
                 fluxo_acumulado=round(fluxo_acumulado, 2),
@@ -119,20 +190,54 @@ class FinancialCalculationService:
         return cash_flow
     
     @staticmethod
-    def _calculate_energy_savings(geracao: float, consumo: float, tarifa: float, custo_fio: float) -> float:
+    def _calculate_monthly_local_savings(
+        geracao: float,
+        consumo: float,
+        tarifa: float,
+        fio_b: float,
+        fator_simultaneidade: float,
+        banco_creditos: float,
+        ano: int,
+        fio_b_schedule: Dict[int, float],
+        base_year: int
+    ) -> Tuple[float, float]:
         """
-        Calcula economia com energia considerando sistema de compensação
-        """
-        if geracao >= consumo:
-            # Geração maior que consumo - injeta energia na rede
-            energia_injetada = geracao - consumo
-            # Economia = consumo evitado + créditos de energia injetada (descontando custo do fio)
-            economia = consumo * tarifa + energia_injetada * (tarifa - custo_fio)
-        else:
-            # Geração menor que consumo - reduz conta de energia
-            economia = geracao * tarifa
+        Calcula economia do mes e atualiza banco de creditos local.
         
-        return economia
+        Retorna: (economia_mes, novo_saldo_banco)
+        """
+        # 1. Autoconsumo instantaneo (nao paga Fio B)
+        autoconsumo_imediato = min(geracao * fator_simultaneidade, consumo)
+        economia_imediata = autoconsumo_imediato * tarifa
+        
+        # 2. Energia que vira credito
+        credito_novo = geracao - autoconsumo_imediato
+        consumo_restante = consumo - autoconsumo_imediato
+        
+        # 3. Abater consumo com credito novo
+        abatido_novo = min(credito_novo, consumo_restante)
+        consumo_ainda_restante = consumo_restante - abatido_novo
+        
+        # 4. Abater com banco de creditos
+        abatido_banco = min(banco_creditos, consumo_ainda_restante)
+        
+        # 5. Atualizar banco
+        excedente = credito_novo - abatido_novo
+        novo_saldo_banco = banco_creditos - abatido_banco + excedente
+        
+        # 6. Calcular economia com Fio B
+        calendario_ano = base_year + (ano - 1)
+        perc_fio_b = fio_b_schedule.get(calendario_ano, 1.0)
+        custo_fio_b_total = (abatido_novo + abatido_banco) * fio_b * perc_fio_b
+        
+        economia_credito = (abatido_novo + abatido_banco) * tarifa - custo_fio_b_total
+        economia_total = economia_imediata + economia_credito
+        
+        return economia_total, novo_saldo_banco
+
+
+
+
     
     @staticmethod
     def _calculate_npv(cash_flow: List[CashFlowDetails], taxa_desconto: float) -> float:
@@ -141,53 +246,27 @@ class FinancialCalculationService:
     
     @staticmethod
     def _calculate_irr(cash_flow: List[CashFlowDetails], investimento_inicial: float) -> float:
-        """Calcula Taxa Interna de Retorno usando método de Newton-Raphson"""
-        
-        # Fluxos de caixa incluindo investimento inicial
+        """Calcula TIR usando numpy_financial"""
         fluxos = [-investimento_inicial] + [year.fluxo_liquido for year in cash_flow]
         
-        # Estimativa inicial
-        taxa = 0.1
-        
-        for _ in range(100):  # Máximo 100 iterações
-            # Limitar taxa no intervalo [-0.99, 5.0] para evitar valores extremos
-            taxa = max(-0.99, min(taxa, 5.0))
+        try:
+            tir = npf.irr(fluxos)
             
-            # Calcular VPL e derivada usando numpy.float128 para maior precisão
-            try:
-                # Converter para numpy.float128 para evitar overflow
-                taxa_np = np.float128(taxa)
-                fluxos_np = [np.float128(fluxo) for fluxo in fluxos]
-                
-                vpl = sum(fluxo_np / ((1 + taxa_np) ** i) for i, fluxo_np in enumerate(fluxos_np))
-                dvpl = sum(-i * fluxo_np / ((1 + taxa_np) ** (i + 1)) for i, fluxo_np in enumerate(fluxos_np))
-                
-                # Converter de volta para float Python e validar se são finitos
-                vpl = float(vpl)
-                dvpl = float(dvpl)
-                
-                # Verificar se os valores são finitos
-                if not (np.isfinite(vpl) and np.isfinite(dvpl)):
-                    return 0.05  # Retornar taxa conservadora se valores inválidos
-                    
-            except (OverflowError, ZeroDivisionError):
-                # Se ainda houver overflow, retornar taxa conservadora
-                return 0.05  # 5% como fallback
+            # Validar resultado
+            if not np.isfinite(tir):
+                return 5.0  # Fallback conservador em %
             
-            if abs(vpl) < 1e-6:  # Precisão suficiente
-                break
+            # Limitar valores extremos
+            if tir < -0.99:
+                return -99.0
+            if tir > 5.0:
+                return 500.0
             
-            if abs(dvpl) < 1e-10:  # Evitar divisão por zero
-                break
+            return tir * 100  # Retornar em percentual
             
-            taxa_nova = taxa - vpl / dvpl
-            
-            if abs(taxa_nova - taxa) < 1e-6:
-                break
-            
-            taxa = taxa_nova
-        
-        return taxa * 100  # Retornar em percentual
+        except Exception as e:
+            print(f"Erro no calculo de TIR: {e}")
+            return 5.0  # Fallback conservador em %
     
     @staticmethod
     def _calculate_simple_payback(cash_flow: List[CashFlowDetails]) -> float:
@@ -377,3 +456,103 @@ class FinancialCalculationService:
             conservador=conservador_results,
             pessimista=pessimista_results
         )
+
+    @staticmethod
+    def _calculate_remote_b_savings_v2(
+        creditos_disponiveis: float,
+        consumo_remoto_b: float,
+        tarifa_geradora: float,
+        tarifa_remoto_b: float,
+        fio_b_remoto: float,
+        ano: int,
+        fio_b_schedule: Dict[int, float],
+        base_year: int
+    ) -> Tuple[float, float]:
+        """
+        NOVA VERSAO: Recebe creditos ja separados
+        Retorna: (economia_remoto_b, sobra_creditos)
+        """
+        # Fator de equivalencia
+        fator_equiv = tarifa_geradora / tarifa_remoto_b
+        
+        # Converter creditos para kWh equivalente do Grupo B
+        creditos_eq = creditos_disponiveis / fator_equiv
+        abatido_eq = min(creditos_eq, consumo_remoto_b)
+        
+        # Creditos usados
+        creditos_usados = abatido_eq * fator_equiv
+        sobra = creditos_disponiveis - creditos_usados
+        
+        # Calcular economia
+        calendario_ano = base_year + (ano - 1)
+        perc_fio_b = fio_b_schedule.get(calendario_ano, 1.0)
+        custo_fio = abatido_eq * fio_b_remoto * perc_fio_b
+        
+        economia = abatido_eq * tarifa_remoto_b - custo_fio
+        
+        return economia, sobra
+
+    @staticmethod
+    def _calculate_remote_a_verde_savings_v2(
+        creditos_disponiveis: float,
+        consumo_fp: float,
+        consumo_p: float,
+        tarifa_fp: float,
+        tarifa_p: float,
+        tusd_fp: float,
+        tusd_p: float,
+        te_ponta: float,
+        te_fora_ponta: float
+    ) -> Tuple[float, float]:
+        """
+        NOVA VERSAO: Recebe creditos ja separados
+        Retorna: (economia_remoto_verde, sobra_creditos)
+        """
+        # Fator de ajuste ponta/fora ponta
+        fator_ajuste = te_ponta / te_fora_ponta
+        
+        # Prioridade: abater FORA PONTA primeiro
+        abatido_fp = min(creditos_disponiveis, consumo_fp)
+        sobra_apos_fp = creditos_disponiveis - abatido_fp
+        
+        # Abater PONTA com sobra
+        abatido_p = min(sobra_apos_fp / fator_ajuste, consumo_p)
+        creditos_usados_p = abatido_p * fator_ajuste
+        
+        # Sobra final
+        sobra = sobra_apos_fp - creditos_usados_p
+        
+        # Calcular economia
+        economia_fp = abatido_fp * tarifa_fp - (abatido_fp * tusd_fp)
+        economia_p = abatido_p * tarifa_p - (abatido_p * tusd_p)
+        economia_total = economia_fp + economia_p
+        
+        return economia_total, sobra
+
+    @staticmethod
+    def _calculate_remote_a_azul_savings_v2(
+        creditos_disponiveis: float,
+        consumo_fp: float,
+        consumo_p: float,
+        tarifa_fp: float,
+        tarifa_p: float,
+        tusd_fp: float,
+        tusd_p: float,
+        te_ponta: float,
+        te_fora_ponta: float
+    ) -> Tuple[float, float]:
+        """
+        NOVA VERSAO: Identica ao Verde
+        Retorna: (economia_remoto_azul, sobra_creditos)
+        """
+        # Copiar logica identica de _calculate_remote_a_verde_savings_v2
+        fator_ajuste = te_ponta / te_fora_ponta
+        abatido_fp = min(creditos_disponiveis, consumo_fp)
+        sobra_apos_fp = creditos_disponiveis - abatido_fp
+        abatido_p = min(sobra_apos_fp / fator_ajuste, consumo_p)
+        creditos_usados_p = abatido_p * fator_ajuste
+        sobra = sobra_apos_fp - creditos_usados_p
+        economia_fp = abatido_fp * tarifa_fp - (abatido_fp * tusd_fp)
+        economia_p = abatido_p * tarifa_p - (abatido_p * tusd_p)
+        economia_total = economia_fp + economia_p
+        return economia_total, sobra

@@ -88,8 +88,8 @@ const CashFlowChart: React.FC<{ cashFlow: any[] }> = ({ cashFlow }) => {
     return <div>Dados de fluxo de caixa não disponíveis</div>;
   }
   
-  const maxValue = Math.max(...cashFlow.map(cf => Math.max(cf.fluxo_liquido || 0, cf.fluxo_acumulado || 0)));
-  const minValue = Math.min(...cashFlow.map(cf => Math.min(cf.fluxo_liquido || 0, cf.fluxo_acumulado || 0)));
+  const maxValue = Math.max(...cashFlow.map(cf => Math.max(cf.fluxoLiquido || 0, cf.fluxoAcumulado || 0)));
+  const minValue = Math.min(...cashFlow.map(cf => Math.min(cf.fluxoLiquido || 0, cf.fluxoAcumulado || 0)));
   const range = maxValue - minValue || 1;
 
   return (
@@ -118,17 +118,17 @@ const CashFlowChart: React.FC<{ cashFlow: any[] }> = ({ cashFlow }) => {
             fill="none"
             stroke="url(#gradientBlue)"
             strokeWidth="3"
-            points={cashFlow.map((cf, index) => 
-              `${(index / (cashFlow.length - 1)) * 800},${200 - (((cf.fluxo_liquido || 0) - minValue) / range) * 200}`
+            points={cashFlow.map((cf, index) =>
+              `${(index / (cashFlow.length - 1)) * 800},${200 - (((cf.fluxoLiquido || 0) - minValue) / range) * 200}`
             ).join(' ')}
           />
-          
+
           <polyline
             fill="none"
             stroke="url(#gradientGreen)"
             strokeWidth="3"
-            points={cashFlow.map((cf, index) => 
-              `${(index / (cashFlow.length - 1)) * 800},${200 - (((cf.fluxo_acumulado || 0) - minValue) / range) * 200}`
+            points={cashFlow.map((cf, index) =>
+              `${(index / (cashFlow.length - 1)) * 800},${200 - (((cf.fluxoAcumulado || 0) - minValue) / range) * 200}`
             ).join(' ')}
           />
           
@@ -242,6 +242,20 @@ const ScenarioComparison: React.FC<{ scenarios: any }> = ({ scenarios }) => {
     conservador: 'from-yellow-500 to-yellow-600',
     pessimista: 'from-red-500 to-red-600'
   };
+
+  // Null check para evitar crash
+  if (!scenarios) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">
+        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Comparação de Cenários
+        </h4>
+        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+          Análise de cenários não disponível. Execute o cálculo financeiro completo.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-slate-700">

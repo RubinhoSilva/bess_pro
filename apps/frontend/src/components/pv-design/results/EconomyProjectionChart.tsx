@@ -24,13 +24,13 @@ export const EconomyProjectionChart: React.FC<EconomyProjectionChartProps> = ({ 
     .map((item: any, index: any) => {
       // Estimar custo sem FV baseado na economia + custos O&M
       const custoSemFV = (item.custoSemFV || 0) + (item.custoComFV || 0);
-      
+
       return {
         ano: item.ano, // Usar número simples para melhor ordenação
         anoLabel: `Ano ${item.ano}`, // Para exibição nos tooltips
         'Custo Sem FV': custoSemFV,
-        'Custo Com FV': item.custos_om || 0,
-        'Economia Anual': item.economia_energia || 0,
+        'Custo Com FV': item.custosOM || item.custos_om || 0, // camelCase ou snake_case
+        'Economia Anual': item.economiaEnergia || item.economia_energia || 0, // camelCase ou snake_case
       };
     });
 

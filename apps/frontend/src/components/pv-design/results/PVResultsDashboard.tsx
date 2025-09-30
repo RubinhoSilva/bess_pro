@@ -194,9 +194,11 @@ const validateAndNormalizeResults = (results: any) => {
     
     advancedFinancial: results.advancedFinancial ? {
       ...results.advancedFinancial,
-      cashFlow: Array.isArray(results.advancedFinancial.cashFlow) 
-        ? results.advancedFinancial.cashFlow 
-        : []
+      cashFlow: Array.isArray(results.advancedFinancial.cashFlow)
+        ? results.advancedFinancial.cashFlow
+        : [],
+      // Garantir que scenarios existe, mesmo que null
+      scenarios: results.advancedFinancial.scenarios || null
     } : null
   };
 
@@ -340,11 +342,11 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
                   cash_flow: validatedResults.fluxoCaixa.map((item: any, index: number) => ({
                     ano: Number(item?.ano) || index + 1,
                     fluxo_liquido: Number(item?.fluxoLiquido || item?.fluxo_liquido) || 0,
-                    fluxo_acumulado: Number(item?.fluxo_acumulado) || 0,
-                    economia_energia: Number(item?.economia || item?.economia_energia) || 0,
-                    custos_om: Number(item?.custos_om) || 0,
+                    fluxo_acumulado: Number(item?.fluxoAcumulado || item?.fluxo_acumulado) || 0,
+                    economia_energia: Number(item?.economiaEnergia || item?.economia_energia || item?.economia) || 0,
+                    custos_om: Number(item?.custosOM || item?.custos_om) || 0,
                     valor_presente: Number(item?.valorPresente || item?.valor_presente) || 0,
-                    geracao_anual: Number(item?.geracao_anual) || 0
+                    geracao_anual: Number(item?.geracaoAnual || item?.geracao_anual) || 0
                   }))
                 }} />
               ) : (
