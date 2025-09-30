@@ -62,16 +62,31 @@ async def calculate_required_modules(
                    f"{request.modulo.fabricante} {request.modulo.modelo} {request.modulo.potencia_nominal_w}W, "
                    f"{request.consumo_anual_kwh} kWh/ano")
         
-        # ===== DEBUG: PERDAS RECEBIDAS NO PYTHON =====
-        print("=" * 60)
-        print("🐍 [PYTHON - modules.py] DADOS RECEBIDOS:")
+        # ===== DEBUG: JSON COMPLETO RECEBIDO NO PYTHON =====
+        import json
+        print("=" * 80)
+        print("🐍 [PYTHON - modules.py] JSON COMPLETO RECEBIDO:")
+        print("=" * 80)
+        
+        # Converter request para dict para visualização completa
+        try:
+            request_dict = request.dict() if hasattr(request, 'dict') else request.__dict__
+            print(json.dumps(request_dict, indent=2, ensure_ascii=False, default=str))
+        except Exception as e:
+            print(f"Erro ao serializar request: {e}")
+            print(f"Request type: {type(request)}")
+            print(f"Request attributes: {dir(request)}")
+        
+        print("=" * 80)
+        print("🐍 [PYTHON - modules.py] RESUMO DADOS PRINCIPAIS:")
         print(f"🔧 PERDAS DO SISTEMA: {request.perdas_sistema}%")
         print(f"📊 CONSUMO ANUAL: {request.consumo_anual_kwh} kWh")
         print(f"📍 COORDENADAS: {request.lat}, {request.lon}")
         print(f"🔋 MÓDULO: {request.modulo.fabricante} {request.modulo.modelo} - {request.modulo.potencia_nominal_w}W")
+        print(f"⚡ INVERSOR: {request.inversor.fabricante} {request.inversor.modelo} - {request.inversor.potencia_saida_ca_w}W")
         if hasattr(request, 'num_modules') and request.num_modules:
             print(f"🧮 NÚMERO ESPECÍFICO DE MÓDULOS: {request.num_modules}")
-        print("=" * 60)
+        print("=" * 80)
         
         result = module_service.calculate_required_modules(request)
         

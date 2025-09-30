@@ -54,6 +54,17 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
   selectedModule
 }) => {
   const [errors, setErrors] = useState<string[]>([]);
+  
+  // Estado para toasts de auto-correção
+  const [toasts, setToasts] = useState<Array<{
+    id: string;
+    aguaNome: string;
+    original: number;
+    corrigido: number;
+    modulosPorString: number;
+    stringsPorMppt: number;
+    timestamp: number;
+  }>>([]);
 
   // Gerar lista de canais MPPT disponíveis baseado nos inversores selecionados
   const getAvailableMpptChannels = () => {
@@ -124,21 +135,66 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
   useEffect(() => {
     if (aguasTelhado.length === 0) return;
     
-    console.log('🔄 Perdas do sistema atualizadas, recalculando águas de telhado...');
+    // Verificar se há águas com módulos configurados
+    const aguasComModulos = aguasTelhado.filter(agua => agua.numeroModulos > 0);
+    if (aguasComModulos.length === 0 || !latitude || !longitude) return;
     
-    // Recalcular todas as águas que têm módulos configurados
-    aguasTelhado.forEach(agua => {
-      if (agua.numeroModulos > 0 && latitude && longitude) {
-        console.log(`🧮 Recalculando água ${agua.nome} com perdas atualizadas`);
-        handleCalculateGeneration(agua.id);
-      }
-    });
+    console.log('🔄 Perdas do sistema atualizadas, recalculando sistema completo...');
+    
+    // Recalcular apenas uma vez (o sistema completo) usando a primeira água com módulos
+    const primeiraAguaComModulos = aguasComModulos[0];
+    if (primeiraAguaComModulos) {
+      console.log(`🧮 Recalculando sistema completo via água ${primeiraAguaComModulos.nome}`);
+      handleCalculateGeneration(primeiraAguaComModulos.id);
+    }
   }, [perdaSombreamento, perdaMismatch, perdaCabeamento, perdaSujeira, perdaInversor, perdaOutras]);
 
+  // Escutar eventos de auto-correção
+  useEffect(() => {
+    const handleAutoCorrection = (event: CustomEvent) => {
+      const { detail } = event;
+      const newToast = {
+        id: Date.now().toString(),
+        aguaNome: detail.aguaNome,
+        original: detail.original,
+        corrigido: detail.corrigido,
+        modulosPorString: detail.modulosPorString,
+        stringsPorMppt: detail.stringsPorMppt,
+        timestamp: Date.now()
+      };
+      
+      setToasts(prev => [...prev, newToast]);
+      
+      // Auto-remover toast após 4 segundos
+      setTimeout(() => {
+        setToasts(prev => prev.filter(toast => toast.id !== newToast.id));
+      }, 4000);
+    };
+
+    window.addEventListener('agua-balanceada', handleAutoCorrection as EventListener);
+    
+    return () => {
+      window.removeEventListener('agua-balanceada', handleAutoCorrection as EventListener);
+    };
+  }, []);
+
   const handleAddAgua = () => {
+    // Encontrar próximo número disponível
+    const existingNumbers = aguasTelhado
+      .map(agua => {
+        const match = agua.nome.match(/Água de telhado #(\d+)/);
+        return match ? parseInt(match[1]) : 0;
+      })
+      .filter(num => num > 0);
+    
+    let nextNumber = 1;
+    while (existingNumbers.includes(nextNumber)) {
+      nextNumber++;
+    }
+
     const newAgua: AguaTelhado = {
       id: crypto.randomUUID(),
-      nome: `Água ${aguasTelhado.length + 1}`,
+      nome: `Água de telhado #${nextNumber}`,
       orientacao: 0,
       inclinacao: 0,
       numeroModulos: 0, // Começar com 0 módulos
@@ -247,7 +303,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
 
   const maxModules = calculateMaxModules();
 
-  // Função para calcular geração de uma água específica via Python
+  // Função para calcular geração do sistema completo (todas as águas juntas)
   const handleCalculateGeneration = async (aguaId: string) => {
     if (!latitude || !longitude) {
       console.warn('Latitude/longitude não disponíveis para cálculo');
@@ -255,54 +311,160 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     }
 
     const agua = aguasTelhado.find(a => a.id === aguaId);
-    if (!agua || agua.numeroModulos === 0) {
-      console.warn('Água não encontrada ou sem módulos para calcular');
+    if (!agua) {
+      console.warn('Água não encontrada');
       return;
     }
 
-    // Marcar como calculando
-    const updatedAguas = aguasTelhado.map(a => 
-      a.id === aguaId ? { ...a, isCalculando: true } : a
-    );
+    // Verificar se existe pelo menos uma água com módulos
+    const totalModulos = aguasTelhado.reduce((sum, a) => sum + (a.numeroModulos || 0), 0);
+    if (totalModulos === 0) {
+      console.warn('Nenhuma água tem módulos configurados para calcular');
+      return;
+    }
+
+    // Marcar TODAS as águas como calculando (já que o cálculo é do sistema completo)
+    const updatedAguas = aguasTelhado.map(a => ({ ...a, isCalculando: true }));
     onAguasChange(updatedAguas);
 
     try {
-      console.log('🌞 Calculando geração para água:', {
-        nome: agua.nome,
-        orientacao: agua.orientacao,
-        inclinacao: agua.inclinacao,
-        numeroModulos: agua.numeroModulos,
+      console.log('🌞 Calculando geração do sistema completo:', {
+        totalAguas: aguasTelhado.length,
+        totalModulos,
+        aguas: aguasTelhado.map(a => ({
+          nome: a.nome,
+          orientacao: a.orientacao,
+          inclinacao: a.inclinacao,
+          numeroModulos: a.numeroModulos
+        })),
         latitude,
         longitude
       });
 
-      // Preparar dados para o cálculo usando o mesmo formato do SystemSummary
+      // Calcular orientação e inclinação médias ponderadas por número de módulos
+      let orientacaoMedia = 0;
+      let inclinacaoMedia = 0;
+      
+      if (totalModulos > 0) {
+        let somaOrientacao = 0;
+        let somaInclinacao = 0;
+        
+        aguasTelhado.forEach(a => {
+          if (a.numeroModulos > 0) {
+            somaOrientacao += a.orientacao * a.numeroModulos;
+            somaInclinacao += a.inclinacao * a.numeroModulos;
+          }
+        });
+        
+        orientacaoMedia = Math.round(somaOrientacao / totalModulos);
+        inclinacaoMedia = Math.round(somaInclinacao / totalModulos);
+      }
+
+      console.log('📐 Parâmetros médios ponderados:', {
+        orientacaoMedia,
+        inclinacaoMedia,
+        totalModulos
+      });
+
+      // Preparar dados para o cálculo usando o sistema completo
       const dimensioningData = {
         latitude,
         longitude,
-        orientacao: agua.orientacao,
-        inclinacao: agua.inclinacao,
-        numeroModulos: agua.numeroModulos,
-        num_modules: agua.numeroModulos, // Campo específico para forçar uso deste número no Python
+        orientacao: orientacaoMedia, // Orientação média ponderada
+        inclinacao: inclinacaoMedia, // Inclinação média ponderada
+        numeroModulos: totalModulos, // Total de módulos do sistema
+        num_modules: totalModulos, // Campo específico para forçar uso deste número no Python
         potenciaModulo,
         energyBills: [{ 
           consumoMensal: [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500] // 6000 kWh/ano padrão
         }],
-        selectedModules: [{
+        selectedModules: selectedModule ? [{
+          fabricante: (selectedModule as any).fabricante || 'Canadian Solar',
+          modelo: (selectedModule as any).modelo || 'CS3W-540MS',
+          potenciaNominal: selectedModule.potenciaNominal || potenciaModulo,
+          larguraMm: (selectedModule as any).larguraMm || 2261,
+          alturaMm: (selectedModule as any).alturaMm || 1134,
+          vmpp: (selectedModule as any).vmpp || 41.4,
+          impp: (selectedModule as any).impp || 13.05,
+          voc: (selectedModule as any).voc || selectedModule.vocStc || 49.7,
+          isc: (selectedModule as any).isc || 13.91,
+          eficiencia: (selectedModule as any).eficiencia || 20.9,
+          tempCoefPmax: (selectedModule as any).tempCoefPmax || -0.37,
+          tempCoefVoc: selectedModule.tempCoefVoc || -0.28,
+          // Parâmetros avançados (se disponíveis)
+          alphaSc: (selectedModule as any).alphaSc || undefined,
+          betaOc: (selectedModule as any).betaOc || undefined,
+          gammaR: (selectedModule as any).gammaR || undefined,
+          aRef: (selectedModule as any).aRef || undefined,
+          iLRef: (selectedModule as any).iLRef || undefined,
+          iORef: (selectedModule as any).iORef || undefined,
+          rS: (selectedModule as any).rS || undefined,
+          rShRef: (selectedModule as any).rShRef || undefined,
+          // Parâmetros SAPM térmicos
+          a0: (selectedModule as any).a0 || undefined,
+          a1: (selectedModule as any).a1 || undefined,
+          a2: (selectedModule as any).a2 || undefined,
+          a3: (selectedModule as any).a3 || undefined,
+          a4: (selectedModule as any).a4 || undefined,
+          b0: (selectedModule as any).b0 || undefined,
+          b1: (selectedModule as any).b1 || undefined,
+          b2: (selectedModule as any).b2 || undefined,
+          b3: (selectedModule as any).b3 || undefined,
+          b4: (selectedModule as any).b4 || undefined,
+          b5: (selectedModule as any).b5 || undefined,
+          dtc: (selectedModule as any).dtc || undefined,
+          // Outros parâmetros
+          material: (selectedModule as any).material || 'c-Si',
+          technology: (selectedModule as any).technology || 'mono-Si',
+          numerocelulas: (selectedModule as any).numeroCelulas || 144,
+          pesoKg: (selectedModule as any).pesoKg || 27.5
+        }] : [{
           fabricante: 'Canadian Solar',
           modelo: 'CS3W-540MS',
-          potenciaNominal: potenciaModulo
+          potenciaNominal: potenciaModulo,
+          larguraMm: 2261,
+          alturaMm: 1134,
+          vmpp: 41.4,
+          impp: 13.05,
+          voc: 49.7,
+          isc: 13.91,
+          eficiencia: 20.9,
+          tempCoefPmax: -0.37,
+          tempCoefVoc: -0.28,
+          material: 'c-Si',
+          technology: 'mono-Si',
+          numerocelulas: 144,
+          pesoKg: 27.5
         }],
         inverters: selectedInverters.length > 0 ? [{
           fabricante: selectedInverters[0].fabricante,
           modelo: selectedInverters[0].modelo,
           potencia_saida_ca_w: selectedInverters[0].potenciaSaidaCA,
-          tipo_rede: (selectedInverters[0] as any).tipoRede || "Monofásico 220V"
+          tipo_rede: (selectedInverters[0] as any).tipoRede || "Monofásico 220V",
+          potenciaFvMax: (selectedInverters[0] as any).potenciaFvMax || undefined,
+          tensaoCcMax: selectedInverters[0].tensaoCcMax || 1000,
+          numeroMppt: selectedInverters[0].numeroMppt || 2,
+          stringsPorMppt: selectedInverters[0].stringsPorMppt || 2,
+          eficienciaMax: (selectedInverters[0] as any).eficienciaMax || undefined,
+          correnteEntradaMax: (selectedInverters[0] as any).correnteEntradaMax || undefined,
+          potenciaAparenteMax: (selectedInverters[0] as any).potenciaAparenteMax || undefined,
+          // Parâmetros Sandia (se disponíveis)
+          vdco: (selectedInverters[0] as any).vdco || undefined,
+          pso: (selectedInverters[0] as any).pso || undefined,
+          c0: (selectedInverters[0] as any).c0 || undefined,
+          c1: (selectedInverters[0] as any).c1 || undefined,
+          c2: (selectedInverters[0] as any).c2 || undefined,
+          c3: (selectedInverters[0] as any).c3 || undefined,
+          pnt: (selectedInverters[0] as any).pnt || undefined
         }] : [{
           fabricante: 'WEG',
           modelo: 'SIW500H-M',
           potencia_saida_ca_w: 5000,
-          tipo_rede: "Monofásico 220V"
+          tipo_rede: "Monofásico 220V",
+          tensaoCcMax: 600,
+          numeroMppt: 2,
+          stringsPorMppt: 2,
+          eficienciaMax: 97.6
         }],
         // Perdas do sistema
         perdaSombreamento,
@@ -328,29 +490,48 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
       // Chamar API de cálculo avançado
       const dados = await SolarSystemService.calculateAdvancedFromDimensioning(dimensioningData);
         
-      // Atualizar água com dados calculados
-      const finalAguas = aguasTelhado.map(a => 
-        a.id === aguaId ? {
-          ...a,
-          areaCalculada: dados.area_necessaria_m2,
-          geracaoAnual: dados.energia_total_anual_kwh,
-          isCalculando: false
-        } : a
-      );
+      // Distribuir os resultados proporcionalmente entre todas as águas que têm módulos
+      const finalAguas = aguasTelhado.map(a => {
+        if (a.numeroModulos > 0) {
+          // Calcular proporção desta água no sistema total
+          const proporcao = a.numeroModulos / totalModulos;
+          
+          return {
+            ...a,
+            areaCalculada: Math.round(dados.area_necessaria_m2 * proporcao * 100) / 100,
+            geracaoAnual: Math.round(dados.energia_total_anual_kwh * proporcao * 100) / 100,
+            isCalculando: false
+          };
+        } else {
+          // Águas sem módulos apenas param de calcular
+          return {
+            ...a,
+            isCalculando: false
+          };
+        }
+      });
         
-      console.log('✅ Geração calculada:', {
-        area: dados.area_necessaria_m2,
-        geracao: dados.energia_total_anual_kwh
+      console.log('✅ Geração do sistema calculada e distribuída:', {
+        areaTotalSistema: dados.area_necessaria_m2,
+        geracaoTotalSistema: dados.energia_total_anual_kwh,
+        totalModulos,
+        distribuicao: finalAguas
+          .filter(a => a.numeroModulos > 0)
+          .map(a => ({
+            nome: a.nome,
+            modulos: a.numeroModulos,
+            proporcao: Math.round((a.numeroModulos / totalModulos) * 10000) / 100 + '%',
+            area: a.areaCalculada,
+            geracao: a.geracaoAnual
+          }))
       });
         
       onAguasChange(finalAguas);
     } catch (error) {
       console.error('❌ Erro ao calcular geração:', error);
       
-      // Remover estado de carregamento
-      const finalAguas = aguasTelhado.map(a => 
-        a.id === aguaId ? { ...a, isCalculando: false } : a
-      );
+      // Remover estado de carregamento de TODAS as águas
+      const finalAguas = aguasTelhado.map(a => ({ ...a, isCalculando: false }));
       onAguasChange(finalAguas);
     }
   };
@@ -445,7 +626,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                       <Input
                         value={agua.nome}
                         onChange={(e) => handleUpdateAgua(agua.id, { nome: e.target.value })}
-                        placeholder="Ex: Água Principal"
+                        placeholder="Ex: Água de telhado #1"
                       />
                     </div>
 
@@ -593,11 +774,14 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                             const value = parseInt(e.target.value) || 0;
                             
                             let maxLimit = 100; // Fallback
+                            let stringsPorMppt = 1; // Fallback
+                            
                             if (hasValidMppt) {
                               const inverterData = selectedInverters.find(inv => 
                                 (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
                               );
                               if (inverterData) {
+                                stringsPorMppt = inverterData.stringsPorMppt || 1;
                                 const inverterId = inverterData.id || inverterData.inverterId;
                                 const limit = mpptLimits[inverterId];
                                 if (limit && !limit.isLoading && !limit.error) {
@@ -606,8 +790,37 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                               }
                             }
                             
-                            const limitedValue = Math.min(value, maxLimit);
-                            handleUpdateAgua(agua.id, { numeroModulos: limitedValue });
+                            let finalValue = Math.min(value, maxLimit);
+                            
+                            // AUTO-CORREÇÃO: Garantir que seja múltiplo de stringsPorMppt
+                            if (finalValue > 0 && stringsPorMppt > 1) {
+                              const modulosPorString = Math.floor(finalValue / stringsPorMppt);
+                              const modulosBalanceados = modulosPorString * stringsPorMppt;
+                              
+                              if (finalValue !== modulosBalanceados && modulosBalanceados > 0) {
+                                // Toast elegante informando a correção
+                                console.log(`🔧 Auto-correção: ${finalValue} módulos → ${modulosBalanceados} módulos (${modulosPorString} por string, ${stringsPorMppt} strings)`);
+                                
+                                // Aplicar a correção
+                                finalValue = modulosBalanceados;
+                                
+                                // TODO: Adicionar toast visual aqui
+                                setTimeout(() => {
+                                  const toastEvent = new CustomEvent('agua-balanceada', {
+                                    detail: {
+                                      aguaNome: agua.nome,
+                                      original: value,
+                                      corrigido: modulosBalanceados,
+                                      modulosPorString,
+                                      stringsPorMppt
+                                    }
+                                  });
+                                  window.dispatchEvent(toastEvent);
+                                }, 100);
+                              }
+                            }
+                            
+                            handleUpdateAgua(agua.id, { numeroModulos: finalValue });
                           }}
                           placeholder="0"
                           className={hasValidMppt ? (() => {
@@ -644,23 +857,46 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                           }
                           return null;
                         })()}
+                        
+                        {/* Distribuição por strings */}
+                        {hasValidMppt && agua.numeroModulos > 0 && (() => {
+                          const inverterData = selectedInverters.find(inv => 
+                            (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
+                          );
+                          if (!inverterData) return null;
+                          
+                          const stringsPorMppt = inverterData.stringsPorMppt || 1;
+                          const modulosPorString = Math.floor(agua.numeroModulos / stringsPorMppt);
+                          
+                          if (modulosPorString > 0) {
+                            return (
+                              <div className="mt-1">
+                                <p className="text-xs text-blue-600 flex items-center gap-1">
+                                  <Settings className="w-3 h-3" />
+                                  Serão {modulosPorString} módulos por string ({stringsPorMppt} strings por MPPT)
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
                   </div>
 
-                  {/* Botão Atualizar Geração */}
+                  {/* Botão Calcular Sistema Completo */}
                   {agua.numeroModulos > 0 && hasValidMppt && latitude && longitude && (
                     <div className="flex justify-center">
                       <Button 
                         onClick={() => handleCalculateGeneration(agua.id)}
-                        disabled={agua.isCalculando}
+                        disabled={agua.isCalculando || aguasTelhado.some(a => a.isCalculando)}
                         variant="outline"
                         className="bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
                       >
-                        {agua.isCalculando ? (
+                        {agua.isCalculando || aguasTelhado.some(a => a.isCalculando) ? (
                           <>
                             <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin mr-2" />
-                            Calculando...
+                            Calculando Sistema...
                           </>
                         ) : (
                           <>
@@ -672,29 +908,6 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                     </div>
                   )}
 
-                  {/* Geração Calculada */}
-                  {agua.geracaoAnual && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <h5 className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
-                        <Sun className="w-4 h-4" />
-                        Geração Calculada
-                      </h5>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-green-600">Área Necessária:</span>
-                          <div className="font-mono text-green-800 font-medium">
-                            {agua.areaCalculada?.toFixed(1) || '—'} m²
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-green-600">Geração Anual:</span>
-                          <div className="font-mono text-green-800 font-medium">
-                            {agua.geracaoAnual?.toFixed(0).toLocaleString() || '—'} kWh/ano
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
 
                   {/* Botão remover */}
@@ -906,6 +1119,39 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         )}
         </CardContent>
       </Card>
+      
+      {/* Toasts de Auto-correção */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-lg max-w-sm animate-in slide-in-from-right-full duration-300"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <Settings className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-blue-900">
+                  Auto-correção aplicada
+                </p>
+                <p className="text-sm text-blue-700 mt-1">
+                  <span className="font-medium">{toast.aguaNome}</span>: {toast.original} → {toast.corrigido} módulos
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  {toast.modulosPorString} módulos/string × {toast.stringsPorMppt} strings
+                </p>
+              </div>
+              <button
+                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                className="flex-shrink-0 text-blue-400 hover:text-blue-600 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
       
     </TooltipProvider>
   );

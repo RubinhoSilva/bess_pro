@@ -61,7 +61,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   // Debug temporário - logs iniciais
   if (selectedManufacturerId && invertersArray.length > 0 && manufacturersArray.length > 0) {
     console.log('🔍 Debug - Fabricante ID selecionado:', selectedManufacturerId);
-    console.log('🔍 Debug - Fabricantes disponíveis:', manufacturersArray.map(m => ({ id: m.id, name: m.name })));
+    console.log('🔍 Debug - Fabricantes disponíveis:', manufacturersArray.map((m: any) => ({ id: m.id, name: m.name })));
     console.log('🔍 Debug - Primeiro inversor:', {
       id: invertersArray[0]?.id,
       fabricante: invertersArray[0]?.fabricante,
@@ -396,7 +396,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
                 <p className="text-2xl font-bold text-green-600">
                   {totalMpptChannels}
                 </p>
-                <p className="text-sm text-gray-600">Canais MPPT</p>
+                <p className="text-sm text-gray-600">Capacidade de Strings</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-purple-600">

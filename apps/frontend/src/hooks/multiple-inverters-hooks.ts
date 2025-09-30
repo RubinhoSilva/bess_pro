@@ -56,7 +56,12 @@ export const useMultipleInverters = (): UseMultipleInvertersReturn => {
 
   const calculateTotalMpptChannels = useCallback((selectedInverters: SelectedInverter[]): number => {
     return selectedInverters.reduce((total, inv) => {
-      return total + (inv.numeroMppt * inv.quantity);
+      // Calcular total de strings que podem ser conectadas
+      // = número de MPPTs × strings por MPPT × quantidade de inversores
+      const numeroMppt = inv.numeroMppt || 2;
+      const stringsPorMppt = inv.stringsPorMppt || 2;
+      const stringsPerInverter = numeroMppt * stringsPorMppt;
+      return total + (stringsPerInverter * inv.quantity);
     }, 0);
   }, []);
 

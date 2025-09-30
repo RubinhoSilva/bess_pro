@@ -295,20 +295,28 @@ export class SolarAnalysisController extends BaseController {
           total_ca_power_kw: totalInverterCapacity / 1000,
           total_mppt_channels: totalMpptChannels,
           inverter_models_count: params.selectedInverters.length,
-          // Breakdown detalhado por modelo de inversor
+          // Breakdown detalhado por modelo de inversor (formato esperado pelo Python)
           inverter_breakdown: params.selectedInverters.map((inv: any, index: number) => ({
-            inverter_id: index + 1,
-            fabricante: inv.fabricante,
-            modelo: inv.modelo,
-            quantidade: inv.quantity,
-            potencia_unitaria_w: inv.potenciaSaidaCA,
-            potencia_total_w: inv.potenciaSaidaCA * inv.quantity,
-            numero_mppt_unitario: inv.numeroMppt,
-            total_mppt_channels: inv.numeroMppt * inv.quantity,
-            strings_por_mppt: inv.stringsPorMppt,
-            tensao_cc_max_v: inv.tensaoCcMax,
+            inverter_index: index,
+            fabricante: inv.fabricante || inv.manufacturer || 'N/A',
+            modelo: inv.modelo || inv.model || 'N/A',
+            quantidade: inv.quantity || 1,
+            potencia_unitaria_w: inv.potenciaSaidaCA || inv.potencia_saida_ca_w || inv.power_output_w || 0,
+            potencia_total_w: (inv.potenciaSaidaCA || inv.potencia_saida_ca_w || inv.power_output_w || 0) * (inv.quantity || 1),
+            // Parâmetros técnicos do inversor para cálculos precisos
+            numero_mppt: inv.numeroMppt || inv.numero_mppt || inv.mppt_count || 4,
+            strings_por_mppt: inv.stringsPorMppt || inv.strings_per_mppt || inv.strings_por_mppt || 2,
+            tensao_cc_max_v: inv.tensaoCcMax || inv.tensao_cc_max_v || inv.max_dc_voltage || 1500,
+            // Parâmetros Sandia para simulação precisa (com fallbacks do inversor base se disponíveis)
+            vdco: inv.vdco || params.inversor?.vdco || null,
+            pso: inv.pso || params.inversor?.pso || null,
+            c0: inv.c0 || params.inversor?.c0 || null,
+            c1: inv.c1 || params.inversor?.c1 || null,
+            c2: inv.c2 || params.inversor?.c2 || null,
+            c3: inv.c3 || params.inversor?.c3 || null,
+            pnt: inv.pnt || params.inversor?.pnt || null,
             // Capacidade relativa no sistema
-            percentual_potencia_sistema: ((inv.potenciaSaidaCA * inv.quantity) / totalInverterCapacity * 100).toFixed(1)
+            percentual_potencia_sistema: parseFloat(((inv.potenciaSaidaCA * inv.quantity) / totalInverterCapacity * 100).toFixed(1))
           })),
           // Dados para distribuição de módulos por MPPT (futura implementação)
           mppt_distribution_ready: true,
@@ -349,8 +357,26 @@ export class SolarAnalysisController extends BaseController {
         console.log(`   - Potência total: ${pythonParams.multi_inverter_data.total_ca_power_kw}kW`);
         console.log(`   - Total MPPT: ${pythonParams.multi_inverter_data.total_mppt_channels}`);
         console.log(`   - Modelos diferentes: ${pythonParams.multi_inverter_data.inverter_models_count}`);
+        
+        console.log('📋 Breakdown detalhado por inversor:');
+        pythonParams.multi_inverter_data.inverter_breakdown.forEach((inv: any, i: number) => {
+          console.log(`   ${i + 1}. ${inv.fabricante} ${inv.modelo}`);
+          console.log(`      - Quantidade: ${inv.quantidade}x`);
+          console.log(`      - Potência unitária: ${(inv.potencia_unitaria_w / 1000).toFixed(1)}kW`);
+          console.log(`      - Potência total: ${(inv.potencia_total_w / 1000).toFixed(1)}kW`);
+          console.log(`      - Participação: ${inv.percentual_potencia_sistema}%`);
+          console.log(`      - MPPTs: ${inv.numero_mppt}x${inv.strings_por_mppt} (${inv.numero_mppt * inv.quantidade} canais)`);
+          console.log(`      - Tensão CC máx: ${inv.tensao_cc_max_v}V`);
+          
+          // Log dos parâmetros Sandia se disponíveis
+          if (inv.vdco || inv.pso || inv.c0) {
+            console.log(`      - Params Sandia: vdco=${inv.vdco || 'N/A'}, pso=${inv.pso || 'N/A'}, c0=${inv.c0 || 'N/A'}`);
+          }
+        });
       } else {
         console.log('🔌 Inversor único:', pythonParams.inversor.fabricante, pythonParams.inversor.modelo);
+        console.log(`   - Potência: ${(pythonParams.inversor.potencia_saida_ca_w / 1000).toFixed(1)}kW`);
+        console.log(`   - MPPTs: ${pythonParams.inversor.numero_mppt || 'N/A'}x${pythonParams.inversor.strings_por_mppt || 'N/A'}`);
       }
       
       console.log('🎯 Consumo anual alvo:', pythonParams.consumo_anual_kwh, 'kWh');
@@ -374,13 +400,22 @@ export class SolarAnalysisController extends BaseController {
       console.log(`   - Módulos calculados: ${response.data.num_modulos}`);
       console.log(`   - Potência total: ${response.data.potencia_total_kw}kW`);
       console.log(`   - Energia anual: ${response.data.energia_total_anual}kWh`);
-      console.log(`   - Cobertura: ${response.data.cobertura_percentual}%`);
+      console.log(`   - Performance Ratio: ${response.data.pr_medio}%`);
+      console.log(`   - Yield específico: ${response.data.yield_especifico} kWh/kWp`);
       
       if (isMultiInverterSystem) {
         console.log('🔄 Sistema multi-inversor processado com sucesso!');
-        console.log(`   - Capacidade total inversores: ${totalInverterCapacity}W`);
+        console.log(`   - Capacidade total inversores: ${totalInverterCapacity / 1000}kW`);
         console.log(`   - Canais MPPT disponíveis: ${totalMpptChannels}`);
-        console.log(`   - Razão módulo/inversor: ${(response.data.potencia_total_kw * 1000 / totalInverterCapacity).toFixed(2)}`);
+        console.log(`   - Razão DC/AC: ${(response.data.potencia_total_kw * 1000 / totalInverterCapacity).toFixed(2)}`);
+        console.log(`   - Oversizing: ${((response.data.potencia_total_kw * 1000 / totalInverterCapacity - 1) * 100).toFixed(1)}%`);
+        
+        // Log das configurações de strings se disponível
+        if (response.data.compatibilidade_sistema) {
+          console.log(`   - Strings recomendadas: ${response.data.compatibilidade_sistema.strings_recomendadas}`);
+          console.log(`   - Módulos por string: ${response.data.compatibilidade_sistema.modulos_por_string}`);
+          console.log(`   - Utilização do inversor: ${response.data.compatibilidade_sistema.utilizacao_inversor}%`);
+        }
       }
 
       // Padronizar resposta: converter W para kW e organizar formato

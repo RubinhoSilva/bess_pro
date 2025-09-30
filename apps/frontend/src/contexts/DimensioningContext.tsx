@@ -216,7 +216,7 @@ const getInitialDimensioningData = (): DimensioningData => ({
   // Águas de telhado com configuração padrão
   aguasTelhado: [{
     id: 'agua_principal',
-    nome: 'Água Principal',
+    nome: 'Água de telhado #1',
     orientacao: 0,
     inclinacao: 0,
     numeroModulos: 0,
@@ -380,7 +380,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
       }],
       aguasTelhado: data.aguasTelhado || [{
         id: 'agua_principal',
-        nome: 'Água Principal',
+        nome: 'Água de telhado #1',
         orientacao: 180,
         inclinacao: 23,
         numeroModulos: 20,

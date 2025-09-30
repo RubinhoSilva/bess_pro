@@ -328,7 +328,7 @@ export function ManufacturerManager() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {manufacturers?.map((manufacturer) => (
+            {manufacturers?.map((manufacturer: any) => (
               <TableRow key={manufacturer.id}>
                 <TableCell>
                   <div className="flex items-center gap-2">
