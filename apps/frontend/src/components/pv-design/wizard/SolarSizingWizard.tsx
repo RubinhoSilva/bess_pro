@@ -787,7 +787,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         geracaoEstimadaAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`
       });
 
-      let results = {
+      let results: any = {
         formData: currentDimensioning,
         potenciaPico,
         numeroModulos,
@@ -821,6 +821,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
             diarioMedio: apiResult?.data?.energia_diaria_media || (geracaoEstimadaAnual / 365)
           }
         },
+        advancedFinancial: null,
+        fluxoCaixa: [],
+        selectedInverters: [],
+        selectedModule: null
       };
 
       // Chamar API Python e armazenar resultado transformado

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { apiClient } from '../lib/api';
 import toast from 'react-hot-toast';
 import {
   FinancialCalculationInput,
@@ -9,12 +9,12 @@ import {
 } from '../types/financial';
 
 /**
- * Hook para calcular análise financeira avançada de um projeto
+ * Hook para calcular anï¿½lise financeira avanï¿½ada de um projeto
  * Envia dados para Node.js -> Python Service -> retorna resultados
  *
  * @param projectId - ID do projeto
- * @param options - Opções do hook
- * @returns Mutation hook com função de cálculo e estado
+ * @param options - Opï¿½ï¿½es do hook
+ * @returns Mutation hook com funï¿½ï¿½o de cï¿½lculo e estado
  */
 export function useCalculateFinancials(projectId: string, options?: {
   saveToProject?: boolean;
@@ -26,7 +26,7 @@ export function useCalculateFinancials(projectId: string, options?: {
 
   return useMutation({
     mutationFn: async (input: FinancialCalculationInput) => {
-      const response = await api.calculations.calculateProjectFinancials(
+      const response = await apiClient.calculations.calculateProjectFinancials(
         projectId,
         input,
         saveToProject
@@ -35,7 +35,7 @@ export function useCalculateFinancials(projectId: string, options?: {
     },
     onSuccess: (response) => {
       if (response.success) {
-        toast.success(response.message || 'Análise financeira calculada com sucesso!');
+        toast.success(response.message || 'Anï¿½lise financeira calculada com sucesso!');
 
         // Invalida cache dos resultados salvos
         queryClient.invalidateQueries({ queryKey: ['financial-results', projectId] });
@@ -47,7 +47,7 @@ export function useCalculateFinancials(projectId: string, options?: {
     onError: (error: any) => {
       const message = error?.response?.data?.message ||
                       error?.message ||
-                      'Erro ao calcular análise financeira';
+                      'Erro ao calcular anï¿½lise financeira';
       toast.error(message);
 
       // Chama callback de erro
@@ -57,10 +57,10 @@ export function useCalculateFinancials(projectId: string, options?: {
 }
 
 /**
- * Hook para recuperar últimos resultados financeiros salvos no projeto
+ * Hook para recuperar ï¿½ltimos resultados financeiros salvos no projeto
  *
  * @param projectId - ID do projeto
- * @param options - Opções do hook
+ * @param options - Opï¿½ï¿½es do hook
  * @returns Query hook com resultados salvos
  */
 export function useFinancialResults(projectId: string, options?: {
@@ -72,23 +72,23 @@ export function useFinancialResults(projectId: string, options?: {
   return useQuery({
     queryKey: ['financial-results', projectId],
     queryFn: async () => {
-      const response = await api.calculations.getLastFinancialResults(projectId);
+      const response = await apiClient.calculations.getLastFinancialResults(projectId);
       return response.data as GetFinancialResultsResponse;
     },
     enabled: enabled && !!projectId,
     refetchOnMount,
     staleTime: 5 * 60 * 1000, // 5 minutos
     retry: 1,
-    select: (response) => response.data, // Retorna apenas os dados, não a resposta completa
+    select: (response) => response.data, // Retorna apenas os dados, nï¿½o a resposta completa
   });
 }
 
 /**
- * Hook combinado que fornece tanto cálculo quanto resultados salvos
- * Útil para componentes que precisam calcular E visualizar resultados
+ * Hook combinado que fornece tanto cï¿½lculo quanto resultados salvos
+ * ï¿½til para componentes que precisam calcular E visualizar resultados
  *
  * @param projectId - ID do projeto
- * @param options - Opções do hook
+ * @param options - Opï¿½ï¿½es do hook
  * @returns Objeto com mutation e query combinados
  */
 export function useProjectFinancials(projectId: string, options?: {
@@ -104,7 +104,7 @@ export function useProjectFinancials(projectId: string, options?: {
     onCalculateError,
   } = options || {};
 
-  // Hook de cálculo
+  // Hook de cï¿½lculo
   const calculateMutation = useCalculateFinancials(projectId, {
     saveToProject,
     onSuccess: onCalculateSuccess,
@@ -118,7 +118,7 @@ export function useProjectFinancials(projectId: string, options?: {
   });
 
   return {
-    // Função de cálculo
+    // Funï¿½ï¿½o de cï¿½lculo
     calculate: calculateMutation.mutate,
     calculateAsync: calculateMutation.mutateAsync,
     isCalculating: calculateMutation.isPending,
@@ -138,11 +138,11 @@ export function useProjectFinancials(projectId: string, options?: {
 }
 
 /**
- * Hook para validação de entrada antes de enviar para cálculo
- * Útil para validação no frontend antes de chamar a API
+ * Hook para validaï¿½ï¿½o de entrada antes de enviar para cï¿½lculo
+ * ï¿½til para validaï¿½ï¿½o no frontend antes de chamar a API
  *
  * @param input - Dados de entrada
- * @returns Objeto com status de validação e mensagens de erro
+ * @returns Objeto com status de validaï¿½ï¿½o e mensagens de erro
  */
 export function useValidateFinancialInput(input: Partial<FinancialCalculationInput>) {
   const errors: string[] = [];
@@ -152,12 +152,12 @@ export function useValidateFinancialInput(input: Partial<FinancialCalculationInp
     errors.push('Investimento inicial deve ser maior que zero');
   }
 
-  // Validar geração mensal
+  // Validar geraï¿½ï¿½o mensal
   if (input.geracao_mensal) {
     if (input.geracao_mensal.length !== 12) {
-      errors.push('Geração mensal deve ter 12 valores');
+      errors.push('Geraï¿½ï¿½o mensal deve ter 12 valores');
     } else if (input.geracao_mensal.some(v => v < 0)) {
-      errors.push('Valores de geração mensal não podem ser negativos');
+      errors.push('Valores de geraï¿½ï¿½o mensal nï¿½o podem ser negativos');
     }
   }
 
@@ -166,7 +166,7 @@ export function useValidateFinancialInput(input: Partial<FinancialCalculationInp
     if (input.consumo_mensal.length !== 12) {
       errors.push('Consumo mensal deve ter 12 valores');
     } else if (input.consumo_mensal.some(v => v < 0)) {
-      errors.push('Valores de consumo mensal não podem ser negativos');
+      errors.push('Valores de consumo mensal nï¿½o podem ser negativos');
     }
   }
 
@@ -175,9 +175,9 @@ export function useValidateFinancialInput(input: Partial<FinancialCalculationInp
     errors.push('Tarifa de energia deve ser maior que zero');
   }
 
-  // Validar vida útil
+  // Validar vida ï¿½til
   if (input.vida_util !== undefined && (input.vida_util <= 0 || input.vida_util > 50)) {
-    errors.push('Vida útil deve estar entre 1 e 50 anos');
+    errors.push('Vida ï¿½til deve estar entre 1 e 50 anos');
   }
 
   // Validar taxa de desconto
@@ -185,7 +185,7 @@ export function useValidateFinancialInput(input: Partial<FinancialCalculationInp
     errors.push('Taxa de desconto deve ser maior ou igual a zero');
   }
 
-  // Validar percentuais de créditos remotos
+  // Validar percentuais de crï¿½ditos remotos
   if (input.autoconsumo_remoto_b || input.autoconsumo_remoto_a_verde || input.autoconsumo_remoto_a_azul) {
     const percB = input.perc_creditos_b || 0;
     const percVerde = input.perc_creditos_a_verde || 0;
@@ -193,7 +193,7 @@ export function useValidateFinancialInput(input: Partial<FinancialCalculationInp
     const total = percB + percVerde + percAzul;
 
     if (Math.abs(total - 1.0) > 0.01) {
-      errors.push(`Percentuais de créditos devem somar 100% (atual: ${(total * 100).toFixed(1)}%)`);
+      errors.push(`Percentuais de crï¿½ditos devem somar 100% (atual: ${(total * 100).toFixed(1)}%)`);
     }
   }
 
