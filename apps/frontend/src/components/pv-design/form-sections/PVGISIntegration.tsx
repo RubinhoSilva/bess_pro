@@ -27,26 +27,54 @@ interface PVGISIntegrationProps {
   };
 }
 
-const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({ 
+const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
   onDataReceived,
   formData
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
-  // Verificar se há dados válidos e completos para restaurar o estado
-  const hasValidSavedData = formData?.latitude && 
-                           formData?.longitude && 
-                           formData?.irradiacaoMensal && 
-                           formData?.irradiacaoMensal.length === 12 &&
-                           formData?.irradiacaoMensal.some(value => value > 0);
 
-  const [selectedLocation, setSelectedLocation] = useState<PVGISLocation | null>(
-    hasValidSavedData && formData.latitude !== undefined && formData.longitude !== undefined
-      ? { latitude: formData.latitude, longitude: formData.longitude }
-      : null
-  );
-  const [manualLat, setManualLat] = useState(hasValidSavedData && formData.latitude !== undefined ? formData.latitude.toString() : '');
-  const [manualLng, setManualLng] = useState(hasValidSavedData && formData.longitude !== undefined ? formData.longitude.toString() : '');
+  // Initialize state from formData - each useState uses its own validation logic
+  const [selectedLocation, setSelectedLocation] = useState<PVGISLocation | null>(() => {
+    // Verificar se há dados válidos e completos para restaurar o estado
+    const hasValidSavedData = formData?.latitude &&
+                             formData?.longitude &&
+                             formData?.irradiacaoMensal &&
+                             formData?.irradiacaoMensal.length === 12 &&
+                             formData?.irradiacaoMensal.some(value => value > 0);
+
+    if (hasValidSavedData && formData.latitude !== undefined && formData.longitude !== undefined) {
+      return { latitude: formData.latitude, longitude: formData.longitude };
+    }
+    return null;
+  });
+
+  const [manualLat, setManualLat] = useState(() => {
+    const hasValidSavedData = formData?.latitude &&
+                             formData?.longitude &&
+                             formData?.irradiacaoMensal &&
+                             formData?.irradiacaoMensal.length === 12 &&
+                             formData?.irradiacaoMensal.some(value => value > 0);
+
+    if (hasValidSavedData && formData.latitude !== undefined) {
+      return formData.latitude.toString();
+    }
+    return '';
+  });
+
+  const [manualLng, setManualLng] = useState(() => {
+    const hasValidSavedData = formData?.latitude &&
+                             formData?.longitude &&
+                             formData?.irradiacaoMensal &&
+                             formData?.irradiacaoMensal.length === 12 &&
+                             formData?.irradiacaoMensal.some(value => value > 0);
+
+    if (hasValidSavedData && formData.longitude !== undefined) {
+      return formData.longitude.toString();
+    }
+    return '';
+  });
+
   const [irradiationData, setIrradiationData] = useState<{
     irradiacaoMensal: number[];
     latitude: number;
@@ -57,17 +85,24 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
     minimo?: number;
     variacaoSazonal?: number;
     configuracao?: any;
-  } | null>(
-    hasValidSavedData && formData.latitude !== undefined && formData.longitude !== undefined
-      ? {
-          irradiacaoMensal: formData.irradiacaoMensal,
-          latitude: formData.latitude,
-          longitude: formData.longitude,
-          cidade: formData.cidade || `Lat: ${formData.latitude.toFixed(4)}, Lon: ${formData.longitude.toFixed(4)}`,
-          ...formData.pvgisResponseData
-        }
-      : null
-  );
+  } | null>(() => {
+    const hasValidSavedData = formData?.latitude &&
+                             formData?.longitude &&
+                             formData?.irradiacaoMensal &&
+                             formData?.irradiacaoMensal.length === 12 &&
+                             formData?.irradiacaoMensal.some(value => value > 0);
+
+    if (hasValidSavedData && formData.latitude !== undefined && formData.longitude !== undefined) {
+      return {
+        irradiacaoMensal: formData.irradiacaoMensal,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        cidade: formData.cidade || `Lat: ${formData.latitude.toFixed(4)}, Lon: ${formData.longitude.toFixed(4)}`,
+        ...formData.pvgisResponseData
+      };
+    }
+    return null;
+  });
   
 
   const handleLocationSelect = (location: { lat: number; lng: number }) => {
@@ -232,7 +267,13 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
                 <DialogTitle>Selecione a Localização do Projeto</DialogTitle>
               </DialogHeader>
               <div className="flex-grow overflow-y-auto p-4">
-                <MapSelector onSelect={handleLocationSelect} />
+                <MapSelector
+                  onSelect={handleLocationSelect}
+                  initialPosition={selectedLocation ? {
+                    lat: selectedLocation.latitude,
+                    lng: selectedLocation.longitude
+                  } : undefined}
+                />
               </div>
             </DialogContent>
           </Dialog>
