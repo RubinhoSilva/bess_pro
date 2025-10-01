@@ -51,9 +51,12 @@ async def api_info():
             },
             "admin": {
                 "GET /admin/health": "Health check",
-                "GET /admin/cache/stats": "Estatísticas do cache",
-                "DELETE /admin/cache/clear": "Limpar cache",
-                "DELETE /admin/cache/cleanup": "Limpeza de arquivos antigos"
+                "GET /admin/cache/stats": "Estatísticas do cache legado",
+                "DELETE /admin/cache/clear": "Limpar cache legado",
+                "DELETE /admin/cache/cleanup": "Limpeza de arquivos antigos",
+                "GET /admin/cache/geohash/stats": "Estatísticas do geohash cache",
+                "DELETE /admin/cache/geohash/clear": "Limpar geohash cache",
+                "DELETE /admin/cache/geohash/cleanup": "Limpeza de cache expirado"
             }
         },
         "documentation": "/docs"

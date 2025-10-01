@@ -21,7 +21,7 @@ export interface SolarAnalysisResult {
     total: number;
   };
   qualidade: 'excellent' | 'good' | 'fair' | 'poor';
-  fonte: 'pvgis';
+  fonte: 'pvgis' | 'nasa' | string; // Suporta múltiplas fontes de dados meteorológicos
   dadosOriginais?: {
     pvgis?: PVGISResponse;
   };
@@ -34,6 +34,7 @@ interface UseSolarAPIsReturn {
     systemSizeKw?: number;
     tilt?: number;
     azimuth?: number;
+    dataSource?: 'pvgis' | 'nasa'; // Seleção de fonte de dados meteorológicos
   }) => Promise<SolarAnalysisResult | null>;
   getOptimalOrientation: (location: Location) => Promise<{
     azimute: number;
@@ -51,7 +52,7 @@ export const useSolarAPIs = (): UseSolarAPIsReturn => {
 
   const analyzeWithPVGIS = useCallback(async (
     location: Location,
-    options: { systemSizeKw?: number; tilt?: number; azimuth?: number } = {}
+    options: { systemSizeKw?: number; tilt?: number; azimuth?: number; dataSource?: 'pvgis' | 'nasa' } = {}
   ): Promise<SolarAnalysisResult | null> => {
     setIsLoading(true);
     clearError();
@@ -61,15 +62,17 @@ export const useSolarAPIs = (): UseSolarAPIsReturn => {
       const systemSizeKw = options.systemSizeKw || 10;
       const tilt = options.tilt || 30;
       const azimuth = options.azimuth || 180;
+      const dataSource = options.dataSource || 'pvgis'; // PVGIS como padrão
 
       const [pvEstimation, optimalInclination] = await Promise.all([
         pvgisAPI.getPVEstimation({
           location,
           peakpower: systemSizeKw,
           angle: tilt,
-          aspect: azimuth
+          aspect: azimuth,
+          dataSource // Passar fonte de dados para a API
         }),
-        pvgisAPI.getOptimalInclination(location)
+        pvgisAPI.getOptimalInclination(location, dataSource)
       ]);
 
       const systemFormat = pvgisAPI.convertToSystemFormat(pvEstimation);
@@ -80,6 +83,12 @@ export const useSolarAPIs = (): UseSolarAPIsReturn => {
       if (avgIrradiation >= 6) qualidade = 'excellent';
       else if (avgIrradiation >= 5) qualidade = 'good';
       else if (avgIrradiation >= 4) qualidade = 'fair';
+
+      // Extrair fonte real utilizada da resposta (pode ser diferente se houve fallback)
+      const fonteUtilizada: 'pvgis' | 'nasa' =
+        (pvEstimation.inputs?.meteo_data as any)?.fonte_dados === 'nasa' ? 'nasa' :
+        (pvEstimation.inputs?.meteo_data as any)?.fonte_dados === 'pvgis' ? 'pvgis' :
+        dataSource;
 
       const result: SolarAnalysisResult = {
         location,
@@ -95,14 +104,15 @@ export const useSolarAPIs = (): UseSolarAPIsReturn => {
         },
         perdas: systemFormat.perdas,
         qualidade,
-        fonte: 'pvgis',
+        fonte: fonteUtilizada,
         dadosOriginais: {
           pvgis: pvEstimation
         }
       };
 
+      const fonteNome = fonteUtilizada === 'pvgis' ? 'PVGIS' : 'NASA POWER';
       toast({
-        title: "Análise PVGIS concluída!",
+        title: `Análise concluída! (Fonte: ${fonteNome})`,
         description: `Irradiação média: ${avgIrradiation.toFixed(1)} kWh/m²/dia`
       });
 

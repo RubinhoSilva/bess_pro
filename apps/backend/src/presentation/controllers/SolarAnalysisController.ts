@@ -606,8 +606,11 @@ export class SolarAnalysisController extends BaseController {
         lon: parseFloat(params.lon),
         tilt: params.tilt || 0,
         azimuth: params.azimuth || 0,
-        modelo_decomposicao: params.modelo_decomposicao || 'erbs'
+        modelo_decomposicao: params.modelo_decomposicao || 'erbs',
+        data_source: params.data_source || 'pvgis'  // NOVO: fonte de dados (pvgis ou nasa)
       };
+
+      console.log('🌍 Fonte de dados solicitada:', pythonParams.data_source);
 
       console.log('🚀 Enviando para API Python:', pythonParams);
       
@@ -629,6 +632,11 @@ export class SolarAnalysisController extends BaseController {
         mediaAnual: response.data.media_anual
       });
 
+      console.log('✅ Fonte de dados utilizada:', response.data.configuracao.fonte_dados);
+      if (response.data.configuracao.fonte_dados !== params.data_source) {
+        console.log('⚠️ FALLBACK: Fonte diferente da solicitada (fallback automático ativado)');
+      }
+
       // Retornar dados formatados para o frontend
       return this.ok(res, {
         irradiacaoMensal: response.data.irradiacao_mensal,
@@ -640,7 +648,8 @@ export class SolarAnalysisController extends BaseController {
         coordenadas: response.data.coordenadas,
         periodoAnalise: response.data.periodo_analise,
         registrosProcessados: response.data.registros_processados,
-        message: `Dados de irradiação obtidos com sucesso para ${response.data.coordenadas.lat.toFixed(4)}, ${response.data.coordenadas.lon.toFixed(4)}`
+        fonteDados: response.data.configuracao.fonte_dados,  // NOVO: fonte realmente utilizada
+        message: `Dados de irradiação obtidos com sucesso de ${response.data.configuracao.fonte_dados} para ${response.data.coordenadas.lat.toFixed(4)}, ${response.data.coordenadas.lon.toFixed(4)}`
       });
 
     } catch (error: any) {
@@ -685,7 +694,8 @@ export class SolarAnalysisController extends BaseController {
           lon: parseFloat(lon as string),
           tilt: tilt ? parseFloat(tilt as string) : 0,
           azimuth: azimuth ? parseFloat(azimuth as string) : 0,
-          modelo_decomposicao: 'erbs'
+          modelo_decomposicao: 'erbs',
+          data_source: (req.query.data_source as string) || 'pvgis'  // NOVO
         },
         { timeout: 30000 }
       );
@@ -694,6 +704,7 @@ export class SolarAnalysisController extends BaseController {
         irradiacaoMensal: irradiationResponse.data.irradiacao_mensal,
         mediaAnual: irradiationResponse.data.media_anual,
         configuracao: irradiationResponse.data.configuracao,
+        fonteDados: irradiationResponse.data.configuracao.fonte_dados,  // NOVO
         coordenadas: {
           lat: parseFloat(lat as string),
           lon: parseFloat(lon as string)

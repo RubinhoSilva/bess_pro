@@ -3,6 +3,7 @@ import logging
 
 from models.responses import CacheStatsResponse, MessageResponse, HealthCheckResponse
 from utils.cache import cache_manager
+from utils.geohash_cache import geohash_cache_manager
 from core.config import settings
 from api.dependencies import log_request_dependency
 
@@ -102,23 +103,104 @@ async def clear_cache():
 @router.delete(
     "/cache/cleanup",
     response_model=MessageResponse,
-    summary="Limpeza de cache antigo", 
+    summary="Limpeza de cache antigo",
     description="Remove apenas arquivos de cache antigos (mais de 7 dias)"
 )
 async def cleanup_old_cache():
     """Limpa arquivos antigos do cache"""
-    
+
     try:
         removed_count = cache_manager.cleanup_old_files(days_old=7)
-        
+
         message = f"Limpeza concluída. {removed_count} arquivos antigos removidos."
         logger.info(message)
-        
+
         return MessageResponse(message=message)
-        
+
     except Exception as e:
         logger.error(f"Erro na limpeza de cache: {e}")
         raise HTTPException(
             status_code=500,
             detail="Erro interno na limpeza de cache"
+        )
+
+
+# Geohash Cache Endpoints
+
+@router.get(
+    "/cache/geohash/stats",
+    summary="Estatísticas do Geohash Cache",
+    description="Retorna informações sobre o cache geohash-based incluindo configuração e uso"
+)
+async def get_geohash_cache_stats():
+    """Obtém estatísticas do geohash cache"""
+
+    try:
+        stats = geohash_cache_manager.get_cache_stats()
+
+        if "error" in stats:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Erro ao obter estatísticas: {stats['error']}"
+            )
+
+        return stats
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao obter estatísticas do geohash cache: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Erro interno ao obter estatísticas"
+        )
+
+
+@router.delete(
+    "/cache/geohash/clear",
+    response_model=MessageResponse,
+    summary="Limpar Geohash Cache",
+    description="Remove todos os arquivos do geohash cache. Use com cuidado!"
+)
+async def clear_geohash_cache():
+    """Limpa todo o geohash cache"""
+
+    try:
+        removed_count = geohash_cache_manager.clear_all()
+
+        message = f"Geohash cache limpo com sucesso. {removed_count} arquivos removidos."
+        logger.info(message)
+
+        return MessageResponse(message=message)
+
+    except Exception as e:
+        logger.error(f"Erro ao limpar geohash cache: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Erro interno ao limpar geohash cache"
+        )
+
+
+@router.delete(
+    "/cache/geohash/cleanup",
+    response_model=MessageResponse,
+    summary="Limpeza de Geohash Cache Expirado",
+    description="Remove apenas arquivos de geohash cache expirados"
+)
+async def cleanup_expired_geohash_cache():
+    """Limpa arquivos expirados do geohash cache"""
+
+    try:
+        removed_count = geohash_cache_manager.clear_expired()
+
+        message = f"Limpeza do geohash cache concluída. {removed_count} arquivos expirados removidos."
+        logger.info(message)
+
+        return MessageResponse(message=message)
+
+    except Exception as e:
+        logger.error(f"Erro na limpeza do geohash cache: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Erro interno na limpeza do geohash cache"
         )

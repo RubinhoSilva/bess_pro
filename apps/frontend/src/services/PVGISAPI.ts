@@ -64,6 +64,7 @@ interface PVGISRequest {
   components?: number; // Include radiation components
   hourlyoptimal?: number; // Use hourly optimal angle
   js?: 1; // Return JSON format
+  dataSource?: 'pvgis' | 'nasa'; // Fonte de dados meteorológicos (PVGIS ou NASA POWER)
 }
 
 interface PVGISResponse {
@@ -197,6 +198,7 @@ export class PVGISAPI {
 
   /**
    * Obtém estimativas de produção fotovoltaica
+   * Suporta múltiplas fontes de dados: PVGIS (padrão) ou NASA POWER
    */
   async getPVEstimation(request: PVGISRequest): Promise<PVGISResponse> {
     const {
@@ -213,7 +215,8 @@ export class PVGISAPI {
       endyear = 2020,
       components = 1,
       hourlyoptimal = 1,
-      js = 1
+      js = 1,
+      dataSource = 'pvgis' // PVGIS como padrão
     } = request;
 
     const params = new URLSearchParams({
@@ -231,7 +234,8 @@ export class PVGISAPI {
       endyear: endyear.toString(),
       components: components.toString(),
       hourlyoptimal: hourlyoptimal.toString(),
-      js: js.toString()
+      js: js.toString(),
+      data_source: dataSource // Adicionar fonte de dados aos parâmetros
     });
 
     try {
@@ -337,8 +341,9 @@ export class PVGISAPI {
 
   /**
    * Encontra a inclinação ótima para um local
+   * Suporta múltiplas fontes de dados: PVGIS (padrão) ou NASA POWER
    */
-  async getOptimalInclination(location: Location): Promise<{
+  async getOptimalInclination(location: Location, dataSource: 'pvgis' | 'nasa' = 'pvgis'): Promise<{
     optimalInclination: number;
     annualYield: number;
     monthlyYields: number[];
@@ -355,7 +360,8 @@ export class PVGISAPI {
           location,
           peakpower: 1, // 1kWp para comparação
           angle,
-          aspect: 180 // Sul
+          aspect: 180, // Sul
+          dataSource // Passar fonte de dados
         });
 
         const annualYield = result.outputs.totals.E_y;

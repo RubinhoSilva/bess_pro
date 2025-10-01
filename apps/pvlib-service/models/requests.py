@@ -35,7 +35,7 @@ class LocationRequest(BaseModel):
 
 class IrradiationAnalysisRequest(LocationRequest):
     """Requisição para análise de irradiação solar mensal"""
-    
+
     tilt: float = Field(
         default=0,
         ge=settings.MIN_TILT,
@@ -49,6 +49,11 @@ class IrradiationAnalysisRequest(LocationRequest):
         le=settings.MAX_AZIMUTH,
         description="Orientação dos módulos em graus (0° = Norte, 90° = Leste, 180° = Sul, 270° = Oeste)",
         example=180
+    )
+    data_source: Literal['pvgis', 'nasa'] = Field(
+        default='pvgis',
+        description="Fonte de dados meteorológicos (PVGIS ou NASA POWER)",
+        example='pvgis'
     )
     modelo_decomposicao: Literal['erbs', 'disc', 'dirint', 'orgill_hollands', 'boland', 'louche'] = Field(
         default='erbs',
@@ -78,6 +83,7 @@ class IrradiationAnalysisRequest(LocationRequest):
                 "lon": -47.8822,
                 "tilt": 20,
                 "azimuth": 180,
+                "data_source": "pvgis",
                 "modelo_decomposicao": "erbs"
             }
         }

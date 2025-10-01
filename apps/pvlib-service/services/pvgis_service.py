@@ -8,6 +8,7 @@ from pathlib import Path
 from core.config import settings
 from core.exceptions import PVGISError, CacheError, ValidationError
 from utils.cache import cache_manager
+from utils.geohash_cache import geohash_cache_manager
 from utils.validators import validate_coordinates, validate_temperature, validate_wind_speed
 
 logger = logging.getLogger(__name__)
@@ -25,42 +26,70 @@ class PVGISService:
     
     def fetch_weather_data(self, lat: float, lon: float, use_cache: bool = True) -> pd.DataFrame:
         """
-        Busca dados meteorológicos do PVGIS com cache inteligente
-        
+        Busca dados meteorológicos do PVGIS com cache inteligente baseado em geohashing.
+
+        Cache strategy:
+        1. Try geohash-based cache (searches 3x3 neighbor grid, ~44km² area)
+        2. If found within 15km radius, return cached data
+        3. If not found, call PVGIS API and cache with geohash
+        4. Fallback to legacy file cache if geohash fails
+
         Args:
             lat: Latitude
-            lon: Longitude  
+            lon: Longitude
             use_cache: Se deve usar cache
-            
+
         Returns:
             DataFrame com dados meteorológicos formatados
-            
+
         Raises:
             PVGISError: Erro na comunicação com PVGIS
             ValidationError: Coordenadas inválidas
         """
         # Validar coordenadas
         lat, lon = validate_coordinates(lat, lon)
-        
+
         logger.info(f"Buscando dados PVGIS para {lat}, {lon}")
-        
-        # Tentar cache primeiro
+
+        # Tentar geohash cache primeiro (novo sistema)
         if use_cache:
-            cached_data = cache_manager.get(lat, lon, prefix="pvgis")
-            if cached_data is not None:
-                logger.info(f"Dados encontrados no cache para {lat}, {lon}")
-                return cached_data
-        
-        # Buscar dados do PVGIS
+            try:
+                cached_data = geohash_cache_manager.get(lat, lon)
+                if cached_data is not None:
+                    logger.info(f"Geohash cache HIT para {lat}, {lon}")
+                    return cached_data
+                else:
+                    logger.debug(f"Geohash cache MISS para {lat}, {lon}")
+            except Exception as e:
+                logger.warning(f"Erro no geohash cache, tentando cache legado: {e}")
+                # Fallback para cache legado
+                cached_data = cache_manager.get(lat, lon, prefix="pvgis")
+                if cached_data is not None:
+                    logger.info(f"Dados encontrados no cache legado para {lat}, {lon}")
+                    return cached_data
+
+        # Buscar dados do PVGIS (API call)
         try:
+            logger.info(f"Chamando API PVGIS para {lat}, {lon} (cache miss)")
             df = self._download_pvgis_data(lat, lon)
-            
-            # Salvar no cache
+
+            # Salvar em ambos os caches
             if use_cache and df is not None:
-                cache_manager.set(lat, lon, df, prefix="pvgis")
-                
+                # Salvar no geohash cache (novo sistema)
+                try:
+                    geohash_cache_manager.set(lat, lon, df)
+                    logger.debug(f"Dados salvos no geohash cache para {lat}, {lon}")
+                except Exception as e:
+                    logger.warning(f"Erro ao salvar no geohash cache: {e}")
+
+                # Também salvar no cache legado para compatibilidade
+                try:
+                    cache_manager.set(lat, lon, df, prefix="pvgis")
+                except Exception as e:
+                    logger.warning(f"Erro ao salvar no cache legado: {e}")
+
             return df
-            
+
         except Exception as e:
             logger.error(f"Erro ao buscar dados PVGIS: {e}")
             raise PVGISError(f"Falha ao obter dados meteorológicos: {str(e)}")

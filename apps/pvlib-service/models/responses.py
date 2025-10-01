@@ -20,12 +20,13 @@ class MaxMinValue(BaseModel):
 
 class IrradiationConfiguration(BaseModel):
     """Configuração da análise de irradiação"""
-    
+
     tipo_irradiacao: str = Field(..., description="Tipo de irradiação analisada")
     tilt: float = Field(..., description="Inclinação utilizada")
     azimuth: float = Field(..., description="Azimute utilizado")
     modelo_decomposicao: Optional[str] = Field(None, description="Modelo de decomposição usado")
     plano_inclinado: bool = Field(..., description="Se foi usada irradiação no plano inclinado")
+    fonte_dados: str = Field(..., description="Fonte dos dados utilizada (PVGIS ou NASA POWER)")
 
 class PeriodAnalysis(BaseModel):
     """Informações sobre o período de análise"""
@@ -96,7 +97,8 @@ class IrradiationAnalysisResponse(BaseModel):
                     "tilt": 0,
                     "azimuth": 0,
                     "modelo_decomposicao": None,
-                    "plano_inclinado": False
+                    "plano_inclinado": False,
+                    "fonte_dados": "PVGIS"
                 },
                 "coordenadas": {
                     "lat": -15.7942,

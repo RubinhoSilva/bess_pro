@@ -34,16 +34,28 @@ class ValidationError(SolarAPIException):
 
 class PVGISError(SolarAPIException):
     """Erro relacionado à API PVGIS"""
-    
+
     def __init__(self, message: str, url: str = None):
         details = {}
         if url:
             details["pvgis_url"] = url
-            
+
         super().__init__(
             message=f"Erro PVGIS: {message}",
             status_code=502,
             details=details
+        )
+
+class NASAError(SolarAPIException):
+    """Erro relacionado à API NASA POWER"""
+
+    def __init__(self, message: str, details: Dict[str, Any] = None):
+        error_details = details or {}
+
+        super().__init__(
+            message=f"Erro NASA POWER: {message}",
+            status_code=502,
+            details=error_details
         )
 
 class CacheError(SolarAPIException):

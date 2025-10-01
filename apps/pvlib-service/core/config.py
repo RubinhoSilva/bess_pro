@@ -65,7 +65,44 @@ class Settings(BaseSettings):
     # Configurações de cache
     CACHE_TTL_HOURS: int = Field(default=24*7, description="TTL do cache em horas (padrão: 1 semana)")
     MAX_CACHE_SIZE_MB: int = Field(default=1000, description="Tamanho máximo do cache em MB")
-    
+
+    # Geohash cache configuration
+    GEOHASH_PRECISION: int = Field(default=5, description="Geohash precision (5 = ~4.9km cells)")
+    CACHE_RADIUS_KM: float = Field(default=15.0, description="Maximum distance for cache hits (km)")
+    PVGIS_CACHE_TTL_DAYS: int = Field(default=30, description="PVGIS cache TTL in days")
+
+    # Weather data source configuration
+    WEATHER_DATA_SOURCE_DEFAULT: str = Field(
+        default="pvgis",
+        description="Default weather data source (pvgis or nasa)"
+    )
+    WEATHER_DATA_FALLBACK_ENABLED: bool = Field(
+        default=True,
+        description="Enable fallback to alternative data source on failure"
+    )
+
+    # NASA POWER configuration
+    NASA_POWER_API_TIMEOUT: int = Field(
+        default=60,
+        description="NASA POWER API timeout in seconds"
+    )
+    NASA_POWER_YEARS_BACK: int = Field(
+        default=2,
+        description="Number of years of historical data to fetch from NASA POWER (max 2 for hourly JSON)"
+    )
+    NASA_POWER_API: str = Field(
+        default="SolarResource",
+        description="NASA POWER API endpoint (SolarResource or Renewable)"
+    )
+    NASA_POWER_TEMPORAL: str = Field(
+        default="hourly",
+        description="NASA POWER temporal resolution (hourly, daily, monthly)"
+    )
+    NASA_POWER_DATASET: str = Field(
+        default="PSM3",
+        description="NASA POWER dataset name (PSM3 or TMY)"
+    )
+
     # Logging
     LOG_LEVEL: str = Field(default="INFO", description="Nível de log")
     LOG_FORMAT: str = Field(

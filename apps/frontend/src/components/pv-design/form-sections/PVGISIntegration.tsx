@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import toast from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Map, Loader2, MapPin, Download, AlertCircle } from 'lucide-react';
+import { Map, Loader2, MapPin, Download, AlertCircle, Info } from 'lucide-react';
 import MapSelector from './MapSelector';
 import MonthlyIrradiationDisplay from './MonthlyIrradiationDisplay';
 import { fetchPVGISDataWithCache, isLocationInBrazil, formatMonthlyData, PVGISLocation } from '@/lib/pvgisService';
@@ -17,6 +20,7 @@ interface PVGISIntegrationProps {
     longitude: number;
     cidade: string;
     pvgisResponseData?: any; // Dados completos da resposta PVGIS
+    fonteDados?: string; // Fonte de dados utilizada (pvgis ou nasa)
   }) => void;
   formData?: {
     latitude?: number;
@@ -24,6 +28,7 @@ interface PVGISIntegrationProps {
     cidade?: string;
     irradiacaoMensal?: number[];
     pvgisResponseData?: any;
+    fonteDados?: string;
   };
 }
 
@@ -33,6 +38,9 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [dataSource, setDataSource] = useState<'pvgis' | 'nasa'>(() => {
+    return (formData?.fonteDados as 'pvgis' | 'nasa') || 'pvgis';
+  });
 
   // Initialize state from formData - each useState uses its own validation logic
   const [selectedLocation, setSelectedLocation] = useState<PVGISLocation | null>(() => {
@@ -85,6 +93,7 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
     minimo?: number;
     variacaoSazonal?: number;
     configuracao?: any;
+    fonteDados?: string; // Fonte de dados utilizada
   } | null>(() => {
     const hasValidSavedData = formData?.latitude &&
                              formData?.longitude &&
@@ -98,6 +107,7 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
         latitude: formData.latitude,
         longitude: formData.longitude,
         cidade: formData.cidade || `Lat: ${formData.latitude.toFixed(4)}, Lon: ${formData.longitude.toFixed(4)}`,
+        fonteDados: formData.fonteDados,
         ...formData.pvgisResponseData
       };
     }
@@ -155,25 +165,30 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
     setIsLoading(true);
 
     try {
-      console.log('🔧 Parâmetros PVGIS sendo enviados via backend:', {
+      console.log('🔧 Parâmetros sendo enviados via backend:', {
         location,
-        parameters: { tilt: 0, azimuth: 0 }
+        parameters: { tilt: 0, azimuth: 0 },
+        dataSource
       });
-      
+
       // Chamar o backend Node.js que se comunica com a API Python
-      // Sempre usar 0° (horizontal) para buscar dados PVGIS diretos sem decomposição
+      // Sempre usar 0° (horizontal) para buscar dados diretos sem decomposição
       const response = await api.post('/solar-analysis/analyze-monthly-irradiation', {
         lat: location.latitude,
         lon: location.longitude,
         tilt: 0,
         azimuth: 0,
-        modelo_decomposicao: 'louche'
+        modelo_decomposicao: 'louche',
+        data_source: dataSource // Passar fonte de dados selecionada
       });
 
       console.log('✅ Resposta do backend recebida:', response.data);
       
       const formattedCity = `Lat: ${response.data.data.coordenadas.lat.toFixed(4)}, Lon: ${response.data.data.coordenadas.lon.toFixed(4)}`;
-      
+
+      // Extrair fonte de dados utilizada da resposta (pode ser diferente se houve fallback)
+      const fonteUtilizada = response.data.data.fonteDados || dataSource;
+
       const data = {
         irradiacaoMensal: response.data.data.irradiacaoMensal,
         latitude: response.data.data.coordenadas.lat,
@@ -184,18 +199,20 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
         maximo: response.data.data.maximo,
         minimo: response.data.data.minimo,
         variacaoSazonal: response.data.data.variacaoSazonal,
-        configuracao: response.data.data.configuracao
+        configuracao: response.data.data.configuracao,
+        fonteDados: fonteUtilizada
       };
-      
+
       // Armazenar dados para exibição
       setIrradiationData(data);
-      
+
       // Enviar dados para o componente pai incluindo dados completos da resposta
       onDataReceived({
         irradiacaoMensal: data.irradiacaoMensal,
         latitude: data.latitude,
         longitude: data.longitude,
         cidade: data.cidade,
+        fonteDados: fonteUtilizada,
         pvgisResponseData: {
           mediaAnual: data.mediaAnual,
           maximo: data.maximo,
@@ -240,11 +257,53 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
       </div>
       
       <p className="text-sm text-muted-foreground mb-4">
-        Obtenha dados precisos de irradiação solar do PVGIS (Photovoltaic Geographical Information System) 
-        da Comissão Europeia. Os dados são coletados para superficie horizontal (0° inclinação, 0° orientação).
+        Obtenha dados precisos de irradiação solar de múltiplas fontes meteorológicas globais.
+        Os dados são coletados para superficie horizontal (0° inclinação, 0° orientação).
       </p>
 
       <div className="space-y-4">
+        {/* Seletor de fonte de dados */}
+        <div className="p-3 bg-muted/30 rounded-lg border border-border">
+          <Label className="text-foreground mb-3 block font-semibold">Fonte de Dados Meteorológicos</Label>
+          <TooltipProvider>
+            <RadioGroup value={dataSource} onValueChange={(value) => setDataSource(value as 'pvgis' | 'nasa')}>
+              <div className="flex items-center space-x-3 mb-2">
+                <RadioGroupItem value="pvgis" id="pvgis" disabled={isLoading} />
+                <Label htmlFor="pvgis" className="flex items-center gap-2 cursor-pointer">
+                  PVGIS (Europa/América)
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-xs">
+                        Base de dados europeia (SARAH-2) com ótima precisão para Europa, África e partes da América.
+                        Período: 2005-2020. Precisão típica: ±4% para médias anuais.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </Label>
+              </div>
+              <div className="flex items-center space-x-3">
+                <RadioGroupItem value="nasa" id="nasa" disabled={isLoading} />
+                <Label htmlFor="nasa" className="flex items-center gap-2 cursor-pointer">
+                  NASA POWER (Global)
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-xs">
+                        Cobertura global da NASA com dados de satélite e reanálise.
+                        Disponível para qualquer localização do mundo. Ideal para regiões não cobertas pelo PVGIS.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </Label>
+              </div>
+            </RadioGroup>
+          </TooltipProvider>
+        </div>
         {/* Seleção por mapa */}
         <div>
           <Label className="text-foreground mb-2 block">Seleção por Mapa</Label>
@@ -383,6 +442,35 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
       {/* Exibir dados de irradiação quando disponíveis */}
       {irradiationData && (
         <div className="mt-6">
+          {/* Badge mostrando fonte de dados utilizada */}
+          <div className="mb-4 flex items-center gap-2">
+            <Badge
+              variant={irradiationData.fonteDados === dataSource ? "default" : "secondary"}
+              className={
+                irradiationData.fonteDados === dataSource
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-amber-600 hover:bg-amber-700"
+              }
+            >
+              Fonte utilizada: {irradiationData.fonteDados?.toUpperCase() || 'PVGIS'}
+            </Badge>
+            {irradiationData.fonteDados !== dataSource && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <AlertCircle className="h-4 w-4 text-amber-600 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">
+                      A fonte de dados selecionada ({dataSource.toUpperCase()}) não está disponível para esta localização.
+                      O sistema automaticamente utilizou {irradiationData.fonteDados?.toUpperCase()} como alternativa.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+
           <MonthlyIrradiationDisplay
             irradiacaoMensal={irradiationData.irradiacaoMensal}
             location={{

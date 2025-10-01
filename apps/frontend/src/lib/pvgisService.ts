@@ -35,9 +35,11 @@ export interface PVGISResponse {
 }
 
 /**
- * Busca dados de irradiação solar no PVGIS
+ * Busca dados de irradiação solar usando múltiplas fontes
+ * Suporta PVGIS (Europa/América) e NASA POWER (Global)
  * @param location Coordenadas da localização
  * @param parameters Parâmetros de orientação e inclinação
+ * @param dataSource Fonte de dados: 'pvgis' (padrão) ou 'nasa'
  * @returns Dados mensais de irradiação
  */
 /**
@@ -58,25 +60,30 @@ const convertOrientationToPVGIS = (orientacao: number): number => {
   return pvgisOrientation;
 };
 
-export const fetchPVGISData = async (location: PVGISLocation, parameters?: PVGISParameters): Promise<PVGISResponse> => {
+export const fetchPVGISData = async (
+  location: PVGISLocation,
+  parameters?: PVGISParameters,
+  dataSource?: 'pvgis' | 'nasa'
+): Promise<PVGISResponse> => {
   const { latitude, longitude } = location;
   const { orientacao = 0, inclinacao = 0 } = parameters || {};
-  
+
   // Converter orientação para convenção PVGIS
   const pvgisOrientation = convertOrientationToPVGIS(orientacao);
-  
+
   console.log('🧭 Conversão de orientação:', {
     orientacaoSistema: orientacao,
     orientacaoPVGIS: pvgisOrientation,
-    inclinacao: inclinacao
+    inclinacao: inclinacao,
+    dataSource: dataSource || 'pvgis (padrão)'
   });
-  
+
   // Detectar ambiente automaticamente
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const baseUrl = isDevelopment 
+  const baseUrl = isDevelopment
     ? 'http://localhost:8010/api/v1/irradiation/pvgis'
     : `/api/v1/irradiation/pvgis`;
-  
+
   const params = new URLSearchParams({
     lat: latitude.toString(),
     lon: longitude.toString(),
@@ -86,6 +93,11 @@ export const fetchPVGISData = async (location: PVGISLocation, parameters?: PVGIS
     aspect: pvgisOrientation.toString(), // Ângulo de orientação convertido
     mountingplace: 'free', // Instalação livre
   });
+
+  // Adicionar fonte de dados se fornecida
+  if (dataSource) {
+    params.append('data_source', dataSource);
+  }
 
   const url = `${baseUrl}?${params.toString()}`;
 
@@ -232,18 +244,23 @@ const CACHE_DURATION = 1000 * 60 * 60; // 1 hora
 
 /**
  * Busca dados com cache
+ * Suporta múltiplas fontes de dados (PVGIS ou NASA)
  */
-export const fetchPVGISDataWithCache = async (location: PVGISLocation, parameters?: PVGISParameters): Promise<PVGISResponse> => {
+export const fetchPVGISDataWithCache = async (
+  location: PVGISLocation,
+  parameters?: PVGISParameters,
+  dataSource?: 'pvgis' | 'nasa'
+): Promise<PVGISResponse> => {
   const { orientacao = 0, inclinacao = 0 } = parameters || {};
-  const key = `${location.latitude.toFixed(4)},${location.longitude.toFixed(4)},${orientacao},${inclinacao}`;
+  const key = `${location.latitude.toFixed(4)},${location.longitude.toFixed(4)},${orientacao},${inclinacao},${dataSource || 'pvgis'}`;
   const cached = pvgisCache.get(key);
-  
+
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     return cached.data;
   }
-  
-  const data = await fetchPVGISData(location, parameters);
+
+  const data = await fetchPVGISData(location, parameters, dataSource);
   pvgisCache.set(key, { data, timestamp: Date.now() });
-  
+
   return data;
 };
