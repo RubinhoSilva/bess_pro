@@ -126,7 +126,7 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
 
   const maxModules = calculateMaxModules();
 
-  // Atualizar primeira água de telhado com dados da API quando disponível
+  // Atualizar primeira orientação com dados da API quando disponível
   useEffect(() => {
     if (numeroModulosCalculados && areaEstimada && geracaoEstimadaAnual && aguasTelhado.length > 0) {
       const primeiraAgua = aguasTelhado[0];
@@ -293,7 +293,7 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
             <Home className="w-5 h-5 text-blue-500" />
-            Configuração de Águas de Telhado
+            Configuração de Orientações
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             Configure diferentes orientações e inclinações para otimizar a geração solar
@@ -306,11 +306,11 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
             <div className={`bg-gradient-to-r from-blue-50 to-green-50 p-4 rounded-lg border ${
               getTotalModulos() > maxModules ? 'border-red-300 bg-gradient-to-r from-red-50 to-orange-50' : 'border-blue-200'
             }`}>
-              <h4 className="font-semibold text-blue-800 mb-3">Resumo do Sistema Multi-Água</h4>
+              <h4 className="font-semibold text-blue-800 mb-3">Resumo do sistema multi orientações</h4>
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">{aguasTelhado.length}</div>
-                  <div className="text-blue-500">Águas</div>
+                  <div className="text-blue-500">Orientações</div>
                 </div>
                 <div className="text-center">
                   <div className={`text-2xl font-bold ${
@@ -341,7 +341,7 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
             </div>
           )}
 
-          {/* Lista de Águas */}
+          {/* Lista de Orientações */}
           <div className="space-y-3">
             {aguasTelhado.map((area, index) => {
               const orientacaoInfo = getOrientacaoInfo(area.orientacao);
@@ -386,9 +386,9 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
                     <CollapsibleContent>
                       <CardContent className="pt-0 space-y-4">
                         
-                        {/* Nome da Água */}
+                        {/* Nome da Orientação */}
                         <div className="space-y-2">
-                          <Label htmlFor={`nome-${area.id}`}>Nome da Água</Label>
+                          <Label htmlFor={`nome-${area.id}`}>Nome da Orientação</Label>
                           <Input
                             id={`nome-${area.id}`}
                             value={area.nome}
@@ -583,14 +583,14 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
             })}
           </div>
 
-          {/* Adicionar Nova Água */}
+          {/* Adicionar Nova Orientação */}
           <Button
             onClick={addNewArea}
             variant="outline"
             className="w-full border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 text-gray-600 hover:text-blue-600"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Adicionar Nova Água de Telhado
+            Adicionar Nova Orientação
           </Button>
 
           {/* Informações sobre otimização */}

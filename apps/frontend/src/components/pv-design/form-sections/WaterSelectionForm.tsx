@@ -101,7 +101,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
 
     // Verificar se há inversores selecionados
     if (selectedInverters.length === 0) {
-      newErrors.push('Selecione pelo menos um inversor antes de configurar as águas de telhado');
+      newErrors.push('Selecione pelo menos um inversor antes de configurar as orientações');
       setErrors(newErrors);
       return;
     }
@@ -109,7 +109,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     aguasTelhado.forEach((agua, index) => {
       // Verificar se tem MPPT associado
       if (!agua.inversorId || !agua.mpptNumero) {
-        newErrors.push(`Água "${agua.nome}" precisa ter um MPPT associado`);
+        newErrors.push(`Orientação "${agua.nome}" precisa ter um MPPT associado`);
         return;
       }
 
@@ -117,7 +117,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
       
       // Verificar duplicação
       if (usedMppts.has(mpptKey)) {
-        newErrors.push(`MPPT já está sendo usado por outra água de telhado: ${agua.nome}`);
+        newErrors.push(`MPPT já está sendo usado por outra orientação: ${agua.nome}`);
       } else {
         usedMppts.add(mpptKey);
       }
@@ -182,7 +182,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     // Encontrar próximo número disponível
     const existingNumbers = aguasTelhado
       .map(agua => {
-        const match = agua.nome.match(/Água de telhado #(\d+)/);
+        const match = agua.nome.match(/Orientação #(\d+)/);
         return match ? parseInt(match[1]) : 0;
       })
       .filter(num => num > 0);
@@ -194,7 +194,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
 
     const newAgua: AguaTelhado = {
       id: crypto.randomUUID(),
-      nome: `Água de telhado #${nextNumber}`,
+      nome: `Orientação #${nextNumber}`,
       orientacao: 180, // Norte no Brasil (azimute 180°)
       inclinacao: 20, // Inclinação padrão (~latitude média do Brasil)
       numeroModulos: 0, // Começar com 0 módulos
@@ -557,11 +557,11 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Home className="w-5 h-5" />
-            Configuração de Águas de Telhado
+            Configuração de Orientações
           </CardTitle>
           <p className="text-sm text-gray-600 mt-2">
             Configure diferentes orientações, inclinações e associações MPPT para otimizar a geração solar.
-            Cada água de telhado deve ser conectada a um canal MPPT específico do inversor.
+            Cada orientação deve ser conectada a um canal MPPT específico do inversor.
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -587,13 +587,13 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
               Canais MPPT Disponíveis: {availableChannels.length}
             </h4>
             <p className="text-sm text-blue-700">
-              Cada água de telhado deve ser associada a um canal MPPT específico. 
-              O número máximo de águas é limitado pelo total de canais MPPT dos inversores selecionados.
+              Cada orientação deve ser associada a um canal MPPT específico.
+              O número máximo de orientações é limitado pelo total de canais MPPT dos inversores selecionados.
             </p>
           </div>
         )}
 
-        {/* Lista de águas de telhado */}
+        {/* Lista de orientações */}
         <div className="space-y-4">
           {aguasTelhado.map((agua, index) => {
             const hasValidMppt = agua.inversorId && agua.mpptNumero;
@@ -630,11 +630,11 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                   {/* Nome e MPPT */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Nome da Água</Label>
+                      <Label>Nome da Orientação</Label>
                       <Input
                         value={agua.nome}
                         onChange={(e) => handleUpdateAgua(agua.id, { nome: e.target.value })}
-                        placeholder="Ex: Água de telhado #1"
+                        placeholder="Ex: Orientação #1"
                       />
                     </div>
 
@@ -962,14 +962,14 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
           })}
         </div>
 
-        {/* Botão adicionar nova água */}
+        {/* Botão adicionar nova orientação */}
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
           <div className="flex flex-col items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
               <Plus className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-medium text-gray-900">Adicionar Nova Água</h3>
+              <h3 className="font-medium text-gray-900">Adicionar Orientação</h3>
               <p className="text-sm text-gray-500 mt-1">
                 {selectedInverters.length === 0 
                   ? 'Selecione inversores primeiro para habilitar esta opção'
@@ -984,7 +984,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
               variant={selectedInverters.length === 0 ? "secondary" : "default"}
             >
               <Plus className="w-4 h-4 mr-2" />
-              Adicionar Água de Telhado
+              Adicionar Orientação
             </Button>
           </div>
         </div>
@@ -995,7 +995,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-green-800">
                 <Home className="w-5 h-5" />
-                Resumo do Sistema Multi-Água
+                Resumo do sistema multi orientações
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1005,7 +1005,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                     <Home className="w-6 h-6 text-green-600" />
                   </div>
                   <p className="text-2xl font-bold text-green-600">{aguasTelhado.length}</p>
-                  <p className="text-sm text-gray-600">Águas Configuradas</p>
+                  <p className="text-sm text-gray-600">Orientações Configuradas</p>
                 </div>
                 
                 <div className="text-center p-3">
@@ -1113,10 +1113,10 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                 </>
               )}
               
-              {/* Lista de águas no resumo */}
+              {/* Lista de orientações no resumo */}
               <Separator className="my-4" />
               <div className="space-y-2">
-                <h4 className="font-medium text-gray-700 mb-3">Águas Configuradas:</h4>
+                <h4 className="font-medium text-gray-700 mb-3">Orientações Configuradas:</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {aguasTelhado.map((agua) => {
                     const hasValidMppt = agua.inversorId && agua.mpptNumero;

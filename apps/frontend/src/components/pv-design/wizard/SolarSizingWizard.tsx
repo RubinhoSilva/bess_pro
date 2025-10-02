@@ -61,8 +61,8 @@ const steps = [
   },
   {
     id: 5,
-    title: 'Águas de Telhado',
-    description: 'Configuração das águas do telhado',
+    title: 'Orientações',
+    description: 'Configuração das orientações',
     icon: Home,
     component: 'roof'
   },
@@ -1055,7 +1055,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         
         return (
           <div className="space-y-6">
-            {/* Configuração das Águas de Telhado com MPPT */}
+            {/* Configuração das Orientações com MPPT */}
             <WaterSelectionForm 
               aguasTelhado={currentDimensioning.aguasTelhado || []}
               selectedInverters={currentDimensioning.selectedInverters || []}
@@ -1084,13 +1084,13 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       case 'summary':
         return (
           <div className="space-y-6">
-            {/* Divisão por Águas de Telhado */}
+            {/* Divisão por Orientações */}
             {currentDimensioning.aguasTelhado && currentDimensioning.aguasTelhado.length > 0 && (
               <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
                     <Home className="w-5 h-5 text-green-500" />
-                    Divisão por Águas de Telhado
+                    Divisão por Orientações
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

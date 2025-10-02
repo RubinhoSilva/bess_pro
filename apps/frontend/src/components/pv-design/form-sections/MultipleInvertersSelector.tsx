@@ -8,7 +8,7 @@ import { Trash2, Plus, Zap, Cpu, AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SelectedInverter } from '@/contexts/DimensioningContext';
-import { useInverters, useManufacturers, Inverter, ManufacturerType } from '@/hooks/equipment-hooks';
+import { useInverters, useManufacturersList, Inverter, ManufacturerType } from '@/hooks/equipment-hooks';
 import { useMultipleInverters } from '@/hooks/multiple-inverters-hooks';
 import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
 import { AddInverterModal } from '../modals/AddInverterModal';
@@ -46,7 +46,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   const [showInverterModal, setShowInverterModal] = useState(false);
   
   const { data: invertersData, isLoading: loadingInverters } = useInverters({});
-  const { data: manufacturersData, isLoading: loadingManufacturers } = useManufacturers({ type: ManufacturerType.INVERTER });
+  const { data: manufacturersData, isLoading: loadingManufacturers } = useManufacturersList({ type: ManufacturerType.INVERTER });
   const {
     addInverter,
     calculateTotalPower,

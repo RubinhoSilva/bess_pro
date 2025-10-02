@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Settings, Info, Plus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useSolarModules, useInverters, useManufacturers, ManufacturerType } from '@/hooks/equipment-hooks';
+import { useSolarModules, useInverters, useManufacturersList, ManufacturerType } from '@/hooks/equipment-hooks';
 import { MultipleInvertersSelector } from './MultipleInvertersSelector';
 import { AddSolarModuleModal } from '../modals/AddSolarModuleModal';
 import { AddInverterModal } from '../modals/AddInverterModal';
@@ -26,7 +26,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
   const [showInverterModal, setShowInverterModal] = useState(false);
   
   // Equipment data
-  const { data: moduleManufacturers } = useManufacturers({ type: ManufacturerType.SOLAR_MODULE });
+  const { data: moduleManufacturers } = useManufacturersList({ type: ManufacturerType.SOLAR_MODULE });
   const { data: solarModulesData, refetch: refetchModules } = useSolarModules({ pageSize: 100 });
 
   const solarModules = solarModulesData?.modules || [];

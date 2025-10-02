@@ -4,10 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import toast from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Map, Loader2, MapPin, Download, AlertCircle, Info } from 'lucide-react';
+import { Map, Loader2, MapPin, Download, AlertCircle } from 'lucide-react';
 import MapSelector from './MapSelector';
 import MonthlyIrradiationDisplay from './MonthlyIrradiationDisplay';
 import { fetchPVGISDataWithCache, isLocationInBrazil, formatMonthlyData, PVGISLocation } from '@/lib/pvgisService';
@@ -230,7 +229,7 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
     } catch (error: any) {
       console.error('❌ Erro ao obter dados via backend:', error);
       
-      let message = 'Erro desconhecido ao obter dados PVGIS';
+      let message = 'Erro desconhecido ao obter dados meteorológicos';
       
       if (error.response?.data?.message) {
         message = error.response.data.message;
@@ -253,7 +252,7 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
     <div className="p-4 border rounded-lg bg-card/50 border-border backdrop-blur-sm">
       <div className="flex items-center gap-2 mb-4">
         <MapPin className="w-5 h-5 text-green-400" />
-        <h3 className="text-lg font-semibold text-foreground">Integração PVGIS</h3>
+        <h3 className="text-lg font-semibold text-foreground">Dados Meteorológicos</h3>
       </div>
       
       <p className="text-sm text-muted-foreground mb-4">
@@ -265,44 +264,20 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
         {/* Seletor de fonte de dados */}
         <div className="p-3 bg-muted/30 rounded-lg border border-border">
           <Label className="text-foreground mb-3 block font-semibold">Fonte de Dados Meteorológicos</Label>
-          <TooltipProvider>
-            <RadioGroup value={dataSource} onValueChange={(value) => setDataSource(value as 'pvgis' | 'nasa')}>
-              <div className="flex items-center space-x-3 mb-2">
-                <RadioGroupItem value="pvgis" id="pvgis" disabled={isLoading} />
-                <Label htmlFor="pvgis" className="flex items-center gap-2 cursor-pointer">
-                  PVGIS (Europa/América)
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p className="text-xs">
-                        Base de dados europeia (SARAH-2) com ótima precisão para Europa, África e partes da América.
-                        Período: 2005-2020. Precisão típica: ±4% para médias anuais.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-3">
-                <RadioGroupItem value="nasa" id="nasa" disabled={isLoading} />
-                <Label htmlFor="nasa" className="flex items-center gap-2 cursor-pointer">
-                  NASA POWER (Global)
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p className="text-xs">
-                        Cobertura global da NASA com dados de satélite e reanálise.
-                        Disponível para qualquer localização do mundo. Ideal para regiões não cobertas pelo PVGIS.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </Label>
-              </div>
-            </RadioGroup>
-          </TooltipProvider>
+          <RadioGroup value={dataSource} onValueChange={(value) => setDataSource(value as 'pvgis' | 'nasa')}>
+            <div className="flex items-center space-x-3 mb-2">
+              <RadioGroupItem value="pvgis" id="pvgis" disabled={isLoading} />
+              <Label htmlFor="pvgis" className="cursor-pointer">
+                PVGIS (Europa/América)
+              </Label>
+            </div>
+            <div className="flex items-center space-x-3">
+              <RadioGroupItem value="nasa" id="nasa" disabled={isLoading} />
+              <Label htmlFor="nasa" className="cursor-pointer">
+                NASA POWER (Global)
+              </Label>
+            </div>
+          </RadioGroup>
         </div>
         {/* Seleção por mapa */}
         <div>
@@ -398,12 +373,12 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Obtendo dados PVGIS... (pode levar até 2 min)
+                  Obtendo dados... (pode levar até 2 min)
                 </>
               ) : (
                 <>
                   <Download className="mr-2 h-5 w-5" />
-                  Buscar Dados PVGIS *
+                  Buscar dados *
                 </>
               )}
             </Button>
@@ -420,56 +395,20 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-amber-600" />
               <p className="text-sm text-amber-700 font-medium">
-                Dados PVGIS obrigatórios
+                Dados obrigatórios
               </p>
             </div>
             <p className="text-xs text-amber-600 mt-1">
-              É necessário buscar os dados de irradiação solar antes de prosseguir para a próxima etapa.
+              É necessário buscar os dados de irradiação solar antes de prosseguir.
             </p>
           </div>
         )}
 
-        {/* Aviso sobre precisão */}
-        <div className="flex items-start gap-2 p-3 bg-blue-900/20 border border-blue-700/50 rounded-lg">
-          <AlertCircle className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-          <div className="text-xs text-blue-300">
-            <strong>Sobre o PVGIS:</strong> Os dados são baseados em imagens de satélite e modelos climatológicos 
-            da base SARAH-2, cobrindo o período de 2005-2020. Precisão típica: ±4% para médias anuais.
-          </div>
-        </div>
       </div>
 
       {/* Exibir dados de irradiação quando disponíveis */}
       {irradiationData && (
         <div className="mt-6">
-          {/* Badge mostrando fonte de dados utilizada */}
-          <div className="mb-4 flex items-center gap-2">
-            <Badge
-              variant={irradiationData.fonteDados === dataSource ? "default" : "secondary"}
-              className={
-                irradiationData.fonteDados === dataSource
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-amber-600 hover:bg-amber-700"
-              }
-            >
-              Fonte utilizada: {irradiationData.fonteDados?.toUpperCase() || 'PVGIS'}
-            </Badge>
-            {irradiationData.fonteDados !== dataSource && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <AlertCircle className="h-4 w-4 text-amber-600 cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p className="text-xs">
-                      A fonte de dados selecionada ({dataSource.toUpperCase()}) não está disponível para esta localização.
-                      O sistema automaticamente utilizou {irradiationData.fonteDados?.toUpperCase()} como alternativa.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
 
           <MonthlyIrradiationDisplay
             irradiacaoMensal={irradiationData.irradiacaoMensal}

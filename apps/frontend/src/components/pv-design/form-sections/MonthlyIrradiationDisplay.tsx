@@ -57,7 +57,7 @@ const MonthlyIrradiationDisplay: React.FC<MonthlyIrradiationDisplayProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-foreground">
           <Sun className="w-5 h-5 text-yellow-400" />
-          Dados de Irradiação Solar (PVGIS)
+          Dados de Irradiação Solar
         </CardTitle>
         {location && (
           <div className="text-sm text-muted-foreground">
@@ -160,16 +160,6 @@ const MonthlyIrradiationDisplay: React.FC<MonthlyIrradiationDisplayProps> = ({
           </div>
         </div>
 
-        {/* Informações sobre PVGIS */}
-        <div className="mt-4 p-3 bg-blue-900/20 border border-blue-700/50 rounded-lg">
-          <div className="text-xs text-blue-300">
-            <strong>Fonte:</strong> PVGIS (Photovoltaic Geographical Information System) - 
-            Dados baseados em imagens de satélite da base SARAH-2 (2005-2020). 
-            <br />
-            <strong>Precisão:</strong> ±4% para médias anuais. Valores em kWh/m²/dia representam 
-            a irradiação solar global horizontal.
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
