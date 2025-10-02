@@ -4,10 +4,6 @@ import { ManufacturerSeeder } from './ManufacturerSeeder';
 export class SolarModuleSeeder {
   static async seed(): Promise<void> {
     console.log('🌱 Iniciando criação de módulos solares...');
-    
-    // Limpar módulos existentes
-    await SolarModuleModel.deleteMany({});
-    console.log('🗑️ Módulos existentes removidos');
 
     const solarModulesData = [
       // Jinko Solar
@@ -194,36 +190,50 @@ export class SolarModuleSeeder {
       }
     ];
 
-    console.log(`🌱 Criando ${solarModulesData.length} módulos solares...`);
-    
-    let created = 0;
+    console.log(`🌱 Verificando ${solarModulesData.length} módulos solares padrão...`);
+
+    let createdCount = 0;
+    let existingCount = 0;
+
     for (const moduleData of solarModulesData) {
       try {
         // Buscar o ID do fabricante
         const manufacturerId = await ManufacturerSeeder.getManufacturerIdByName(moduleData.fabricante);
-        
+
         if (!manufacturerId) {
           console.error(`❌ Fabricante '${moduleData.fabricante}' não encontrado para o módulo ${moduleData.modelo}`);
           continue;
         }
 
-        // Criar o módulo com o manufacturerId e userId padrão
-        const moduleToCreate = {
-          ...moduleData,
+        // Verificar se o módulo padrão já existe
+        const existing = await SolarModuleModel.findOne({
+          modelo: moduleData.modelo,
           manufacturerId,
-          userId: 'public-equipment-system', // ID padrão para equipamentos públicos
-          // Corrigir gammaR para estar dentro dos limites (-0.001 a 0)
-          gammaR: Math.max(-0.001, moduleData.gammaR || -0.001)
-        };
+          userId: 'public-equipment-system'
+        });
 
-        await SolarModuleModel.create(moduleToCreate);
-        created++;
-        console.log(`✅ Módulo criado: ${moduleData.fabricante} ${moduleData.modelo}`);
+        if (existing) {
+          existingCount++;
+          console.log(`⏭️  Módulo já existe: ${moduleData.fabricante} ${moduleData.modelo}`);
+        } else {
+          // Criar o módulo com o manufacturerId e userId padrão
+          const moduleToCreate = {
+            ...moduleData,
+            manufacturerId,
+            userId: 'public-equipment-system', // ID padrão para equipamentos públicos
+            // Corrigir gammaR para estar dentro dos limites (-0.001 a 0)
+            gammaR: Math.max(-0.001, moduleData.gammaR || -0.001)
+          };
+
+          await SolarModuleModel.create(moduleToCreate);
+          createdCount++;
+          console.log(`✅ Módulo criado: ${moduleData.fabricante} ${moduleData.modelo}`);
+        }
       } catch (error: any) {
-        console.error(`❌ Erro ao criar módulo ${moduleData.modelo}:`, error.message);
+        console.error(`❌ Erro ao processar módulo ${moduleData.modelo}:`, error.message);
       }
     }
 
-    console.log(`🎉 ${created} módulos solares criados com sucesso!`);
+    console.log(`🎉 Solar module seeding completed! Created: ${createdCount}, Already existed: ${existingCount}`);
   }
 }

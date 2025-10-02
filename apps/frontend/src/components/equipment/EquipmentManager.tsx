@@ -24,7 +24,7 @@ import {
   useCreateInverter,
   useUpdateInverter,
   useDeleteInverter,
-  useManufacturers,
+  useManufacturersList,
   type SolarModule,
   type Inverter,
   type SolarModuleInput,
@@ -94,8 +94,8 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   // API Hooks
   const { data: modulesData, isLoading: loadingModules } = useSolarModules({ search: searchTerm, pageSize: 50 });
   const { data: invertersData, isLoading: loadingInverters } = useInverters({ search: searchTerm, pageSize: 50 });
-  const { data: moduleManufacturers } = useManufacturers({ type: ManufacturerType.SOLAR_MODULE });
-  const { data: inverterManufacturers } = useManufacturers({ type: ManufacturerType.INVERTER });
+  const { data: moduleManufacturers } = useManufacturersList({ type: ManufacturerType.SOLAR_MODULE });
+  const { data: inverterManufacturers } = useManufacturersList({ type: ManufacturerType.INVERTER });
   
   const createModuleMutation = useCreateSolarModule();
   const updateModuleMutation = useUpdateSolarModule();

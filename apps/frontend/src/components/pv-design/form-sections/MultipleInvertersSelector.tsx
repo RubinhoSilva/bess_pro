@@ -383,29 +383,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
             </div>
           )}
 
-          {/* Resumo total */}
-          {selectedInverters.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">
-                  {(totalPower / 1000).toFixed(1)} kW
-                </p>
-                <p className="text-sm text-gray-600">Potência Total</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">
-                  {totalMpptChannels}
-                </p>
-                <p className="text-sm text-gray-600">Capacidade de Strings</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-purple-600">
-                  {selectedInverters.reduce((sum, inv) => sum + inv.quantity, 0)}
-                </p>
-                <p className="text-sm text-gray-600">Total de Unidades</p>
-              </div>
-            </div>
-          )}
+
 
           {/* Validação */}
           {!validation.isValid && (

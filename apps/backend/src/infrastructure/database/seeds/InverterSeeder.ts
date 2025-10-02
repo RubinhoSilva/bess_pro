@@ -4,10 +4,6 @@ import { ManufacturerSeeder } from './ManufacturerSeeder';
 export class InverterSeeder {
   static async seed(): Promise<void> {
     console.log('🌱 Iniciando criação de inversores...');
-    
-    // Limpar inversores existentes
-    await InverterModel.deleteMany({});
-    console.log('🗑️ Inversores existentes removidos');
 
     const invertersData = [
       // SMA Solar Technology
@@ -293,34 +289,48 @@ export class InverterSeeder {
       }
     ];
 
-    console.log(`🌱 Criando ${invertersData.length} inversores...`);
-    
-    let created = 0;
+    console.log(`🌱 Verificando ${invertersData.length} inversores padrão...`);
+
+    let createdCount = 0;
+    let existingCount = 0;
+
     for (const inverterData of invertersData) {
       try {
         // Buscar o ID do fabricante
         const manufacturerId = await ManufacturerSeeder.getManufacturerIdByName(inverterData.fabricante);
-        
+
         if (!manufacturerId) {
           console.error(`❌ Fabricante '${inverterData.fabricante}' não encontrado para o inversor ${inverterData.modelo}`);
           continue;
         }
 
-        // Criar o inversor com o manufacturerId e userId padrão
-        const inverterToCreate = {
-          ...inverterData,
+        // Verificar se o inversor padrão já existe
+        const existing = await InverterModel.findOne({
+          modelo: inverterData.modelo,
           manufacturerId,
-          userId: 'public-equipment-system' // ID padrão para equipamentos públicos
-        };
+          userId: 'public-equipment-system'
+        });
 
-        await InverterModel.create(inverterToCreate);
-        created++;
-        console.log(`✅ Inversor criado: ${inverterData.fabricante} ${inverterData.modelo}`);
+        if (existing) {
+          existingCount++;
+          console.log(`⏭️  Inversor já existe: ${inverterData.fabricante} ${inverterData.modelo}`);
+        } else {
+          // Criar o inversor com o manufacturerId e userId padrão
+          const inverterToCreate = {
+            ...inverterData,
+            manufacturerId,
+            userId: 'public-equipment-system' // ID padrão para equipamentos públicos
+          };
+
+          await InverterModel.create(inverterToCreate);
+          createdCount++;
+          console.log(`✅ Inversor criado: ${inverterData.fabricante} ${inverterData.modelo}`);
+        }
       } catch (error: any) {
-        console.error(`❌ Erro ao criar inversor ${inverterData.modelo}:`, error.message);
+        console.error(`❌ Erro ao processar inversor ${inverterData.modelo}:`, error.message);
       }
     }
 
-    console.log(`🎉 ${created} inversores criados com sucesso!`);
+    console.log(`🎉 Inverter seeding completed! Created: ${createdCount}, Already existed: ${existingCount}`);
   }
 }

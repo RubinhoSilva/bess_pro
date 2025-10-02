@@ -6,7 +6,7 @@ import { ArrowLeft, Package, Unplug, Settings, Plus, Upload, Download, Building2
 import { useNavigate } from 'react-router-dom';
 import { EquipmentManager } from '@/components/equipment/EquipmentManager';
 import { ManufacturerManager } from '@/components/equipment/ManufacturerManager';
-import { useSolarModules, useInverters, useManufacturers } from '@/hooks/equipment-hooks';
+import { useSolarModules, useInverters, useManufacturersList } from '@/hooks/equipment-hooks';
 
 export default function EquipmentPage() {
   const navigate = useNavigate();
@@ -14,7 +14,7 @@ export default function EquipmentPage() {
   // Get equipment statistics
   const { data: solarModulesData, isLoading: loadingSolarModules } = useSolarModules({ pageSize: 1 });
   const { data: invertersData, isLoading: loadingInverters } = useInverters({ pageSize: 1 });
-  const { data: manufacturersData, isLoading: loadingManufacturers } = useManufacturers();
+  const { data: manufacturersData, isLoading: loadingManufacturers } = useManufacturersList();
 
   const totalSolarModules = solarModulesData?.total || 0;
   const totalInverters = invertersData?.total || 0;

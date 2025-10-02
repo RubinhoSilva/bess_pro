@@ -28,6 +28,19 @@ interface PVGISIntegrationProps {
     irradiacaoMensal?: number[];
     pvgisResponseData?: any;
     fonteDados?: string;
+    inclinacao?: number;
+    orientacao?: number;
+    aguasTelhado?: Array<{
+      id: string;
+      nome: string;
+      orientacao: number;
+      inclinacao: number;
+      numeroModulos: number;
+      sombreamentoParcial: number;
+      areaDisponivel?: number;
+      inversorId?: string;
+      mpptNumero?: number;
+    }>;
   };
 }
 
@@ -164,22 +177,76 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
     setIsLoading(true);
 
     try {
+      // Obter orientação real do usuário - priorizar dados principais ou primeira água de telhado
+      let userTilt = formData?.inclinacao ?? 0;
+      let userAzimuth = formData?.orientacao ?? 180;
+      let orientationSource = 'default';
+
+      // Lógica melhorada: priorizar múltiplas águas de telhado
+      if (formData && formData.aguasTelhado && formData.aguasTelhado.length > 1) {
+        // ✅ Múltiplas águas - não usar tilt/azimuth únicos
+        orientationSource = 'multiplas_aguas_telhado';
+        userTilt = 0; // Não usar para múltiplas águas, mas definir valor padrão
+        userAzimuth = 180;
+      } else if (formData?.inclinacao === undefined && formData && formData.aguasTelhado && formData.aguasTelhado.length === 1) {
+        // ✅ Única água - usar orientação da água
+        const primeiraAgua = formData.aguasTelhado[0];
+        userTilt = primeiraAgua.inclinacao ?? 0;
+        userAzimuth = primeiraAgua.orientacao ?? 180;
+        orientationSource = 'unica_agua_telhado';
+      } else if (formData?.inclinacao !== undefined) {
+        // ✅ Orientação principal definida no formData
+        orientationSource = 'formData_principal';
+      }
+
       console.log('🔧 Parâmetros sendo enviados via backend:', {
         location,
-        parameters: { tilt: 0, azimuth: 0 },
-        dataSource
+        parameters: { tilt: userTilt, azimuth: userAzimuth }, // ✅ CORRIGIDO: mostrar valores reais
+        dataSource,
+        formDataAvailable: !!formData,
+        orientacaoFromFormData: formData?.orientacao,
+        inclinacaoFromFormData: formData?.inclinacao,
+        aguasTelhadoCount: formData?.aguasTelhado?.length || 0,
+        orientationSource
       });
 
-      // Chamar o backend Node.js que se comunica com a API Python
-      // Sempre usar 0° (horizontal) para buscar dados diretos sem decomposição
-      const response = await api.post('/solar-analysis/analyze-monthly-irradiation', {
+      console.log('🎯 Usando orientação do usuário:', {
+        tilt: userTilt,
+        azimuth: userAzimuth,
+        source: orientationSource,
+        details: orientationSource === 'primeira_agua_telhado' ?
+          { primeiraAgua: formData?.aguasTelhado?.[0] } :
+          { formDataValues: { orientacao: formData?.orientacao, inclinacao: formData?.inclinacao } }
+      });
+
+      // Preparar dados da requisição com suporte a múltiplas águas
+      const requestData: any = {
         lat: location.latitude,
         lon: location.longitude,
-        tilt: 0,
-        azimuth: 0,
-        modelo_decomposicao: 'louche',
+        modelo_decomposicao: 'erbs', // Modelo mais comum e preciso
         data_source: dataSource // Passar fonte de dados selecionada
-      });
+      };
+
+      // ✅ Enviar múltiplas águas se existirem
+      if (formData && formData.aguasTelhado && formData.aguasTelhado.length > 1) {
+        console.log(`🏠 Enviando ${formData.aguasTelhado.length} águas de telhado para cálculo`);
+        requestData.aguas_telhado = formData.aguasTelhado.map((agua: any) => ({
+          id: agua.id,
+          nome: agua.nome,
+          orientacao: agua.orientacao,
+          inclinacao: agua.inclinacao,
+          numero_modulos: agua.numeroModulos,
+          inversor_id: agua.inversorId,
+          mppt_numero: agua.mpptNumero
+        }));
+      } else {
+        // Fallback para sistema único (inclinação/azimuth únicos)
+        requestData.tilt = userTilt;
+        requestData.azimuth = userAzimuth;
+      }
+
+      // Chamar o backend Node.js que se comunica com a API Python
+      const response = await api.post('/solar-analysis/analyze-monthly-irradiation', requestData);
 
       console.log('✅ Resposta do backend recebida:', response.data);
       

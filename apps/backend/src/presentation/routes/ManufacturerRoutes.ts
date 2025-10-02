@@ -3,6 +3,8 @@ import { AuthMiddleware } from '../middleware/AuthMiddleware';
 import { Container } from '../../infrastructure/di/Container';
 import { ManufacturerController } from '../controllers/ManufacturerController';
 import { ServiceTokens } from '../../infrastructure/di/ServiceTokens';
+import { validationMiddleware } from '../middleware/validation.middleware';
+import { GetManufacturersQueryDTO } from '../../application/dtos/input/manufacturer/GetManufacturersQueryDTO';
 
 export class ManufacturerRoutes {
   public router: Router;
@@ -18,7 +20,11 @@ export class ManufacturerRoutes {
 
   private setupRoutes(): void {
     // Semi-public route for manufacturer listing (optional auth to include team's manufacturers)
-    this.router.get('/', this.authMiddleware.optional(), this.manufacturerController.findAll.bind(this.manufacturerController));
+    this.router.get('/', 
+      this.authMiddleware.optional(), 
+      validationMiddleware(GetManufacturersQueryDTO, 'query'),
+      this.manufacturerController.findAll.bind(this.manufacturerController)
+    );
     this.router.get('/:id', this.authMiddleware.optional(), this.manufacturerController.findById.bind(this.manufacturerController));
     
     // Apply authentication middleware for protected routes

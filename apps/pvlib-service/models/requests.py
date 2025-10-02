@@ -286,6 +286,40 @@ class InverterData(BaseModel):
 
 
 # Versão legada para compatibilidade - usar MultiInverterCalculationRequest para novos sistemas
+
+class AguaTelhadoData(BaseModel):
+    """Dados de uma água de telhado (seção de telhado)"""
+    
+    id: str = Field(..., description="ID único da água de telhado")
+    nome: str = Field(..., description="Nome da água de telhado")
+    orientacao: float = Field(
+        ..., 
+        ge=0, 
+        le=360, 
+        description="Orientação em graus (0° = Norte, 180° = Sul)"
+    )
+    inclinacao: float = Field(
+        ..., 
+        ge=0, 
+        le=90, 
+        description="Inclinação em graus (0° = horizontal, 90° = vertical)"
+    )
+    numero_modulos: int = Field(
+        ..., 
+        ge=1, 
+        le=1000, 
+        description="Número de módulos nesta água de telhado"
+    )
+    inversor_id: Optional[str] = Field(
+        default=None,
+        description="ID do inversor associado a esta água"
+    )
+    mppt_numero: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Número do MPPT associado a esta água"
+    )
+
 class ModuleCalculationRequest(IrradiationAnalysisRequest):
     """Requisição avançada para cálculo de módulos com dados completos"""
     
@@ -334,6 +368,12 @@ class ModuleCalculationRequest(IrradiationAnalysisRequest):
     multi_inverter_data: Optional[dict] = Field(
         default=None,
         description="Dados do sistema multi-inversor enviados pelo Node.js backend"
+    )
+    
+    # ✅ NOVO: Suporte a múltiplas águas de telhado
+    aguas_telhado: Optional[List[AguaTelhadoData]] = Field(
+        default=None,
+        description="Lista de águas de telhado para distribuição de módulos (opcional - usa tilt/azimuth se não fornecido)"
     )
 
     @validator('consumo_anual_kwh')
@@ -385,8 +425,8 @@ class SelectedInverterData(BaseModel):
     # Dados opcionais para cálculos avançados
     inverter_data: Optional[InverterData] = Field(None, description="Dados completos do inversor")
 
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "id": "sel_inv_001",
                 "inverter_id": "inv_001",
@@ -399,6 +439,7 @@ class SelectedInverterData(BaseModel):
                 "quantity": 2
             }
         }
+    }
 
 class AguaTelhadoData(BaseModel):
     """Dados de uma água de telhado (seção de telhado)"""
@@ -436,9 +477,15 @@ class AguaTelhadoData(BaseModel):
         description="Percentual de sombreamento (%)"
     )
     
-    # Associação MPPT
+    # Associação MPPT (legado - para compatibilidade)
     inversor_id: Optional[str] = Field(None, description="ID do inversor associado")
     mppt_numero: Optional[int] = Field(None, ge=1, le=12, description="Número do MPPT associado")
+    
+    # ✅ NOVO: Dados do inversor embutidos (novo formato)
+    inversor: Optional[InverterData] = Field(
+        None, 
+        description="Dados completos do inversor associado a esta água (novo formato)"
+    )
     
     @validator('orientacao')
     def normalize_orientacao(cls, v):

@@ -4,10 +4,6 @@ import { ManufacturerType } from '../../../domain/entities/Manufacturer';
 export class ManufacturerSeeder {
   static async seed(): Promise<void> {
     console.log('🌱 Starting manufacturer seeding...');
-    
-    // Clear existing manufacturers
-    await ManufacturerModel.deleteMany({});
-    console.log('🗑️ Cleared existing manufacturers');
 
     const manufacturers = [
       // Fabricantes de Módulos Fotovoltaicos
@@ -107,20 +103,33 @@ export class ManufacturerSeeder {
       }
     ];
 
-    console.log(`🌱 Creating ${manufacturers.length} manufacturers...`);
-    
-    const createdManufacturers = [];
+    console.log(`🌱 Checking ${manufacturers.length} default manufacturers...`);
+
+    let createdCount = 0;
+    let existingCount = 0;
+
     for (const manufacturerData of manufacturers) {
       try {
-        const manufacturer = await ManufacturerModel.create(manufacturerData);
-        createdManufacturers.push(manufacturer);
-        console.log(`✅ Created manufacturer: ${manufacturerData.name}`);
+        // Verificar se o fabricante padrão já existe
+        const existing = await ManufacturerModel.findOne({
+          name: manufacturerData.name,
+          isDefault: true
+        });
+
+        if (existing) {
+          existingCount++;
+          console.log(`⏭️  Manufacturer already exists: ${manufacturerData.name}`);
+        } else {
+          await ManufacturerModel.create(manufacturerData);
+          createdCount++;
+          console.log(`✅ Created manufacturer: ${manufacturerData.name}`);
+        }
       } catch (error: any) {
-        console.error(`❌ Error creating manufacturer ${manufacturerData.name}:`, error.message);
+        console.error(`❌ Error processing manufacturer ${manufacturerData.name}:`, error.message);
       }
     }
 
-    console.log(`🎉 Successfully created ${createdManufacturers.length} manufacturers!`);
+    console.log(`🎉 Manufacturer seeding completed! Created: ${createdCount}, Already existed: ${existingCount}`);
     return;
   }
 

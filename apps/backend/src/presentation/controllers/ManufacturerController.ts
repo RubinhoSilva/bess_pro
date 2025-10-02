@@ -45,15 +45,30 @@ export class ManufacturerController extends BaseController {
       const user = (req as any).user;
       const teamId = user?.teamId;
       const typeParam = req.query.type as string;
+      const searchParam = req.query.search as string;
+      const pageParam = req.query.page as string;
+      const limitParam = req.query.limit as string;
+      const sortByParam = req.query.sortBy as string;
+      const sortOrderParam = req.query.sortOrder as string;
       
       let type: ManufacturerType | undefined;
       if (typeParam && Object.values(ManufacturerType).includes(typeParam as ManufacturerType)) {
         type = typeParam as ManufacturerType;
       }
+
+      const page = pageParam ? parseInt(pageParam) : 1;
+      const limit = limitParam ? parseInt(limitParam) : 20;
+      const sortBy = sortByParam || 'name';
+      const sortOrder = (sortOrderParam === 'desc' ? 'desc' : 'asc') as 'asc' | 'desc';
       
       const result = await this.getManufacturersUseCase.execute({
         teamId,
-        type
+        type,
+        search: searchParam,
+        page,
+        limit,
+        sortBy,
+        sortOrder
       });
       
       return this.handleResult(res, result);

@@ -127,6 +127,11 @@ export interface Inverter {
 
 export interface ManufacturerFilters {
   type?: ManufacturerType;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface SolarModuleFilters {
@@ -162,6 +167,18 @@ export interface ManufacturerInput {
   supportEmail?: string;
   supportPhone?: string;
   certifications?: string[];
+}
+
+export interface PaginatedManufacturersResponse {
+  manufacturers: Manufacturer[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 }
 
 export interface SolarModuleInput {
@@ -230,7 +247,7 @@ export interface InverterInput {
 
 // API Functions
 const manufacturerApi = {
-  async getManufacturers(filters: ManufacturerFilters = {}) {
+  async getManufacturers(filters: ManufacturerFilters = {}): Promise<PaginatedManufacturersResponse> {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
@@ -239,7 +256,7 @@ const manufacturerApi = {
     });
     
     const response = await api.get(`/manufacturers?${params.toString()}`);
-    return response.data.data; // API returns { success: true, data: [...] }
+    return response.data.data; // API returns { success: true, data: { manufacturers: [...], pagination: {...} } }
   },
 
   async getManufacturer(id: string) {
@@ -433,6 +450,18 @@ export function useManufacturers(filters: ManufacturerFilters = {}) {
   return useQuery({
     queryKey: ['manufacturers', filters],
     queryFn: () => manufacturerApi.getManufacturers(filters),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Hook para compatibilidade com código existente (retorna array simples)
+export function useManufacturersList(filters: ManufacturerFilters = {}) {
+  return useQuery({
+    queryKey: ['manufacturers-list', filters],
+    queryFn: async () => {
+      const response = await manufacturerApi.getManufacturers(filters);
+      return response.manufacturers; // Retorna apenas o array de fabricantes
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

@@ -432,7 +432,8 @@ export class IrradiationController extends BaseController {
         raddatabase,
         startyear,
         endyear,
-        js
+        js,
+        data_source // NOVO: extrair fonte de dados do usuário
       } = req.query;
 
       // Validações básicas
@@ -449,15 +450,38 @@ export class IrradiationController extends BaseController {
         return;
       }
 
-      // Chamar o serviço PVGIS com todos os parâmetros
-      const result = await this.pvgisService.getMonthlyRadiation(latitude, longitude, {
-        peakpower: peakpower ? parseFloat(peakpower as string) : 1,
-        loss: loss ? parseFloat(loss as string) : 14,
-        angle: angle ? parseFloat(angle as string) : undefined,
-        aspect: aspect ? parseFloat(aspect as string) : undefined,
-        mountingplace: (mountingplace as string) || 'free'
+      // CORRIGIDO: Rotear para o serviço Python que suporta NASA e PVGIS
+      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+
+      // Preparar dados para o serviço Python
+      const pythonRequest = {
+        lat: latitude,
+        lon: longitude,
+        tilt: angle ? parseFloat(angle as string) : 0,
+        azimuth: aspect ? parseFloat(aspect as string) : 0,
+        data_source: (data_source as string) || 'pvgis', // CORRIGIDO: passar fonte de dados
+        modelo_decomposicao: 'erbs'
+      };
+
+      console.log('[IrradiationController] Enviando para Python service:', {
+        url: `${pythonServiceUrl}/api/v1/irradiation/monthly`,
+        request: pythonRequest
       });
 
+      // Chamar o serviço Python que suporta múltiplas fontes
+      const response = await fetch(`${pythonServiceUrl}/api/v1/irradiation/monthly`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pythonRequest)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
       this.ok(res, result);
     } catch (error: any) {
       console.error('Erro no proxy PVGIS:', error);

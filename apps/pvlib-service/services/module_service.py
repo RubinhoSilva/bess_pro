@@ -158,6 +158,14 @@ class ModuleService:
         )
         
         # 3. VERIFICAR TIPO DE SISTEMA (agora df_decomposed JÁ EXISTE)
+        # ✅ VERIFICAR MÚLTIPLAS ÁGUAS DE TELHADO
+        if hasattr(request, 'aguas_telhado') and request.aguas_telhado and len(request.aguas_telhado) > 0:
+            logger.info(f"🏠 PYTHON: Processando {len(request.aguas_telhado)} águas de telhado")
+            for i, agua in enumerate(request.aguas_telhado):
+                logger.info(f"   - Água {i+1}: {agua.nome} ({agua.numero_modulos} módulos, {agua.orientacao}°, {agua.inclinacao}°)")
+            return self._calculate_multi_roof_water_system(df_decomposed, request, len(df_decomposed))
+        
+        # VERIFICAR SISTEMA MULTI-INVERSOR (lógica existente)
         if hasattr(request, 'multi_inverter_data') and request.multi_inverter_data:
             multi_data = request.multi_inverter_data
             logger.info(f"🔄 PYTHON: Sistema multi-inversor detectado")
@@ -818,6 +826,171 @@ class ModuleService:
         monthly_generation = [monthly_avg * factor for factor in normalized_factors]
         
         return monthly_generation
+    
+    def _calculate_multi_roof_water_system(self, df_decomposed: pd.DataFrame, request: ModuleCalculationRequest, data_hours: int) -> Dict[str, Any]:
+        """Calcula sistema distribuindo módulos por múltiplas águas de telhado"""
+        
+        logger.info("🏠 Iniciando cálculo multi-águas de telhado")
+        
+        # Consolidar dados das águas
+        aguas_data = []
+        total_modules = 0
+        total_power = 0
+        
+        for agua in request.aguas_telhado:
+            agua_power = agua.numero_modulos * request.modulo.potencia_nominal_w
+            aguas_data.append({
+                'nome': agua.nome,
+                'numero_modulos': agua.numero_modulos,
+                'orientacao': agua.orientacao,
+                'inclinacao': agua.inclinacao,
+                'potencia_w': agua_power,
+                'inversor_id': agua.inversor_id,
+                'mppt_numero': agua.mppt_numero
+            })
+            total_modules += agua.numero_modulos
+            total_power += agua_power
+        
+        logger.info(f"📊 Resumo do sistema:")
+        logger.info(f"   - Total módulos: {total_modules}")
+        logger.info(f"   - Potência total: {total_power / 1000:.2f} kW")
+        logger.info(f"   - Águas processadas: {len(aguas_data)}")
+        
+        # Calcular produção para cada água individualmente
+        aguas_results = []
+        for agua in aguas_data:
+            logger.info(f"💧 Calculando produção para água: {agua['nome']}")
+            
+            # Simular para esta água específica
+            agua_result = self._simulate_single_water(
+                df_decomposed, 
+                request, 
+                agua,
+                data_hours
+            )
+            
+            aguas_results.append({
+                **agua,
+                **agua_result
+            })
+        
+        # Consolidar resultados
+        total_annual_energy = sum(result['energia_anual_kwh'] for result in aguas_results)
+        total_monthly_energy = [0] * 12
+        
+        # Somar produção mensal de todas as águas
+        for result in aguas_results:
+            for month in range(12):
+                total_monthly_energy[month] += result['geracao_mensal_kwh'][month]
+        
+        # Calcular métricas consolidadas
+        specific_yield = total_annual_energy / (total_power / 1000) if total_power > 0 else 0
+        performance_ratio = (total_annual_energy / (total_power / 1000)) / (df_decomposed['poa_global'].mean() / 1000) * 100 if total_power > 0 else 0
+        
+        # Determinar orientação predominante para compatibilidade
+        orientacoes = [agua['orientacao'] for agua in aguas_data]
+        azimuth_predominante = max(set(orientacoes), key=orientacoes.count)
+        
+        # Calcular string configuration baseado no total
+        string_config = self._calculate_string_configuration(
+            total_modules, 
+            request.inversor, 
+            request.modulo
+        )
+        
+        result = {
+            # Dados básicos do sistema
+            'num_modulos': total_modules,
+            'potencia_total_kw': total_power / 1000,
+            'energia_total_anual': total_annual_energy,
+            'geracao_mensal_kwh': total_monthly_energy,
+            
+            # Métricas de performance
+            'pr_medio': round(performance_ratio, 2),
+            'yield_especifico': round(specific_yield, 2),
+            
+            # Configuração do sistema
+            'orientacao_predominante': azimuth_predominante,
+            'inclinacao_media': sum(agua['inclinacao'] for agua in aguas_data) / len(aguas_data),
+            
+            # Compatibilidade e strings
+            'compatibilidade_sistema': {
+                'strings_recomendadas': string_config['num_strings'],
+                'modulos_por_string': string_config['modules_per_string'],
+                'utilizacao_inversor': string_config['inverter_utilization'],
+                'razao_dc_ac': round((total_power / request.inversor.potencia_saida_ca_w), 2)
+            },
+            
+            # Detalhes por água
+            'aguas_detalhadas': aguas_results,
+            
+            # Informações adicionais
+            'tipo_sistema': 'multi_aguas_telhado',
+            'numero_aguas': len(aguas_data),
+            'modelo_decomposicao': getattr(request, 'modelo_decomposicao', 'erbs'),
+            'modelo_transposicao': getattr(request, 'modelo_transposicao', 'perez'),
+            
+            # Perdas detalhadas
+            'perdas_detalhadas': self._calculate_detailed_losses(request),
+            
+            # Dados físicos
+            'area_total_m2': total_modules * (request.modulo.largura_mm * request.modulo.altura_mm) / 1000000,
+            'peso_total_kg': self._calculate_total_weight(request.modulo, total_modules),
+            
+            # Performance por água
+            'performance_por_agua': {
+                agua['nome']: {
+                    'potencia_kw': agua['potencia_w'] / 1000,
+                    'energia_anual_kwh': agua['energia_anual_kwh'],
+                    'yield_especifico': agua['yield_especifico'],
+                    'pr_medio': agua['pr_medio']
+                }
+                for agua in aguas_results
+            }
+        }
+        
+        logger.info(f"✅ Cálculo multi-águas concluído:")
+        logger.info(f"   - Energia anual total: {total_annual_energy:.2f} kWh")
+        logger.info(f"   - Yield específico: {specific_yield:.2f} kWh/kWp")
+        logger.info(f"   - Performance Ratio: {performance_ratio:.2f}%")
+        
+        return result
+    
+    def _simulate_single_water(self, df_decomposed: pd.DataFrame, request: ModuleCalculationRequest, agua: dict, data_hours: int) -> Dict[str, Any]:
+        """Simula produção para uma única água de telhado"""
+        
+        # Executar ModelChain para esta água específica
+        simulation_result = self._run_modelchain_simulation(
+            df_decomposed,
+            request.lat,
+            request.lon,
+            agua['inclinacao'],
+            agua['orientacao'],
+            request.modulo,
+            request.inversor,
+            getattr(request, 'modelo_transposicao', 'perez')
+        )
+        
+        # Calcular energia anual para esta água
+        annual_energy = simulation_result['annual_energy'] * (agua['numero_modulos'] / request.modulo.potencia_nominal_w)
+        
+        # Estimar produção mensal
+        monthly_generation = self._estimate_monthly_generation(annual_energy, request.lat)
+        
+        # Calcular métricas específicas desta água
+        agua_power_kw = agua['potencia_w'] / 1000
+        specific_yield = annual_energy / agua_power_kw if agua_power_kw > 0 else 0
+        performance_ratio = simulation_result.get('performance_ratio', 85)
+        
+        return {
+            'energia_anual_kwh': annual_energy,
+            'geracao_mensal_kwh': monthly_generation,
+            'yield_especifico': specific_yield,
+            'pr_medio': performance_ratio,
+            'potencia_kw': agua_power_kw,
+            'orientacao': agua['orientacao'],
+            'inclinacao': agua['inclinacao']
+        }
 
 # Instância singleton
 module_service = ModuleService()

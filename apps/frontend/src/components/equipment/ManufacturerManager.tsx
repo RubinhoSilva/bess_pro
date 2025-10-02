@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Building2, Plus, Edit, Trash2, MoreVertical, Globe, Shield, MapPin } from 'lucide-react';
+import { Building2, Plus, Edit, Trash2, MoreVertical, Globe, Shield, MapPin, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { 
   useManufacturers, 
   useCreateManufacturer, 
@@ -17,7 +17,8 @@ import {
   useDeleteManufacturer,
   ManufacturerType,
   ManufacturerInput,
-  Manufacturer 
+  Manufacturer,
+  ManufacturerFilters
 } from '@/hooks/equipment-hooks';
 import toast from 'react-hot-toast';
 
@@ -50,8 +51,17 @@ export function ManufacturerManager() {
   const [editingManufacturer, setEditingManufacturer] = useState<Manufacturer | null>(null);
   const [formData, setFormData] = useState<ManufacturerFormData>(initialFormData);
   const [certificationsInput, setCertificationsInput] = useState('');
+  
+  // Estados para paginação e filtros
+  const [filters, setFilters] = useState<ManufacturerFilters>({
+    page: 1,
+    limit: 10,
+    sortBy: 'name',
+    sortOrder: 'asc'
+  });
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: manufacturers, isLoading } = useManufacturers();
+  const { data: manufacturersData, isLoading } = useManufacturers(filters);
   const createMutation = useCreateManufacturer();
   const updateMutation = useUpdateManufacturer();
   const deleteMutation = useDeleteManufacturer();
@@ -146,6 +156,47 @@ export function ManufacturerManager() {
         // Error handling is done in the mutation hook
       }
     }
+  };
+
+  // Funções para manipular filtros e paginação
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    setFilters(prev => ({
+      ...prev,
+      search: value || undefined,
+      page: 1 // Reset para primeira página ao buscar
+    }));
+  };
+
+  const handleTypeFilter = (type: ManufacturerType | 'ALL') => {
+    setFilters(prev => ({
+      ...prev,
+      type: type === 'ALL' ? undefined : type,
+      page: 1 // Reset para primeira página ao filtrar
+    }));
+  };
+
+  const handleSort = (sortBy: string) => {
+    setFilters(prev => ({
+      ...prev,
+      sortBy,
+      sortOrder: prev.sortBy === sortBy && prev.sortOrder === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const handlePageChange = (page: number) => {
+    setFilters(prev => ({
+      ...prev,
+      page
+    }));
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setFilters(prev => ({
+      ...prev,
+      limit,
+      page: 1 // Reset para primeira página ao mudar limite
+    }));
   };
 
   const getTypeLabel = (type: ManufacturerType) => {
@@ -317,18 +368,81 @@ export function ManufacturerManager() {
         </Dialog>
       </CardHeader>
       <CardContent>
+        {/* Filtros e Busca */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Buscar fabricantes..."
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Select value={filters.type || 'ALL'} onValueChange={handleTypeFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtrar por tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todos os tipos</SelectItem>
+                <SelectItem value={ManufacturerType.SOLAR_MODULE}>Módulos Solares</SelectItem>
+                <SelectItem value={ManufacturerType.INVERTER}>Inversores</SelectItem>
+                <SelectItem value={ManufacturerType.BOTH}>Ambos</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filters.limit?.toString() || '10'} onValueChange={(value) => handleLimitChange(parseInt(value))}>
+              <SelectTrigger className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>País</TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => handleSort('name')}
+              >
+                Nome
+                {filters.sortBy === 'name' && (
+                  <span className="ml-1">{filters.sortOrder === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => handleSort('type')}
+              >
+                Tipo
+                {filters.sortBy === 'type' && (
+                  <span className="ml-1">{filters.sortOrder === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => handleSort('country')}
+              >
+                País
+                {filters.sortBy === 'country' && (
+                  <span className="ml-1">{filters.sortOrder === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {manufacturers?.map((manufacturer: any) => (
+            {manufacturersData?.manufacturers?.map((manufacturer: any) => (
               <TableRow key={manufacturer.id}>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -418,7 +532,63 @@ export function ManufacturerManager() {
           </TableBody>
         </Table>
         
-        {!manufacturers || manufacturers.length === 0 && (
+        {/* Controles de Paginação */}
+        {manufacturersData?.pagination && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              Mostrando {((manufacturersData.pagination.page - 1) * manufacturersData.pagination.limit) + 1} a{' '}
+              {Math.min(manufacturersData.pagination.page * manufacturersData.pagination.limit, manufacturersData.pagination.total)} de{' '}
+              {manufacturersData.pagination.total} fabricantes
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(manufacturersData.pagination.page - 1)}
+                disabled={!manufacturersData.pagination.hasPrev}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Anterior
+              </Button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, manufacturersData.pagination.totalPages) }, (_, i) => {
+                  const pageNum = Math.max(1, Math.min(
+                    manufacturersData.pagination.totalPages - 4,
+                    manufacturersData.pagination.page - 2
+                  )) + i;
+                  
+                  if (pageNum > manufacturersData.pagination.totalPages) return null;
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={pageNum === manufacturersData.pagination.page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNum)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(manufacturersData.pagination.page + 1)}
+                disabled={!manufacturersData.pagination.hasNext}
+              >
+                Próximo
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {!manufacturersData?.manufacturers || manufacturersData.manufacturers.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
             <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>Nenhum fabricante encontrado</p>

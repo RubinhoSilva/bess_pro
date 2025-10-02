@@ -374,14 +374,55 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         totalModulos
       });
 
-      // Preparar dados para o cálculo usando o sistema completo
+      // Preparar dados do inversor para incluir em cada água
+      const inverterData = selectedInverters.length > 0 ? {
+        fabricante: selectedInverters[0].fabricante,
+        modelo: selectedInverters[0].modelo,
+        potencia_saida_ca_w: selectedInverters[0].potenciaSaidaCA,
+        tipo_rede: (selectedInverters[0] as any).tipoRede || "Monofásico 220V",
+        potencia_fv_max_w: (selectedInverters[0] as any).potenciaFvMax || undefined,
+        tensao_cc_max_v: selectedInverters[0].tensaoCcMax || 1000,
+        numero_mppt: selectedInverters[0].numeroMppt || 2,
+        strings_por_mppt: selectedInverters[0].stringsPorMppt || 2,
+        eficiencia_max: (selectedInverters[0] as any).eficienciaMax || undefined,
+        corrente_entrada_max_a: (selectedInverters[0] as any).correnteEntradaMax || undefined,
+        potencia_aparente_max_va: (selectedInverters[0] as any).potenciaAparenteMax || undefined,
+        // Parâmetros Sandia (se disponíveis)
+        vdco: (selectedInverters[0] as any).vdco || undefined,
+        pso: (selectedInverters[0] as any).pso || undefined,
+        c0: (selectedInverters[0] as any).c0 || undefined,
+        c1: (selectedInverters[0] as any).c1 || undefined,
+        c2: (selectedInverters[0] as any).c2 || undefined,
+        c3: (selectedInverters[0] as any).c3 || undefined,
+        pnt: (selectedInverters[0] as any).pnt || undefined
+      } : {
+        fabricante: 'WEG',
+        modelo: 'SIW500H-M',
+        potencia_saida_ca_w: 5000,
+        tipo_rede: "Monofásico 220V",
+        tensao_cc_max_v: 600,
+        numero_mppt: 2,
+        strings_por_mppt: 2,
+        eficiencia_max: 97.6
+      };
+
+      // Preparar dados para o cálculo usando TODAS as águas de telhado
       const dimensioningData = {
         latitude,
         longitude,
-        orientacao: orientacaoMedia, // Orientação média ponderada
-        inclinacao: inclinacaoMedia, // Inclinação média ponderada
-        numeroModulos: totalModulos, // Total de módulos do sistema
-        num_modules: totalModulos, // Campo específico para forçar uso deste número no Python
+        // ✅ Enviar TODAS as águas COM INVERSOR EMBUTIDO
+        aguasTelhado: aguasTelhado.map(a => ({
+          id: a.id,
+          nome: a.nome,
+          orientacao: a.orientacao,
+          inclinacao: a.inclinacao,
+          numeroModulos: a.numeroModulos,
+          sombreamentoParcial: a.sombreamentoParcial || 0,
+          inversorId: a.inversorId, // Manter para compatibilidade
+          mpptNumero: a.mpptNumero, // Manter para compatibilidade
+          // ✅ NOVO: Incluir dados do inversor dentro de cada água
+          inversor: inverterData
+        })),
         potenciaModulo,
         energyBills: [{ 
           consumoMensal: [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500] // 6000 kWh/ano padrão
@@ -444,37 +485,12 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
           numerocelulas: 144,
           pesoKg: 27.5
         }],
-        inverters: selectedInverters.length > 0 ? [{
-          fabricante: selectedInverters[0].fabricante,
-          modelo: selectedInverters[0].modelo,
-          potencia_saida_ca_w: selectedInverters[0].potenciaSaidaCA,
-          tipo_rede: (selectedInverters[0] as any).tipoRede || "Monofásico 220V",
-          potenciaFvMax: (selectedInverters[0] as any).potenciaFvMax || undefined,
-          tensaoCcMax: selectedInverters[0].tensaoCcMax || 1000,
-          numeroMppt: selectedInverters[0].numeroMppt || 2,
-          stringsPorMppt: selectedInverters[0].stringsPorMppt || 2,
-          eficienciaMax: (selectedInverters[0] as any).eficienciaMax || undefined,
-          correnteEntradaMax: (selectedInverters[0] as any).correnteEntradaMax || undefined,
-          potenciaAparenteMax: (selectedInverters[0] as any).potenciaAparenteMax || undefined,
-          // Parâmetros Sandia (se disponíveis)
-          vdco: (selectedInverters[0] as any).vdco || undefined,
-          pso: (selectedInverters[0] as any).pso || undefined,
-          c0: (selectedInverters[0] as any).c0 || undefined,
-          c1: (selectedInverters[0] as any).c1 || undefined,
-          c2: (selectedInverters[0] as any).c2 || undefined,
-          c3: (selectedInverters[0] as any).c3 || undefined,
-          pnt: (selectedInverters[0] as any).pnt || undefined
-        }] : [{
-          fabricante: 'WEG',
-          modelo: 'SIW500H-M',
-          potencia_saida_ca_w: 5000,
-          tipo_rede: "Monofásico 220V",
-          tensaoCcMax: 600,
-          numeroMppt: 2,
-          stringsPorMppt: 2,
-          eficienciaMax: 97.6
-        }],
-        // Perdas do sistema
+        // ✅ NOVOS CAMPOS AUSENTES
+        modelo_decomposicao: 'louche',
+        modelo_transposicao: 'perez',
+        perdas_sistema: (perdaSombreamento + perdaMismatch + perdaCabeamento + perdaSujeira + perdaInversor + perdaOutras),
+        fator_seguranca: 1.1,
+        // Perdas individuais (mantidas para compatibilidade)
         perdaSombreamento,
         perdaMismatch,
         perdaCabeamento,

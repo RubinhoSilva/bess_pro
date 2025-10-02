@@ -29,7 +29,7 @@ export class CreateManufacturerUseCase implements IUseCase<CreateManufacturerCom
         name: command.name,
         type: command.type,
         teamId: command.teamId,
-        isDefault: false, // Novos fabricantes nunca são padrão
+        isDefault: false, // Fabricantes criados por usuários nunca são padrão
         description: command.description,
         website: command.website,
         country: command.country,

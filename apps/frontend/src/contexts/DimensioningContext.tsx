@@ -11,9 +11,21 @@ export interface AguaTelhado {
   numeroModulos: number;
   areaDisponivel: number; // m²
   sombreamentoParcial: number; // %
-  // Associação com MPPT específico
+  // Associação com MPPT específico (legado - para compatibilidade)
   inversorId?: string; // Qual inversor será usado nesta água
   mpptNumero?: number; // Qual MPPT deste inversor (1, 2, 3, 4...)
+  // NOVO: Dados do inversor embutidos (novo formato)
+  inversor?: {
+    fabricante: string;
+    modelo: string;
+    potencia_saida_ca_w: number;
+    tipo_rede?: string;
+    potencia_fv_max_w?: number;
+    tensao_cc_max_v?: number;
+    numero_mppt?: number;
+    strings_por_mppt?: number;
+    eficiencia_max?: number;
+  };
   // Dados calculados
   isCalculando?: boolean;
   geracaoAnual?: number;

@@ -1,4 +1,9 @@
-import { IManufacturerRepository } from '../../../../domain/repositories/IManufacturerRepository';
+import { 
+  IManufacturerRepository, 
+  ManufacturerFilters, 
+  ManufacturerPaginationOptions, 
+  PaginatedManufacturersResult 
+} from '../../../../domain/repositories/IManufacturerRepository';
 import { Manufacturer, ManufacturerData, ManufacturerType } from '../../../../domain/entities/Manufacturer';
 import { ManufacturerModel } from '../schemas/ManufacturerSchema';
 
@@ -86,7 +91,11 @@ export class MongoManufacturerRepository implements IManufacturerRepository {
         { teamId: teamId }
       ];
     } else {
-      filter.isDefault = true;
+      // Para super admins, mostrar fabricantes padrão + fabricantes criados por super admins
+      filter.$or = [
+        { isDefault: true },
+        { $and: [{ teamId: null }, { isDefault: false }] }
+      ];
     }
 
     const docs = await ManufacturerModel.find(filter).sort({ name: 1 });
@@ -147,5 +156,88 @@ export class MongoManufacturerRepository implements IManufacturerRepository {
 
     const count = await ManufacturerModel.countDocuments(filter);
     return count > 0;
+  }
+
+  async findPaginated(
+    filters: ManufacturerFilters,
+    pagination: ManufacturerPaginationOptions
+  ): Promise<PaginatedManufacturersResult> {
+    const { page, limit, sortBy = 'name', sortOrder = 'asc' } = pagination;
+    const { type, search, teamId } = filters;
+
+    // Construir filtro base
+    const filter: any = {};
+
+    // Filtro de acesso por equipe
+    if (teamId) {
+      filter.$or = [
+        { isDefault: true },
+        { teamId: teamId }
+      ];
+    } else {
+      // Para super admins, mostrar fabricantes padrão + fabricantes criados por super admins
+      filter.$or = [
+        { isDefault: true },
+        { $and: [{ teamId: null }, { isDefault: false }] }
+      ];
+    }
+
+    // Filtro por tipo
+    if (type) {
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { type: type },
+          { type: ManufacturerType.BOTH }
+        ]
+      });
+    }
+
+    // Filtro de busca
+    if (search) {
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { country: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    // Configurar ordenação
+    const sort: any = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Calcular skip
+    const skip = (page - 1) * limit;
+
+    // Executar consultas em paralelo
+    const [manufacturers, total] = await Promise.all([
+      ManufacturerModel.find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      ManufacturerModel.countDocuments(filter)
+    ]);
+
+    // Calcular informações de paginação
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    return {
+      manufacturers: manufacturers.map(doc => new Manufacturer({
+        ...doc.toObject(),
+        id: doc._id?.toString()
+      })),
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNext,
+      hasPrev
+    };
   }
 }

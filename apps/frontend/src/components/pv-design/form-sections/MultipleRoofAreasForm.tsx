@@ -163,40 +163,67 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
   };
 
 
-  // Função para atualizar geração de uma água específica
+  // Função para atualizar geração de TODAS as águas de telhado
   const handleAtualizarGeracao = async (areaId: string) => {
     if (!latitude || !longitude) {
       console.warn('Latitude/longitude não disponíveis para cálculo');
       return;
     }
 
-    const area = aguasTelhado.find(a => a.id === areaId);
-    if (!area) return;
-
-    // Marcar como calculando
-    const updatedAreas = aguasTelhado.map(a => 
-      a.id === areaId ? { ...a, isCalculando: true } : a
-    );
+    // Marcar TODAS como calculando
+    const updatedAreas = aguasTelhado.map(a => ({ ...a, isCalculando: true }));
     onAguasChange(updatedAreas);
 
     try {
-      console.log('🏠 Calculando geração para água:', {
-        nome: area.nome,
-        orientacao: area.orientacao,
-        inclinacao: area.inclinacao,
-        numeroModulos: area.numeroModulos,
+      console.log('🏠 Calculando geração para TODAS as águas de telhado:', {
+        totalAguas: aguasTelhado.length,
+        aguas: aguasTelhado.map(a => ({
+          nome: a.nome,
+          orientacao: a.orientacao,
+          inclinacao: a.inclinacao,
+          numeroModulos: a.numeroModulos
+        })),
         latitude,
         longitude
       });
 
-      // Preparar dados para o cálculo usando o mesmo formato do SystemSummary
+      // Preparar dados do inversor para incluir em cada água
+      const inverterData = selectedInverters && selectedInverters.length > 0 ? {
+        fabricante: selectedInverters[0].fabricante,
+        modelo: selectedInverters[0].modelo,
+        potencia_saida_ca_w: selectedInverters[0].potenciaSaidaCA,
+        tipo_rede: (selectedInverters[0] as any).tipoRede || "Monofásico 220V",
+        potencia_fv_max_w: (selectedInverters[0] as any).potenciaFvMax || undefined,
+        tensao_cc_max_v: selectedInverters[0].tensaoCcMax || 1000,
+        numero_mppt: selectedInverters[0].numeroMppt || 2,
+        strings_por_mppt: selectedInverters[0].stringsPorMppt || 2,
+        eficiencia_max: (selectedInverters[0] as any).eficienciaMax || undefined
+      } : {
+        fabricante: 'WEG',
+        modelo: 'SIW500H-M',
+        potencia_saida_ca_w: 5000,
+        tipo_rede: "Monofásico 220V",
+        tensao_cc_max_v: 600,
+        numero_mppt: 2,
+        strings_por_mppt: 2,
+        eficiencia_max: 97.6
+      };
+
+      // Preparar dados para o cálculo com TODAS as águas
       const dimensioningData = {
         latitude,
         longitude,
-        orientacao: area.orientacao,
-        inclinacao: area.inclinacao,
-        numeroModulos: area.numeroModulos,
-        num_modules: area.numeroModulos, // Campo específico para forçar uso deste número no Python
+        // ✅ Enviar TODAS as águas de telhado COM INVERSOR EMBUTIDO
+        aguasTelhado: aguasTelhado.map(a => ({
+          id: a.id,
+          nome: a.nome,
+          orientacao: a.orientacao,
+          inclinacao: a.inclinacao,
+          numeroModulos: a.numeroModulos,
+          sombreamentoParcial: a.sombreamentoParcial || 0,
+          // ✅ NOVO: Incluir dados do inversor dentro de cada água
+          inversor: inverterData
+        })),
         potenciaModulo,
         energyBills: [{ 
           consumoMensal: [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500] // 6000 kWh/ano
@@ -206,40 +233,52 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
           modelo: 'CS3W-540MS',
           potenciaNominal: potenciaModulo
         }],
-        inverters: [{
-          fabricante: 'WEG',
-          modelo: 'SIW500H-M',
-          potenciaSaidaCa: 5000
-        }]
+        // ✅ NOVOS CAMPOS AUSENTES
+        modelo_decomposicao: 'louche',
+        modelo_transposicao: 'perez',
+        perdas_sistema: 14.0,
+        fator_seguranca: 1.1
       };
 
-      // Chamar API de cálculo avançado
+      // Chamar API de cálculo avançado com múltiplas águas
       const dados = await SolarSystemService.calculateAdvancedFromDimensioning(dimensioningData);
         
-      // Atualizar água com dados calculados
-      const finalAreas = aguasTelhado.map(a => 
-        a.id === areaId ? {
-          ...a,
-          areaCalculada: dados.area_necessaria_m2,
-          geracaoAnual: dados.energia_total_anual_kwh,
-          isCalculando: false
-        } : a
-      );
+      // ✅ Se a API retornou dados agregados, distribuir proporcionalmente
+      if (dados.energia_total_anual_kwh && dados.area_necessaria_m2) {
+        const totalModulos = aguasTelhado.reduce((sum, a) => sum + a.numeroModulos, 0);
         
-        console.log('✅ Geração calculada:', {
-          area: dados.area_necessaria_m2,
-          geracao: dados.energia_total_anual_kwh
+        const finalAreas = aguasTelhado.map(a => {
+          const proporcao = totalModulos > 0 ? a.numeroModulos / totalModulos : 1 / aguasTelhado.length;
+          return {
+            ...a,
+            areaCalculada: dados.area_necessaria_m2 * proporcao,
+            geracaoAnual: dados.energia_total_anual_kwh * proporcao,
+            isCalculando: false
+          };
+        });
+        
+        console.log('✅ Geração calculada e distribuída:', {
+          areaTotal: dados.area_necessaria_m2,
+          geracaoTotal: dados.energia_total_anual_kwh,
+          distribuicao: finalAreas.map(a => ({
+            nome: a.nome,
+            area: a.areaCalculada?.toFixed(2),
+            geracao: a.geracaoAnual?.toFixed(2)
+          }))
         });
         
         onAguasChange(finalAreas);
+      } else {
+        // Se não retornou dados agregados, limpar estados de cálculo
+        const finalAreas = aguasTelhado.map(a => ({ ...a, isCalculando: false }));
+        onAguasChange(finalAreas);
+      }
         
     } catch (error) {
       console.error('❌ Erro ao calcular geração:', error);
       
-      // Remover estado de carregamento
-      const finalAreas = aguasTelhado.map(a => 
-        a.id === areaId ? { ...a, isCalculando: false } : a
-      );
+      // Remover estado de carregamento de TODAS
+      const finalAreas = aguasTelhado.map(a => ({ ...a, isCalculando: false }));
       onAguasChange(finalAreas);
     }
   };
