@@ -115,7 +115,9 @@
       "Bash(cd:*)",
       "Bash(cd:*)",
       "Bash(pip3 install:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(python3:*)",
+      "WebFetch(domain:pvlib-python.readthedocs.io)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

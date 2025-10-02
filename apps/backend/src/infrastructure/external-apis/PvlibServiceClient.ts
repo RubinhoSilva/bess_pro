@@ -3,145 +3,27 @@
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { 
+  FinancialInput, 
+  CashFlowDetails, 
+  FinancialIndicators, 
+  SensitivityPoint, 
+  SensitivityAnalysis, 
+  ScenarioAnalysis, 
+  AdvancedFinancialResults,
+  FinancialCalculationResponse,
+  FINANCIAL_DEFAULTS
+} from '@bess-pro/shared';
 
-// ===== INTERFACES DE ENTRADA =====
-
-export interface FinancialCalculationInput {
-  // Investimento
-  investimento_inicial: number;
-
-  // Geração e consumo
-  geracao_mensal: number[]; // 12 valores
-  consumo_mensal: number[]; // 12 valores
-
-  // Tarifas
-  tarifa_energia: number;
-  custo_fio_b: number;
-
-  // Parâmetros temporais
-  vida_util: number;
-  taxa_desconto: number;
-  inflacao_energia: number;
-
-  // Parâmetros opcionais
-  degradacao_modulos?: number;
-  custo_om?: number;
-  inflacao_om?: number;
-
-  // Simultaneidade
-  fator_simultaneidade?: number;
-
-  // Lei 14.300
-  fio_b_schedule?: Record<number, number>;
-  base_year?: number;
-
-  // Autoconsumo remoto Grupo B
-  autoconsumo_remoto_b?: boolean;
-  consumo_remoto_b_mensal?: number[];
-  tarifa_remoto_b?: number;
-  fio_b_remoto_b?: number;
-  perc_creditos_b?: number;
-
-  // Autoconsumo remoto Grupo A Verde
-  autoconsumo_remoto_a_verde?: boolean;
-  consumo_remoto_a_verde_fp_mensal?: number[];
-  consumo_remoto_a_verde_p_mensal?: number[];
-  tarifa_remoto_a_verde_fp?: number;
-  tarifa_remoto_a_verde_p?: number;
-  tusd_remoto_a_verde_fp?: number;
-  tusd_remoto_a_verde_p?: number;
-  te_ponta_a_verde?: number;
-  te_fora_ponta_a_verde?: number;
-  perc_creditos_a_verde?: number;
-
-  // Autoconsumo remoto Grupo A Azul
-  autoconsumo_remoto_a_azul?: boolean;
-  consumo_remoto_a_azul_fp_mensal?: number[];
-  consumo_remoto_a_azul_p_mensal?: number[];
-  tarifa_remoto_a_azul_fp?: number;
-  tarifa_remoto_a_azul_p?: number;
-  tusd_remoto_a_azul_fp?: number;
-  tusd_remoto_a_azul_p?: number;
-  te_ponta_a_azul?: number;
-  te_fora_ponta_a_azul?: number;
-  perc_creditos_a_azul?: number;
-}
+// Re-exportar para compatibilidade com código existente
+export type FinancialCalculationInput = FinancialInput;
 
 // ===== INTERFACES DE SAÍDA =====
+// Usando tipos compartilhados do pacote @bess-pro/shared
 
-export interface CashFlowDetail {
-  ano: number;
-  geracao_anual: number;
-  economia_energia: number;
-  custos_om: number;
-  fluxo_liquido: number;
-  fluxo_acumulado: number;
-  valor_presente: number;
-}
-
-export interface FinancialIndicators {
-  yield_especifico: number;
-  custo_nivelado_energia: number;
-  eficiencia_investimento: number;
-  retorno_sobre_investimento: number;
-}
-
-export interface SensitivityPoint {
-  parametro: number;
-  vpl: number;
-}
-
-export interface SensitivityAnalysis {
-  vpl_variacao_tarifa: SensitivityPoint[];
-  vpl_variacao_inflacao: SensitivityPoint[];
-  vpl_variacao_desconto: SensitivityPoint[];
-}
-
-export interface ScenarioAnalysis {
-  base: {
-    vpl: number;
-    tir: number;
-    payback: number;
-  };
-  otimista: {
-    vpl: number;
-    tir: number;
-    payback: number;
-  };
-  conservador: {
-    vpl: number;
-    tir: number;
-    payback: number;
-  };
-  pessimista: {
-    vpl: number;
-    tir: number;
-    payback: number;
-  };
-}
-
-export interface FinancialCalculationResult {
-  // Indicadores principais
-  vpl: number;
-  tir: number;
-  payback_simples: number;
-  payback_descontado: number;
-
-  // Métricas de economia
-  economia_total_25_anos: number;
-  economia_anual_media: number;
-  lucratividade_index: number;
-
-  // Fluxo de caixa detalhado
-  cash_flow: CashFlowDetail[];
-
-  // Indicadores de performance
-  indicadores: FinancialIndicators;
-
-  // Análises complementares
-  sensibilidade: SensitivityAnalysis;
-  cenarios: ScenarioAnalysis;
-}
+// Re-exportar para compatibilidade
+export type CashFlowDetail = CashFlowDetails;
+export type FinancialCalculationResult = AdvancedFinancialResults;
 
 export interface PvlibServiceResponse<T> {
   success: boolean;

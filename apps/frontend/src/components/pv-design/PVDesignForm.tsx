@@ -396,8 +396,8 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           taxaDesconto: currentDimensioning.taxaDesconto || 8.0,
           inflacaoEnergia: currentDimensioning.inflacaoEnergia || 4.5,
           degradacaoModulos: 0.5, // Usar valor padrão por enquanto
-          custoOM: totalInvestment * 0.01, // 1% do investimento por ano
-          inflacaoOM: 4.0,
+          custoOm: totalInvestment * 0.01, // 1% do investimento por ano
+          inflacaoOm: 4.0,
           modalidadeTarifaria: 'convencional'
         };
 
@@ -412,8 +412,8 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           taxa_desconto: advancedFinancialInput.taxaDesconto,
           inflacao_energia: advancedFinancialInput.inflacaoEnergia,
           degradacao_modulos: advancedFinancialInput.degradacaoModulos,
-          custo_om: advancedFinancialInput.custoOM,
-          inflacao_om: advancedFinancialInput.inflacaoOM,
+          custo_om: advancedFinancialInput.custoOm,
+          inflacao_om: advancedFinancialInput.inflacaoOm,
           modalidade_tarifaria: advancedFinancialInput.modalidadeTarifaria || 'convencional'
         };
         

@@ -1,11 +1,8 @@
 import { IPvlibServiceClient, FinancialCalculationInput, FinancialCalculationResult } from '@/infrastructure/external-apis/PvlibServiceClient';
 import { IProjectRepository } from '@/domain/repositories/IProjectRepository';
-import { IUserRepository } from '@/domain/repositories/IUserRepository';
-import { AppError } from '@/shared/errors/AppError';
-import { UserPermissionService } from '@/domain/services/UserPermissionService';
-import { ProjectId } from '@/domain/value-objects/ProjectId';
-import { UserId } from '@/domain/value-objects/UserId';
+import { Result } from '@/application/common/Result';
 import { Project } from '@/domain/entities/Project';
+import { FinancialValidator } from '@/application/validation/FinancialValidator';
 
 export interface CalculateProjectFinancialsDTO {
   projectId: string;
@@ -101,14 +98,11 @@ export class CalculateProjectFinancialsUseCase {
 
   /**
    * Valida os dados de entrada antes de enviar ao serviço Python
+   * Usando validador centralizado
    */
   private validateInput(input: FinancialCalculationInput): void {
-    const errors: string[] = [];
-
-    // Validar investimento
-    if (!input.investimento_inicial || input.investimento_inicial <= 0) {
-      errors.push('Investimento inicial deve ser maior que zero');
-    }
+    FinancialValidator.validateOrThrow(input);
+  }
 
     // Validar geração mensal
     if (!input.geracao_mensal || input.geracao_mensal.length !== 12) {

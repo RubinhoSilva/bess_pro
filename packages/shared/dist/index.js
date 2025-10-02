@@ -16,5 +16,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./types/user.types"), exports);
 __exportStar(require("./types/lead.types"), exports);
+__exportStar(require("./types/financial"), exports);
+__exportStar(require("./config/financial"), exports);
 // Export outros tipos conforme criados
 //# sourceMappingURL=index.js.map

@@ -754,8 +754,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         taxaDesconto: currentDimensioning.taxaDesconto || 8.0,
         inflacaoEnergia: currentDimensioning.inflacaoEnergia || 4.5,
         degradacaoModulos: 0.5,
-        custoOM: totalInvestment * 0.01, // 1% do investimento/ano
-        inflacaoOM: 4.0,
+        custoOm: totalInvestment * 0.01, // 1% do investimento/ano
+        inflacaoOm: 4.0,
         modalidadeTarifaria: 'convencional'
       };
 
@@ -770,8 +770,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         taxa_desconto: advancedFinancialInput.taxaDesconto,
         inflacao_energia: advancedFinancialInput.inflacaoEnergia,
         degradacao_modulos: advancedFinancialInput.degradacaoModulos,
-        custo_om: advancedFinancialInput.custoOM,
-        inflacao_om: advancedFinancialInput.inflacaoOM,
+        custo_om: advancedFinancialInput.custoOm,
+        inflacao_om: advancedFinancialInput.inflacaoOm,
         modalidade_tarifaria: advancedFinancialInput.modalidadeTarifaria || 'convencional'
       });
       const advancedFinancialResults = advancedFinancialApiResponse.data;

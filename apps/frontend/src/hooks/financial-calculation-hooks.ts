@@ -148,48 +148,48 @@ export function useValidateFinancialInput(input: Partial<FinancialCalculationInp
   const errors: string[] = [];
 
   // Validar investimento
-  if (input.investimento_inicial !== undefined && input.investimento_inicial <= 0) {
+  if (input.investimentoInicial !== undefined && input.investimentoInicial <= 0) {
     errors.push('Investimento inicial deve ser maior que zero');
   }
 
-  // Validar gera��o mensal
-  if (input.geracao_mensal) {
-    if (input.geracao_mensal.length !== 12) {
-      errors.push('Gera��o mensal deve ter 12 valores');
-    } else if (input.geracao_mensal.some(v => v < 0)) {
-      errors.push('Valores de gera��o mensal n�o podem ser negativos');
+  // Validar geração mensal
+  if (input.geracaoMensal) {
+    if (input.geracaoMensal.length !== 12) {
+      errors.push('Geração mensal deve ter 12 valores');
+    } else if (input.geracaoMensal.some((v: number) => v < 0)) {
+      errors.push('Valores de geração mensal não podem ser negativos');
     }
   }
 
   // Validar consumo mensal
-  if (input.consumo_mensal) {
-    if (input.consumo_mensal.length !== 12) {
+  if (input.consumoMensal) {
+    if (input.consumoMensal.length !== 12) {
       errors.push('Consumo mensal deve ter 12 valores');
-    } else if (input.consumo_mensal.some(v => v < 0)) {
-      errors.push('Valores de consumo mensal n�o podem ser negativos');
+    } else if (input.consumoMensal.some((v: number) => v < 0)) {
+      errors.push('Valores de consumo mensal não podem ser negativos');
     }
   }
 
   // Validar tarifa
-  if (input.tarifa_energia !== undefined && input.tarifa_energia <= 0) {
+  if (input.tarifaEnergia !== undefined && input.tarifaEnergia <= 0) {
     errors.push('Tarifa de energia deve ser maior que zero');
   }
 
-  // Validar vida �til
-  if (input.vida_util !== undefined && (input.vida_util <= 0 || input.vida_util > 50)) {
-    errors.push('Vida �til deve estar entre 1 e 50 anos');
+  // Validar vida útil
+  if (input.vidaUtil !== undefined && (input.vidaUtil <= 0 || input.vidaUtil > 50)) {
+    errors.push('Vida útil deve estar entre 1 e 50 anos');
   }
 
   // Validar taxa de desconto
-  if (input.taxa_desconto !== undefined && input.taxa_desconto < 0) {
+  if (input.taxaDesconto !== undefined && input.taxaDesconto < 0) {
     errors.push('Taxa de desconto deve ser maior ou igual a zero');
   }
 
-  // Validar percentuais de cr�ditos remotos
-  if (input.autoconsumo_remoto_b || input.autoconsumo_remoto_a_verde || input.autoconsumo_remoto_a_azul) {
-    const percB = input.perc_creditos_b || 0;
-    const percVerde = input.perc_creditos_a_verde || 0;
-    const percAzul = input.perc_creditos_a_azul || 0;
+  // Validar percentuais de créditos remotos
+  if (input.autoconsumoRemotoB || input.autoconsumoRemotoAVerde || input.autoconsumoRemotoAAzul) {
+    const percB = input.percCreditosB || 0;
+    const percVerde = input.percCreditosAVerde || 0;
+    const percAzul = input.percCreditosAAzul || 0;
     const total = percB + percVerde + percAzul;
 
     if (Math.abs(total - 1.0) > 0.01) {
