@@ -5,8 +5,11 @@ Serviço de cálculos para sistemas fotovoltaicos com múltiplos inversores
 import numpy as np
 import pandas as pd
 import pvlib
+import logging
 from typing import List, Dict, Tuple, Optional
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 from models.requests import (
     MultiInverterCalculationRequest, 
@@ -34,6 +37,8 @@ class MultiInverterCalculationService:
         Calcula sistema completo com múltiplos inversores e águas de telhado
         """
         
+        logger.info(f"Iniciando cálculo com {len(request.inversores_selecionados)} inversores e {len(request.aguas_telhado)} águas")
+        
         # 1. Validar compatibilidade do sistema
         compatibility = MultiInverterCalculationService._validate_system_compatibility(
             request.inversores_selecionados, 
@@ -47,6 +52,7 @@ class MultiInverterCalculationService:
         geracao_mensal_total = [0.0] * 12
         
         for agua in request.aguas_telhado:
+            logger.info(f"Processando água: {agua.nome} - {agua.numero_modulos} módulos")
             agua_result = MultiInverterCalculationService._calculate_agua_performance(
                 agua, request.modulo, request
             )
@@ -67,36 +73,79 @@ class MultiInverterCalculationService:
         
         # 4. Calcular métricas globais
         total_modulos = sum(agua.numero_modulos for agua in request.aguas_telhado)
+        logger.info(f"Total de módulos: {total_modulos}")
         
         # Validar se potencia_nominal_w não é None
         potencia_nominal = getattr(request.modulo, 'potencia_nominal_w', None)
+        logger.info(f"Potência nominal do módulo: {potencia_nominal}")
         if not potencia_nominal:
             raise ValueError("Potência nominal do módulo é obrigatória")
         
         total_potencia_dc = total_modulos * potencia_nominal
-        total_potencia_ca = sum(inv.potencia_saida_ca_w * inv.quantity for inv in request.inversores_selecionados)
+        try:
+            total_potencia_ca = sum(inv.potencia_saida_ca_w * (getattr(inv, 'quantity', 1) or 1) for inv in request.inversores_selecionados)
+            logger.info(f"Cálculo de potência CA bem-sucedido: {total_potencia_ca}")
+        except Exception as e:
+            logger.error(f"Erro no cálculo de potência CA: {e}")
+            raise
         
         # 5. Calcular Performance Ratio médio ponderado
-        pr_medio_sistema = sum(
-            agua.pr_medio * agua.numero_modulos for agua in aguas_results
-        ) / total_modulos if total_modulos > 0 else 0
+        try:
+            pr_medio_sistema = sum(
+                agua.pr_medio * agua.numero_modulos for agua in aguas_results
+            ) / total_modulos if total_modulos > 0 else 0
+            logger.info(f"Cálculo PR médio: {pr_medio_sistema}")
+        except Exception as e:
+            logger.error(f"Erro no cálculo PR médio: {e}")
+            raise
         
         # 6. Calcular métricas de performance
-        fator_capacidade = MultiInverterCalculationService._calculate_capacity_factor(
-            total_energia_anual, total_potencia_dc
-        )
+        try:
+            fator_capacidade = MultiInverterCalculationService._calculate_capacity_factor(
+                total_energia_anual, total_potencia_dc
+            )
+            logger.info(f"Cálculo fator capacidade: {fator_capacidade}")
+        except Exception as e:
+            logger.error(f"Erro no cálculo fator capacidade: {e}")
+            raise
         
-        yield_especifico = total_energia_anual / (total_potencia_dc / 1000) if total_potencia_dc > 0 else 0
+        try:
+            yield_especifico = total_energia_anual / (total_potencia_dc / 1000) if total_potencia_dc > 0 else 0
+            logger.info(f"Cálculo yield específico: {yield_especifico}")
+        except Exception as e:
+            logger.error(f"Erro no cálculo yield específico: {e}")
+            raise
         
-        oversizing_global = (total_potencia_dc / total_potencia_ca * 100) if total_potencia_ca > 0 else 0
+        try:
+            oversizing_global = (total_potencia_dc / total_potencia_ca * 100) if total_potencia_ca > 0 else 0
+            logger.info(f"Cálculo oversizing: {oversizing_global}")
+        except Exception as e:
+            logger.error(f"Erro no cálculo oversizing: {e}")
+            raise
         
-        cobertura_percentual = (total_energia_anual / request.consumo_anual_kwh * 100) if request.consumo_anual_kwh > 0 else 0
+        try:
+            cobertura_percentual = (total_energia_anual / request.consumo_anual_kwh * 100) if request.consumo_anual_kwh > 0 else 0
+            logger.info(f"Cálculo cobertura: {cobertura_percentual}")
+        except Exception as e:
+            logger.error(f"Erro no cálculo cobertura: {e}")
+            raise
         
         # 7. Calcular área e peso
-        area_total = MultiInverterCalculationService._calculate_total_area(total_modulos, request.modulo)
-        peso_total = MultiInverterCalculationService._calculate_total_weight(
-            total_modulos, request.inversores_selecionados, request.modulo
-        )
+        try:
+            area_total = MultiInverterCalculationService._calculate_total_area(total_modulos, request.modulo)
+            logger.info(f"Cálculo área: {area_total}")
+        except Exception as e:
+            logger.error(f"Erro no cálculo de área: {e}")
+            raise
+        
+        try:
+            peso_total = MultiInverterCalculationService._calculate_total_weight(
+                total_modulos, request.inversores_selecionados, request.modulo
+            )
+            logger.info(f"Cálculo peso: {peso_total}")
+        except Exception as e:
+            logger.error(f"Erro no cálculo de peso: {e}")
+            raise
         
         # 8. Economia de CO2 (assumindo 0.5 kg CO2/kWh)
         economia_co2 = total_energia_anual * 0.5
@@ -210,7 +259,8 @@ class MultiInverterCalculationService:
             
             # Performance Ratio simplificado (considerando perdas)
             pr_base = 85.0  # PR base
-            pr_ajustado = pr_base * (1 - agua.sombreamento_parcial / 100)
+            sombreamento = agua.sombreamento_parcial or 0
+            pr_ajustado = pr_base * (1 - sombreamento / 100)
             pr_ajustado *= (1 - (request.perdas_sistema or 14.0) / 100)
             
             # Energia anual
@@ -223,7 +273,11 @@ class MultiInverterCalculationService:
                 inclinacao=agua.inclinacao,
                 numero_modulos=agua.numero_modulos,
                 potencia_dc_w=potencia_dc,
-                inverter_associado=agua.inversor_id or "",
+                inverter_associado=(
+                    f"{agua.inversor.fabricante} {agua.inversor.modelo}" 
+                    if agua.inversor 
+                    else (agua.inversor_id or "")
+                ),
                 mppt_numero=agua.mppt_numero or 1,
                 energia_anual_kwh=round(energia_anual, 1),
                 irradiacao_media_diaria=round(irradiacao_media, 2),
@@ -243,7 +297,11 @@ class MultiInverterCalculationService:
                 inclinacao=agua.inclinacao,
                 numero_modulos=agua.numero_modulos,
                 potencia_dc_w=potencia_dc,
-                inverter_associado=agua.inversor_id or "",
+                inverter_associado=(
+                    f"{agua.inversor.fabricante} {agua.inversor.modelo}" 
+                    if agua.inversor 
+                    else (agua.inversor_id or "")
+                ),
                 mppt_numero=agua.mppt_numero or 1,
                 energia_anual_kwh=round(energia_anual, 1),
                 irradiacao_media_diaria=4.0,  # Valor conservador
@@ -269,8 +327,19 @@ class MultiInverterCalculationService:
             potencia_dc_conectada = 0
             
             for i, agua in enumerate(aguas):
-                # Verificar se a água está conectada a alguma unidade deste inversor
-                if agua.inversor_id and agua.inversor_id.startswith(inversor.id):
+                # ✅ NOVO: Verificar se a água tem inversor embutido (novo formato)
+                if agua.inversor:
+                    # Novo formato: comparar dados do inversor embutido
+                    if (agua.inversor.fabricante == inversor.fabricante and 
+                        agua.inversor.modelo == inversor.modelo and
+                        agua.inversor.potencia_saida_ca_w == inversor.potencia_saida_ca_w):
+                        aguas_conectadas.append(agua.id)
+                        modulos_conectados += agua.numero_modulos
+                        energia_total += aguas_results[i].energia_anual_kwh
+                        potencia_nominal = getattr(modulo, 'potencia_nominal_w', 540)
+                        potencia_dc_conectada += agua.numero_modulos * potencia_nominal
+                elif agua.inversor_id and agua.inversor_id.startswith(inversor.id):
+                    # Formato legado: usar inversor_id
                     aguas_conectadas.append(agua.id)
                     modulos_conectados += agua.numero_modulos
                     energia_total += aguas_results[i].energia_anual_kwh
@@ -278,7 +347,8 @@ class MultiInverterCalculationService:
                     potencia_dc_conectada += agua.numero_modulos * potencia_nominal
             
             # Calcular métricas
-            potencia_total_ca = inversor.potencia_saida_ca_w * inversor.quantity
+            quantity = getattr(inversor, 'quantity', 1) or 1
+            potencia_total_ca = inversor.potencia_saida_ca_w * quantity
             oversizing = (potencia_dc_conectada / potencia_total_ca * 100) if potencia_total_ca > 0 else 0
             utilizacao = (energia_total / (potencia_total_ca * 8760 / 1000) * 100) if potencia_total_ca > 0 else 0
             
@@ -362,14 +432,26 @@ class MultiInverterCalculationService:
     ) -> float:
         """Calcula peso total do sistema"""
         
+        logger.info(f"Calculando peso para {total_modulos} módulos e {len(inversores)} inversores")
+        
         # Peso dos módulos
-        peso_modulo = getattr(modulo, 'peso_kg', 25.0)  # 25kg padrão se não especificado
+        peso_modulo = getattr(modulo, 'peso_kg', 25.0) or 25.0  # 25kg padrão se não especificado
+        logger.info(f"Peso do módulo: {peso_modulo}")
         peso_modulos = total_modulos * peso_modulo
+        logger.info(f"Peso total módulos: {peso_modulos}")
         
         # Peso dos inversores (aproximação)
-        peso_inversores = sum(inv.quantity * 25.0 for inv in inversores)  # 25kg por inversor
+        peso_inversores = 0
+        for i, inv in enumerate(inversores):
+            quantity = getattr(inv, 'quantity', 1) or 1
+            logger.info(f"Inversor {i}: quantity={quantity}")
+            peso_inversores += quantity * 25.0
+        logger.info(f"Peso total inversores: {peso_inversores}")
         
         # Peso da estrutura e cabeamento (aproximação)
         peso_estrutura = total_modulos * 15.0  # 15kg por módulo de estrutura
+        logger.info(f"Peso estrutura: {peso_estrutura}")
         
-        return peso_modulos + peso_inversores + peso_estrutura
+        total = peso_modulos + peso_inversores + peso_estrutura
+        logger.info(f"Peso total: {total}")
+        return total

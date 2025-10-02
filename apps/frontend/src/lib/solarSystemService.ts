@@ -9,16 +9,18 @@ export interface SolarSystemCalculationParams {
   eficienciaSistema?: number;
   potenciaModulo?: number;
   numeroModulos?: number;
-  // MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
-  // aguasTelhado?: Array<{
-  //   id: string;
-  //   nome: string;
-  //   orientacao: number;
-  //   inclinacao: number;
-  //   numeroModulos: number;
-  //   sombreamentoParcial: number;
-  //   areaDisponivel?: number;
-  // }>;
+  // MÚLTIPLAS ÁGUAS DE TELHADO
+  aguasTelhado?: Array<{
+    id: string;
+    nome: string;
+    orientacao: number;
+    inclinacao: number;
+    numeroModulos: number;
+    sombreamentoParcial: number;
+    areaDisponivel?: number;
+    inversorId?: string;
+    mpptNumero?: number;
+  }>;
 }
 
 export interface SolarSystemCalculationResult {
@@ -90,6 +92,97 @@ export interface ModuleCalculationParams {
   perdas_sistema?: number;
   fator_seguranca?: number;
   num_modules?: number; // Número específico de módulos (se fornecido, usa este valor ao invés de calcular automaticamente)
+  // MÚLTIPLAS ÁGUAS DE TELHADO
+  aguasTelhado?: Array<{
+    id: string;
+    nome: string;
+    orientacao: number;
+    inclinacao: number;
+    numeroModulos: number;
+    sombreamentoParcial: number;
+    areaDisponivel?: number;
+    inversorId?: string;
+    mpptNumero?: number;
+  }>;
+}
+
+// ✅ NOVA: Interface específica para sistema multi-inversor
+export interface MultiInverterCalculationParams {
+  lat: number;
+  lon: number;
+  tilt?: number;
+  azimuth?: number;
+  modelo_decomposicao?: string;
+  modelo_transposicao?: string;
+  consumo_anual_kwh: number;
+  modulo: {
+    fabricante: string;
+    modelo: string;
+    potencia_nominal_w: number;
+    largura_mm?: number;
+    altura_mm?: number;
+    vmpp?: number;
+    impp?: number;
+    eficiencia?: number;
+    temp_coef_pmax?: number;
+    peso_kg?: number;
+    // Parâmetros para modelo espectral
+    material?: string;     // Material da célula (c-Si, a-Si, CdTe, etc.)
+    technology?: string;   // Tecnologia (mono-Si, mc-Si, a-Si, CdTe, etc.)
+    
+    // Parâmetros do modelo de diodo único
+    a_ref?: number;        // Fator de idealidade modificado [V]
+    i_l_ref?: number;      // Fotocorrente STC [A]
+    i_o_ref?: number;      // Corrente saturação reversa STC [A]
+    r_s?: number;          // Resistência série [Ω]
+    r_sh_ref?: number;     // Resistência paralelo STC [Ω]
+    
+    // Coeficientes de temperatura
+    alpha_sc?: number;     // Coef. temperatura corrente [A/°C]
+    beta_oc?: number;      // Coef. temperatura tensão [V/°C]
+    gamma_r?: number;      // Coef. temperatura potência [1/°C]
+    
+    // Parâmetros SAPM térmicos
+    a0?: number; a1?: number; a2?: number; a3?: number; a4?: number;
+    b0?: number; b1?: number; b2?: number; b3?: number; b4?: number; b5?: number;
+    dtc?: number;
+  };
+  perdas_sistema?: number;
+  fator_seguranca?: number;
+  num_modules?: number; // Número específico de módulos (se fornecido, usa este valor ao invés de calcular automaticamente)
+  
+  // ✅ MÚLTIPLAS ÁGUAS DE TELHADO COM INVERSORES EMBUTIDOS
+  aguasTelhado: Array<{
+    id: string;
+    nome: string;
+    orientacao: number;
+    inclinacao: number;
+    numeroModulos: number;
+    sombreamentoParcial: number;
+    areaDisponivel?: number;
+    inversorId?: string;
+    mpptNumero?: number;
+    // ✅ NOVO: Inversor embutido em cada água
+    inversor?: {
+      fabricante: string;
+      modelo: string;
+      potencia_saida_ca_w: number;
+      tipo_rede: string;
+      potencia_fv_max_w?: number;
+      tensao_cc_max_v?: number;
+      numero_mppt?: number;
+      strings_por_mppt?: number;
+      eficiencia_max?: number;
+      // Parâmetros Sandia específicos
+      vdco?: number;  // Tensão DC nominal de operação
+      pso?: number;   // Potência de standby (W)
+      c0?: number;    // Coeficiente curva eficiência
+      c1?: number;    // Coeficiente curva eficiência  
+      c2?: number;    // Coeficiente curva eficiência
+      c3?: number;    // Coeficiente curva eficiência
+      pnt?: number;   // Potência threshold normalizada
+    };
+  }>;
 }
 
 export interface AdvancedModuleCalculationResult {
@@ -370,12 +463,16 @@ export class SolarSystemService {
   /**
    * Cálculo avançado de módulos com dados completos do módulo e inversor
    */
-  static async calculateAdvancedModules(params: ModuleCalculationParams): Promise<AdvancedModuleCalculationResult> {
+  static async calculateAdvancedModules(params: MultiInverterCalculationParams, inversorGlobal?: any): Promise<AdvancedModuleCalculationResult> {
     try {
       console.log('🔄 Chamando cálculo avançado de módulos com parâmetros:', params);
       
+      // ✅ PROCESSAR MÚLTIPLAS ÁGUAS DE TELHADO
+      const processedParams = this._processRoofWatersForCalculation(params, inversorGlobal);
+      console.log('🏠 Parâmetros processados para múltiplas águas:', processedParams);
+      
       // Fazer chamada através do backend Node.js
-      const response = await api.post('/solar-analysis/calculate-advanced-modules', params);
+      const response = await api.post('/solar-analysis/calculate-advanced-modules', processedParams);
       
       console.log('✅ Resultado bruto da API:', response.data);
       
@@ -521,9 +618,23 @@ export class SolarSystemService {
       pnt: 0.02
     };
 
-    // Validar e clampar tilt e azimuth antes de enviar para API
-    const tiltValue = dimensioningData.inclinacao || 20;
-    const azimuthValue = dimensioningData.orientacao || 180;
+    // ✅ PROCESSAR MÚLTIPLAS ÁGUAS DE TELHADO
+    console.log('🏠 [SolarSystemService] Verificando águas de telhado:', {
+      hasAguasTelhado: !!dimensioningData.aguasTelhado,
+      numAguas: dimensioningData.aguasTelhado?.length || 0,
+      aguas: dimensioningData.aguasTelhado
+    });
+
+    // Validar e clampar tilt e azimuth apenas se não houver múltiplas águas
+    let tiltValue, azimuthValue;
+    if (dimensioningData.aguasTelhado && dimensioningData.aguasTelhado.length > 1) {
+      console.log('🏠 Múltiplas águas detectadas, usando tilt/azimuth padrão para fallback');
+      tiltValue = 20;
+      azimuthValue = 180;
+    } else {
+      tiltValue = dimensioningData.inclinacao || 20;
+      azimuthValue = dimensioningData.orientacao || 180;
+    }
 
     // IMPORTANTE: tilt deve estar entre 0 e 90, azimuth entre 0 e 360
     const validatedTilt = Math.max(0, Math.min(90, tiltValue));
@@ -536,16 +647,13 @@ export class SolarSystemService {
       console.warn(`⚠️ Azimuth corrigido de ${azimuthValue}° para ${validatedAzimuth}° (limite: 0-360°)`);
     }
 
-    const params: ModuleCalculationParams = {
+    const params: MultiInverterCalculationParams = {
       lat: dimensioningData.latitude || -15.7942,
       lon: dimensioningData.longitude || -47.8822,
-      tilt: validatedTilt,
-      azimuth: validatedAzimuth,
       modelo_decomposicao: 'louche',
       modelo_transposicao: 'perez',
       consumo_anual_kwh: consumoAnual,
       modulo,
-      inversor,
       perdas_sistema: (dimensioningData.perdaSombreamento || 3) +
                       (dimensioningData.perdaMismatch || 2) +
                       (dimensioningData.perdaCabeamento || 2) +
@@ -553,7 +661,9 @@ export class SolarSystemService {
                       (dimensioningData.perdaInversor || 3) +
                       (dimensioningData.perdaOutras || 0),
       fator_seguranca: 1.1,
-      num_modules: dimensioningData.num_modules // Incluir num_modules se fornecido
+      num_modules: dimensioningData.num_modules, // Incluir num_modules se fornecido
+      // ✅ Incluir águas de telhado se existirem
+      aguasTelhado: dimensioningData.aguasTelhado
     };
 
     // ===== DEBUG: PERDAS CALCULADAS E ENVIADAS PARA PVLIB =====
@@ -592,25 +702,111 @@ export class SolarSystemService {
       }
     });
 
-    return this.calculateAdvancedModules(params);
+    return this.calculateAdvancedModules(params, inversor);
+  }
+
+/**
+    * ✅ Processa múltiplas águas de telhado para cálculo
+    */
+  private static _processRoofWatersForCalculation(params: MultiInverterCalculationParams, inversorGlobal?: any): any {
+    console.log('🏠 Processando águas de telhado para cálculo:', {
+      hasAguasTelhado: !!params.aguasTelhado,
+      numAguas: params.aguasTelhado?.length || 0
+    });
+
+    // Se há águas de telhado, enviar estrutura completa com inversor embutido
+    if (params.aguasTelhado && params.aguasTelhado.length > 0) {
+      console.log(`🏠 Enviando ${params.aguasTelhado.length} águas de telhado para cálculo avançado`);
+      
+      // ✅ Usar inversor global ou criar padrão WEG para embutir
+      const inversorPadrao = inversorGlobal || {
+        fabricante: "WEG",
+        modelo: "SIW500H-M",
+        potencia_saida_ca_w: 5000,
+        tipo_rede: "Monofásico 220V",
+        potencia_fv_max_w: 7500,
+        tensao_cc_max_v: 600,
+        numero_mppt: 2,
+        strings_por_mppt: 2,
+        eficiencia_max: 97.6,
+        vdco: 480,
+        pso: 25,
+        c0: -0.000008,
+        c1: -0.00012,
+        c2: 0.0014,
+        c3: -0.02,
+        pnt: 0.02
+      };
+      
+      const processedParams = {
+        // ✅ Campos obrigatórios
+        lat: params.lat,
+        lon: params.lon,
+        modelo_decomposicao: params.modelo_decomposicao,
+        modelo_transposicao: params.modelo_transposicao,
+        consumo_anual_kwh: params.consumo_anual_kwh,
+        modulo: params.modulo,
+        perdas_sistema: params.perdas_sistema,
+        fator_seguranca: params.fator_seguranca,
+        
+        // ✅ Enviar águas com inversor embutido
+        aguasTelhado: params.aguasTelhado.map(agua => ({
+          id: agua.id,
+          nome: agua.nome,
+          orientacao: agua.orientacao,
+          inclinacao: agua.inclinacao,
+          numeroModulos: agua.numeroModulos,
+          sombreamentoParcial: agua.sombreamentoParcial || 0,
+          inversorId: agua.inversorId,
+          mpptNumero: agua.mpptNumero,
+          // ✅ Incluir inversor embutido padrão
+          inversor: inversorPadrao
+        }))
+      };
+
+      console.log('📋 Estrutura enviada:', {
+        numAguas: processedParams.aguasTelhado.length,
+        aguas: processedParams.aguasTelhado.map(a => ({
+          nome: a.nome,
+          modulos: a.numeroModulos,
+          orientacao: a.orientacao,
+          inclinacao: a.inclinacao,
+          temInversor: !!a.inversor,
+          inversorModelo: a.inversor?.modelo
+        }))
+      });
+
+      return processedParams;
+    }
+
+    // Fallback para sistema único - manter estrutura original
+    console.log('🏠 Sistema único detectado, mantendo estrutura original');
+    return params;
   }
 
   /**
-   * Calcula limite de módulos por MPPT
+   * Calcula limites de MPPT para inversores
    */
   static async calculateMPPTLimits(params: MPPTCalculationRequest): Promise<MPPTCalculationResponse> {
     try {
-      console.log('🔄 Calculando limites MPPT com parâmetros:', params);
+      console.log('🔄 Chamando cálculo de limites MPPT com parâmetros:', params);
       
-      // Chamar via backend Node.js
       const response = await api.post('/solar-analysis/pvlib/mppt/calculate-modules-per-mppt', params);
       
-      console.log('✅ Resultado do cálculo MPPT:', response.data);
-      
+      // Aceitar tanto formato com wrapper quanto formato direto
       if (response.data) {
-        return response.data;
+        if (response.data.success && response.data.data) {
+          // Formato com wrapper: { success: true, data: {...} }
+          console.log('✅ Resultado do cálculo MPPT (com wrapper):', response.data.data);
+          return response.data.data;
+        } else if (response.data.modulos_por_mppt !== undefined) {
+          // Formato direto: { modulos_por_mppt: 18, ... }
+          console.log('✅ Resultado do cálculo MPPT (formato direto):', response.data);
+          return response.data;
+        }
       }
       
+      console.error('❌ Resposta inválida do serviço MPPT:', response.data);
       throw new Error('Resposta inválida do serviço MPPT');
     } catch (error: any) {
       console.error('❌ Erro ao calcular limites MPPT:', error);
