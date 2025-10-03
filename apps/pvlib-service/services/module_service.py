@@ -273,12 +273,12 @@ class ModuleService:
             }
             
             # CORREÇÃO 3: Eliminar perdas do sistema pvlib - aplicar apenas ao final (igual ao notebook)
-            # Mudança: zerando todas as perdas aqui para aplicar apenas no final
+            # Todas as perdas zeradas para aplicar apenas no final do cálculo
             losses_parameters = {
-                'soiling': 0.0,    # Mudança: era 2.0, agora 0.0
-                'shading': 0.0,    # Mantido 0.0
-                'mismatch': 0.0,   # Mudança: era 2.5, agora 0.0
-                'wiring': 0.0      # Mudança: era 2.0, agora 0.0
+                'soiling': 0.0,    # Zerado - será aplicado no final
+                'shading': 0.0,    # Zerado - será aplicado no final
+                'mismatch': 0.0,   # Zerado - será aplicado no final
+                'wiring': 0.0      # Zerado - será aplicado no final
             }
             
             # Criar sistema com configuração real
@@ -623,9 +623,9 @@ class ModuleService:
             perdas_totais_pct = request.perdas_sistema
             total_annual_energy = total_annual_energy_without_losses * (1.0 - perdas_totais_pct / 100.0)
             
-            logger.info(f"🔋 ENERGIA SEM PERDAS: {total_annual_energy_without_losses:,.1f} kWh/ano")
-            logger.info(f"📉 PERDAS APLICADAS: {perdas_totais_pct}% = {total_annual_energy_without_losses - total_annual_energy:,.1f} kWh/ano")
-            logger.info(f"⚡ ENERGIA FINAL: {total_annual_energy:,.1f} kWh/ano")
+            logger.info(f"🔋 ENERGIA SEM PERDAS (Notebook): {total_annual_energy_without_losses:,.1f} kWh/ano")
+            logger.info(f"📉 PERDAS APLICADAS NO FINAL (Notebook): {perdas_totais_pct}% = {total_annual_energy_without_losses - total_annual_energy:,.1f} kWh/ano")
+            logger.info(f"⚡ ENERGIA FINAL COM PERDAS (Notebook): {total_annual_energy:,.1f} kWh/ano")
             
             # Removido cálculo de cobertura - não aplicável para número fixo de módulos
             
