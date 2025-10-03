@@ -5,9 +5,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "clean": "rm -rf dist"
+    "build": "tsc --build --verbose",
+    "build:clean": "tsc --build --clean && tsc --build --verbose",
+    "dev": "tsc --build --watch",
+    "clean": "tsc --build --clean && rm -rf dist",
+    "verify": "tsc --noEmit --skipLibCheck"
   },
   "devDependencies": {
     "typescript": "^5.8.3"

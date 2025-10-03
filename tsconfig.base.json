@@ -16,9 +16,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "incremental": true,
-    "composite": true
+    "emitDecoratorMetadata": true
   },
   "exclude": ["node_modules", "dist", "build"]
 }
