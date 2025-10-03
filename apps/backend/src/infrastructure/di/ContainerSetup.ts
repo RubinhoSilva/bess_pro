@@ -31,7 +31,7 @@ import { LocalFileStorageService } from '../storage/LocalFileStorageService';
 import { S3FileStorageService } from '../storage/S3FileStorageService';
 import { PvgisApiService } from '../external-apis/PvgisApiService';
 import { PaymentGatewayService } from '../external-apis/PaymentGatewayService';
-import { PvlibServiceClient } from '../external-apis/PvlibServiceClient';
+import { SimplePvlibServiceClient } from '../external-apis/SimplePvlibServiceClient';
 
 // Domain Services
 import { ProjectDomainService } from '../../domain/services/ProjectDomainService';
@@ -260,12 +260,12 @@ export class ContainerSetup {
     }, true);
     container.register(ServiceTokens.PAYMENT_GATEWAY_SERVICE, PaymentGatewayService, true);
 
-    // PvlibServiceClient (Python Financial Service)
+    // SimplePvlibServiceClient (Python Financial Service)
     container.registerFactory(ServiceTokens.PVLIB_SERVICE_CLIENT, () => {
-      const pvlibUrl = config.externalApis.pvlibService?.baseUrl || process.env.PVLIB_SERVICE_URL || 'http://localhost:8000';
+      const pvlibUrl = config.externalApis.pvlibService?.baseUrl || process.env.PVLIB_SERVICE_URL || 'http://host.docker.internal:8110';
 
-      console.log('🔧 PvlibServiceClient config:', { baseUrl: pvlibUrl });
-      return new PvlibServiceClient(pvlibUrl);
+      console.log('🔧 SimplePvlibServiceClient config:', { baseUrl: pvlibUrl });
+      return new SimplePvlibServiceClient(pvlibUrl);
     }, true);
 
     // Domain Services (Singletons)

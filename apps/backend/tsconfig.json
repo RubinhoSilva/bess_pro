@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "module": "commonjs",
     "target": "ES2020",
@@ -24,6 +24,6 @@
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests"],
   "references": [
-    { "path": "../../packages/shared" }
+    { "path": "../shared" }
   ]
 }

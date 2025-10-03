@@ -25,6 +25,7 @@ import { createSolarAnalysisRoutes } from './SolarAnalysisRoutes';
 import { createAdvancedTemplateRoutes } from './AdvancedTemplateRoutes';
 import { clientAlertRoutes } from './client-alert.routes';
 import { EnergyCompanyRoutes } from './EnergyCompanyRoutes';
+import { TestFinancialController } from '../controllers/TestFinancialController';
 
 export class ApiRoutes {
   static create(container: Container): Router {
@@ -66,6 +67,11 @@ export class ApiRoutes {
     router.use('/advanced-templates', createAdvancedTemplateRoutes(container));
     router.use('/client-alerts', clientAlertRoutes);
     router.use('/energy-companies', EnergyCompanyRoutes.create(container));
+
+    // Test routes for financial integration
+    const testController = new TestFinancialController();
+    router.get('/test-financial-integration', (req, res) => testController.testIntegration(req, res));
+    router.get('/test-financial-health', (req, res) => testController.healthCheck(req, res));
 
     return router;
   }
