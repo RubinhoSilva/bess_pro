@@ -27,7 +27,7 @@ COPY apps/frontend ./apps/frontend
 COPY packages/shared ./packages/shared
 
 # Build shared package first
-RUN npm run build --workspace=packages/shared
+RUN cd packages/shared && npm run build
 
 # Build the application with increased heap size
 RUN cd apps/frontend && NODE_OPTIONS="--max-old-space-size=2048" npm run build
