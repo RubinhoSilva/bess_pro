@@ -188,6 +188,14 @@ class AguaTelhadoResults(BaseModel):
     irradiacao_media_diaria: float = Field(..., description="Irradiação média diária (kWh/m²/dia)")
     pr_medio: float = Field(..., description="Performance Ratio médio (%)")
     
+    # Novos campos para cálculo multi-MPPT (opcional, para compatibilidade)
+    dc_puro_anual_kwh: Optional[float] = Field(None, description="Energia DC anual pura antes da eficiência (kWh)")
+    dc_peak_power_w: Optional[float] = Field(None, description="Potência DC pico (W)")
+    dc_avg_power_w: Optional[float] = Field(None, description="Potência DC média (W)")
+    
+    # Campos internos para processamento (não serializados)
+    dc_power_series: Optional[Any] = Field(None, exclude=True, description="Série temporal DC (interno)")
+    
     class Config:
         schema_extra = {
             "example": {

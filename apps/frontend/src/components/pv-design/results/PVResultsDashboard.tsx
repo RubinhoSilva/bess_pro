@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Download } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { FileText, ArrowRight, ArrowLeft } from 'lucide-react';
@@ -8,11 +8,13 @@ import SystemSummary from './SystemSummary';
 import { GenerationChart } from './GenerationChart';
 import { PaybackChart } from './PaybackChart';
 import { EconomyProjectionChart } from './EconomyProjectionChart';
-import { InvestmentChart } from './InvestmentChart';
+
 import { AnnualSavingsChart } from './AnnualSavingsChart';
 import { AdvancedSolarAnalysis } from './AdvancedSolarAnalysis';
 import { AdvancedFinancialAnalysis } from './AdvancedFinancialAnalysis';
 import AdvancedPDFGenerator from '../report/AdvancedPDFGenerator';
+import { useDimensioning } from '@/contexts/DimensioningContext';
+import { ProposalDocument } from '../proposal/ProposalDocument';
 
 interface PVResultsDashboardProps {
   results: {
@@ -202,7 +204,38 @@ const validateAndNormalizeResults = (results: any) => {
     } : null
   };
 
-  return normalized;
+  // Adicionar campos derivados para compatibilidade com componentes PDF
+  const geracaoEstimadaMensal = normalized.geracaoEstimadaMensal || [];
+  const geracaoAnualCalculada = geracaoEstimadaMensal.reduce((acc: number, val: number) => acc + val, 0);
+
+  // Calcular ROI se temos dados financeiros
+  const economia25Anos = (normalized.economiaAnualEstimada || 0) * 25;
+  const roiCalculado = normalized.totalInvestment > 0
+    ? ((economia25Anos - normalized.totalInvestment) / normalized.totalInvestment) * 100
+    : 0;
+
+  const enrichedResults = {
+    ...normalized,
+    // Campos derivados para compatibilidade
+    potenciaSistema: normalized.potenciaPico / 1000, // kWp
+    geracaoAnual: geracaoAnualCalculada, // kWh/ano
+    economiaProjetada: normalized.economiaAnualEstimada, // Alias
+    performanceRatio: normalized.advancedSolar?.performance?.prMedio || 0.85,
+    yield: normalized.advancedSolar?.performance?.yieldEspecifico || 1200,
+    roi: roiCalculado,
+    lcoe: normalized.advancedFinancial?.indicadores?.custoNiveladoEnergia || 0
+  };
+
+  console.log('📊 PVResultsDashboard: Dados enriquecidos:', {
+    potenciaSistema: enrichedResults.potenciaSistema,
+    geracaoAnual: enrichedResults.geracaoAnual,
+    performanceRatio: enrichedResults.performanceRatio,
+    yield: enrichedResults.yield,
+    roi: enrichedResults.roi,
+    lcoe: enrichedResults.lcoe
+  });
+
+  return enrichedResults;
 };
 
 // Componente de erro para dados inválidos
@@ -241,12 +274,180 @@ const LoadingFallback: React.FC = () => (
   </motion.div>
 );
 
+// Componente auxiliar para renderizar ProposalDocument inline
+const ProposalDocumentInline: React.FC<{ results: any }> = ({ results }) => {
+  const profile = {
+    company: 'Sua Empresa Solar',
+    email: 'contato@empresa.com',
+    phone: '(XX) XXXX-XXXX',
+    website: 'www.suaempresa.com',
+  };
+
+  const settings = {
+    show_introduction: true,
+    show_technical_analysis: true,
+    show_financial_analysis: true,
+  };
+
+  return <ProposalDocument results={results} profile={profile} settings={settings} />;
+};
+
+// Componente de geração de PDF
+const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ results, currentDimensioning }) => {
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [showProposalPreview, setShowProposalPreview] = React.useState(false);
+
+  const generateProposal = async () => {
+    setIsGenerating(true);
+
+    try {
+      // 1. Renderiza o ProposalDocument inline (oculto)
+      setShowProposalPreview(true);
+
+      // 2. Aguarda a renderização completa dos componentes React (2 segundos)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // 3. Importa as bibliotecas necessárias
+      const jsPDF = (await import('jspdf')).default;
+      const html2canvas = (await import('html2canvas')).default;
+
+      // 4. Pega o elemento renderizado
+      const proposalElement = document.getElementById('proposal-content-test');
+
+      if (!proposalElement) {
+        throw new Error('Elemento da proposta não encontrado');
+      }
+
+      // 5. Ajusta estilos temporários para renderização
+      const originalStyles = proposalElement.style.cssText;
+      proposalElement.style.cssText += 'width: 210mm; display: block; visibility: visible;';
+
+      // 6. Pega todas as páginas
+      const pages = proposalElement.querySelectorAll('.proposal-page');
+
+      if (pages.length === 0) {
+        throw new Error('Nenhuma página encontrada no documento');
+      }
+
+      // 7. Cria o PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      // 8. Processa cada página
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i] as HTMLElement;
+
+        // Captura a página como canvas
+        const canvas = await html2canvas(page, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          windowWidth: page.scrollWidth,
+          windowHeight: page.scrollHeight,
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const imgProps = pdf.getImageProperties(imgData);
+        const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+        if (i > 0) {
+          pdf.addPage();
+        }
+
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, Math.min(pdfHeight, imgHeight));
+
+        // Se a imagem for maior que uma página, divide em múltiplas páginas
+        let heightLeft = imgHeight - pdfHeight;
+        while (heightLeft > 0) {
+          const position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+          heightLeft -= pdfHeight;
+        }
+      }
+
+      // 9. Restaura estilos
+      proposalElement.style.cssText = originalStyles;
+
+      // 10. Salva o PDF
+      const projectName = results.formData?.projectName ||
+                         results.formData?.customer?.name ||
+                         'solar';
+      pdf.save(`proposta-component-based-${projectName}-${Date.now()}.pdf`);
+
+      // 11. Limpa o preview
+      setShowProposalPreview(false);
+
+    } catch (error: any) {
+      console.error('Erro ao gerar PDF:', error);
+      setShowProposalPreview(false);
+      alert(`Erro ao gerar PDF: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Button
+        onClick={generateProposal}
+        disabled={isGenerating}
+        size="lg"
+        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
+      >
+        {isGenerating ? (
+          <>
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            Gerando Proposta...
+          </>
+        ) : (
+          <>
+            <Download className="w-5 h-5 mr-2" />
+            Gerar e Baixar Proposta
+          </>
+        )}
+      </Button>
+
+      {/* ProposalDocument renderizado inline (oculto) para o método Component-Based */}
+      {showProposalPreview && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '-9999px',
+            left: '-9999px',
+            width: '210mm',
+            zIndex: -1
+          }}
+        >
+          <div id="proposal-content-test" className="bg-white">
+            <ProposalDocumentInline results={results} />
+          </div>
+        </div>
+      )}
+
+      {/* Loading overlay durante geração */}
+      {isGenerating && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 p-8 rounded-lg shadow-2xl text-center">
+            <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-blue-500" />
+            <p className="text-lg font-semibold mb-2">Gerando Proposta PDF...</p>
+            <p className="text-sm text-muted-foreground">Renderizando componentes e gráficos...</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({ 
   results, 
   onGenerateProposal, 
   onBackToForm, 
   onNewCalculation 
 }) => {
+  const { currentDimensioning } = useDimensioning();
+  
   // Validação inicial dos dados
   if (!results) {
     return <LoadingFallback />;
@@ -391,12 +592,14 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             </div>
           </Section>
           
-          <Section title="Composição do Investimento" delay={7}>
-            <InvestmentChart results={validatedResults} />
-          </Section>
 
-          <Section title="Geração de Relatórios" delay={8}>
-            <AdvancedPDFGenerator results={validatedResults} onGenerate={onGenerateProposal} />
+
+          {/* Seção de Geração de Proposta */}
+          <Section title="📄 Gerar Proposta" delay={8}>
+            <PDFGenerator
+              results={validatedResults}
+              currentDimensioning={currentDimensioning}
+            />
           </Section>
         </div>
 

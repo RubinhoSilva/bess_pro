@@ -1,166 +1,224 @@
 import React from 'react';
-import { DollarSign, TrendingUp, Calendar, Banknote, CreditCard, Landmark } from 'lucide-react';
-import { PaybackChart } from '../results/PaybackChart';
+import { DollarSign, TrendingUp, Calendar, PiggyBank, Percent } from 'lucide-react';
 
 interface PageFinancialProps {
   results: {
-    totalInvestment: number;
-    economiaAnualEstimada: number;
-    vpl: number;
-    tir: number;
-    payback: number;
-    formData: {
-      paymentMethod?: string;
-      cardInstallments?: number;
-      cardInterest?: number;
-      financingInstallments?: number;
-      financingInterest?: number;
-    };
-    fluxoCaixa: Array<{
-      ano: number;
-      fluxoLiquido: number;
-    }>;
-  };
-  profile?: {
-    company?: string;
+    totalInvestment?: number;
+    economiaAnualEstimada?: number;
+    economiaProjetada?: number;
+    vpl?: number;
+    tir?: number;
+    payback?: number;
+    roi?: number;
+    lcoe?: number;
   };
 }
 
-export const PageFinancial: React.FC<PageFinancialProps> = ({ results, profile }) => {
-  const { totalInvestment, economiaAnualEstimada, vpl, tir, payback, formData } = results;
-  const companyName = profile?.company || 'Sua Empresa Solar';
+export const PageFinancial: React.FC<PageFinancialProps> = ({ results }) => {
+  const formatCurrency = (value: number) =>
+    (value || 0).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      maximumFractionDigits: 0,
+    });
 
-  const formatCurrency = (value: number) => (value || 0).toLocaleString('pt-BR', { 
-    style: 'currency', 
-    currency: 'BRL' 
-  });
+  const totalInvestment = results.totalInvestment || 0;
+  const economiaAnual = results.economiaAnualEstimada || results.economiaProjetada || 0;
+  const vpl = results.vpl || 0;
+  const tir = results.tir || 0;
+  const payback = results.payback || 0;
+  const roi = results.roi || 0;
+  const lcoe = results.lcoe || 0;
 
-  const calculateInstallment = (total: number, months: number, interestRate: number) => {
-    if (!months || months <= 0) return 0;
-    if (interestRate === 0) return total / months;
-    const i = interestRate / 100;
-    return total * (i * Math.pow(1 + i, months)) / (Math.pow(1 + i, months) - 1);
-  };
-
-  const cardInstallmentValue = calculateInstallment(
-    totalInvestment, 
-    formData.cardInstallments || 0, 
-    formData.cardInterest || 0
-  );
-  
-  const financingInstallmentValue = calculateInstallment(
-    totalInvestment, 
-    formData.financingInstallments || 0, 
-    formData.financingInterest || 0
-  );
+  // Calculate 25-year savings
+  const economia25Anos = economiaAnual * 25;
 
   return (
-    <section className="proposal-page p-10">
-      <h2 className="proposal-title">Análise e Proposta Financeira</h2>
-      
-      <div className="mt-8">
-        <h3 className="proposal-subtitle">Indicadores de Viabilidade</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-4">
-          <div className="financial-card">
-            <Banknote className="w-6 h-6 text-red-400" />
-            <span>Investimento</span>
-            <p>{formatCurrency(totalInvestment)}</p>
+    <section className="proposal-page p-4 bg-gradient-to-br from-slate-50 to-blue-50">
+      {/* Header */}
+      <div className="mb-3">
+        <div className="inline-block bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-1 rounded-full text-sm font-bold mb-3">
+          ANÁLISE FINANCEIRA
+        </div>
+        <h2 className="proposal-title text-xl bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+          Viabilidade Econômica do Investimento
+        </h2>
+      </div>
+
+      {/* Investment Summary */}
+      <div className="bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl shadow-xl p-6 mb-3 text-white">
+        <div className="text-center mb-3">
+          <p className="text-lg mb-2 text-white/90">Investimento Total do Projeto</p>
+          <p className="text-5xl font-bold text-yellow-300">{formatCurrency(totalInvestment)}</p>
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+            <p className="text-sm text-white/80 mb-1">Economia Anual</p>
+            <p className="text-lg font-bold">{formatCurrency(economiaAnual)}</p>
           </div>
-          
-          <div className="financial-card">
-            <DollarSign className="w-6 h-6 text-green-400" />
-            <span>Economia Anual</span>
-            <p>{formatCurrency(economiaAnualEstimada)}</p>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+            <p className="text-sm text-white/80 mb-1">Economia em 25 Anos</p>
+            <p className="text-lg font-bold text-yellow-300">{formatCurrency(economia25Anos)}</p>
           </div>
-          
-          <div className="financial-card">
-            <TrendingUp className="w-6 h-6 text-blue-400" />
-            <span>VPL</span>
-            <p className={vpl > 0 ? 'text-green-400' : 'text-red-400'}>
-              {formatCurrency(vpl)}
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+            <p className="text-sm text-white/80 mb-1">Retorno Total</p>
+            <p className="text-lg font-bold text-yellow-300">
+              {((economia25Anos / totalInvestment) * 100).toFixed(0)}%
             </p>
           </div>
-          
-          <div className="financial-card">
-            <TrendingUp className="w-6 h-6 text-blue-400" />
-            <span>TIR</span>
-            <p>{(tir || 0).toFixed(2)}%</p>
-          </div>
-          
-          <div className="financial-card">
-            <Calendar className="w-6 h-6 text-purple-400" />
-            <span>Payback</span>
-            <p>{(payback || 0).toFixed(1)} anos</p>
-          </div>
         </div>
       </div>
 
-      <div className="mt-10">
-        <h3 className="proposal-subtitle">Fluxo de Caixa Projetado</h3>
-        <div className="mt-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
-          <PaybackChart results={{
-            cash_flow: results.fluxoCaixa.map(item => ({
-              ano: item.ano,
-              fluxo_liquido: item.fluxoLiquido,
-              fluxo_acumulado: 0, // Default value, should be calculated
-              economia_energia: 0, // Default value
-              custos_om: 0, // Default value
-              valor_presente: 0, // Default value
-              geracao_anual: 0 // Default value
-            }))
-          }} />
-        </div>
-      </div>
-
-      <div className="mt-10">
-        <h3 className="proposal-subtitle">Proposta de Investimento</h3>
-        <div className="mt-4 p-8 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-l-4 border-yellow-400 text-center rounded-r-lg">
-          <p className="text-lg text-slate-300">Valor Total do Projeto</p>
-          <p className="text-5xl font-bold text-white my-2">{formatCurrency(totalInvestment)}</p>
-        </div>
-      </div>
-
-      <div className="mt-10">
-        <h3 className="proposal-subtitle">Condições de Pagamento</h3>
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="payment-card">
-            <h4 className="font-bold text-lg">À Vista</h4>
-            <p className="text-2xl font-bold text-green-400">{formatCurrency(totalInvestment)}</p>
-            <p className="text-sm text-slate-400">Pagamento único com desconto</p>
-          </div>
-          
-          {formData.paymentMethod === 'parcelado' && (
-            <>
-              <div className="payment-card">
-                <h4 className="font-bold text-lg flex items-center gap-2">
-                  <CreditCard /> Cartão / Boleto
-                </h4>
-                <p className="text-2xl font-bold text-blue-400">
-                  {formData.cardInstallments || 0}x de {formatCurrency(cardInstallmentValue)}
-                </p>
-                <p className="text-sm text-slate-400">
-                  Com juros de {formData.cardInterest || 0}% a.m.
-                </p>
+      {/* Key Financial Indicators */}
+      <div className="grid grid-cols-2 gap-4 mb-3">
+        <div className="bg-white rounded-xl shadow-lg p-4">
+          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-green-600" />
+            Indicadores de Retorno
+          </h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center py-3 border-b border-gray-100">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Valor Presente Líquido (VPL)</p>
+                <p className="text-xs text-gray-500">Valor do projeto descontado no tempo</p>
               </div>
-              
-              <div className="payment-card md:col-span-2">
-                <h4 className="font-bold text-lg flex items-center gap-2">
-                  <Landmark /> Financiamento Bancário
-                </h4>
-                <p className="text-2xl font-bold text-purple-400">
-                  {formData.financingInstallments || 0}x de {formatCurrency(financingInstallmentValue)}
-                </p>
-                <p className="text-sm text-slate-400">
-                  Com juros de {formData.financingInterest || 0}% a.m. (Sujeito a aprovação)
-                </p>
+              <p className={`text-lg font-bold ${vpl > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatCurrency(vpl)}
+              </p>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-gray-100">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Taxa Interna de Retorno (TIR)</p>
+                <p className="text-xs text-gray-500">Rentabilidade anual do investimento</p>
               </div>
-            </>
-          )}
+              <p className="text-lg font-bold text-green-600">{tir.toFixed(2)}%</p>
+            </div>
+            <div className="flex justify-between items-center py-3">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Retorno sobre Investimento (ROI)</p>
+                <p className="text-xs text-gray-500">Retorno total percentual</p>
+              </div>
+              <p className="text-lg font-bold text-green-600">{(roi * 100).toFixed(0)}%</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-4">
+          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-600" />
+            Período de Retorno
+          </h3>
+          <div className="flex flex-col items-center justify-center h-full">
+            <div className="text-center mb-3">
+              <p className="text-6xl font-bold text-blue-600 mb-2">{payback.toFixed(1)}</p>
+              <p className="text-xl text-gray-900 font-semibold">anos</p>
+              <p className="text-sm text-gray-600 mt-2">Tempo de Payback</p>
+            </div>
+            <div className="bg-blue-50 rounded-xl p-4 w-full">
+              <p className="text-sm text-gray-700 text-center">
+                Após <strong>{payback.toFixed(1)} anos</strong>, o investimento estará totalmente recuperado
+                e você começará a ter lucro líquido com a economia de energia.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Cost Breakdown */}
+      <div className="bg-white rounded-xl shadow-lg p-4 mb-3">
+        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <PiggyBank className="w-5 h-5 text-purple-600" />
+          Composição do Investimento
+        </h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Equipamentos (módulos + inversores)</span>
+                <span className="font-semibold text-gray-900">
+                  {formatCurrency(totalInvestment * 0.65)}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-blue-600 h-2 rounded-full" style={{ width: '65%' }}></div>
+              </div>
+
+              <div className="flex justify-between items-center mt-4">
+                <span className="text-sm text-gray-600">Instalação e mão de obra</span>
+                <span className="font-semibold text-gray-900">
+                  {formatCurrency(totalInvestment * 0.20)}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-emerald-600 h-2 rounded-full" style={{ width: '20%' }}></div>
+              </div>
+
+              <div className="flex justify-between items-center mt-4">
+                <span className="text-sm text-gray-600">Estruturas e cabos</span>
+                <span className="font-semibold text-gray-900">
+                  {formatCurrency(totalInvestment * 0.10)}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-purple-600 h-2 rounded-full" style={{ width: '10%' }}></div>
+              </div>
+
+              <div className="flex justify-between items-center mt-4">
+                <span className="text-sm text-gray-600">Projeto e homologação</span>
+                <span className="font-semibold text-gray-900">
+                  {formatCurrency(totalInvestment * 0.05)}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-orange-600 h-2 rounded-full" style={{ width: '5%' }}></div>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-40 h-40 rounded-full border-8 border-green-500 flex items-center justify-center mb-4 mx-auto">
+                <div>
+                  <p className="text-xl font-bold text-green-600">100%</p>
+                  <p className="text-xs text-gray-600">Incluso</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-700">
+                Todos os custos estão incluídos no investimento total. Não há custos ocultos.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* LCOE */}
+      {lcoe > 0 && (
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg p-4 text-white">
+          <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+            <Percent className="w-5 h-5" />
+            Custo Nivelado de Energia (LCOE)
+          </h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-lg font-bold text-yellow-300">
+                {formatCurrency(lcoe / 100)}
+                <span className="text-xl text-white/90">/kWh</span>
+              </p>
+              <p className="text-sm text-white/80 mt-2">
+                Custo médio da energia gerada ao longo da vida útil do sistema
+              </p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+              <p className="text-sm text-white/80 mb-2">Comparado com tarifa média</p>
+              <p className="text-xl font-bold text-yellow-300">-75%</p>
+              <p className="text-xs text-white/70 mt-1">de economia</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
       <footer className="proposal-footer">
-        <p>Proposta válida por 15 dias. Os valores podem sofrer alterações. | {companyName}</p>
+        <p className="text-gray-500">Página 5</p>
       </footer>
     </section>
   );

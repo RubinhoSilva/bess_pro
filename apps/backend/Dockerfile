@@ -1,12 +1,19 @@
 # Multi-stage build for Backend
 FROM node:20-alpine AS base
 
-# Install dependencies for native modules
+# Install dependencies for native modules and Chrome
 RUN apk add --no-cache \
     python3 \
     make \
     g++ \
-    curl
+    curl \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
 
 # Development stage
 FROM base AS development
@@ -15,25 +22,27 @@ ENV NODE_ENV=development
 # Set working directory
 WORKDIR /app
 
-# Copy base tsconfig first (IMPORTANTE!)
-COPY tsconfig.base.json ./
-
 # Copy package files
 COPY packages/shared/package*.json ./shared/
 COPY apps/backend/package*.json ./backend/
+
+# Copy base tsconfig to root and shared directory
+COPY tsconfig.base.json ./
+COPY tsconfig.base.json ./shared/
 
 # Install shared dependencies first
 WORKDIR /app/shared
 RUN npm install
 
-# Copy shared source AND tsconfig
+# Copy shared source
 COPY packages/shared ./
 # Build shared package
 RUN npm run build
 
 # Install backend dependencies
 WORKDIR /app/backend
-ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_SKIP_CHROME_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 RUN npm install
 
 # Copy backend source
@@ -55,11 +64,10 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-# Copy base tsconfig
-COPY tsconfig.base.json ./
-
 # Copy and build shared package
 COPY packages/shared/package*.json ./shared/
+COPY tsconfig.base.json ./
+COPY tsconfig.base.json ./shared/
 WORKDIR /app/shared
 RUN npm install
 COPY packages/shared ./
@@ -68,7 +76,8 @@ RUN npm run build
 # Install backend dependencies
 WORKDIR /app/backend
 COPY apps/backend/package*.json ./
-ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_SKIP_CHROME_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 RUN npm install
 
 # Copy backend source and build
@@ -79,8 +88,16 @@ RUN npm run build:docker
 FROM node:20-alpine AS production
 WORKDIR /app
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Install curl for health checks and Chrome
+RUN apk add --no-cache \
+    curl \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
 
 # Copy built application
 COPY --from=build /app/backend/dist ./dist

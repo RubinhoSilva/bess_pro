@@ -62,6 +62,8 @@ services:
       EMAIL_USER: ""
       EMAIL_PASS: ""
       EMAIL_FROM: noreply@besspro.dev
+      PUPPETEER_SKIP_CHROME_DOWNLOAD: "true"
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
     volumes:
       - ./apps/backend:/app/backend
       - ./packages/shared:/app/shared

@@ -181,29 +181,38 @@ export class ProposalTemplateController {
     }
   }
 
+  async previewProposal(req: Request, res: Response): Promise<void> {
+    try {
+      // Lógica de preview - retorna os dados formatados sem gerar PDF
+      const proposalData = {
+        id: `preview_${Date.now()}`,
+        customer: req.body.customer,
+        technical: req.body.technical,
+        financial: req.body.financial,
+        services: req.body.services,
+        totalServices: req.body.services?.reduce((sum: number, service: any) => sum + service.valor, 0) || 0,
+        status: 'preview',
+        createdAt: new Date().toISOString()
+      };
+      
+      res.json({ data: proposalData });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  }
+
   async generateProposal(req: Request, res: Response): Promise<void> {
     try {
       const proposal = await this.generateProposalUseCase.execute(req.body);
       res.json(proposal);
     } catch (error: any) {
+      console.error('Erro ao gerar proposta:', error);
+
       if (error.message.includes('not found')) {
         res.status(404).json({ message: error.message });
       } else {
         res.status(400).json({ message: error.message });
       }
-    }
-  }
-
-  async getProposalsByProject(req: Request, res: Response): Promise<void> {
-    try {
-      const { projectId } = req.params;
-      
-      // This should use a dedicated use case
-      // Implementation would go here
-      
-      res.json([]);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
     }
   }
 }

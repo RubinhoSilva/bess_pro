@@ -117,7 +117,13 @@
       "Bash(pip3 install:*)",
       "Bash(tee:*)",
       "Bash(python3:*)",
-      "WebFetch(domain:pvlib-python.readthedocs.io)"
+      "WebFetch(domain:pvlib-python.readthedocs.io)",
+      "Bash(for file in PageTechnical.tsx PageFinancial.tsx PageServices.tsx PageConclusion.tsx)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(done)",
+      "Bash(for file in PageTechnical.tsx PageFinancial.tsx PageServices.tsx)",
+      "Bash(do sed -i '' 's/proposal-page p-10/proposal-page p-6/g' $file)",
+      "Bash(do)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

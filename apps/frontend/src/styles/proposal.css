@@ -2,12 +2,24 @@
 
 .proposal-document {
   font-family: 'Inter', sans-serif;
+  background: white;
 }
 
 .proposal-page {
-  min-height: 100vh;
+  width: 210mm;
+  height: 297mm;
+  min-height: 297mm;
+  max-height: 297mm;
   page-break-after: always;
+  page-break-inside: avoid;
   position: relative;
+  background: white;
+  overflow: hidden;
+  margin: 0 auto;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .proposal-page:last-child {
@@ -15,7 +27,7 @@
 }
 
 .proposal-title {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: bold;
   color: #1e293b;
   margin-bottom: 1rem;
@@ -23,7 +35,7 @@
 }
 
 .proposal-subtitle {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: #334155;
   margin-bottom: 0.75rem;

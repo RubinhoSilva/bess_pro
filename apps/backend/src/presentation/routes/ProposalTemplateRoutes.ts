@@ -46,14 +46,14 @@ export class ProposalTemplateRoutes {
   });
 
   // Proposal generation routes
+  router.post('/proposals/preview', async (req, res) => {
+    const controller = container.resolve(ServiceTokens.ProposalTemplateController) as ProposalTemplateController;
+    await controller.previewProposal(req, res);
+  });
+
   router.post('/proposals/generate', async (req, res) => {
     const controller = container.resolve(ServiceTokens.ProposalTemplateController) as ProposalTemplateController;
     await controller.generateProposal(req, res);
-  });
-
-  router.get('/proposals/project/:projectId', async (req, res) => {
-    const controller = container.resolve(ServiceTokens.ProposalTemplateController) as ProposalTemplateController;
-    await controller.getProposalsByProject(req, res);
   });
 
   return router;
