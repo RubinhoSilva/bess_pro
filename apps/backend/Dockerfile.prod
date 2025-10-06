@@ -32,7 +32,6 @@ COPY packages/ ./packages/
 
 # Create symlink for tsconfig.base.json (fallback for resolution issues)
 RUN ln -sf /app/tsconfig.base.json /app/packages/tsconfig.base.json || true
-RUN ln -sf /app/tsconfig.base.json /app/apps/tsconfig.base.json || true
 
 # Build the application with increased heap size and resolve aliases
 RUN cd apps/backend && NODE_OPTIONS="--max-old-space-size=2048" npm run build
