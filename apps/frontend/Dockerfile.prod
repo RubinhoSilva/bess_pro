@@ -33,8 +33,8 @@ RUN echo "=== Verifying TypeScript configuration ===" && \
     echo "=== TypeScript config check ===" && \
     npx tsc --noEmit --skipLibCheck --listFiles || echo "TypeScript config check completed"
 
-# Create symlink for tsconfig.base.json (fallback for resolution issues)
-RUN ln -sf /app/tsconfig.base.json /app/packages/tsconfig.base.json || true
+# Copy tsconfig.base.json for resolution (symlinks cause npm ENOTDIR errors)
+RUN cp /app/tsconfig.base.json /app/packages/tsconfig.base.json
 
 # Clean previous builds and build shared package with verbose output
 RUN echo "=== Building shared package ===" && \
