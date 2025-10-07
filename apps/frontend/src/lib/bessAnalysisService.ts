@@ -94,10 +94,9 @@ export async function calculateHybridSystem(
     console.log(`✅ [FRONTEND] Cálculo híbrido concluído em ${duration}ms`);
     console.log('🔍 [DEBUG] Estrutura completa da resposta:', response.data);
     
-    // Backend retorna estrutura aninhada: response.data.data.data (triplo aninhamento)
-    // Estrutura: {success: true, data: {success: true, data: {sistema_solar, sistema_bess, analise_hibrida}, metadata: {...}}}
-    const actualData = response.data.data?.data || response.data.data || response.data;
-    const actualMetadata = response.data.data?.metadata || response.data.metadata || {
+    // Backend retorna estrutura: {success: true, data: {sistema_solar, sistema_bess, analise_hibrida, metadata?}, metadata: {...}}
+    const actualData = response.data.data;
+    const actualMetadata = response.data.metadata || {
       duration_ms: duration,
       timestamp: new Date().toISOString(),
     };
