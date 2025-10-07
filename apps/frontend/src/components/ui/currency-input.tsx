@@ -8,25 +8,26 @@ interface CustomCurrencyInputProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  decimals?: number; // Nova prop para controlar casas decimais
 }
 
-const formatCurrencyDisplay = (value: string): string => {
+const formatCurrencyDisplay = (value: string, decimals: number = 2): string => {
   // Remove tudo exceto dígitos
   const digitsOnly = value.replace(/\D/g, '');
   
   if (!digitsOnly) return '';
   
-  // Converte para número em centavos
-  const cents = parseInt(digitsOnly);
-  const reais = cents / 100;
+  // Converte para número considerando as casas decimais
+  const divisor = Math.pow(10, decimals);
+  const numericValue = parseInt(digitsOnly) / divisor;
   
   // Formata usando Intl
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(reais);
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  }).format(numericValue);
 };
 
 const extractNumericValue = (formattedValue: string): number => {
@@ -40,7 +41,7 @@ const extractNumericValue = (formattedValue: string): number => {
 };
 
 export const CustomCurrencyInput = React.forwardRef<HTMLInputElement, CustomCurrencyInputProps>(
-  ({ className, onValueChange, value, placeholder, ...props }, ref) => {
+  ({ className, onValueChange, value, placeholder, decimals = 2, ...props }, ref) => {
     const [displayValue, setDisplayValue] = useState('');
     
     // Atualiza o valor exibido quando o valor prop muda
@@ -51,8 +52,8 @@ export const CustomCurrencyInput = React.forwardRef<HTMLInputElement, CustomCurr
           const formatted = new Intl.NumberFormat('pt-BR', {
             style: 'currency',
             currency: 'BRL',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
           }).format(numValue);
           setDisplayValue(formatted);
         } else {
@@ -61,7 +62,7 @@ export const CustomCurrencyInput = React.forwardRef<HTMLInputElement, CustomCurr
       } else {
         setDisplayValue('');
       }
-    }, [value]);
+    }, [value, decimals]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const inputValue = e.target.value;
@@ -74,7 +75,7 @@ export const CustomCurrencyInput = React.forwardRef<HTMLInputElement, CustomCurr
       }
       
       // Formatar o valor
-      const formatted = formatCurrencyDisplay(inputValue);
+      const formatted = formatCurrencyDisplay(inputValue, decimals);
       setDisplayValue(formatted);
       
       // Extrair valor numérico e enviar para parent
@@ -112,7 +113,7 @@ export const CustomCurrencyInput = React.forwardRef<HTMLInputElement, CustomCurr
           "text-right", // Alinha o texto à direita como é comum em campos monetários
           className
         )}
-        placeholder={placeholder || "R$ 0,00"}
+        placeholder={placeholder || `R$ 0,${'0'.repeat(decimals)}`}
         {...props}
       />
     );

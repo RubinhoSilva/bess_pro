@@ -42,7 +42,7 @@ const navigation = [
   // { name: 'Mapas & Localização', href: '/dashboard/geo-map', icon: MapPin }, // Temporariamente desabilitado
   { name: 'Clientes', href: '/dashboard/clients', icon: Users },
   { name: 'Equipamentos', href: '/dashboard/equipment', icon: Package },
-  { name: 'Templates de Proposta', href: '/dashboard/proposal-templates', icon: FileText },
+  // { name: 'Templates de Proposta', href: '/dashboard/proposal-templates', icon: FileText }, // Temporariamente desabilitado
   { name: 'Relatórios', href: '/dashboard/reports', icon: BarChart3 },
   { name: 'Agenda', href: '/dashboard/calendar', icon: Calendar },
 ];

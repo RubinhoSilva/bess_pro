@@ -135,7 +135,7 @@ const validateAndNormalizeResults = (results: any) => {
     hasAdvancedFinancial: !!results.advancedFinancial
   });
 
-  const normalized = {
+  const normalized: any = {
     ...results,
     // Garantir arrays seguros
     fluxoCaixa: Array.isArray(results.fluxoCaixa) ? results.fluxoCaixa : [],
@@ -146,7 +146,7 @@ const validateAndNormalizeResults = (results: any) => {
     potenciaPico: Number(results.potenciaPico) || 0,
     numeroModulos: Number(results.numeroModulos) || 0,
     totalInvestment: Number(results.totalInvestment) || 0,
-    economiaAnualEstimada: Number(results.economiaAnualEstimada) || 0,
+    economiaAnualEstimada: Number(results.economiaAnualEstimada || results.economiaAnualMedia || results.advancedFinancial?.economiaAnualMedia || results.economiaProjetada || 0), // Será calculado depois
     vpl: Number(results.vpl) || 0,
     tir: Number(results.tir) || 0,
     payback: Number(results.payback) || 0,
@@ -205,7 +205,7 @@ const validateAndNormalizeResults = (results: any) => {
   };
 
   // Adicionar campos derivados para compatibilidade com componentes PDF
-  const geracaoEstimadaMensal = normalized.geracaoEstimadaMensal || [];
+  const geracaoEstimadaMensal: number[] = normalized.geracaoEstimadaMensal || [];
   const geracaoAnualCalculada = geracaoEstimadaMensal.reduce((acc: number, val: number) => acc + val, 0);
 
   // Calcular ROI se temos dados financeiros
@@ -217,11 +217,11 @@ const validateAndNormalizeResults = (results: any) => {
   const enrichedResults = {
     ...normalized,
     // Campos derivados para compatibilidade
-    potenciaSistema: normalized.potenciaPico / 1000, // kWp
+    potenciaSistema: normalized.potenciaPico, // Já está em kWp
     geracaoAnual: geracaoAnualCalculada, // kWh/ano
-    economiaProjetada: normalized.economiaAnualEstimada, // Alias
+    economiaProjetada: normalized.economiaAnualEstimada || (geracaoAnualCalculada * 0.9), // Estimativa: R$ 0.90/kWh média nacional
     performanceRatio: normalized.advancedSolar?.performance?.prMedio || 0.85,
-    yield: normalized.advancedSolar?.performance?.yieldEspecifico || 1200,
+    yield: (normalized.advancedSolar?.performance?.yieldEspecifico && normalized.advancedSolar.performance.yieldEspecifico < 5000) ? normalized.advancedSolar.performance.yieldEspecifico : 1500, // Valor mais realista
     roi: roiCalculado,
     lcoe: normalized.advancedFinancial?.indicadores?.custoNiveladoEnergia || 0
   };
@@ -229,10 +229,16 @@ const validateAndNormalizeResults = (results: any) => {
   console.log('📊 PVResultsDashboard: Dados enriquecidos:', {
     potenciaSistema: enrichedResults.potenciaSistema,
     geracaoAnual: enrichedResults.geracaoAnual,
+    economiaProjetada: enrichedResults.economiaProjetada,
     performanceRatio: enrichedResults.performanceRatio,
     yield: enrichedResults.yield,
     roi: enrichedResults.roi,
-    lcoe: enrichedResults.lcoe
+    lcoe: enrichedResults.lcoe,
+    // Debug dos dados originais
+    originalEconomiaAnualEstimada: results.economiaAnualEstimada,
+    originalEconomiaAnualMedia: results.economiaAnualMedia,
+    advancedFinancialEconomia: results.advancedFinancial?.economiaAnualMedia,
+    geracaoAnualCalculada
   });
 
   return enrichedResults;
@@ -325,46 +331,88 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
       // 6. Pega todas as páginas
       const pages = proposalElement.querySelectorAll('.proposal-page');
 
+      console.log(`📄 Found ${pages.length} pages for PDF generation`);
+
       if (pages.length === 0) {
         throw new Error('Nenhuma página encontrada no documento');
       }
+
+      // Log detalhado de cada página antes da captura
+      pages.forEach((page, index) => {
+        const element = page as HTMLElement;
+        const rect = element.getBoundingClientRect();
+        console.log(`📄 Page ${index + 1} details:`, {
+          offsetWidth: element.offsetWidth,
+          offsetHeight: element.offsetHeight,
+          scrollWidth: element.scrollWidth,
+          scrollHeight: element.scrollHeight,
+          clientWidth: element.clientWidth,
+          clientHeight: element.clientHeight,
+          computedHeight: window.getComputedStyle(element).height,
+          computedOverflow: window.getComputedStyle(element).overflow,
+          boundingRect: {
+            width: rect.width,
+            height: rect.height,
+            top: rect.top,
+            left: rect.left
+          }
+        });
+      });
 
       // 7. Cria o PDF
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
+      console.log(`📋 PDF dimensions: ${pdfWidth}x${pdfHeight}mm`);
+
       // 8. Processa cada página
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i] as HTMLElement;
 
+        console.log(`📸 Capturing page ${i + 1}/${pages.length}...`);
+
+        // Ajusta o scrollWidth para páginas muito largas (como a Page 6)
+        const captureWidth = Math.min(page.scrollWidth, 792); // Limita a largura máxima
+        const captureHeight = Math.min(page.scrollHeight, 1121); // Limita a altura máxima
+        
         // Captura a página como canvas
         const canvas = await html2canvas(page, {
           scale: 2,
           useCORS: true,
           backgroundColor: '#ffffff',
-          windowWidth: page.scrollWidth,
-          windowHeight: page.scrollHeight,
+          windowWidth: captureWidth,
+          windowHeight: captureHeight,
+          logging: true, // Ativa logs do html2canvas
+        });
+
+        console.log(`📸 Canvas created for page ${i + 1}:`, {
+          canvasWidth: canvas.width,
+          canvasHeight: canvas.height,
+          dataURLLength: canvas.toDataURL('image/png').length
         });
 
         const imgData = canvas.toDataURL('image/png');
         const imgProps = pdf.getImageProperties(imgData);
         const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
+        // Ajusta a altura para caber exatamente na página
+        const adjustedImgHeight = Math.min(imgHeight, pdfHeight - 0.5); // -0.5mm de margem de segurança
+
+        console.log(`🖼️ Image properties for page ${i + 1}:`, {
+          imgWidth: imgProps.width,
+          imgHeight: imgProps.height,
+          calculatedImgHeight: imgHeight,
+          adjustedImgHeight: adjustedImgHeight,
+          pdfPageHeight: pdfHeight,
+          willFit: adjustedImgHeight <= pdfHeight
+        });
+
         if (i > 0) {
           pdf.addPage();
         }
 
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, Math.min(pdfHeight, imgHeight));
-
-        // Se a imagem for maior que uma página, divide em múltiplas páginas
-        let heightLeft = imgHeight - pdfHeight;
-        while (heightLeft > 0) {
-          const position = heightLeft - imgHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-          heightLeft -= pdfHeight;
-        }
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, adjustedImgHeight);
       }
 
       // 9. Restaura estilos

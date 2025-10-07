@@ -46,7 +46,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python) - usar nome do container Docker
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+      const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
       
       // Chamar o serviço Python - CORRIGIDO: usar endpoint que existe
       const response = await axios.post(
@@ -96,7 +96,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python) - usar nome do container Docker
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+      const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
       
       // Chamar o serviço Python - CORRIGIDO: usar endpoint que existe
       const response = await axios.post(
@@ -144,7 +144,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python) - usar nome do container Docker
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+      const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
       
       // Chamar o serviço Python - CORRIGIDO: usar endpoint que existe  
       const response = await axios.post(
@@ -221,7 +221,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python)
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+      const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
 
       console.log('\n📊 [NODE.JS] Preparando transformação de payload para novo formato /api/v1/solar/calculate...');
 
@@ -381,6 +381,29 @@ export class SolarAnalysisController extends BaseController {
       console.log('\n🌐 [NODE.JS] Chamando API Python - /api/v1/solar/calculate (NOVO ENDPOINT)');
       console.log('   - URL:', `${pythonServiceUrl}/api/v1/solar/calculate`);
       console.log('   - Timeout: 180s');
+
+      // 💾 SALVAR PAYLOAD EM ARQUIVO JSON para debug
+      try {
+        const fs = require('fs');
+        const path = require('path');
+
+        // Criar pasta para payloads se não existir
+        const payloadsDir = path.join(process.cwd(), 'payloads');
+        if (!fs.existsSync(payloadsDir)) {
+          fs.mkdirSync(payloadsDir, { recursive: true });
+        }
+
+        // Nome do arquivo com timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `payload-solar-calculate-${timestamp}.json`;
+        const filepath = path.join(payloadsDir, filename);
+
+        // Salvar payload
+        fs.writeFileSync(filepath, JSON.stringify(pythonParams, null, 2), 'utf8');
+        console.log(`💾 [SolarAnalysisController] Payload solar salvo em: ${filepath}`);
+      } catch (error) {
+        console.error('❌ [SolarAnalysisController] Erro ao salvar payload solar:', error);
+      }
 
       // Chamar novo endpoint de cálculo solar completo
       const response = await axios.post(
@@ -545,7 +568,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python) - usar nome do container Docker
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+      const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
       
       // Preparar parâmetros para a API Python (seguindo o schema IrradiationAnalysisRequest)
       console.log('🔍 [DEBUG BACKEND] analyzeMonthlyIrradiation - Verificando data_source:', {
@@ -646,7 +669,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python)
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+      const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
       
       // Buscar dados de irradiação mensal
       const irradiationResponse = await axios.post(
@@ -696,7 +719,7 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python)
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+      const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
 
       // Mapear campos do frontend para o formato esperado pela API Python
       const financialInput = {
@@ -715,6 +738,36 @@ export class SolarAnalysisController extends BaseController {
       };
 
       console.log('🚀 Enviando para API Python (análise financeira):', JSON.stringify(financialInput, null, 2));
+      console.log('📊 Valores chave para economia:', {
+        geracao_anual_total: financialInput.geracao_mensal.reduce((a: number, b: number) => a + b, 0),
+        consumo_anual_total: financialInput.consumo_mensal.reduce((a: number, b: number) => a + b, 0),
+        tarifa_energia: financialInput.tarifa_energia,
+        custo_fio_b: financialInput.custo_fio_b,
+        investimento_inicial: financialInput.investimento_inicial
+      });
+
+      // 💾 SALVAR PAYLOAD EM ARQUIVO JSON para debug
+      try {
+        const fs = require('fs');
+        const path = require('path');
+
+        // Criar pasta para payloads se não existir
+        const payloadsDir = path.join(process.cwd(), 'payloads');
+        if (!fs.existsSync(payloadsDir)) {
+          fs.mkdirSync(payloadsDir, { recursive: true });
+        }
+
+        // Nome do arquivo com timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `payload-financial-calculate-${timestamp}.json`;
+        const filepath = path.join(payloadsDir, filename);
+
+        // Salvar payload
+        fs.writeFileSync(filepath, JSON.stringify(financialInput, null, 2), 'utf8');
+        console.log(`💾 [SolarAnalysisController] Payload financeiro salvo em: ${filepath}`);
+      } catch (error) {
+        console.error('❌ [SolarAnalysisController] Erro ao salvar payload financeiro:', error);
+      }
       
       // Chamar a API Python (Análise Financeira Avançada)
       const response = await axios.post(
@@ -803,9 +856,32 @@ export class SolarAnalysisController extends BaseController {
       }
 
       // URL do serviço PVLIB (Python)
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+      const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
 
       console.log('🚀 Enviando para API Python (MPPT):', JSON.stringify(params, null, 2));
+
+      // 💾 SALVAR PAYLOAD EM ARQUIVO JSON para debug
+      try {
+        const fs = require('fs');
+        const path = require('path');
+
+        // Criar pasta para payloads se não existir
+        const payloadsDir = path.join(process.cwd(), 'payloads');
+        if (!fs.existsSync(payloadsDir)) {
+          fs.mkdirSync(payloadsDir, { recursive: true });
+        }
+
+        // Nome do arquivo com timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `payload-mppt-calculate-${timestamp}.json`;
+        const filepath = path.join(payloadsDir, filename);
+
+        // Salvar payload
+        fs.writeFileSync(filepath, JSON.stringify(params, null, 2), 'utf8');
+        console.log(`💾 [SolarAnalysisController] Payload MPPT salvo em: ${filepath}`);
+      } catch (error) {
+        console.error('❌ [SolarAnalysisController] Erro ao salvar payload MPPT:', error);
+      }
 
       // Chamar a API Python (MPPT Calculation)
       const response = await axios.post(
@@ -895,7 +971,7 @@ export class SolarAnalysisController extends BaseController {
       console.log('✅ [NODE.JS] Validação inicial passou');
 
       // URL do serviço PVLIB (Python)
-      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+      const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
 
       console.log('\n🌐 [NODE.JS] Chamando API Python - /api/v1/solar/calculate');
       console.log('   - URL:', `${pythonServiceUrl}/api/v1/solar/calculate`);

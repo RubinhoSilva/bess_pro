@@ -36,23 +36,23 @@ export const PageConclusion: React.FC<PageConclusionProps> = ({ results, profile
         </div>
       </div>
 
-      <div className="relative z-10 p-12">
+      <div className="relative z-10 p-10">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-6">
           <div className="inline-block bg-yellow-400 text-gray-900 px-6 py-2 rounded-full text-sm font-bold mb-3">
             PRÓXIMOS PASSOS
           </div>
-          <h2 className="text-lg font-bold text-white mb-4">
+          <h2 className="text-lg font-bold text-white mb-3">
             Pronto para Transformar Seu Futuro Energético?
           </h2>
-          <p className="text-xl text-white/90 max-w-3xl mx-auto">
+          <p className="text-lg text-white/90 max-w-3xl mx-auto">
             Esta proposta foi desenvolvida especialmente para {customerName}, com soluções personalizadas
             e equipamentos de alta qualidade para garantir o melhor retorno do seu investimento.
           </p>
         </div>
 
         {/* Benefits Summary */}
-        <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-12">
+        <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8">
           <h3 className="text-lg font-bold text-white mb-3 text-center">Por Que Escolher {companyName}?</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-start gap-3">
@@ -95,7 +95,7 @@ export const PageConclusion: React.FC<PageConclusionProps> = ({ results, profile
         </div>
 
         {/* Call to Action */}
-        <div className="bg-yellow-400 rounded-xl p-6 mb-12 text-center">
+        <div className="bg-yellow-400 rounded-xl p-6 mb-8 text-center">
           <h3 className="text-xl font-bold text-gray-900 mb-3">Aceite Esta Proposta Hoje!</h3>
           <p className="text-lg text-gray-800 mb-3">
             Entre em contato conosco para esclarecer dúvidas e dar o próximo passo rumo à sua independência energética.
@@ -106,7 +106,7 @@ export const PageConclusion: React.FC<PageConclusionProps> = ({ results, profile
         </div>
 
         {/* Contact Information */}
-        <div className="bg-white/10 backdrop-blur-md rounded-xl p-6">
+        <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-4">
           <div className="flex items-center justify-center gap-3 mb-3">
             <Sun className="w-8 h-8 text-yellow-400" />
             <h3 className="text-lg font-bold text-white">{companyName}</h3>
@@ -153,7 +153,7 @@ export const PageConclusion: React.FC<PageConclusionProps> = ({ results, profile
       </div>
 
       {/* Footer */}
-      <footer className="relative z-10 pb-12 px-12">
+      <footer className="relative z-10 pb-16 px-10">
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center text-white">
           <p className="text-sm mb-2">
             Esta proposta foi gerada em {new Date().toLocaleDateString('pt-BR', {
@@ -166,8 +166,8 @@ export const PageConclusion: React.FC<PageConclusionProps> = ({ results, profile
             Todos os cálculos são baseados em dados históricos e estimativas. Resultados reais podem variar conforme condições climáticas e uso.
           </p>
           <div className="w-full h-px bg-white/20 my-4"></div>
-          <p className="text-xs text-white/60">
-            Página 8 | {companyName} - Transformando luz solar em economia e sustentabilidade
+          <p className="text-xs text-white/60 mb-4">
+            Página 10 | {companyName} - Transformando luz solar em economia e sustentabilidade
           </p>
         </div>
       </footer>

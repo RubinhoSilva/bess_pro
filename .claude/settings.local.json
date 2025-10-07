@@ -125,7 +125,9 @@
       "Bash(do sed -i '' 's/proposal-page p-10/proposal-page p-6/g' $file)",
       "Bash(do)",
       "Read(//private/tmp/**)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(jupyter nbconvert:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

@@ -12,6 +12,7 @@ interface PageCoverProps {
       };
     };
     potenciaSistema?: number;
+    potenciaPico?: number;
     geracaoAnual?: number;
     economiaProjetada?: number;
   };
@@ -99,7 +100,7 @@ export const PageCover: React.FC<PageCoverProps> = ({ results, profile }) => {
               <Zap className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
               <p className="text-sm text-white/80 mb-1">Potência do Sistema</p>
               <p className="text-2xl font-bold text-white">
-                {(results.potenciaSistema || 0).toFixed(2)} kWp
+                {(results.potenciaPico || results.potenciaSistema || 0).toFixed(2)} kWp
               </p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6">

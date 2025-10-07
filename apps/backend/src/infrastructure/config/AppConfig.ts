@@ -61,7 +61,7 @@ export interface AppConfig {
     pvgis: {
       baseUrl: string;
     };
-    pvlibService?: {
+    energyService?: {
       baseUrl: string;
     };
     payment?: {
@@ -144,8 +144,8 @@ export function loadConfig(): AppConfig {
       pvgis: {
         baseUrl: process.env.PVGIS_BASE_URL || 'https://re.jrc.ec.europa.eu/api/v5_2',
       },
-      pvlibService: {
-        baseUrl: process.env.PVLIB_SERVICE_URL || 'http://localhost:8000',
+      energyService: {
+        baseUrl: process.env.ENERGY_SERVICE_URL || 'http://localhost:8110',
       },
       payment: {
         stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',

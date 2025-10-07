@@ -73,8 +73,9 @@ export default function EconomicParametersForm({ formData, onFormChange }: Econo
             <CustomCurrencyInput
               value={formData.custoFioB || ((formData.tarifaEnergiaB || 0.8) * 0.3)}
               onValueChange={(value) => onFormChange('custoFioB', value)}
-              placeholder="R$ 0,00"
+              placeholder="R$ 0,0000"
               className="bg-background border-border text-foreground"
+              decimals={4}
             />
           </div>
         </div>

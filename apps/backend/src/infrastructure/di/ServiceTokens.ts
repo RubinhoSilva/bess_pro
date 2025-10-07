@@ -32,6 +32,7 @@ export const ServiceTokens = {
   PVGIS_API_SERVICE: 'PvgisApiService',
   PAYMENT_GATEWAY_SERVICE: 'PaymentGatewayService',
   PVLIB_SERVICE_CLIENT: 'PvlibServiceClient',
+  BESS_CALCULATION_CLIENT: 'BessCalculationClient',
 
   // WebSockets
   SOCKET_IO_SERVER: 'SocketIOServer',
@@ -148,6 +149,7 @@ export const ServiceTokens = {
   ProposalTemplateController: 'ProposalTemplateController',
   ProposalSettingsController: 'ProposalSettingsController',
   SolarAnalysisController: 'SolarAnalysisController',
+  BessAnalysisController: 'BessAnalysisController',
   AdvancedProposalTemplateController: 'AdvancedProposalTemplateController',
   EnergyCompanyController: 'EnergyCompanyController',
   FinancialCalculationController: 'FinancialCalculationController',

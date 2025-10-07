@@ -6,7 +6,7 @@ import { CalculateSolarSystemUseCase, AnalyzeFinancialUseCase } from '@/applicat
 import { ServiceTokens } from '@/infrastructure';
 import { CalculationLogger } from '@/domain/services/CalculationLogger';
 import { SolarCalculationService } from '@/domain/services/SolarCalculationService';
-import { EnhancedFinancialCalculationService } from '@/domain/services/EnhancedFinancialCalculationService';
+
 import { IrradiationAnalysisService } from '@/domain/services/IrradiationAnalysisService';
 import { Coordinates } from '@/domain/value-objects/Coordinates';
 
@@ -140,6 +140,29 @@ export class CalculationController extends BaseController {
             modalidade_tarifaria: 'convencional'
           };
 
+          // 💾 SALVAR PAYLOAD EM ARQUIVO JSON para debug
+          try {
+            const fs = require('fs');
+            const path = require('path');
+
+            // Criar pasta para payloads se não existir
+            const payloadsDir = path.join(process.cwd(), 'payloads');
+            if (!fs.existsSync(payloadsDir)) {
+              fs.mkdirSync(payloadsDir, { recursive: true });
+            }
+
+            // Nome do arquivo com timestamp
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `payload-calculation-financial-${timestamp}.json`;
+            const filepath = path.join(payloadsDir, filename);
+
+            // Salvar payload
+            fs.writeFileSync(filepath, JSON.stringify(pythonApiInput, null, 2), 'utf8');
+            console.log(`💾 [CalculationController] Payload salvo em: ${filepath}`);
+          } catch (error) {
+            console.error('❌ [CalculationController] Erro ao salvar payload:', error);
+          }
+
           const response = await axios.post(
             `${process.env.PVLIB_SERVICE_URL || 'http://localhost:8110'}/financial/calculate-advanced`,
             pythonApiInput,
@@ -151,7 +174,7 @@ export class CalculationController extends BaseController {
           
           financialAnalysis = response.data;
         } catch (error) {
-          logger.warning('Sistema', 'Erro ao calcular análise financeira via API Python, continuando sem análise financeira', { error: error instanceof Error ? error.message : 'Unknown error' });
+        logger.info('Sistema', 'Erro ao calcular análise financeira via API Python, continuando sem análise financeira', { error: error instanceof Error ? error.message : 'Unknown error' });
           financialAnalysis = null;
         }
       }
@@ -301,16 +324,60 @@ export class CalculationController extends BaseController {
         logger
       );
 
-      // 4. Cálculos Financeiros
-      const enhancedFinancialParams = {
-        ...financialParams,
-        geracaoAnual: annualGeneration // Usar a geração calculada
-      };
+      // 4. Cálculos Financeiros (via Python service)
+      let financialResults = null;
+      
+      try {
+        const pythonApiInput = {
+          investimento_inicial: financialParams.investimentoInicial,
+          geracao_mensal: Array(12).fill(annualGeneration / 12),
+          consumo_mensal: Array(12).fill(annualGeneration * 0.8), // Estimativa de 80% de autoconsumo
+          tarifa_energia: financialParams.tarifaEnergia,
+          custo_fio_b: 0.3, // Valor padrão
+          vida_util: financialParams.vidaUtil,
+          taxa_desconto: financialParams.taxaDesconto,
+          inflacao_energia: financialParams.inflacaoEnergia,
+          degradacao_modulos: 0.5,
+          custo_om: financialParams.custoOperacional,
+          inflacao_om: 4.0,
+          modalidade_tarifaria: 'convencional'
+        };
 
-      const financialResults = EnhancedFinancialCalculationService.calculateFinancialIndicators(
-        enhancedFinancialParams,
-        logger
-      );
+        // 💾 SALVAR PAYLOAD EM ARQUIVO JSON para debug
+        try {
+          const fs = require('fs');
+          const path = require('path');
+
+          const payloadsDir = path.join(process.cwd(), 'payloads');
+          if (!fs.existsSync(payloadsDir)) {
+            fs.mkdirSync(payloadsDir, { recursive: true });
+          }
+
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const filename = `payload-detailed-calculation-${timestamp}.json`;
+          const filepath = path.join(payloadsDir, filename);
+
+          fs.writeFileSync(filepath, JSON.stringify(pythonApiInput, null, 2), 'utf8');
+          console.log(`💾 [CalculationController] Payload salvo em: ${filepath}`);
+        } catch (error) {
+          console.error('❌ [CalculationController] Erro ao salvar payload:', error);
+        }
+
+        const response = await axios.post(
+          `${process.env.PVLIB_SERVICE_URL || 'http://localhost:8110'}/financial/calculate-advanced`,
+          pythonApiInput,
+          {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 30000
+          }
+        );
+        
+        financialResults = response.data.data;
+        logger.info('Sistema', 'Análise financeira calculada via API Python', { vpl: financialResults?.vpl });
+      } catch (error) {
+        logger.info('Sistema', 'Erro ao calcular análise financeira via API Python, continuando sem análise financeira', { error: error instanceof Error ? error.message : 'Unknown error' });
+        financialResults = null;
+      }
 
       // 3. Resultado final
       const results = {
@@ -320,7 +387,10 @@ export class CalculationController extends BaseController {
           systemParams,
           coordinates,
           irradiationData,
-          financialParams: enhancedFinancialParams
+          financialParams: {
+            ...financialParams,
+            geracaoAnual: annualGeneration
+          }
         },
         calculations: {
           irradiation: irradiationAnalysis,
@@ -345,9 +415,9 @@ export class CalculationController extends BaseController {
 
       logger.result('Sistema', 'Cálculos detalhados concluídos com sucesso', {
         totalLogs: logger.getLogs().length,
-        vpl: financialResults.vpl,
-        tir: financialResults.tir,
-        payback: financialResults.payback,
+        vpl: financialResults?.vpl || 'N/A',
+        tir: financialResults?.tir || 'N/A',
+        payback: financialResults?.payback_simples || 'N/A',
         geracaoAnual: annualGeneration
       });
 

@@ -141,12 +141,12 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     const aguasComModulos = aguasTelhado.filter(agua => agua.numeroModulos > 0);
     if (aguasComModulos.length === 0 || !latitude || !longitude) return;
     
-    console.log('🔄 Perdas do sistema atualizadas, recalculando sistema completo...');
+
     
     // Recalcular apenas uma vez (o sistema completo) usando a primeira água com módulos
     const primeiraAguaComModulos = aguasComModulos[0];
     if (primeiraAguaComModulos) {
-      console.log(`🧮 Recalculando sistema completo via água ${primeiraAguaComModulos.nome}`);
+
       handleCalculateGeneration(primeiraAguaComModulos.id);
     }
   }, [perdaSombreamento, perdaMismatch, perdaCabeamento, perdaSujeira, perdaInversor, perdaOutras]);
@@ -330,7 +330,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     onAguasChange(updatedAguas);
 
     try {
-      console.log('🌞 Calculando geração do sistema completo:', {
+      const dadosCalculo = {
         totalAguas: aguasTelhado.length,
         totalModulos,
         aguas: aguasTelhado.map(a => ({
@@ -341,7 +341,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         })),
         latitude,
         longitude
-      });
+      };
 
       // Calcular orientação e inclinação médias ponderadas por número de módulos
       let orientacaoMedia = 0;
@@ -370,11 +370,12 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         inclinacaoMedia = Math.max(0, Math.min(90, inclinacaoMedia));
       }
 
-      console.log('📐 Parâmetros médios ponderados:', {
+      // Adicionar parâmetros médios ao objeto de cálculo
+      const parametrosMedios = {
         orientacaoMedia,
         inclinacaoMedia,
         totalModulos
-      });
+      };
 
       // Preparar dados do inversor para incluir em cada água
       const inverterData = selectedInverters.length > 0 ? {
@@ -502,17 +503,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         perdaOutras
       };
 
-      // ===== DEBUG: PERDAS SENDO ENVIADAS PARA CÁLCULO =====
-      console.log('🔧 [WaterSelectionForm] Perdas enviadas para cálculo:', {
-        perdaSombreamento,
-        perdaMismatch,
-        perdaCabeamento,
-        perdaSujeira,
-        perdaInversor,
-        perdaOutras,
-        totalPerdas: (perdaSombreamento + perdaMismatch + perdaCabeamento + perdaSujeira + perdaInversor + perdaOutras)
-      });
-      console.log('📦 [WaterSelectionForm] Objeto completo enviado para API:', dimensioningData);
+
 
       // Chamar API de cálculo avançado
       const dados = await SolarSystemService.calculateAdvancedFromDimensioning(dimensioningData);
@@ -537,8 +528,8 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
           };
         }
       });
-        
-      console.log('✅ Geração do sistema calculada e distribuída:', {
+
+      const resultadosSistema = {
         areaTotalSistema: dados.area_necessaria_m2,
         geracaoTotalSistema: dados.energia_total_anual_kwh,
         totalModulos,
@@ -551,7 +542,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
             area: a.areaCalculada,
             geracao: a.geracaoAnual
           }))
-      });
+      };
         
       onAguasChange(finalAguas);
     } catch (error) {
@@ -850,7 +841,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                               
                               if (finalValue !== modulosBalanceados && modulosBalanceados > 0) {
                                 // Toast elegante informando a correção
-                                console.log(`🔧 Auto-correção: ${finalValue} módulos → ${modulosBalanceados} módulos (${modulosPorString} por string, ${stringsPorMppt} strings)`);
+
                                 
                                 // Aplicar a correção
                                 finalValue = modulosBalanceados;

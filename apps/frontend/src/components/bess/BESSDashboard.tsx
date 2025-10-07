@@ -1,9 +1,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, RefreshCw, Battery, Sun, Fuel, DollarSign, Zap, TrendingUp } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ArrowLeft, RefreshCw, Battery, Sun, Fuel, DollarSign, Zap, TrendingUp, BarChart3, Lightbulb, AlertTriangle } from 'lucide-react';
 import { BESSSystemConfiguration } from './BESSAnalysisTool';
+import {
+  HybridDimensioningResponse,
+  SistemaSolarResult,
+  SistemaBessResult,
+  AnaliseHibrida
+} from '@/types/bess';
 import {
   BarChart,
   Bar,
@@ -21,11 +27,77 @@ import {
 } from 'recharts';
 
 interface BESSDashboardProps {
-  results: any;
+  results: HybridDimensioningResponse & {
+    _metadata?: {
+      leadId: string;
+      leadName: string;
+      systemConfig: any;
+      calculatedAt: string;
+      duration_ms: number;
+    };
+  };
   systemConfig: BESSSystemConfiguration;
   onNewSimulation: () => void;
   onBackToForm: () => void;
 }
+
+interface MetricCardProps {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  icon?: React.ReactNode;
+  trend?: 'up' | 'down' | 'neutral';
+  color?: 'blue' | 'green' | 'orange' | 'purple' | 'red';
+}
+
+const MetricCard: React.FC<MetricCardProps> = ({ 
+  title, 
+  value, 
+  subtitle, 
+  icon, 
+  trend,
+  color = 'blue' 
+}) => {
+  const colorClasses = {
+    blue: 'from-blue-500 to-blue-600',
+    green: 'from-green-500 to-green-600',
+    orange: 'from-orange-500 to-orange-600',
+    purple: 'from-purple-500 to-purple-600',
+    red: 'from-red-500 to-red-600',
+  };
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className={`bg-gradient-to-r ${colorClasses[color]} text-white pb-2`}>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          {icon}
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4">
+        <div className="text-2xl font-bold text-gray-900 dark:text-white">
+          {value}
+        </div>
+        {subtitle && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {subtitle}
+          </p>
+        )}
+        {trend && (
+          <div className={`text-xs mt-2 ${
+            trend === 'up' ? 'text-green-600' : 
+            trend === 'down' ? 'text-red-600' : 
+            'text-gray-600'
+          }`}>
+            {trend === 'up' && '↑ Positivo'}
+            {trend === 'down' && '↓ Negativo'}
+            {trend === 'neutral' && '→ Neutro'}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const BESSDashboard: React.FC<BESSDashboardProps> = ({
   results,
@@ -33,352 +105,488 @@ const BESSDashboard: React.FC<BESSDashboardProps> = ({
   onNewSimulation,
   onBackToForm
 }) => {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
+  // Debug log para verificar dados recebidos
+  console.log('🔍 [DASHBOARD] Dados recebidos:', results);
+  console.log('🔍 [DASHBOARD] sistema_solar:', results.sistema_solar);
+  console.log('🔍 [DASHBOARD] sistema_bess:', results.sistema_bess);
+  console.log('🔍 [DASHBOARD] analise_hibrida:', results.analise_hibrida);
 
-  const formatNumber = (value: number, decimals = 1) => {
-    return new Intl.NumberFormat('pt-BR', {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals
-    }).format(value);
-  };
+  // Destructure dos resultados com validação
+  const sistema_solar = results.sistema_solar || {};
+  const sistema_bess = results.sistema_bess || {};
+  const analise_hibrida = results.analise_hibrida || {};
 
-  // Dados para gráficos
-  const monthlyData = results.detalhes.performanceMensal?.map((item: any) => ({
-    mes: `${item.mes}/2024`,
-    consumo: item.consumo,
-    solar: item.geracaoSolar,
-    bateria: item.usoBateria,
-    diesel: item.geradorDiesel
-  })) || [];
+  // Verificar se dados são válidos
+  if (!sistema_solar || !sistema_bess || !analise_hibrida) {
+    console.error('❌ [DASHBOARD] Dados inválidos recebidos:', { sistema_solar, sistema_bess, analise_hibrida });
+    return (
+      <Card className="border-red-200 bg-red-50">
+        <CardContent className="p-6">
+          <div className="flex items-center space-x-2 text-red-600">
+            <AlertTriangle className="h-5 w-5" />
+            <span>Erro ao carregar resultados. Dados inválidos.</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  const energySourcesData = [
-    { name: 'Solar', value: systemConfig.solar ? results.performance.geracaoSolarAnual : 0, color: '#FFA500' },
-    { name: 'Bateria', value: systemConfig.bess ? (results.inputs.capacidadeBaterias || 0) * 300 : 0, color: '#00AA00' },
-    { name: 'Diesel', value: systemConfig.diesel ? results.performance.consumoAnual * 0.2 : 0, color: '#808080' },
-    { name: 'Rede', value: Math.max(0, results.performance.consumoAnual - results.performance.geracaoSolarAnual), color: '#0066CC' }
-  ].filter(item => item.value > 0);
+  // Funções de formatação
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-  // Cards de KPIs principais
-  const kpiCards = [
-    {
-      title: 'Investimento Total',
-      value: formatCurrency(results.financeiro.investimentoTotal),
-      icon: DollarSign,
-      color: 'from-blue-500 to-blue-600',
-      description: 'Capital necessário para implementação'
-    },
-    {
-      title: 'Payback',
-      value: `${formatNumber(results.financeiro.payback, 1)} anos`,
-      icon: TrendingUp,
-      color: 'from-green-500 to-green-600',
-      description: 'Tempo de retorno do investimento'
-    },
-    {
-      title: 'ROI',
-      value: `${formatNumber(results.financeiro.roi, 1)}%`,
-      icon: TrendingUp,
-      color: results.financeiro.roi > 0 ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600',
-      description: 'Retorno sobre investimento'
-    },
-    {
-      title: 'Economia Anual',
-      value: formatCurrency(results.financeiro.economiaAnual),
-      icon: DollarSign,
-      color: 'from-purple-500 to-purple-600',
-      description: 'Economia gerada por ano'
-    }
-  ];
+  const formatNumber = (value: number, decimals: number = 2) =>
+    value.toFixed(decimals);
+
+  const formatPercentage = (value: number) =>
+    `${value.toFixed(1)}%`;
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="mb-6"
-      >
-        <div className="flex flex-col sm:flex-row gap-4 mb-4">
-          <Button
-            onClick={onBackToForm}
-            variant="outline"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar ao Formulário
-          </Button>
-          <Button
-            onClick={onNewSimulation}
-            variant="outline"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Nova Simulação
-          </Button>
-        </div>
-
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-            Resultados da Análise BESS
-          </h2>
-          <div className="flex justify-center gap-2 mb-4">
-            {systemConfig.solar && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200">
-                <Sun className="w-4 h-4 mr-1" /> Solar {formatNumber(results.inputs.potenciaSolar || 0)} kWp
-              </span>
-            )}
-            {systemConfig.bess && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
-                <Battery className="w-4 h-4 mr-1" /> BESS {formatNumber(results.inputs.capacidadeBaterias || 0)} kWh
-              </span>
-            )}
-            {systemConfig.diesel && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-200">
-                <Fuel className="w-4 h-4 mr-1" /> Diesel {formatNumber(results.inputs.potenciaDiesel || 0)} kW
-              </span>
-            )}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* KPIs Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {kpiCards.map((kpi, index) => {
-          const Icon = kpi.icon;
-          return (
-            <motion.div
-              key={kpi.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-            >
-              <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      {kpi.title}
-                    </CardTitle>
-                    <div className={`p-2 rounded-lg bg-gradient-to-r ${kpi.color}`}>
-                      <Icon className="w-4 h-4 text-white" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {kpi.value}
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {kpi.description}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Performance e Dimensionamento */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Performance do Sistema */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5" />
-              Performance do Sistema
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Consumo Anual</span>
-              <span className="font-semibold">{formatNumber(results.performance.consumoAnual)} kWh</span>
-            </div>
-            {systemConfig.solar && (
-              <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Geração Solar</span>
-                <span className="font-semibold text-yellow-600">{formatNumber(results.performance.geracaoSolarAnual)} kWh</span>
-              </div>
-            )}
-            {systemConfig.bess && (
-              <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Autonomia Real</span>
-                <span className="font-semibold text-green-600">{formatNumber(results.performance.autonomiaReal)} horas</span>
-              </div>
-            )}
-            <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Eficiência Global</span>
-              <span className="font-semibold text-blue-600">{formatNumber(results.performance.eficienciaGlobal)}%</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Dimensionamento */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Dimensionamento dos Sistemas</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {results.dimensionamento.solar && (
-              <div>
-                <h4 className="font-semibold text-yellow-600 mb-2 flex items-center gap-2">
-                  <Sun className="w-4 h-4" /> Sistema Solar
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Potência:</span>
-                    <span>{formatNumber(results.dimensionamento.solar.potencia)} kWp</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Área estimada:</span>
-                    <span>{formatNumber(results.dimensionamento.solar.area)} m²</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Número de módulos:</span>
-                    <span>{results.dimensionamento.solar.numeroModulos} unidades</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {results.dimensionamento.bess && (
-              <div>
-                <h4 className="font-semibold text-green-600 mb-2 flex items-center gap-2">
-                  <Battery className="w-4 h-4" /> Sistema BESS
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Capacidade:</span>
-                    <span>{formatNumber(results.dimensionamento.bess.capacidade)} kWh</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Potência:</span>
-                    <span>{formatNumber(results.dimensionamento.bess.potencia)} kW</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tipo:</span>
-                    <span className="capitalize">{results.dimensionamento.bess.tipo}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Número de baterias:</span>
-                    <span>{results.dimensionamento.bess.numeroBaterias} unidades</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {results.dimensionamento.diesel && (
-              <div>
-                <h4 className="font-semibold text-gray-600 mb-2 flex items-center gap-2">
-                  <Fuel className="w-4 h-4" /> Gerador Diesel
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Potência:</span>
-                    <span>{formatNumber(results.dimensionamento.diesel.potencia)} kW</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Consumo/hora:</span>
-                    <span>{formatNumber(results.dimensionamento.diesel.consumoHora)} L/h</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Custo/hora:</span>
-                    <span>{formatCurrency(results.dimensionamento.diesel.custoHora)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Performance Mensal */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Mensal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis />
-                <Tooltip formatter={(value: number) => `${formatNumber(value)} kWh`} />
-                <Legend />
-                <Bar dataKey="consumo" fill="#0066CC" name="Consumo" />
-                {systemConfig.solar && <Bar dataKey="solar" fill="#FFA500" name="Solar" />}
-                {systemConfig.bess && <Bar dataKey="bateria" fill="#00AA00" name="Bateria" />}
-                {systemConfig.diesel && <Bar dataKey="diesel" fill="#808080" name="Diesel" />}
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Distribuição de Fontes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribuição de Fontes de Energia</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={energySourcesData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {energySourcesData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => `${formatNumber(value)} kWh`} />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Análise Financeira Detalhada */}
-      <Card className="mt-6">
+    <div className="space-y-6">
+      {/* ===================================================================== */}
+      {/* HEADER COM RESUMO EXECUTIVO */}
+      {/* ===================================================================== */}
+      <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
         <CardHeader>
-          <CardTitle>Análise Financeira Detalhada</CardTitle>
+          <CardTitle className="text-2xl">
+            Análise Híbrida Solar + BESS - Resultados
+          </CardTitle>
+          <CardDescription className="text-blue-100">
+            {results._metadata?.leadName} •
+            Calculado em {new Date(results._metadata?.calculatedAt || '').toLocaleString('pt-BR')}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div>
-              <h4 className="font-semibold mb-2">Investimento</h4>
-              <p className="text-2xl font-bold text-blue-600">
-                {formatCurrency(results.financeiro.investimentoTotal)}
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-3xl font-bold">
+                {formatPercentage(analise_hibrida.autossuficiencia?.autossuficiencia_percentual || 0)}
+              </div>
+              <div className="text-sm text-blue-100">Autossuficiência</div>
             </div>
-            <div>
-              <h4 className="font-semibold mb-2">VPL (20 anos)</h4>
-              <p className={`text-2xl font-bold ${results.financeiro.vpl > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(results.financeiro.vpl)}
-              </p>
+            <div className="text-center">
+              <div className="text-3xl font-bold">
+                {formatCurrency(analise_hibrida.retorno_financeiro?.npv_reais || 0)}
+              </div>
+              <div className="text-sm text-blue-100">VPL (25 anos)</div>
             </div>
-            <div>
-              <h4 className="font-semibold mb-2">Economia/Ano</h4>
-              <p className="text-2xl font-bold text-purple-600">
-                {formatCurrency(results.financeiro.economiaAnual)}
-              </p>
+            <div className="text-center">
+              <div className="text-3xl font-bold">
+                {formatNumber(analise_hibrida.retorno_financeiro?.payback_simples_anos || 0, 1)} anos
+              </div>
+              <div className="text-sm text-blue-100">Payback Simples</div>
             </div>
-            <div>
-              <h4 className="font-semibold mb-2">Custo Atual/Ano</h4>
-              <p className="text-2xl font-bold text-red-600">
-                {formatCurrency(results.detalhes.custoEnergiaAnual)}
-              </p>
+            <div className="text-center">
+              <div className="text-3xl font-bold">
+                {formatPercentage(analise_hibrida.retorno_financeiro.tir_percentual)}
+              </div>
+              <div className="text-sm text-blue-100">TIR</div>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* ===================================================================== */}
+      {/* SEÇÃO 1: MÉTRICAS DO SISTEMA SOLAR */}
+      {/* ===================================================================== */}
+      {systemConfig.solar && (
+        <div>
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Sun className="w-6 h-6 text-orange-500" />
+            Sistema Solar Fotovoltaico
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <MetricCard
+              title="Potência Instalada"
+              value={`${formatNumber(sistema_solar.potencia_total_kwp)} kWp`}
+              icon={<Zap className="w-5 h-5" />}
+              color="orange"
+            />
+            <MetricCard
+              title="Geração Anual"
+              value={`${formatNumber(sistema_solar.energia_anual_kwh / 1000, 1)} MWh`}
+              subtitle={`${formatNumber(sistema_solar.energia_anual_kwh)} kWh/ano`}
+              icon={<Sun className="w-5 h-5" />}
+              color="orange"
+            />
+            <MetricCard
+              title="Performance Ratio"
+              value={formatPercentage(sistema_solar.pr_total)}
+              subtitle="Eficiência do sistema"
+              icon={<TrendingUp className="w-5 h-5" />}
+              color="green"
+              trend="up"
+            />
+            <MetricCard
+              title="Yield Específico"
+              value={`${formatNumber(sistema_solar.yield_especifico)} kWh/kWp`}
+              subtitle="Produtividade anual"
+              icon={<BarChart3 className="w-5 h-5" />}
+              color="purple"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* SEÇÃO 2: MÉTRICAS DO SISTEMA BESS */}
+      {/* ===================================================================== */}
+      {systemConfig.bess && (
+        <div>
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Battery className="w-6 h-6 text-green-500" />
+            Sistema de Armazenamento (BESS)
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <MetricCard
+              title="Capacidade"
+              value={`${formatNumber(sistema_bess.capacidade_kwh)} kWh`}
+              subtitle={`${formatNumber(sistema_bess.potencia_kw)} kW`}
+              icon={<Battery className="w-5 h-5" />}
+              color="green"
+            />
+            <MetricCard
+              title="Ciclos Equivalentes"
+              value={`${formatNumber(sistema_bess.ciclos_equivalentes_ano, 1)}/ano`}
+              subtitle={`DOD médio: ${formatPercentage(sistema_bess.profundidade_descarga_media * 100)}`}
+              icon={<TrendingUp className="w-5 h-5" />}
+              color="blue"
+            />
+            <MetricCard
+              title="SOC Médio"
+              value={formatPercentage(sistema_bess.soc_medio_percentual)}
+              subtitle={`Min: ${formatPercentage(sistema_bess.soc_minimo_percentual)} Max: ${formatPercentage(sistema_bess.soc_maximo_percentual)}`}
+              icon={<BarChart3 className="w-5 h-5" />}
+              color="purple"
+            />
+            <MetricCard
+              title="Economia Anual BESS"
+              value={formatCurrency(sistema_bess.economia_total_anual_reais)}
+              subtitle={`Utilização: ${formatPercentage(sistema_bess.utilizacao_percentual)}`}
+              icon={<TrendingUp className="w-5 h-5" />}
+              color="green"
+              trend="up"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* SEÇÃO 3: FLUXOS DE ENERGIA */}
+      {/* ===================================================================== */}
+      <div>
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <Zap className="w-6 h-6 text-blue-500" />
+          Fluxos de Energia (Anual)
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="bg-orange-50 dark:bg-orange-950">
+              <CardTitle className="text-sm">Geração Solar</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Total gerado:</span>
+                  <span className="font-bold">
+                    {formatNumber(analise_hibrida.fluxos_energia.energia_solar_gerada_kwh / 1000, 1)} MWh
+                  </span>
+                </div>
+                <div className="flex justify-between text-green-600">
+                  <span>→ Consumo direto:</span>
+                  <span className="font-bold">
+                    {formatNumber(analise_hibrida.fluxos_energia.energia_solar_para_consumo_kwh / 1000, 1)} MWh
+                  </span>
+                </div>
+                <div className="flex justify-between text-blue-600">
+                  <span>→ Para BESS:</span>
+                  <span className="font-bold">
+                    {formatNumber(analise_hibrida.fluxos_energia.energia_solar_para_bess_kwh / 1000, 1)} MWh
+                  </span>
+                </div>
+                <div className="flex justify-between text-purple-600">
+                  <span>→ Para rede:</span>
+                  <span className="font-bold">
+                    {formatNumber(analise_hibrida.fluxos_energia.energia_solar_para_rede_kwh / 1000, 1)} MWh
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="bg-green-50 dark:bg-green-950">
+              <CardTitle className="text-sm">Armazenamento BESS</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Total consumido:</span>
+                  <span className="font-bold">
+                    {formatNumber(analise_hibrida.fluxos_energia.energia_consumida_total_kwh / 1000, 1)} MWh
+                  </span>
+                </div>
+                <div className="flex justify-between text-orange-600">
+                  <span>← De solar:</span>
+                  <span className="font-bold">
+                    {formatNumber(analise_hibrida.fluxos_energia.energia_consumo_de_solar_kwh / 1000, 1)} MWh
+                  </span>
+                </div>
+                <div className="flex justify-between text-green-600">
+                  <span>← De BESS:</span>
+                  <span className="font-bold">
+                    {formatNumber(analise_hibrida.fluxos_energia.energia_consumo_de_bess_kwh / 1000, 1)} MWh
+                  </span>
+                </div>
+                <div className="flex justify-between text-red-600">
+                  <span>← Da rede:</span>
+                  <span className="font-bold">
+                    {formatNumber(analise_hibrida.fluxos_energia.energia_consumo_de_rede_kwh / 1000, 1)} MWh
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="bg-blue-50 dark:bg-blue-950">
+              <CardTitle className="text-sm">Autossuficiência</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="space-y-3">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-600">
+                    {formatPercentage(analise_hibrida.autossuficiencia.autossuficiencia_percentual)}
+                  </div>
+                  <div className="text-xs text-gray-500">Independência energética</div>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Autoconsumo solar:</span>
+                  <span className="font-bold">
+                    {formatPercentage(analise_hibrida.autossuficiencia.taxa_autoconsumo_solar * 100)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Dependência rede:</span>
+                  <span className="font-bold text-red-600">
+                    {formatPercentage(analise_hibrida.autossuficiencia.dependencia_rede_percentual)}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* SEÇÃO 4: COMPARAÇÃO DE CENÁRIOS */}
+      {/* ===================================================================== */}
+      <div>
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <BarChart3 className="w-6 h-6 text-purple-500" />
+          Comparação de Cenários (25 anos)
+        </h2>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b-2 border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-3 px-4">Cenário</th>
+                    <th className="text-right py-3 px-4">Investimento</th>
+                    <th className="text-right py-3 px-4">Economia/Ano</th>
+                    <th className="text-right py-3 px-4">Payback</th>
+                    <th className="text-right py-3 px-4">VPL</th>
+                    <th className="text-right py-3 px-4">TIR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Sem Sistema */}
+                  <tr className="border-b border-gray-100 dark:border-gray-800">
+                    <td className="py-3 px-4 font-medium text-gray-500">
+                      Sem Sistema
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatCurrency(analise_hibrida.comparacao_cenarios.sem_sistema.investimento)}
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatCurrency(analise_hibrida.comparacao_cenarios.sem_sistema.economia_anual)}
+                    </td>
+                    <td className="text-right py-3 px-4">-</td>
+                    <td className="text-right py-3 px-4 text-red-600">
+                      {formatCurrency(analise_hibrida.comparacao_cenarios.sem_sistema.npv)}
+                    </td>
+                    <td className="text-right py-3 px-4">-</td>
+                  </tr>
+
+                  {/* Somente Solar */}
+                  <tr className="border-b border-gray-100 dark:border-gray-800">
+                    <td className="py-3 px-4 font-medium text-orange-600">
+                      Somente Solar
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatCurrency(analise_hibrida.comparacao_cenarios.somente_solar.investimento)}
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatCurrency(analise_hibrida.comparacao_cenarios.somente_solar.economia_anual)}
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatNumber(analise_hibrida.comparacao_cenarios.somente_solar.payback_anos, 1)} anos
+                    </td>
+                    <td className="text-right py-3 px-4 text-green-600">
+                      {formatCurrency(analise_hibrida.comparacao_cenarios.somente_solar.npv)}
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatPercentage(analise_hibrida.comparacao_cenarios.somente_solar.tir_percentual)}
+                    </td>
+                  </tr>
+
+                  {/* Somente BESS */}
+                  <tr className="border-b border-gray-100 dark:border-gray-800">
+                    <td className="py-3 px-4 font-medium text-green-600">
+                      Somente BESS
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatCurrency(analise_hibrida.comparacao_cenarios.somente_bess.investimento)}
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatCurrency(analise_hibrida.comparacao_cenarios.somente_bess.economia_anual)}
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatNumber(analise_hibrida.comparacao_cenarios.somente_bess.payback_anos, 1)} anos
+                    </td>
+                    <td className="text-right py-3 px-4 text-green-600">
+                      {formatCurrency(analise_hibrida.comparacao_cenarios.somente_bess.npv)}
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatPercentage(analise_hibrida.comparacao_cenarios.somente_bess.tir_percentual)}
+                    </td>
+                  </tr>
+
+                  {/* Híbrido (RECOMENDADO) */}
+                  <tr className="bg-blue-50 dark:bg-blue-950 font-bold">
+                    <td className="py-3 px-4 text-blue-600">
+                      ★ Híbrido (Solar + BESS)
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatCurrency(analise_hibrida.comparacao_cenarios.hibrido.investimento)}
+                    </td>
+                    <td className="text-right py-3 px-4 text-green-600">
+                      {formatCurrency(analise_hibrida.comparacao_cenarios.hibrido.economia_anual)}
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatNumber(analise_hibrida.comparacao_cenarios.hibrido.payback_anos, 1)} anos
+                    </td>
+                    <td className="text-right py-3 px-4 text-green-600 text-lg">
+                      {formatCurrency(analise_hibrida.comparacao_cenarios.hibrido.npv)}
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      {formatPercentage(analise_hibrida.comparacao_cenarios.hibrido.tir_percentual)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Vantagens do Híbrido */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Vantagem vs. Somente Solar
+                </div>
+                <div className="text-2xl font-bold text-green-600">
+                  {formatCurrency(analise_hibrida.comparacao_cenarios.hibrido.vantagem_vs_solar_npv)}
+                </div>
+                <div className="text-xs text-gray-500">
+                  +{formatPercentage(analise_hibrida.comparacao_cenarios.hibrido.vantagem_vs_solar_percentual)} de VPL
+                </div>
+              </div>
+              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Vantagem vs. Somente BESS
+                </div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {formatCurrency(analise_hibrida.comparacao_cenarios.hibrido.vantagem_vs_bess_npv)}
+                </div>
+                <div className="text-xs text-gray-500">
+                  +{formatPercentage(analise_hibrida.comparacao_cenarios.hibrido.vantagem_vs_bess_percentual)} de VPL
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* SEÇÃO 5: RECOMENDAÇÕES E ALERTAS */}
+      {/* ===================================================================== */}
+      {(analise_hibrida.recomendacoes.length > 0 || analise_hibrida.alertas.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Recomendações */}
+          {analise_hibrida.recomendacoes.length > 0 && (
+            <Card>
+              <CardHeader className="bg-green-50 dark:bg-green-950">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4" />
+                  Recomendações
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <ul className="space-y-2">
+                  {analise_hibrida.recomendacoes.map((rec, idx) => (
+                    <li key={idx} className="text-sm flex items-start gap-2">
+                      <span className="text-green-600 mt-0.5">✓</span>
+                      <span>{rec}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Alertas */}
+          {analise_hibrida.alertas.length > 0 && (
+            <Card>
+              <CardHeader className="bg-orange-50 dark:bg-orange-950">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Alertas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <ul className="space-y-2">
+                  {analise_hibrida.alertas.map((alert, idx) => (
+                    <li key={idx} className="text-sm flex items-start gap-2">
+                      <span className="text-orange-600 mt-0.5">⚠</span>
+                      <span>{alert}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* BOTÕES DE AÇÃO */}
+      {/* ===================================================================== */}
+      <div className="flex justify-center gap-4">
+        <Button
+          onClick={onBackToForm}
+          variant="outline"
+          size="lg"
+        >
+          Voltar ao Formulário
+        </Button>
+        <Button
+          onClick={onNewSimulation}
+          size="lg"
+          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+        >
+          Nova Simulação
+        </Button>
+      </div>
     </div>
   );
 };

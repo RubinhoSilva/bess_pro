@@ -99,7 +99,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   // Função para chamar a API financeira do Python via backend
   const callPythonFinancialAPI = async (financialData: any) => {
     try {
-      console.log('🐍 Chamando API financeira Python via backend:', financialData);
+
       
       // Importar a API client
       const { apiClient } = await import('@/lib/api');
@@ -120,14 +120,14 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         modalidade_tarifaria: financialData.modalidade_tarifaria || 'convencional'
       };
       
-      console.log('🔍 Dados mapeados para a API:', financialInput);
+
       
       const response = await apiClient.solarAnalysis.calculateAdvancedFinancial(financialInput);
-      console.log('✅ Resultado API Python via backend:', response.data);
+
 
       // Extrair apenas os dados da API Python, não o wrapper do backend
       const apiData = response.data.data || response.data;
-      console.log('🔍 Dados extraídos da API financeira (snake_case):', apiData);
+
 
       // Converter snake_case (Python) para camelCase (TypeScript)
       const transformedData = {
@@ -180,7 +180,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         scenarios: apiData.cenarios || null
       };
 
-      console.log('✨ Dados transformados (camelCase):', transformedData);
+
       return transformedData;
     } catch (error) {
       console.error('❌ Erro ao chamar API financeira Python via backend:', error);
@@ -486,7 +486,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       }
 
       // Usar dados diretos do dimensionamento (já calculados no resumo)
-      console.log('📊 === USANDO DADOS DO RESUMO ===');
       console.log('🔍 Dados disponíveis no currentDimensioning:', {
         numeroModulos: currentDimensioning.numeroModulos,
         potenciaModulo: currentDimensioning.potenciaModulo,
@@ -513,7 +512,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         const totalGeracaoAguas = currentDimensioning.aguasTelhado.reduce((total: number, agua: any) => total + (agua.geracaoAnual || 0), 0);
         const totalAreaAguas = currentDimensioning.aguasTelhado.reduce((total: number, agua: any) => total + (agua.areaCalculada || 0), 0);
         
-        console.log('🏠 === USANDO DADOS DAS ÁGUAS DE TELHADO ===');
         console.log('📊 Dados calculados das águas de telhado:', {
           totalModulos: totalModulosAguas,
           totalGeracao: `${totalGeracaoAguas.toFixed(0)} kWh/ano`,
@@ -663,7 +661,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         fonte: 'Dados do dimensionamento'
       });
       
-      console.log('🔢 === USANDO DADOS JÁ CALCULADOS ===');
       console.log('📍 Dados do sistema:', {
         potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
         numeroModulos: `${numeroModulos} unidades`,
@@ -674,7 +671,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       // Usar geração mensal calculada diretamente
       const geracaoAnualAdvanced = geracaoEstimadaAnual;
       
-      console.log('☀️ === RESULTADOS FINAIS ===');
       console.log('📊 Valores que serão enviados para os resultados:', {
         potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
         numeroModulos: `${numeroModulos} unidades`,
@@ -687,7 +683,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       });
 
       // Financial calculations
-      console.log('🔢 === CÁLCULOS FINANCEIROS ===');
       const tarifaB = currentDimensioning.tarifaEnergiaB || 0.8;
       const custoFioB = currentDimensioning.custoFioB || (tarifaB * 0.3);
       console.log('💰 Parâmetros tarifários:', {
@@ -715,10 +710,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         modalidade_tarifaria: 'convencional'
       };
       
+      setIsCalculating(true);
       const financialApiResponse = await apiClient.solarAnalysis.calculateAdvancedFinancial(basicFinancialInput);
       const financialResults = financialApiResponse.data;
 
-      console.log('💵 === RESULTADOS FINANCEIROS BÁSICOS ===');
       if (financialResults) {
         const economiaAnual = (financialResults as any).economiaAnual || 0;
         const payback = financialResults.payback || 0;
@@ -778,14 +773,18 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
       // Mapear 'cenarios' (Python) para 'scenarios' (Frontend)
       const scenarioAnalysis = (advancedFinancialResults as any)?.cenarios || null;
+      
+      console.log('🔍 Cenários recebidos do Python:', scenarioAnalysis);
 
-      console.log('📊 === VALORES FINAIS DO SISTEMA ===');
       console.log('📊 Valores calculados:', {
         potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
         numeroModulos: `${numeroModulos} unidades`,
         areaEstimada: `${areaEstimada.toFixed(2)} m²`,
         geracaoEstimadaAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`
       });
+
+      // Financial calculations completed - re-enable button
+      setIsCalculating(false);
 
       let results: any = {
         formData: currentDimensioning,
@@ -860,10 +859,13 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       results.selectedInverters = currentDimensioning.selectedInverters || [];
       results.selectedModule = currentDimensioning.moduloSelecionado;
       Object.assign(results, financialResults);
+      
+      // Mapear economia_anual_media para economiaAnualEstimada para compatibilidade
+      if (financialResults?.economiaAnualMedia) {
+        results.economiaAnualEstimada = financialResults.economiaAnualMedia;
+      }
 
       // Log: Finalizando cálculos principais 
-      console.log('✅ === CÁLCULOS FINALIZADOS ===');
-      console.log('🎯 === RESULTADOS FINAIS DO DIMENSIONAMENTO ===');
       console.log(`⚡ Potência pico: ${(potenciaPico || 0).toFixed(2)} kWp`);
       console.log(`🔧 Número de módulos: ${numeroModulos || 0} unidades`);
       console.log(`📐 Área estimada: ${(areaEstimada || 0).toFixed(2)} m²`);
@@ -880,7 +882,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       const custoKwpWizard = totalInvestment / (potenciaPico || 1);
       const geracaoMensalWizard = (geracaoEstimadaAnual || 0) / 12;
       
-      console.log('📊 === ANÁLISES COMPLEMENTARES DO WIZARD ===');
       console.log(`📅 Economia mensal: R$ ${economiaMensalWizard.toLocaleString('pt-BR')} (economia anual ÷ 12)`);
       console.log(`💡 Custo por kWp instalado: R$ ${custoKwpWizard.toLocaleString('pt-BR')}/kWp (investimento ÷ potência)`);
       console.log(`⚡ Geração média mensal: ${geracaoMensalWizard.toFixed(0)} kWh/mês (geração anual ÷ 12)`);
@@ -912,7 +913,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       // Tentar integração com backend se habilitado
       if (shouldUseBackendCalculations()) {
         try {
-          console.log('🌐 === INTEGRAÇÃO COM BACKEND (SEM PROJETO) ===');
           
           const backendParams = {
             systemParams: {
@@ -953,12 +953,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
           
           // Mesclar resultados se disponíveis
           if (enhancedResults && enhancedResults !== results) {
-            console.log('✅ === RESULTADOS DO BACKEND RECEBIDOS ===');
             console.log('🔄 Mesclando resultados frontend + backend...');
             results = enhancedResults;
           }
           
-          console.log('🌐 === FIM INTEGRAÇÃO BACKEND ===');
         } catch (error) {
           console.log('⚠️ Erro na integração backend (usando frontend):', error);
         }
@@ -976,7 +974,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         payback: `${((advancedFinancialResults as any)?.payback || financialResults?.payback || 0).toFixed(1)} anos`
       });
 
-      console.log('🧙‍♀️ === WIZARD: CÁLCULO CONCLUÍDO COM SUCESSO ===');
 
       setCalculationResults(results);
       setCurrentStep(7);

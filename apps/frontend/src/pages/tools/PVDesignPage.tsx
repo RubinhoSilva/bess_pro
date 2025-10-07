@@ -117,6 +117,13 @@ function PVDesignPageContent() {
           demandaContratada: project.projectData.demandaContratada,
           tarifaDemanda: project.projectData.tarifaDemanda,
           
+          // Dados da instalação
+          concessionaria: project.projectData.concessionaria,
+          tipoRede: project.projectData.tipoRede,
+          tensaoRede: project.projectData.tensaoRede,
+          fatorSimultaneidade: project.projectData.fatorSimultaneidade,
+          tipoTelhado: project.projectData.tipoTelhado,
+          
           // Custos e financeiro
           custoEquipamento: project.projectData.custoEquipamento || 0,
           custoMateriais: project.projectData.custoMateriais || 0,

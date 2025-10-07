@@ -81,6 +81,29 @@ export class SimplePvlibServiceClient {
         consumo_anual: input.consumo_mensal.reduce((a: number, b: number) => a + b, 0),
       });
 
+      // 💾 SALVAR PAYLOAD EM ARQUIVO JSON para debug
+      try {
+        const fs = require('fs');
+        const path = require('path');
+
+        // Criar pasta para payloads se não existir
+        const payloadsDir = path.join(process.cwd(), 'payloads');
+        if (!fs.existsSync(payloadsDir)) {
+          fs.mkdirSync(payloadsDir, { recursive: true });
+        }
+
+        // Nome do arquivo com timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `payload-financial-calculate-${timestamp}.json`;
+        const filepath = path.join(payloadsDir, filename);
+
+        // Salvar payload
+        fs.writeFileSync(filepath, JSON.stringify(input, null, 2), 'utf8');
+        console.log(`💾 [SimplePvlibService] Payload salvo em: ${filepath}`);
+      } catch (error) {
+        console.error('❌ [SimplePvlibService] Erro ao salvar payload:', error);
+      }
+
       const response = await this.client.post('/api/v1/financial/calculate-advanced', input);
       
       if (response.data.success) {

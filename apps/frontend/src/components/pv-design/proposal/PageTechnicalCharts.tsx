@@ -57,7 +57,7 @@ export const PageTechnicalCharts: React.FC<PageTechnicalChartsProps> = ({ result
   return (
     <section className="proposal-page p-8 bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
-      <div className="mb-4">
+      <div className="mb-8">
         <div className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-1 rounded-full text-xs font-bold mb-2">
           ANÁLISE DE DESEMPENHO
         </div>

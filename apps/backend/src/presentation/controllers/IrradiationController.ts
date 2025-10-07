@@ -468,6 +468,29 @@ export class IrradiationController extends BaseController {
         request: pythonRequest
       });
 
+      // 💾 SALVAR PAYLOAD EM ARQUIVO JSON para debug
+      try {
+        const fs = require('fs');
+        const path = require('path');
+
+        // Criar pasta para payloads se não existir
+        const payloadsDir = path.join(process.cwd(), 'payloads');
+        if (!fs.existsSync(payloadsDir)) {
+          fs.mkdirSync(payloadsDir, { recursive: true });
+        }
+
+        // Nome do arquivo com timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `payload-irradiation-monthly-${timestamp}.json`;
+        const filepath = path.join(payloadsDir, filename);
+
+        // Salvar payload
+        fs.writeFileSync(filepath, JSON.stringify(pythonRequest, null, 2), 'utf8');
+        console.log(`💾 [IrradiationController] Payload salvo em: ${filepath}`);
+      } catch (error) {
+        console.error('❌ [IrradiationController] Erro ao salvar payload:', error);
+      }
+
       // Chamar o serviço Python que suporta múltiplas fontes
       const response = await fetch(`${pythonServiceUrl}/api/v1/irradiation/monthly`, {
         method: 'POST',

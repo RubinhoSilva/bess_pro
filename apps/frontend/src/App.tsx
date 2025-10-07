@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/auth-store'
 import { ThemeProvider } from './contexts/ThemeContext'
-import './styles/proposal.css'
 
 // Pages
 import LoginPage from './pages/auth/LoginPage'

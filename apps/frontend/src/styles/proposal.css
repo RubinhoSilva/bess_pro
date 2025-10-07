@@ -9,21 +9,37 @@
   width: 210mm;
   height: 297mm;
   min-height: 297mm;
-  max-height: 297mm;
-  page-break-after: always;
-  page-break-inside: avoid;
+  max-height: 297mm; /* Garante que não ultrapasse a altura */
   position: relative;
   background: white;
-  overflow: hidden;
-  margin: 0 auto;
+  overflow: hidden; /* Controla overflow para evitar corte */
+  margin: 0 auto 20px auto; /* Adiciona margem inferior apenas para visualização */
   padding: 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  /* Debug border */
+  border: 1px solid red;
+  /* Garante que conteúdo não ultrapasse os limites */
+  max-width: 210mm;
 }
 
-.proposal-page:last-child {
-  page-break-after: auto;
+/* Margens específicas para páginas internas (página 2 em diante) */
+.proposal-page:not(:first-child) {
+  padding: 5mm !important; /* Margem reduzida para páginas internas */
+  padding-top: 3mm !important; /* Margem superior ainda menor */
+}
+
+/* Para impressão - remover margens extras */
+@media print {
+  .proposal-page {
+    margin: 0;
+    overflow: visible; /* Evita corte de conteúdo */
+  }
+  
+  .proposal-page:not(:first-child) {
+    padding: 8mm !important; /* Margem otimizada na impressão */
+  }
 }
 
 .proposal-title {
@@ -130,10 +146,24 @@
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
     color-adjust: exact;
+    page-break-after: always;
+    page-break-inside: avoid;
+    margin: 0;
+    padding: 0;
+    /* Debug border para impressão */
+    outline: 2px solid blue;
+  }
+
+  .proposal-page:last-child {
+    page-break-after: auto;
   }
   
   .proposal-document {
     background: white !important;
+    margin: 0;
+    padding: 0;
+    /* Debug border para documento */
+    outline: 3px solid green;
   }
   
   .financial-card,

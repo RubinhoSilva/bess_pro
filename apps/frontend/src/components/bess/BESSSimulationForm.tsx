@@ -10,6 +10,8 @@ import { BESSSystemConfiguration } from './BESSAnalysisTool';
 import { useToast } from '@/components/ui/use-toast';
 import CustomerDataForm from '../pv-design/form-sections/CustomerDataForm';
 import { CustomCurrencyInput } from '@/components/ui/currency-input';
+import { calculateHybridSystem, validateHybridRequest } from '@/lib/bessAnalysisService';
+import { HybridDimensioningRequest, SistemaSolarParams } from '@/types/bess';
 
 interface BESSSimulationFormProps {
   systemConfig: BESSSystemConfiguration;
@@ -94,6 +96,8 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
   });
 
   const [isSimulating, setIsSimulating] = useState(false);
+  const [calculationProgress, setCalculationProgress] = useState(0);
+  const [calculationStage, setCalculationStage] = useState('');
 
   const handleInputChange = (field: keyof SimulationInputs, value: any) => {
     setInputs(prev => ({ ...prev, [field]: value }));
@@ -106,6 +110,10 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
   };
 
   const runBESSSimulation = async () => {
+    // ========================================================================
+    // ETAPA 1: VALIDAÇÕES
+    // ========================================================================
+
     // Validar se o lead está selecionado
     if (!currentLead) {
       toast({
@@ -116,123 +124,250 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
       return;
     }
 
-    setIsSimulating(true);
-    
-    try {
-      // Simular processamento (em produção, seria uma chamada para API)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Cálculos básicos de simulação BESS
-      const consumoAnual = inputs.consumoMedioDiario * 365;
-      
-      // Simulação de geração solar
-      let geracaoSolarAnual = 0;
-      if (systemConfig.solar && inputs.potenciaSolar && inputs.irradiacao) {
-        geracaoSolarAnual = inputs.potenciaSolar * inputs.irradiacao * 365 * 0.8; // PR = 0.8
-      }
-
-      // Cálculo de custos operacionais
-      const custoEnergiaAnual = consumoAnual * inputs.tarifaEnergia;
-      const custoOperacionalDiesel = systemConfig.diesel 
-        ? (inputs.potenciaDiesel || 0) * (inputs.consumoCombustivel || 0) * (inputs.custoLitro || 0) * 365
-        : 0;
-
-      // Economia com sistema híbrido
-      const economiaEnergiaSolar = Math.min(geracaoSolarAnual, consumoAnual) * inputs.tarifaEnergia;
-      const reducaoPicos = systemConfig.bess ? (inputs.capacidadeBaterias || 0) * inputs.tarifaEnergia * 200 : 0; // 200 ciclos/ano
-
-      // Análise de autonomia
-      const autonomiaReal = systemConfig.bess 
-        ? (inputs.capacidadeBaterias || 0) / (inputs.consumoMedioDiario / 24)
-        : 0;
-
-      // ROI e payback
-      const investimentoTotal = 
-        (systemConfig.solar ? (inputs.potenciaSolar || 0) * 4500 : 0) +
-        (systemConfig.bess ? (inputs.capacidadeBaterias || 0) * 2800 : 0) +
-        (systemConfig.diesel ? (inputs.potenciaDiesel || 0) * 800 : 0);
-
-      const economiaAnual = economiaEnergiaSolar + reducaoPicos - custoOperacionalDiesel;
-      const payback = investimentoTotal / economiaAnual;
-      const roi = (economiaAnual * inputs.vidaUtilProjeto - investimentoTotal) / investimentoTotal * 100;
-
-      // Performance mensal simulada
-      const performanceMensal = Array.from({ length: 12 }, (_, i) => {
-        const fatorSazonalidade = 1 + 0.2 * Math.sin((i - 2) * Math.PI / 6); // Variação sazonal
-        return {
-          mes: i + 1,
-          consumo: inputs.consumoMedioDiario * 30 * fatorSazonalidade,
-          geracaoSolar: systemConfig.solar 
-            ? (inputs.potenciaSolar || 0) * (inputs.irradiacao || 0) * 30 * 0.8 * fatorSazonalidade
-            : 0,
-          usoBateria: systemConfig.bess 
-            ? Math.min((inputs.capacidadeBaterias || 0) * 25, inputs.consumoMedioDiario * 30 * 0.3)
-            : 0,
-          geradorDiesel: systemConfig.diesel 
-            ? Math.max(0, inputs.consumoMedioDiario * 30 * fatorSazonalidade - (geracaoSolarAnual / 12))
-            : 0
-        };
-      });
-
-      const simulationResults = {
-        inputs,
-        systemConfig,
-        performance: {
-          consumoAnual,
-          geracaoSolarAnual,
-          autonomiaReal,
-          eficienciaGlobal: ((geracaoSolarAnual + (inputs.capacidadeBaterias || 0) * 300) / consumoAnual) * 100
-        },
-        financeiro: {
-          investimentoTotal,
-          economiaAnual,
-          payback,
-          roi,
-          vpl: economiaAnual * ((1 - Math.pow(1 + inputs.taxaDesconto/100, -inputs.vidaUtilProjeto)) / (inputs.taxaDesconto/100)) - investimentoTotal
-        },
-        detalhes: {
-          performanceMensal,
-          custoEnergiaAnual,
-          economiaEnergiaSolar,
-          reducaoPicos,
-          custoOperacionalDiesel
-        },
-        dimensionamento: {
-          solar: systemConfig.solar ? {
-            potencia: inputs.potenciaSolar,
-            area: (inputs.potenciaSolar || 0) / 0.22, // 220W/m²
-            numeroModulos: Math.ceil((inputs.potenciaSolar || 0) / 0.55) // 550W por módulo
-          } : null,
-          bess: systemConfig.bess ? {
-            capacidade: inputs.capacidadeBaterias,
-            potencia: inputs.potenciaBaterias,
-            tipo: inputs.tipoBateria,
-            numeroBaterias: Math.ceil((inputs.capacidadeBaterias || 0) / 10) // 10kWh por bateria
-          } : null,
-          diesel: systemConfig.diesel ? {
-            potencia: inputs.potenciaDiesel,
-            consumoHora: (inputs.potenciaDiesel || 0) * (inputs.consumoCombustivel || 0),
-            custoHora: (inputs.potenciaDiesel || 0) * (inputs.consumoCombustivel || 0) * (inputs.custoLitro || 0)
-          } : null
-        }
-      };
-
-      onSimulationComplete(simulationResults);
-      
-      toast({
-        title: "Simulação Concluída!",
-        description: "Análise BESS realizada com sucesso. Visualize os resultados."
-      });
-
-    } catch (error) {
-      console.error('Erro na simulação:', error);
+    // Validar se tem dados solares quando solar está selecionado
+    if (systemConfig.solar && (!inputs.potenciaSolar || !inputs.irradiacao)) {
       toast({
         variant: "destructive",
-        title: "Erro na Simulação",
-        description: "Ocorreu um erro durante a simulação. Tente novamente."
+        title: "Dados solares incompletos",
+        description: "Preencha a potência solar e irradiação.",
       });
-    } finally {
+      return;
+    }
+
+    // Validar se tem dados BESS quando BESS está selecionado
+    if (systemConfig.bess && (!inputs.capacidadeBaterias || !inputs.potenciaBaterias)) {
+      toast({
+        variant: "destructive",
+        title: "Dados BESS incompletos",
+        description: "Preencha a capacidade e potência das baterias.",
+      });
+      return;
+    }
+
+    setIsSimulating(true);
+    setCalculationProgress(0);
+    setCalculationStage('Preparando dados...');
+
+    try {
+      // ========================================================================
+      // ETAPA 2: CONSTRUIR REQUEST - SISTEMA SOLAR
+      // ========================================================================
+
+      setCalculationProgress(10);
+      setCalculationStage('Montando parâmetros do sistema solar...');
+
+      // Construir parâmetros do sistema solar
+      // IMPORTANTE: Ajustar conforme estrutura real dos dados disponíveis
+      const sistemaSolar: SistemaSolarParams = {
+        lat: inputs.latitude,
+        lon: inputs.longitude,
+        origem_dados: 'PVGIS',
+        startyear: 2020,
+        endyear: 2020,
+        modelo_decomposicao: 'erbs',
+        modelo_transposicao: 'perez',
+        mount_type: 'open_rack_glass_glass', // Valor válido conforme validação Python
+
+        // Consumo mensal: distribuir consumo diário em 12 meses
+        // Se tiver dados mensais específicos, usar aqueles
+        consumo_mensal_kwh: Array(12).fill(inputs.consumoMedioDiario * 30),
+
+        perdas: {
+          sujeira: 2.0,
+          sombreamento: 3.0,
+          incompatibilidade: 2.0,
+          fiacao: 1.5,
+          outras: 1.0,
+        },
+
+        // Módulo solar - dados completos conforme modelo Python
+        modulo: {
+          fabricante: 'Canadian Solar',
+          modelo: 'CS3W-540MS',
+          potencia_nominal_w: 550,
+          largura_mm: 2261,
+          altura_mm: 1134,
+          peso_kg: 27.5,
+          vmpp: 41.4,
+          impp: 13.05,
+          voc_stc: 51.16,
+          isc_stc: 14.55,
+          eficiencia: 20.9,
+          temp_coef_pmax: -0.37,
+          alpha_sc: 0.00041,
+          beta_oc: -0.0025,
+          gamma_r: -0.0029,
+          cells_in_series: 144,
+          a_ref: 1.8,
+          il_ref: 14.86,
+          io_ref: 2.5e-12,
+          rs: 0.25,
+          rsh_ref: 450.0,
+        },
+
+        // Inversores - lista separada conforme modelo Python
+        inversores: [
+          {
+            inversor: {
+              fabricante: 'Generic',
+              modelo: 'Standard Inverter',
+              potencia_saida_ca_w: (inputs.potenciaSolar || 0) * 1000,
+              potencia_fv_max_w: (inputs.potenciaSolar || 0) * 1000 * 1.2, // 20% acima da potência nominal
+              numero_mppt: 2,
+              eficiencia_max: 98.0, // Em percentagem (90-99.9)
+              efficiency_dc_ac: 0.98, // Em decimal (0.9-0.999)
+              tensao_cc_max_v: 1000,
+              strings_por_mppt: 2,
+              tipo_rede: 'Trifásico 380V',
+            },
+            orientacoes: [
+              {
+                nome: 'Telhado Principal',
+                orientacao: 0, // Norte
+                inclinacao: inputs.latitude > 0 ? inputs.latitude : -inputs.latitude,
+                modulos_por_string: Math.ceil(Math.sqrt(Math.ceil((inputs.potenciaSolar || 0) * 1000 / 550))), // Estimar módulos por string
+                numero_strings: 2,
+              },
+            ],
+          },
+        ],
+      };
+
+      // ========================================================================
+      // ETAPA 3: CONSTRUIR REQUEST - BESS E TARIFAS
+      // ========================================================================
+
+      setCalculationProgress(20);
+      setCalculationStage('Configurando BESS e tarifas...');
+
+      const request: HybridDimensioningRequest = {
+        sistema_solar: sistemaSolar,
+
+        // Parâmetros BESS
+        capacidade_kwh: inputs.capacidadeBaterias || 100,
+        potencia_kw: inputs.potenciaBaterias || 50,
+        tipo_bateria: (inputs.tipoBateria === 'chumbo' ? 'chumbo_acido' : inputs.tipoBateria) || 'litio',
+        eficiencia_roundtrip: 0.90, // 90% (típico para lítio)
+        profundidade_descarga_max: 0.90, // 90% DOD
+        soc_inicial: 0.50, // 50% inicial
+        soc_minimo: 0.10, // 10% mínimo
+        soc_maximo: 1.00, // 100% máximo
+
+        // Estrutura tarifária
+        tarifa: {
+          tipo: 'convencional', // Ajustar conforme dados do form
+          tarifa_fora_ponta_kwh: inputs.tarifaEnergia,
+          tarifa_ponta_kwh: inputs.tarifaEnergia * 1.5, // Assumir ponta 50% mais cara
+          // Removendo campos de horário para tarifa convencional (são necessários apenas para tarifa branca)
+          tarifa_demanda_ponta: inputs.custoDemanda || 0,
+          tarifa_demanda_fora_ponta: (inputs.custoDemanda || 0) * 0.5,
+        },
+
+        // Perfil de consumo
+        perfil_consumo: {
+          tipo: inputs.perfil,
+          // curva_horaria pode ser omitida (backend gera padrão)
+        },
+
+        // Estratégia de operação
+        estrategia: 'arbitragem', // ou 'peak_shaving', 'auto_consumo'
+        limite_demanda_kw: inputs.demandaContratada,
+
+        // Parâmetros econômicos
+        custo_kwh_bateria: 3000, // R$/kWh - ajustar conforme mercado
+        custo_kw_inversor_bess: 1500, // R$/kW
+        custo_instalacao_bess: 50000, // R$ - custo fixo
+        taxa_desconto: inputs.taxaDesconto / 100, // Converter % para decimal
+        vida_util_anos: inputs.vidaUtilProjeto,
+      };
+
+      // ========================================================================
+      // ETAPA 4: VALIDAÇÃO FRONTEND
+      // ========================================================================
+
+      setCalculationProgress(30);
+      setCalculationStage('Validando parâmetros...');
+
+      const validationErrors = validateHybridRequest(request);
+      if (validationErrors.length > 0) {
+        toast({
+          variant: "destructive",
+          title: "Erros de validação",
+          description: validationErrors.join(', '),
+        });
+        setIsSimulating(false);
+        return;
+      }
+
+      // ========================================================================
+      // ETAPA 5: CHAMAR BACKEND (PODE DEMORAR 1-5 MINUTOS)
+      // ========================================================================
+
+      setCalculationProgress(40);
+      setCalculationStage('Enviando para servidor...');
+
+      // Simular progresso durante o cálculo (que é demorado no backend)
+      const progressInterval = setInterval(() => {
+        setCalculationProgress(prev => {
+          const next = prev + 2;
+          if (next >= 95) {
+            clearInterval(progressInterval);
+            return 95;
+          }
+          return next;
+        });
+      }, 3000); // Incrementa 2% a cada 3 segundos
+
+      // Atualizar mensagens de progresso
+      setTimeout(() => setCalculationStage('Calculando geração solar (PVLIB)...'), 5000);
+      setTimeout(() => setCalculationStage('Simulando operação BESS (8760 horas)...'), 30000);
+      setTimeout(() => setCalculationStage('Analisando cenários financeiros...'), 60000);
+
+      console.log('🔋⚡ [FRONTEND] Iniciando cálculo híbrido:', request);
+
+      // CHAMADA REAL AO BACKEND
+      const response = await calculateHybridSystem(request);
+
+      clearInterval(progressInterval);
+      setCalculationProgress(100);
+      setCalculationStage('Concluído!');
+
+      // ========================================================================
+      // ETAPA 6: PROCESSAR RESULTADO E PASSAR PARA DASHBOARD
+      // ========================================================================
+
+      console.log('✅ [FRONTEND] Cálculo concluído:', response);
+
+      toast({
+        title: "Cálculo concluído!",
+        description: `Análise híbrida completa em ${(response.metadata.duration_ms / 1000).toFixed(1)}s`,
+      });
+
+      // Passar resultado completo para o dashboard
+      onSimulationComplete({
+        ...response.data,
+        // Adicionar metadados úteis
+        _metadata: {
+          leadId: currentLead.id,
+          leadName: currentLead.name,
+          systemConfig,
+          calculatedAt: new Date().toISOString(),
+          duration_ms: response.metadata.duration_ms,
+        },
+      });
+
+    } catch (error: any) {
+      console.error('❌ [FRONTEND] Erro no cálculo híbrido:', error);
+
+      toast({
+        variant: "destructive",
+        title: "Erro no cálculo",
+        description: error.message || "Erro ao calcular sistema híbrido. Tente novamente.",
+      });
+
       setIsSimulating(false);
+      setCalculationProgress(0);
+      setCalculationStage('');
     }
   };
 
@@ -519,6 +654,43 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
           </CardContent>
         </Card>
       </div>
+
+      {/* Progress UI durante simulação */}
+      {isSimulating && (
+        <Card className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-900">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white">
+                    Calculando Sistema Híbrido
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    {calculationStage}
+                  </p>
+                </div>
+              </div>
+              <span className="text-2xl font-bold text-blue-600">
+                {calculationProgress}%
+              </span>
+            </div>
+
+            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+              <div 
+                className="bg-gradient-to-r from-blue-600 to-purple-600 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${calculationProgress}%` }}
+              ></div>
+            </div>
+
+            <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+              <p>⏱️ Este cálculo pode levar de 1 a 5 minutos</p>
+              <p>🔬 Executando simulação PVLIB com 8760 pontos horários</p>
+              <p>💰 Comparando 4 cenários: sem sistema, só solar, só BESS, híbrido</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Botão de Simulação */}
       <motion.div

@@ -22,6 +22,7 @@ import { ProposalSettingsRoutes } from './ProposalSettingsRoutes';
 import { ProjectBackupRoutes } from './ProjectBackupRoutes';
 import { MultiSystemRoutes } from './MultiSystemRoutes';
 import { createSolarAnalysisRoutes } from './SolarAnalysisRoutes';
+import { createBessAnalysisRoutes } from './bess.routes';
 import { createAdvancedTemplateRoutes } from './AdvancedTemplateRoutes';
 import { clientAlertRoutes } from './client-alert.routes';
 import { EnergyCompanyRoutes } from './EnergyCompanyRoutes';
@@ -64,6 +65,7 @@ export class ApiRoutes {
     router.use('/project-backups', new ProjectBackupRoutes(container).getRouter());
     router.use('/multi-system', new MultiSystemRoutes(container).getRouter());
     router.use('/solar-analysis', createSolarAnalysisRoutes(container));
+    router.use('/bess-analysis', createBessAnalysisRoutes(container)); // Rotas de análise de sistemas híbridos Solar + BESS
     router.use('/advanced-templates', createAdvancedTemplateRoutes(container));
     router.use('/client-alerts', clientAlertRoutes);
     router.use('/energy-companies', EnergyCompanyRoutes.create(container));

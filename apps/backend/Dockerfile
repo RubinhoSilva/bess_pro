@@ -26,8 +26,9 @@ WORKDIR /app
 COPY packages/shared/package*.json ./shared/
 COPY apps/backend/package*.json ./backend/
 
-# Copy base tsconfig to root and shared directory
+# Copy base tsconfig to root and system root
 COPY tsconfig.base.json ./
+COPY tsconfig.base.json /tsconfig.base.json
 COPY tsconfig.base.json ./shared/
 
 # Install shared dependencies first
@@ -67,6 +68,7 @@ WORKDIR /app
 # Copy and build shared package
 COPY packages/shared/package*.json ./shared/
 COPY tsconfig.base.json ./
+COPY tsconfig.base.json /tsconfig.base.json
 COPY tsconfig.base.json ./shared/
 WORKDIR /app/shared
 RUN npm install

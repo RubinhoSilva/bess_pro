@@ -3,10 +3,13 @@ import '../../../styles/proposal.css';
 import { PageCover } from './PageCover';
 import { PageIntroduction } from './PageIntroduction';
 import { PageTechnical } from './PageTechnical';
-import { PageTechnicalCharts } from './PageTechnicalCharts';
+import { PageTechnicalCharts1 } from './PageTechnicalCharts1';
+import { PageTechnicalCharts2 } from './PageTechnicalCharts2';
 import { PageFinancial } from './PageFinancial';
 import { PageFinancialCharts } from './PageFinancialCharts';
 import { PageServices } from './PageServices';
+import { PagePayment } from './PagePayment';
+
 import { PageConclusion } from './PageConclusion';
 
 interface ProposalDocumentProps {
@@ -52,6 +55,37 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
     economiaProjetada: results?.economiaProjetada,
   });
 
+  // Log para verificar configurações das páginas
+  console.log('📋 Page settings:', {
+    showIntro,
+    showTech,
+    showFinancial,
+    showServices,
+    totalPages: 1 + (showIntro ? 1 : 0) + (showTech ? 3 : 0) + (showFinancial ? 2 : 0) + (showServices ? 2 : 0) + 1
+  });
+
+  // Log para detectar quando o componente está montado
+  React.useEffect(() => {
+    console.log('🖨️ ProposalDocument mounted, checking page elements...');
+    
+    const pages = document.querySelectorAll('.proposal-page');
+    console.log(`📄 Found ${pages.length} proposal pages`);
+    
+    pages.forEach((page, index) => {
+      const element = page as HTMLElement;
+      const rect = element.getBoundingClientRect();
+      console.log(`📄 Page ${index + 1}:`, {
+        width: rect.width,
+        height: rect.height,
+        scrollHeight: element.scrollHeight,
+        offsetHeight: element.offsetHeight,
+        clientHeight: element.clientHeight,
+        overflow: window.getComputedStyle(element).overflow,
+        pageBreakAfter: window.getComputedStyle(element).pageBreakAfter
+      });
+    });
+  }, []);
+
   return (
     <div className="proposal-document">
       <PageCover results={results} profile={profile} />
@@ -59,7 +93,16 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
       {showTech && (
         <>
           <PageTechnical results={results} />
-          <PageTechnicalCharts results={results} />
+          <PageTechnicalCharts1 
+            results={{
+              ...results,
+              geracaoAnual: results.geracaoAnual || results.advancedSolar?.geracaoEstimada?.anual || 0,
+              potencia: results.potenciaPico || results.potencia || 0,
+              areaEstimada: (results.numeroModulos || 0) * 2.7,
+              numeroModulos: results.numeroModulos || 0
+            }} 
+          />
+          <PageTechnicalCharts2 results={results} />
         </>
       )}
       {showFinancial && (
@@ -69,7 +112,8 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
         </>
       )}
       {showServices && <PageServices results={results} profile={profile} />}
-      <PageConclusion results={results} profile={profile} />
+{showServices && <PagePayment results={results} profile={profile} />}
+<PageConclusion results={results} profile={profile} />
     </div>
   );
 };

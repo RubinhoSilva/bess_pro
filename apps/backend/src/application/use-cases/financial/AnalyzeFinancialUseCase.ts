@@ -54,6 +54,29 @@ export class AnalyzeFinancialUseCase implements IUseCase<AnalyzeFinancialCommand
           modalidade_tarifaria: 'convencional'
         };
 
+        // 💾 SALVAR PAYLOAD EM ARQUIVO JSON para debug
+        try {
+          const fs = require('fs');
+          const path = require('path');
+
+          // Criar pasta para payloads se não existir
+          const payloadsDir = path.join(process.cwd(), 'payloads');
+          if (!fs.existsSync(payloadsDir)) {
+            fs.mkdirSync(payloadsDir, { recursive: true });
+          }
+
+          // Nome do arquivo com timestamp
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const filename = `payload-analyze-financial-${timestamp}.json`;
+          const filepath = path.join(payloadsDir, filename);
+
+          // Salvar payload
+          fs.writeFileSync(filepath, JSON.stringify(pythonApiInput, null, 2), 'utf8');
+          console.log(`💾 [AnalyzeFinancialUseCase] Payload salvo em: ${filepath}`);
+        } catch (error) {
+          console.error('❌ [AnalyzeFinancialUseCase] Erro ao salvar payload:', error);
+        }
+
         const response = await axios.post(
           `${process.env.PVLIB_SERVICE_URL || 'http://localhost:8110'}/financial/calculate-advanced`,
           pythonApiInput,

@@ -287,7 +287,7 @@ const ScenarioComparison: React.FC<{ scenarios: any }> = ({ scenarios }) => {
               <div>
                 <span className="text-gray-600 dark:text-slate-400">Payback:</span>
                 <div className="font-medium text-gray-900 dark:text-white">
-                  {formatNumber(scenario.paybackSimples, 1)} anos
+                  {formatNumber(scenario.payback, 1)} anos
                 </div>
               </div>
             </div>
