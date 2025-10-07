@@ -106,22 +106,9 @@ export class BessAnalysisController extends BaseController {
 
       
 
+const startTime = Date.now();
       const result = await this.bessClient.calculateHybridSystem(requestBody);
-      console.log('   🔗 Sistema Híbrido:');
-      console.log(`      - Autossuficiência: ${result.analise_hibrida.autossuficiencia.autossuficiencia_percentual.toFixed(1)}%`);
-      console.log(`      - Economia total: R$ ${result.analise_hibrida.analise_economica.economia_anual_total_reais.toFixed(2)}/ano`);
-      console.log(`      - Investimento: R$ ${result.analise_hibrida.investimento.investimento_total_reais.toFixed(2)}`);
-      console.log(`      - VPL: R$ ${result.analise_hibrida.retorno_financeiro.npv_reais.toFixed(2)}`);
-      console.log(`      - TIR: ${result.analise_hibrida.retorno_financeiro.tir_percentual.toFixed(1)}%`);
-      console.log(`      - Payback: ${result.analise_hibrida.retorno_financeiro.payback_simples_anos.toFixed(1)} anos`);
-
-      console.log('='.repeat(100));
-      console.log('🏁 [BACKEND] FIM - Cálculo de Sistema Híbrido Solar + BESS');
-      console.log('='.repeat(100));
-
-      // =====================================================================
-      // ETAPA 4: RETORNAR RESULTADO
-      // =====================================================================
+      const duration = Date.now() - startTime;
 
       return this.ok(res, {
         success: true,
