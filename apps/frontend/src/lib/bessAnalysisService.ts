@@ -92,19 +92,28 @@ export async function calculateHybridSystem(
     bessLogger.result('Hybrid System Calculation', `Completed in ${duration}ms`, { duration });
 
     console.log(`✅ [FRONTEND] Cálculo híbrido concluído em ${duration}ms`);
+    console.log('🔍 [DEBUG] Estrutura completa da resposta:', response.data);
     
-    // Backend retorna estrutura aninhada: response.data.data (duplo aninhamento)
-    // Extrair dados corretamente para o formato esperado pelo frontend
-    const actualData = response.data.data || response.data;
+    // Backend retorna estrutura aninhada: response.data.data.data (triplo aninhamento)
+    // Estrutura: {success: true, data: {success: true, data: {sistema_solar, sistema_bess, analise_hibrida}, metadata: {...}}}
+    const actualData = response.data.data?.data || response.data.data || response.data;
     const actualMetadata = response.data.data?.metadata || response.data.metadata || {
       duration_ms: duration,
       timestamp: new Date().toISOString(),
     };
 
+    console.log('🔍 [DEBUG] actualData extraído:', actualData);
+    console.log('🔍 [DEBUG] actualData.sistema_solar:', actualData?.sistema_solar);
+
+    // Validação segura antes de acessar propriedades aninhadas
+    if (!actualData || !actualData.sistema_solar) {
+      throw new Error('Resposta inválida do servidor: dados do sistema solar não encontrados');
+    }
+
     console.log(`   Solar: ${actualData.sistema_solar.potencia_total_kwp.toFixed(2)}kWp`);
-    console.log(`   BESS: ${actualData.sistema_bess.ciclos_equivalentes_ano.toFixed(1)} ciclos/ano`);
-    console.log(`   Autossuficiência: ${actualData.analise_hibrida.autossuficiencia.autossuficiencia_percentual.toFixed(1)}%`);
-    console.log(`   VPL: R$ ${actualData.analise_hibrida.retorno_financeiro.npv_reais.toFixed(2)}`);
+    console.log(`   BESS: ${actualData.sistema_bess?.ciclos_equivalentes_ano?.toFixed(1) || 'N/A'} ciclos/ano`);
+    console.log(`   Autossuficiência: ${actualData.analise_hibrida?.autossuficiencia?.autossuficiencia_percentual?.toFixed(1) || 'N/A'}%`);
+    console.log(`   VPL: R$ ${actualData.analise_hibrida?.retorno_financeiro?.npv_reais?.toFixed(2) || 'N/A'}`);
 
     // Retornar no formato esperado pelo frontend
     return {
@@ -116,9 +125,15 @@ export async function calculateHybridSystem(
   } catch (error: any) {
     const duration = Date.now() - startTime;
 
-    bessLogger.error('Hybrid System Calculation', error.message || 'Unknown error', { error });
+    bessLogger.error('Hybrid System Calculation', error.message || 'Unknown error', { 
+      error,
+      responseStatus: error.response?.status,
+      responseData: error.response?.data 
+    });
 
     console.error(`❌ [FRONTEND] Erro ao calcular sistema híbrido (${duration}ms):`, error);
+    console.error('Status:', error.response?.status);
+    console.error('Response data:', error.response?.data);
 
     // Re-throw com mensagem mais descritiva
     if (error.response?.status === 400) {
