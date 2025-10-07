@@ -74,27 +74,27 @@ services:
     networks:
       - bess-network
 
-  # Python PVLIB Service
-  pvlib-service:
+  # Python Energy Calculation Service (PVLIB + BESS)
+  energy-calculation-service:
     build:
-      context: ./apps/pvlib-service
+      context: ./apps/energy-calculation-service
       dockerfile: Dockerfile
-    container_name: bess-pro-pvlib-prod
+    container_name: bess-pro-energy-calculation-prod
     platform: linux/arm64
     restart: unless-stopped
     ports:
-      - "8110:8100"
+      - "8110:8000"
     environment:
       - ENVIRONMENT=production
       - LOG_LEVEL=INFO
       - CACHE_TTL_HOURS=168
       - MAX_CACHE_SIZE_MB=1000
     volumes:
-      - pvlib_cache:/app/cache_pvgis
+      - energy_calculation_cache:/app/cache_pvgis
     networks:
       - bess-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8100/admin/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -116,7 +116,7 @@ volumes:
   mongodb_prod_data:
   mongodb_config:
   redis_prod_data:
-  pvlib_cache:
+  energy_calculation_cache:
   uploads:
   logs:
 
