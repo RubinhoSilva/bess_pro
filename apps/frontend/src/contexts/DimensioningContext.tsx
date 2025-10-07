@@ -111,6 +111,8 @@ interface DimensioningData {
   cidade?: string;
   estado?: string;
   irradiacaoMensal: number[];
+  fonteDados?: 'pvgis' | 'nasa'; // Fonte de dados meteorológicos (PVGIS ou NASA)
+  pvgisResponseData?: any; // Dados completos da resposta PVGIS para restauração
   
   // Sistema fotovoltaico
   potenciaModulo: number;

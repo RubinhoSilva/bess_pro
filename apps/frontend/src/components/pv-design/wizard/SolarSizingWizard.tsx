@@ -1066,6 +1066,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
               consumoAnualTotal={currentDimensioning.energyBills?.reduce((acc: number, bill: any) => {
                 return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
               }, 0) || 0}
+              fonteDados={currentDimensioning.fonteDados}
               perdaSombreamento={currentDimensioning.perdaSombreamento}
               perdaMismatch={currentDimensioning.perdaMismatch}
               perdaCabeamento={currentDimensioning.perdaCabeamento}

@@ -33,6 +33,9 @@ export interface SolarSystemCalculationResult {
 export interface ModuleCalculationParams {
   lat: number;
   lon: number;
+  origem_dados?: string; // "PVGIS" or "NASA"
+  startyear?: number;
+  endyear?: number;
   tilt?: number;
   azimuth?: number;
   modelo_decomposicao?: string;
@@ -110,6 +113,9 @@ export interface ModuleCalculationParams {
 export interface MultiInverterCalculationParams {
   lat: number;
   lon: number;
+  origem_dados?: string; // "PVGIS" or "NASA"
+  startyear?: number;
+  endyear?: number;
   tilt?: number;
   azimuth?: number;
   modelo_decomposicao?: string;
@@ -547,8 +553,15 @@ export class SolarSystemService {
       
       // ✅ PROCESSAR MÚLTIPLAS ÁGUAS DE TELHADO
       const processedParams = this._processRoofWatersForCalculation(params, inversorGlobal);
-      console.log('🏠 Parâmetros processados para múltiplas águas:', processedParams);
-      
+
+      console.log('📡 [SOLAR_SERVICE] PAYLOAD COMPLETO ANTES DE ENVIAR:');
+      console.log(JSON.stringify(processedParams, null, 2));
+      console.log('📡 [SOLAR_SERVICE] Verificação de campos críticos:', {
+        origem_dados: processedParams.origem_dados,
+        startyear: processedParams.startyear,
+        endyear: processedParams.endyear
+      });
+
       // Fazer chamada através do backend Node.js
       const response = await api.post('/solar-analysis/calculate-advanced-modules', processedParams);
       
@@ -728,6 +741,9 @@ export class SolarSystemService {
     const params: MultiInverterCalculationParams = {
       lat: dimensioningData.latitude || -15.7942,
       lon: dimensioningData.longitude || -47.8822,
+      origem_dados: (dimensioningData.fonteDados || 'pvgis').toUpperCase(),
+      startyear: 2015,
+      endyear: 2020,
       modelo_decomposicao: 'louche',
       modelo_transposicao: 'perez',
       consumo_anual_kwh: consumoAnual,
@@ -821,6 +837,9 @@ export class SolarSystemService {
         // ✅ Campos obrigatórios
         lat: params.lat,
         lon: params.lon,
+        origem_dados: params.origem_dados || 'PVGIS',
+        startyear: params.startyear || 2015,
+        endyear: params.endyear || 2020,
         modelo_decomposicao: params.modelo_decomposicao,
         modelo_transposicao: params.modelo_transposicao,
         consumo_anual_kwh: params.consumo_anual_kwh,

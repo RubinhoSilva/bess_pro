@@ -106,6 +106,9 @@ temp/
 logs/
 *.log
 
+# Payloads (JSON dumps for debugging)
+payloads/
+
 # Docker
 .dockerignore
 

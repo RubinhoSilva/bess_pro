@@ -42,6 +42,7 @@ const LocationForm: React.FC<LocationFormProps> = ({ formData, onFormChange }) =
       <CardContent className="space-y-4">
         <PVGISIntegration 
           onDataReceived={handlePVGISData}
+          onFormChange={onFormChange}
           formData={formData}
         />
       </CardContent>

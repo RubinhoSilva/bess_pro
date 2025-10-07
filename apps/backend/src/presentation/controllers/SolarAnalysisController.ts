@@ -190,9 +190,13 @@ export class SolarAnalysisController extends BaseController {
 
       const params = req.body;
 
-      console.log('📥 [NODE.JS] Dados recebidos na requisição:');
+      console.log('📥 [NODE.JS] REQUEST BODY COMPLETO:');
+      console.log(JSON.stringify(params, null, 2));
+      console.log('\n📥 [NODE.JS] Campos importantes extraídos:');
       console.log('   - Latitude:', params.lat);
       console.log('   - Longitude:', params.lon);
+      console.log('   - Origem dados:', params.origem_dados);
+      console.log('   - Período:', params.startyear, '-', params.endyear);
       console.log('   - Consumo Anual:', params.consumo_anual_kwh, 'kWh');
       console.log('   - Módulo:', params.modulo?.fabricante, params.modulo?.modelo);
       console.log('   - Potência Módulo:', params.modulo?.potencia_nominal_w, 'W');
@@ -313,10 +317,23 @@ export class SolarAnalysisController extends BaseController {
       const inversores = Array.from(inversoresMap.values());
 
       // Montar payload no novo formato esperado pelo Python
+      console.log('🔍 [DEBUG BACKEND] Verificando origem_dados:', {
+        'params.origem_dados': params.origem_dados,
+        'typeof params.origem_dados': typeof params.origem_dados,
+        'params.origem_dados existe': !!params.origem_dados,
+        'params completos': params
+      });
+
+      // TEMPORÁRIO: Remover fallback para debug
+      if (!params.origem_dados) {
+        console.error('❌ [DEBUG BACKEND] origem_dados não fornecido em calculateAdvancedModules!');
+        return this.badRequest(res, 'origem_dados é obrigatório (PVGIS ou NASA)');
+      }
+
       const pythonParams = {
         lat: params.lat,
         lon: params.lon,
-        origem_dados: params.origem_dados || 'PVGIS',
+        origem_dados: params.origem_dados, // OBRIGATÓRIO: sem fallback
         startyear: params.startyear || 2015,
         endyear: params.endyear || 2020,
         modelo_decomposicao: params.modelo_decomposicao || 'louche',
@@ -327,6 +344,8 @@ export class SolarAnalysisController extends BaseController {
         modulo: modulo,
         inversores: inversores
       };
+
+      console.log('🔍 [DEBUG BACKEND] calculateAdvancedModules - origem_dados usado:', params.origem_dados);
 
       // Log detalhado dos dados sendo enviados ao Python
       console.log('\n🚀 [NODE.JS] Preparando chamada para API Python (novo formato):');
@@ -529,14 +548,29 @@ export class SolarAnalysisController extends BaseController {
       const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
       
       // Preparar parâmetros para a API Python (seguindo o schema IrradiationAnalysisRequest)
+      console.log('🔍 [DEBUG BACKEND] analyzeMonthlyIrradiation - Verificando data_source:', {
+        'params.data_source': params.data_source,
+        'typeof params.data_source': typeof params.data_source,
+        'params.data_source existe': !!params.data_source,
+        'params completos': params
+      });
+
+      // TEMPORÁRIO: Remover fallback para debug
+      if (!params.data_source) {
+        console.error('❌ [DEBUG BACKEND] data_source não fornecido em analyzeMonthlyIrradiation!');
+        return this.badRequest(res, 'data_source é obrigatório (pvgis ou nasa)');
+      }
+
       const pythonParams = {
         lat: parseFloat(params.lat),
         lon: parseFloat(params.lon),
         tilt: params.tilt || 0,
         azimuth: params.azimuth || 0,
         modelo_decomposicao: params.modelo_decomposicao || 'erbs',
-        data_source: params.data_source || 'pvgis'  // NOVO: fonte de dados (pvgis ou nasa)
+        data_source: params.data_source  // OBRIGATÓRIO: sem fallback
       };
+
+      console.log('🔍 [DEBUG BACKEND] analyzeMonthlyIrradiation - data_source usado:', params.data_source);
 
       console.log('🌍 Fonte de dados solicitada:', pythonParams.data_source);
 

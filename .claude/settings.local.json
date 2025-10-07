@@ -123,7 +123,9 @@
       "Bash(done)",
       "Bash(for file in PageTechnical.tsx PageFinancial.tsx PageServices.tsx)",
       "Bash(do sed -i '' 's/proposal-page p-10/proposal-page p-6/g' $file)",
-      "Bash(do)"
+      "Bash(do)",
+      "Read(//private/tmp/**)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

@@ -22,6 +22,7 @@ interface WaterSelectionFormProps {
   longitude?: number;
   potenciaModulo?: number;
   consumoAnualTotal?: number; // Para comparar com geração
+  fonteDados?: 'pvgis' | 'nasa'; // Fonte de dados para cálculo
   // Perdas do sistema
   perdaSombreamento?: number;
   perdaMismatch?: number;
@@ -45,6 +46,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
   longitude,
   potenciaModulo = 550,
   consumoAnualTotal = 0,
+  fonteDados = 'pvgis',
   perdaSombreamento = 3,
   perdaMismatch = 2,
   perdaCabeamento = 2,
@@ -410,6 +412,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
       const dimensioningData = {
         latitude,
         longitude,
+        fonteDados, // ✅ Adicionar fonte de dados
         // ✅ Enviar TODAS as águas COM INVERSOR EMBUTIDO
         aguasTelhado: aguasTelhado.map(a => ({
           id: a.id,

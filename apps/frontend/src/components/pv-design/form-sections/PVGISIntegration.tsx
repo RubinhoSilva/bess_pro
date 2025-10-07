@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ interface PVGISIntegrationProps {
     pvgisResponseData?: any; // Dados completos da resposta PVGIS
     fonteDados?: string; // Fonte de dados utilizada (pvgis ou nasa)
   }) => void;
+  onFormChange?: (field: string, value: any) => void;
   formData?: {
     latitude?: number;
     longitude?: number;
@@ -46,6 +47,7 @@ interface PVGISIntegrationProps {
 
 const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
   onDataReceived,
+  onFormChange,
   formData
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +55,21 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
   const [dataSource, setDataSource] = useState<'pvgis' | 'nasa'>(() => {
     return (formData?.fonteDados as 'pvgis' | 'nasa') || 'pvgis';
   });
+
+  // Sync dataSource when formData changes (when navigating back to this step)
+  useEffect(() => {
+    if (formData?.fonteDados) {
+      const normalizedValue = formData.fonteDados.toLowerCase().includes('nasa') ? 'nasa' : 'pvgis';
+      setDataSource(normalizedValue);
+    }
+  }, [formData?.fonteDados]);
+
+  // Sync formData when user changes selection (only when user actually changes it)
+  useEffect(() => {
+    if (onFormChange && formData?.fonteDados !== dataSource) {
+      onFormChange('fonteDados', dataSource);
+    }
+  }, [dataSource]); // Removido formData?.fonteDados das dependências
 
   // Initialize state from formData - each useState uses its own validation logic
   const [selectedLocation, setSelectedLocation] = useState<PVGISLocation | null>(() => {
@@ -227,6 +244,14 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
         data_source: dataSource // Passar fonte de dados selecionada
       };
 
+      console.log('🔍 [DEBUG] PVGISIntegration - Dados da requisição:', {
+        requestData,
+        dataSource,
+        formDataFonteDados: formData?.fonteDados,
+        location,
+        'dataSource === formData.fonteDados': dataSource === formData?.fonteDados
+      });
+
       // ✅ Enviar múltiplas águas se existirem
       if (formData && formData.aguasTelhado && formData.aguasTelhado.length > 1) {
         console.log(`🏠 Enviando ${formData.aguasTelhado.length} águas de telhado para cálculo`);
@@ -252,8 +277,8 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
       
       const formattedCity = `Lat: ${response.data.data.coordenadas.lat.toFixed(4)}, Lon: ${response.data.data.coordenadas.lon.toFixed(4)}`;
 
-      // Extrair fonte de dados utilizada da resposta (pode ser diferente se houve fallback)
-      const fonteUtilizada = response.data.data.fonteDados || dataSource;
+      // Manter a fonte selecionada pelo usuário (não sobrescrever com resposta da API)
+      const fonteUtilizada = dataSource;
 
       const data = {
         irradiacaoMensal: response.data.data.irradiacaoMensal,
@@ -331,7 +356,9 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
         {/* Seletor de fonte de dados */}
         <div className="p-3 bg-muted/30 rounded-lg border border-border">
           <Label className="text-foreground mb-3 block font-semibold">Fonte de Dados Meteorológicos</Label>
-          <RadioGroup value={dataSource} onValueChange={(value) => setDataSource(value as 'pvgis' | 'nasa')}>
+          <RadioGroup value={dataSource} onValueChange={(value) => {
+            setDataSource(value as 'pvgis' | 'nasa');
+          }}>
             <div className="flex items-center space-x-3 mb-2">
               <RadioGroupItem value="pvgis" id="pvgis" disabled={isLoading} />
               <Label htmlFor="pvgis" className="cursor-pointer">
