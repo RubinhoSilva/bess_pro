@@ -1,10 +1,10 @@
-from pydantic import BaseModel, Field, validator
-from typing import Optional, Literal, List
+from pydantic import BaseModel, Field, validator, model_validator
+from typing import Optional, Literal, List, Dict
 from core.config import settings
 
 class LocationRequest(BaseModel):
     """Requisição básica com coordenadas geográficas"""
-    
+
     lat: float = Field(
         ...,
         ge=settings.MIN_LATITUDE,
@@ -14,7 +14,7 @@ class LocationRequest(BaseModel):
     )
     lon: float = Field(
         ...,
-        ge=settings.MIN_LONGITUDE, 
+        ge=settings.MIN_LONGITUDE,
         le=settings.MAX_LONGITUDE,
         description="Longitude em graus decimais (-180 a 180)",
         example=-47.8822
@@ -50,26 +50,35 @@ class IrradiationAnalysisRequest(LocationRequest):
         description="Orientação dos módulos em graus (0° = Norte, 90° = Leste, 180° = Sul, 270° = Oeste)",
         example=180
     )
-    data_source: Literal['pvgis', 'nasa'] = Field(
-        default='pvgis',
-        description="Fonte de dados meteorológicos (PVGIS ou NASA POWER)",
-        example='pvgis'
+    startyear: Optional[int] = Field(
+        default=settings.PVGIS_START_YEAR,
+        ge=2005,
+        le=2020,
+        description="Ano inicial para dados históricos PVGIS",
+        example=2005
     )
-    modelo_decomposicao: Literal['erbs', 'disc', 'dirint', 'orgill_hollands', 'boland', 'louche'] = Field(
-        default='erbs',
-        description="Modelo para decomposição GHI → DNI/DHI (usado apenas se tilt > 0 ou azimuth ≠ 0)",
-        example='erbs'
+    endyear: Optional[int] = Field(
+        default=settings.PVGIS_END_YEAR,
+        ge=2005,
+        le=2020,
+        description="Ano final para dados históricos PVGIS",
+        example=2020
     )
-    modelo_transposicao: Literal['perez', 'klucher'] = Field(
-        default='perez',
-        description="Modelo para transposição de irradiação para plano inclinado",
-        example='perez'
+    data_source: Literal["pvgis", "nasa"] = Field(
+        default="pvgis",
+        description="Fonte de dados climáticos (pvgis ou nasa)"
+    )
+    modelo_decomposicao: Optional[Literal["erbs", "disc", "dirint", "dirindex"]] = Field(
+        default="erbs",
+        description="Modelo de decomposição de irradiância (se necessário)"
     )
 
-    @validator('azimuth')
-    def normalize_azimuth(cls, v):
-        """Normaliza azimute para range 0-360"""
-        return float(v % 360)
+    @validator('endyear')
+    def validate_year_range(cls, v, values):
+        """Valida se endyear é maior ou igual a startyear"""
+        if 'startyear' in values and v < values['startyear']:
+            raise ValueError('endyear deve ser maior ou igual a startyear')
+        return v
 
     @validator('tilt', 'azimuth')
     def round_angles(cls, v):
@@ -83,78 +92,69 @@ class IrradiationAnalysisRequest(LocationRequest):
                 "lon": -47.8822,
                 "tilt": 20,
                 "azimuth": 180,
-                "data_source": "pvgis",
+                "startyear": 2005,
+                "endyear": 2020,
                 "modelo_decomposicao": "erbs"
             }
         }
 
 class SolarModuleData(BaseModel):
-    """Dados completos do módulo solar"""
-    
+    """Dados do módulo solar"""
+
     fabricante: str = Field(..., description="Fabricante do módulo")
     modelo: str = Field(..., description="Modelo do módulo")
     potencia_nominal_w: float = Field(
-        ..., 
-        ge=settings.MIN_MODULE_POWER, 
+        ...,
+        ge=settings.MIN_MODULE_POWER,
         le=settings.MAX_MODULE_POWER,
-        description="Potência nominal em Watts"
+        description="Potência nominal em Watts (STC)"
     )
-    
+    eficiencia: float = Field(..., ge=10, le=30, description="Eficiência do módulo (%)")
+    temp_coef_pmax: float = Field(..., ge=-1, le=0, description="Coeficiente de temperatura de Pmax (%/°C)")
+
     # Dimensões
-    largura_mm: Optional[float] = Field(None, ge=100, le=5000, description="Largura em mm")
-    altura_mm: Optional[float] = Field(None, ge=100, le=5000, description="Altura em mm")
-    espessura_mm: Optional[float] = Field(None, ge=10, le=100, description="Espessura em mm")
-    
-    # Características elétricas
-    vmpp: Optional[float] = Field(None, ge=0, le=100, description="Tensão no ponto de máxima potência (V)")
-    impp: Optional[float] = Field(None, ge=0, le=20, description="Corrente no ponto de máxima potência (A)")
-    voc: Optional[float] = Field(None, ge=0, le=100, description="Tensão de circuito aberto (V)")
-    isc: Optional[float] = Field(None, ge=0, le=25, description="Corrente de curto-circuito (A)")
-    
-    # Características técnicas
-    tipo_celula: Optional[str] = Field(None, description="Tipo de célula (ex: Monocristalino)")
-    eficiencia: Optional[float] = Field(None, ge=5, le=30, description="Eficiência do módulo (%)")
-    numero_celulas: Optional[int] = Field(None, ge=36, le=144, description="Número de células")
-    
-    # Coeficientes de temperatura
-    temp_coef_pmax: Optional[float] = Field(None, ge=-1, le=0, description="Coef. temperatura Pmax (%/°C)")
-    temp_coef_voc: Optional[float] = Field(None, ge=-1, le=0, description="Coef. temperatura Voc (%/°C)")
-    temp_coef_isc: Optional[float] = Field(None, ge=0, le=1, description="Coef. temperatura Isc (%/°C)")
-    
-    # Outros
-    peso_kg: Optional[float] = Field(None, ge=5, le=50, description="Peso em kg")
-    garantia_anos: Optional[int] = Field(None, ge=1, le=30, description="Garantia em anos")
-    tolerancia: Optional[str] = Field(None, description="Tolerância de potência (ex: +3/-0%)")
-    
-    # Parâmetros para modelo espectral
-    material: Optional[str] = Field(None, description="Material da célula (c-Si, a-Si, CdTe, etc.)")
-    technology: Optional[str] = Field(None, description="Tecnologia (mono-Si, mc-Si, a-Si, CdTe, etc.)")
-    
-    # Parâmetros do modelo de diodo único (5 parâmetros fundamentais)
-    a_ref: Optional[float] = Field(None, ge=0.5, le=3.0, description="Fator de idealidade modificado [V]")
-    i_l_ref: Optional[float] = Field(None, ge=5, le=20, description="Fotocorrente STC [A]")
-    i_o_ref: Optional[float] = Field(None, ge=1e-15, le=1e-8, description="Corrente saturação reversa STC [A]")
-    r_s: Optional[float] = Field(None, ge=0.1, le=2.0, description="Resistência série [Ω]")
-    r_sh_ref: Optional[float] = Field(None, ge=100, le=1000, description="Resistência paralelo STC [Ω]")
-    
-    # Coeficientes de temperatura críticos
-    alpha_sc: Optional[float] = Field(None, ge=0.0001, le=0.001, description="Coef. temperatura corrente [A/°C]")
-    beta_oc: Optional[float] = Field(None, ge=-0.01, le=-0.001, description="Coef. temperatura tensão [V/°C]")
-    gamma_r: Optional[float] = Field(None, ge=-0.001, le=0, description="Coef. temperatura potência [1/°C]")
-    
-    # Parâmetros SAPM térmicos (modelo de temperatura avançado)
-    a0: Optional[float] = Field(None, ge=-10, le=10, description="Parâmetro térmico SAPM A0")
-    a1: Optional[float] = Field(None, ge=-1, le=1, description="Parâmetro térmico SAPM A1")
-    a2: Optional[float] = Field(None, ge=-1, le=1, description="Parâmetro térmico SAPM A2")
-    a3: Optional[float] = Field(None, ge=-1, le=1, description="Parâmetro térmico SAPM A3")
-    a4: Optional[float] = Field(None, ge=-1, le=1, description="Parâmetro térmico SAPM A4")
-    b0: Optional[float] = Field(None, ge=-1, le=1, description="Parâmetro térmico SAPM B0")
-    b1: Optional[float] = Field(None, ge=-1, le=1, description="Parâmetro térmico SAPM B1")
-    b2: Optional[float] = Field(None, ge=-1, le=1, description="Parâmetro térmico SAPM B2")
-    b3: Optional[float] = Field(None, ge=-1, le=1, description="Parâmetro térmico SAPM B3")
-    b4: Optional[float] = Field(None, ge=-1, le=1, description="Parâmetro térmico SAPM B4")
-    b5: Optional[float] = Field(None, ge=-1, le=1, description="Parâmetro térmico SAPM B5")
-    dtc: Optional[float] = Field(None, ge=0, le=10, description="Delta T para SAPM [°C]")
+    comprimento: Optional[float] = Field(None, ge=1000, le=3000, description="Comprimento em mm")
+    largura: Optional[float] = Field(None, ge=500, le=1500, description="Largura em mm")
+    peso: Optional[float] = Field(None, ge=10, le=50, description="Peso em kg")
+
+    # Dados elétricos adicionais para simulação precisa
+    voc: Optional[float] = Field(None, ge=20, le=70, description="Tensão de circuito aberto (V)")
+    isc: Optional[float] = Field(None, ge=5, le=20, description="Corrente de curto-circuito (A)")
+    vmpp: Optional[float] = Field(None, ge=20, le=60, description="Tensão no ponto de máxima potência (V)")
+    impp: Optional[float] = Field(None, ge=5, le=20, description="Corrente no ponto de máxima potência (A)")
+
+    # Coeficientes de temperatura adicionais
+    temp_coef_voc: Optional[float] = Field(None, ge=-0.5, le=0, description="Coef. temperatura Voc (%/°C)")
+    temp_coef_isc: Optional[float] = Field(None, ge=0, le=0.1, description="Coef. temperatura Isc (%/°C)")
+
+    # Condições de operação nominal (NOCT)
+    noct: Optional[float] = Field(None, ge=40, le=50, description="NOCT - Temperatura nominal de operação (°C)")
+
+    # Dados Sandia para simulação precisa
+    a_ref: Optional[float] = Field(None, description="Fator de idealidade modificado (ref)")
+    il_ref: Optional[float] = Field(None, description="Corrente foto-gerada (ref)")
+    io_ref: Optional[float] = Field(None, description="Corrente de saturação (ref)")
+    rs: Optional[float] = Field(None, description="Resistência série (ohms)")
+    rsh_ref: Optional[float] = Field(None, description="Resistência shunt (ohms, ref)")
+
+    # Parâmetros de temperatura Sandia
+    alpha_sc: Optional[float] = Field(None, description="Coef. temp. Isc normalizado (1/°C)")
+    beta_oc: Optional[float] = Field(None, description="Coef. temp. Voc normalizado (1/°C)")
+    gamma_r: Optional[float] = Field(None, description="Coef. temp. Pmp normalizado (1/°C)")
+
+    # Parâmetros adicionais King
+    a0: Optional[float] = Field(None, description="a0 (King model)")
+    a1: Optional[float] = Field(None, description="a1 (King model)")
+    a2: Optional[float] = Field(None, description="a2 (King model)")
+    a3: Optional[float] = Field(None, description="a3 (King model)")
+    a4: Optional[float] = Field(None, description="a4 (King model)")
+    b0: Optional[float] = Field(None, description="b0 (King model)")
+    b1: Optional[float] = Field(None, description="b1 (King model)")
+    b2: Optional[float] = Field(None, description="b2 (King model)")
+    b3: Optional[float] = Field(None, description="b3 (King model)")
+    b4: Optional[float] = Field(None, description="b4 (King model)")
+    b5: Optional[float] = Field(None, description="b5 (King model)")
+    dtc: Optional[float] = Field(None, description="Delta T @ NOCT (°C)")
 
     class Config:
         schema_extra = {
@@ -162,38 +162,27 @@ class SolarModuleData(BaseModel):
                 "fabricante": "Canadian Solar",
                 "modelo": "CS3W-540MS",
                 "potencia_nominal_w": 540,
-                "largura_mm": 2256,
-                "altura_mm": 1133,
-                "espessura_mm": 35,
-                "vmpp": 41.4,
-                "impp": 13.05,
-                "voc": 49.8,
-                "isc": 13.8,
-                "tipo_celula": "Monocristalino PERC",
                 "eficiencia": 20.9,
-                "numero_celulas": 120,
                 "temp_coef_pmax": -0.37,
-                "temp_coef_voc": -0.29,
+                "comprimento": 2278,
+                "largura": 1134,
+                "peso": 28.6,
+                "voc": 49.6,
+                "isc": 13.87,
+                "vmpp": 41.7,
+                "impp": 12.95,
+                "temp_coef_voc": -0.28,
                 "temp_coef_isc": 0.05,
-                "peso_kg": 27.5,
-                "garantia_anos": 25,
-                "tolerancia": "+5/-0%",
-                "material": "c-Si",
-                "technology": "mono-Si",
-                "a_ref": 1.8,
-                "i_l_ref": 13.91,
-                "i_o_ref": 3.712e-12,
-                "r_s": 0.348,
-                "r_sh_ref": 381.68,
-                "alpha_sc": 0.0004,
-                "beta_oc": -0.0028,
-                "gamma_r": -0.0004,
-                "a0": -3.56,
-                "a1": -0.075,
+                "noct": 45,
+                "alpha_sc": 0.00041,
+                "beta_oc": -0.0025,
+                "gamma_r": -0.0029,
+                "a0": 0.0,
+                "a1": 0.0,
                 "a2": 0.0,
                 "a3": 0.0,
                 "a4": 0.0,
-                "b0": 0.0,
+                "b0": 1.0,
                 "b1": 0.0,
                 "b2": 0.0,
                 "b3": 0.0,
@@ -204,49 +193,128 @@ class SolarModuleData(BaseModel):
         }
 
 
-class InverterData(BaseModel):
-    """Dados completos do inversor"""
-    
+# ============================================================================
+# NOVAS CLASSES PARA SISTEMA SOLAR MULTI-INVERSOR
+# ============================================================================
+
+class PerdasSistema(BaseModel):
+    """Perdas do sistema fotovoltaico"""
+
+    sujeira: float = Field(default=1.0, ge=0, le=20, description="Perdas por sujeira (%)")
+    sombreamento: float = Field(default=2.0, ge=0, le=30, description="Perdas por sombreamento (%)")
+    incompatibilidade: float = Field(default=1.0, ge=0, le=10, description="Perdas por incompatibilidade/mismatch (%)")
+    fiacao: float = Field(default=0.5, ge=0, le=10, description="Perdas por fiação (%)")
+    outras: float = Field(default=0.5, ge=0, le=15, description="Outras perdas (%)")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "sujeira": 1.0,
+                "sombreamento": 2.0,
+                "incompatibilidade": 1.0,
+                "fiacao": 0.5,
+                "outras": 0.5
+            }
+        }
+
+
+class ModuloSolar(BaseModel):
+    """Dados completos do módulo solar para cálculo pvlib"""
+
+    # Informações básicas
+    fabricante: str = Field(..., description="Fabricante do módulo")
+    modelo: str = Field(..., description="Modelo do módulo")
+    potencia_nominal_w: float = Field(..., ge=100, le=1000, description="Potência nominal STC (W)")
+
+    # Dimensões físicas
+    largura_mm: float = Field(..., ge=500, le=2500, description="Largura em mm")
+    altura_mm: float = Field(..., ge=1000, le=3000, description="Altura em mm")
+    peso_kg: float = Field(..., ge=10, le=50, description="Peso em kg")
+
+    # Parâmetros elétricos STC
+    vmpp: float = Field(..., ge=20, le=60, description="Tensão no ponto de máxima potência (V)")
+    impp: float = Field(..., ge=5, le=20, description="Corrente no ponto de máxima potência (A)")
+    voc_stc: float = Field(..., ge=20, le=70, description="Tensão de circuito aberto STC (V)")
+    isc_stc: float = Field(..., ge=5, le=20, description="Corrente de curto-circuito STC (A)")
+
+    # Coeficientes de temperatura
+    eficiencia: float = Field(..., ge=10, le=30, description="Eficiência do módulo (%)")
+    temp_coef_pmax: float = Field(..., ge=-1, le=0, description="Coeficiente de temperatura Pmax (%/°C)")
+
+    # Parâmetros Sandia (obrigatórios para pvlib)
+    alpha_sc: float = Field(..., description="Coef. temp. Isc normalizado (1/°C)")
+    beta_oc: float = Field(..., description="Coef. temp. Voc normalizado (1/°C)")
+    gamma_r: float = Field(..., description="Coef. temp. Pmp normalizado (1/°C)")
+    cells_in_series: int = Field(..., ge=36, le=200, description="Número de células em série")
+
+    # Parâmetros Sandia avançados
+    a_ref: float = Field(..., description="Fator de idealidade modificado (ref)")
+    il_ref: float = Field(..., description="Corrente foto-gerada (ref)")
+    io_ref: float = Field(..., description="Corrente de saturação (ref)")
+    rs: float = Field(..., description="Resistência série (ohms)")
+    rsh_ref: float = Field(..., description="Resistência shunt (ohms, ref)")
+
+    # Informações adicionais (opcionais)
+    material: Optional[str] = Field(None, description="Material (ex: c-Si)")
+    technology: Optional[str] = Field(None, description="Tecnologia (ex: mono-Si)")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "fabricante": "Canadian Solar",
+                "modelo": "CS3W-540MS",
+                "potencia_nominal_w": 550,
+                "largura_mm": 2261,
+                "altura_mm": 1134,
+                "vmpp": 41.4,
+                "impp": 13.05,
+                "eficiencia": 20.9,
+                "temp_coef_pmax": -0.37,
+                "peso_kg": 27.5,
+                "material": "c-Si",
+                "technology": "mono-Si",
+                "voc_stc": 51.16,
+                "isc_stc": 14.55,
+                "alpha_sc": 0.00041,
+                "beta_oc": -0.0025,
+                "gamma_r": -0.0029,
+                "cells_in_series": 144,
+                "a_ref": 1.8,
+                "il_ref": 14.86,
+                "io_ref": 2.5e-12,
+                "rs": 0.25,
+                "rsh_ref": 450.0
+            }
+        }
+
+
+class InversorData(BaseModel):
+    """Dados do inversor fotovoltaico"""
+
+    # Informações básicas
     fabricante: str = Field(..., description="Fabricante do inversor")
     modelo: str = Field(..., description="Modelo do inversor")
     potencia_saida_ca_w: float = Field(..., ge=500, le=100000, description="Potência nominal CA (W)")
+
+    # Características técnicas
     tipo_rede: str = Field(..., description="Tipo de rede (ex: Monofásico 220V)")
-    
-    # Dados de entrada (CC/FV)
-    potencia_fv_max_w: Optional[float] = Field(None, ge=500, le=150000, description="Máxima potência FV (W)")
-    tensao_cc_max_v: Optional[float] = Field(None, ge=100, le=1500, description="Máxima tensão CC (V)")
-    numero_mppt: Optional[int] = Field(None, ge=1, le=12, description="Número de MPPTs")
-    strings_por_mppt: Optional[int] = Field(None, ge=1, le=4, description="Strings por MPPT")
-    faixa_mppt: Optional[str] = Field(None, description="Faixa de tensão MPPT (ex: 60-550V)")
-    corrente_entrada_max_a: Optional[float] = Field(None, ge=5, le=50, description="Corrente max entrada (A)")
-    
-    # Dados de saída (CA)
-    potencia_aparente_max_va: Optional[float] = Field(None, ge=500, le=120000, description="Potência aparente máxima (VA)")
-    corrente_saida_max_a: Optional[float] = Field(None, ge=2, le=200, description="Corrente máxima saída (A)")
-    tensao_saida_nominal: Optional[str] = Field(None, description="Tensão saída nominal (ex: 220V)")
-    frequencia_nominal_hz: Optional[float] = Field(None, ge=50, le=60, description="Frequência nominal (Hz)")
-    
+    potencia_fv_max_w: float = Field(..., ge=500, le=150000, description="Máxima potência FV (W)")
+    tensao_cc_max_v: float = Field(..., ge=100, le=1500, description="Máxima tensão CC (V)")
+    numero_mppt: int = Field(..., ge=1, le=12, description="Número de MPPTs")
+    strings_por_mppt: int = Field(..., ge=1, le=4, description="Strings por MPPT")
+
     # Eficiência
-    eficiencia_max: Optional[float] = Field(None, ge=90, le=99, description="Eficiência máxima (%)")
-    eficiencia_europeia: Optional[float] = Field(None, ge=90, le=99, description="Eficiência europeia (%)")
-    eficiencia_mppt: Optional[float] = Field(None, ge=95, le=100, description="Eficiência MPPT (%)")
-    
-    # Características físicas
-    peso_kg: Optional[float] = Field(None, ge=5, le=100, description="Peso em kg")
-    grau_protecao: Optional[str] = Field(None, description="Grau de proteção (ex: IP65)")
-    temperatura_operacao: Optional[str] = Field(None, description="Faixa temperatura (ex: -25°C a +60°C)")
-    
-    # Dados comerciais
-    garantia_anos: Optional[int] = Field(None, ge=1, le=25, description="Garantia em anos")
-    
-    # Parâmetros Sandia para simulação precisa
-    vdco: Optional[float] = Field(None, ge=100, le=1000, description="Tensão DC nominal de operação (V)")
-    pso: Optional[float] = Field(None, ge=0, le=100, description="Potência de standby/consumo próprio (W)")
-    c0: Optional[float] = Field(None, ge=-1, le=1, description="Coeficiente 0 da curva de eficiência")
-    c1: Optional[float] = Field(None, ge=-1, le=1, description="Coeficiente 1 da curva de eficiência") 
-    c2: Optional[float] = Field(None, ge=-1, le=1, description="Coeficiente 2 da curva de eficiência")
-    c3: Optional[float] = Field(None, ge=-1, le=1, description="Coeficiente 3 da curva de eficiência")
-    pnt: Optional[float] = Field(None, ge=0, le=1, description="Potência threshold normalizada (fração de Paco)")
+    eficiencia_max: float = Field(..., ge=90, le=99.9, description="Eficiência máxima (%)")
+    efficiency_dc_ac: float = Field(..., ge=0.9, le=0.999, description="Eficiência nominal DC/AC (decimal)")
+
+    # Parâmetros Sandia do inversor (opcionais)
+    vdco: Optional[float] = Field(None, description="Tensão DC nominal de operação (V)")
+    pso: Optional[float] = Field(None, description="Potência de standby/consumo próprio (W)")
+    c0: Optional[float] = Field(None, description="Coeficiente 0 da curva de eficiência")
+    c1: Optional[float] = Field(None, description="Coeficiente 1 da curva de eficiência")
+    c2: Optional[float] = Field(None, description="Coeficiente 2 da curva de eficiência")
+    c3: Optional[float] = Field(None, description="Coeficiente 3 da curva de eficiência")
+    pnt: Optional[float] = Field(None, description="Potência threshold normalizada")
 
     class Config:
         schema_extra = {
@@ -259,234 +327,28 @@ class InverterData(BaseModel):
                 "tensao_cc_max_v": 600,
                 "numero_mppt": 2,
                 "strings_por_mppt": 2,
-                "faixa_mppt": "80-550V",
-                "corrente_entrada_max_a": 12.5,
-                "potencia_aparente_max_va": 5000,
-                "corrente_saida_max_a": 25,
-                "tensao_saida_nominal": "220V",
-                "frequencia_nominal_hz": 60,
                 "eficiencia_max": 97.6,
-                "eficiencia_europeia": 97.2,
-                "eficiencia_mppt": 99.9,
-                "peso_kg": 22.5,
-                "grau_protecao": "IP65",
-                "temperatura_operacao": "-25°C a +60°C",
-                "garantia_anos": 10,
                 "vdco": 480,
                 "pso": 25,
                 "c0": -0.000008,
-                "c1": -0.000120,
-                "c2": 0.001400,
-                "c3": -0.020000,
-                "pnt": 0.02
+                "c1": -0.00012,
+                "c2": 0.0014,
+                "c3": -0.02,
+                "pnt": 0.02,
+                "efficiency_dc_ac": 0.976
             }
         }
 
 
+class OrientacaoModulos(BaseModel):
+    """Configuração de orientação dos módulos (água de telhado/MPPT)"""
 
+    nome: str = Field(..., description="Nome da orientação/água")
+    orientacao: float = Field(..., ge=0, le=360, description="Azimute em graus (0° = Norte)")
+    inclinacao: float = Field(..., ge=0, le=90, description="Inclinação em graus (0° = horizontal)")
+    modulos_por_string: int = Field(..., ge=1, le=50, description="Número de módulos em série por string")
+    numero_strings: Optional[int] = Field(default=1, ge=1, le=10, description="Número de strings (padrão: 1)")
 
-# Versão legada para compatibilidade - usar MultiInverterCalculationRequest para novos sistemas
-
-class AguaTelhadoData(BaseModel):
-    """Dados de uma água de telhado (seção de telhado)"""
-    
-    id: str = Field(..., description="ID único da água de telhado")
-    nome: str = Field(..., description="Nome da água de telhado")
-    orientacao: float = Field(
-        ..., 
-        ge=0, 
-        le=360, 
-        description="Orientação em graus (0° = Norte, 180° = Sul)"
-    )
-    inclinacao: float = Field(
-        ..., 
-        ge=0, 
-        le=90, 
-        description="Inclinação em graus (0° = horizontal, 90° = vertical)"
-    )
-    numero_modulos: int = Field(
-        ..., 
-        ge=1, 
-        le=1000, 
-        description="Número de módulos nesta água de telhado"
-    )
-    inversor_id: Optional[str] = Field(
-        default=None,
-        description="ID do inversor associado a esta água"
-    )
-    mppt_numero: Optional[int] = Field(
-        default=None,
-        ge=1,
-        description="Número do MPPT associado a esta água"
-    )
-
-class ModuleCalculationRequest(IrradiationAnalysisRequest):
-    """Requisição avançada para cálculo de módulos com dados completos"""
-    
-    # Dados do sistema
-    consumo_anual_kwh: float = Field(
-        ...,
-        ge=settings.MIN_CONSUMPTION,
-        le=settings.MAX_CONSUMPTION,
-        description="Consumo anual de energia em kWh",
-        example=4800
-    )
-    
-    # Dados completos do módulo e inversor
-    modulo: SolarModuleData = Field(..., description="Dados completos do módulo solar")
-    inversor: InverterData = Field(..., description="Dados completos do inversor")
-    
-    # Parâmetros adicionais do sistema
-    perdas_sistema: Optional[float] = Field(
-        default=14.0, 
-        ge=0, 
-        le=30, 
-        description="Perdas totais do sistema (%)"
-    )
-    
-    # Perdas detalhadas individuais (opcionais)
-    perda_sombreamento: Optional[float] = Field(default=3.0, ge=0, le=30, description="Perdas por sombreamento (%)")
-    perda_mismatch: Optional[float] = Field(default=2.0, ge=0, le=10, description="Perdas por mismatch (%)")
-    perda_cabeamento: Optional[float] = Field(default=2.0, ge=0, le=10, description="Perdas por cabeamento (%)")
-    perda_sujeira: Optional[float] = Field(default=5.0, ge=0, le=20, description="Perdas por sujeira (%)")
-    perda_inversor: Optional[float] = Field(default=3.0, ge=0, le=10, description="Perdas do inversor (%)")
-    perda_outras: Optional[float] = Field(default=0.0, ge=0, le=15, description="Outras perdas (%)")
-    fator_seguranca: Optional[float] = Field(
-        default=1.1, 
-        ge=1.0, 
-        le=1.5, 
-        description="Fator de segurança para dimensionamento"
-    )
-    num_modules: Optional[int] = Field(
-        default=None,
-        ge=1,
-        le=1000,
-        description="Número específico de módulos (se fornecido, usa este valor ao invés de calcular automaticamente)"
-    )
-    
-    # NOVO: Dados de sistema multi-inversor para futura integração completa
-    multi_inverter_data: Optional[dict] = Field(
-        default=None,
-        description="Dados do sistema multi-inversor enviados pelo Node.js backend"
-    )
-    
-    # ✅ NOVO: Suporte a múltiplas águas de telhado
-    aguas_telhado: Optional[List[AguaTelhadoData]] = Field(
-        default=None,
-        description="Lista de águas de telhado para distribuição de módulos (opcional - usa tilt/azimuth se não fornecido)"
-    )
-
-    @validator('consumo_anual_kwh')
-    def round_consumption(cls, v):
-        """Arredonda consumo para 1 casa decimal"""
-        return round(float(v), 1)
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "lat": -15.7942,
-                "lon": -47.8822,
-                "tilt": 20,
-                "azimuth": 180,
-                "modelo_decomposicao": "erbs",
-                "consumo_anual_kwh": 4800,
-                "modulo": {
-                    "fabricante": "Canadian Solar",
-                    "modelo": "CS3W-540MS",
-                    "potencia_nominal_w": 540,
-                    "eficiencia": 20.9,
-                    "temp_coef_pmax": -0.37
-                },
-                "inversor": {
-                    "fabricante": "WEG",
-                    "modelo": "SIW500H-M", 
-                    "potencia_saida_ca_w": 5000,
-                    "tipo_rede": "Monofásico 220V",
-                    "eficiencia_max": 97.6
-                },
-                "perdas_sistema": 14.0,
-                "fator_seguranca": 1.1
-            }
-        }
-
-class SelectedInverterData(BaseModel):
-    """Dados de um inversor selecionado no sistema multi-inversor"""
-    
-    id: str = Field(..., description="ID único do inversor selecionado")
-    inverter_id: str = Field(..., description="ID do inversor no banco de dados")
-    fabricante: str = Field(..., description="Fabricante do inversor")
-    modelo: str = Field(..., description="Modelo do inversor")
-    potencia_saida_ca_w: float = Field(..., ge=500, le=100000, description="Potência nominal CA (W)")
-    numero_mppt: int = Field(..., ge=1, le=12, description="Número de MPPTs")
-    strings_por_mppt: int = Field(..., ge=1, le=4, description="Strings por MPPT")
-    tensao_cc_max_v: float = Field(..., ge=100, le=1500, description="Máxima tensão CC (V)")
-    quantity: int = Field(..., ge=1, le=10, description="Quantidade de unidades")
-    
-    # Dados opcionais para cálculos avançados
-    inverter_data: Optional[InverterData] = Field(None, description="Dados completos do inversor")
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "id": "sel_inv_001",
-                "inverter_id": "inv_001",
-                "fabricante": "WEG",
-                "modelo": "SIW500H-M",
-                "potencia_saida_ca_w": 5000,
-                "numero_mppt": 2,
-                "strings_por_mppt": 2,
-                "tensao_cc_max_v": 600,
-                "quantity": 2
-            }
-        }
-    }
-
-class AguaTelhadoData(BaseModel):
-    """Dados de uma água de telhado (seção de telhado)"""
-    
-    id: str = Field(..., description="ID único da água de telhado")
-    nome: str = Field(..., description="Nome da água de telhado")
-    orientacao: float = Field(
-        ..., 
-        ge=0, 
-        le=360, 
-        description="Orientação em graus (0° = Norte, 180° = Sul)"
-    )
-    inclinacao: float = Field(
-        ..., 
-        ge=0, 
-        le=90, 
-        description="Inclinação em graus (0° = horizontal, 90° = vertical)"
-    )
-    numero_modulos: int = Field(
-        ..., 
-        ge=1, 
-        le=100, 
-        description="Número de módulos nesta água"
-    )
-    area_disponivel: Optional[float] = Field(
-        None, 
-        ge=1, 
-        le=1000, 
-        description="Área disponível em m²"
-    )
-    sombreamento_parcial: Optional[float] = Field(
-        default=0, 
-        ge=0, 
-        le=100, 
-        description="Percentual de sombreamento (%)"
-    )
-    
-    # Associação MPPT (legado - para compatibilidade)
-    inversor_id: Optional[str] = Field(None, description="ID do inversor associado")
-    mppt_numero: Optional[int] = Field(None, ge=1, le=12, description="Número do MPPT associado")
-    
-    # ✅ NOVO: Dados do inversor embutidos (novo formato)
-    inversor: Optional[InverterData] = Field(
-        None, 
-        description="Dados completos do inversor associado a esta água (novo formato)"
-    )
-    
     @validator('orientacao')
     def normalize_orientacao(cls, v):
         """Normaliza orientação para range 0-360"""
@@ -495,139 +357,171 @@ class AguaTelhadoData(BaseModel):
     class Config:
         schema_extra = {
             "example": {
-                "id": "agua_001",
-                "nome": "Água Principal",
-                "orientacao": 180,
-                "inclinacao": 20,
-                "numero_modulos": 10,
-                "area_disponivel": 25,
-                "sombreamento_parcial": 0,
-                "inversor_id": "sel_inv_001_unit1",
-                "mppt_numero": 1
+                "nome": "Orientação #1",
+                "orientacao": 45,
+                "inclinacao": 45,
+                "modulos_por_string": 12,
+                "numero_strings": 1
             }
         }
 
-class MultiInverterCalculationRequest(IrradiationAnalysisRequest):
-    """Requisição para cálculo de sistema com múltiplos inversores"""
-    
-    # Dados do sistema
-    consumo_anual_kwh: float = Field(
+
+class InversorConfig(BaseModel):
+    """Configuração de um inversor com suas orientações"""
+
+    inversor: InversorData = Field(..., description="Dados do inversor")
+    orientacoes: List[OrientacaoModulos] = Field(
         ...,
-        ge=settings.MIN_CONSUMPTION,
-        le=settings.MAX_CONSUMPTION,
-        description="Consumo anual de energia em kWh",
-        example=4800
-    )
-    
-    # Dados do módulo solar (único para todo o sistema)
-    modulo: SolarModuleData = Field(..., description="Dados do módulo solar")
-    
-    # Múltiplos inversores selecionados
-    inversores_selecionados: List[SelectedInverterData] = Field(
-        ..., 
         min_items=1,
-        max_items=10,
-        description="Lista de inversores selecionados"
+        max_items=12,
+        description="Lista de orientações/MPPTs conectados a este inversor"
     )
-    
-    # Múltiplas águas de telhado
-    aguas_telhado: List[AguaTelhadoData] = Field(
-        ..., 
-        min_items=1,
-        max_items=50,
-        description="Lista de águas de telhado"
-    )
-    
-    # Parâmetros do sistema
-    perdas_sistema: Optional[float] = Field(
-        default=14.0, 
-        ge=0, 
-        le=30, 
-        description="Perdas totais do sistema (%)"
-    )
-    fator_seguranca: Optional[float] = Field(
-        default=1.1, 
-        ge=1.0, 
-        le=1.5, 
-        description="Fator de segurança para dimensionamento"
-    )
-    
-    @validator('aguas_telhado')
-    def validate_aguas_mppt_assignment(cls, v, values):
-        """Valida se todas as águas têm MPPT associado sem conflitos"""
-        if 'inversores_selecionados' not in values:
-            return v
-            
-        # Verificar se todas as águas têm MPPT associado
-        for agua in v:
-            if not agua.inversor_id or agua.mppt_numero is None:
-                raise ValueError(f"Água '{agua.nome}' deve ter um MPPT associado")
-        
-        # Verificar duplicação de MPPTs
-        mppt_assignments = set()
-        for agua in v:
-            mppt_key = f"{agua.inversor_id}_mppt{agua.mppt_numero}"
-            if mppt_key in mppt_assignments:
-                raise ValueError(f"MPPT {mppt_key} já está sendo usado por outra água")
-            mppt_assignments.add(mppt_key)
-        
+
+    @validator('orientacoes')
+    def validate_orientacoes_vs_mppts(cls, v, values):
+        """Valida se número de orientações não excede número de MPPTs"""
+        if 'inversor' in values:
+            numero_mppt = values['inversor'].numero_mppt
+            if len(v) > numero_mppt:
+                raise ValueError(
+                    f"Número de orientações ({len(v)}) excede número de MPPTs disponíveis ({numero_mppt})"
+                )
         return v
-    
-    @validator('consumo_anual_kwh')
-    def round_consumption(cls, v):
-        """Arredonda consumo para 1 casa decimal"""
-        return round(float(v), 1)
 
     class Config:
         schema_extra = {
             "example": {
-                "lat": -15.7942,
-                "lon": -47.8822,
-                "tilt": 20,
-                "azimuth": 180,
-                "modelo_decomposicao": "erbs",
-                "consumo_anual_kwh": 4800,
-                "modulo": {
-                    "fabricante": "Canadian Solar",
-                    "modelo": "CS3W-540MS",
-                    "potencia_nominal_w": 540,
-                    "eficiencia": 20.9,
-                    "temp_coef_pmax": -0.37
+                "inversor": {
+                    "fabricante": "WEG",
+                    "modelo": "SIW500H-M",
+                    "potencia_saida_ca_w": 5000,
+                    "efficiency_dc_ac": 0.976
                 },
-                "inversores_selecionados": [
+                "orientacoes": [
                     {
-                        "id": "sel_inv_001",
-                        "inverter_id": "inv_001",
-                        "fabricante": "WEG",
-                        "modelo": "SIW500H-M",
-                        "potencia_saida_ca_w": 5000,
-                        "numero_mppt": 2,
-                        "strings_por_mppt": 2,
-                        "tensao_cc_max_v": 600,
-                        "quantity": 2
+                        "nome": "Orientação #1",
+                        "orientacao": 45,
+                        "inclinacao": 45,
+                        "modulos_por_string": 12
                     }
-                ],
-                "aguas_telhado": [
-                    {
-                        "id": "agua_001",
-                        "nome": "Água Principal",
-                        "orientacao": 180,
-                        "inclinacao": 20,
-                        "numero_modulos": 10,
-                        "area_disponivel": 25,
-                        "sombreamento_parcial": 0,
-                        "inversor_id": "sel_inv_001_unit1",
-                        "mppt_numero": 1
-                    }
-                ],
-                "perdas_sistema": 14.0,
-                "fator_seguranca": 1.1
+                ]
             }
         }
 
+
+class SolarSystemCalculationRequest(BaseModel):
+    """Requisição para cálculo de sistema solar multi-inversor"""
+
+    # Localização
+    lat: float = Field(..., ge=-90, le=90, description="Latitude em graus decimais")
+    lon: float = Field(..., ge=-180, le=180, description="Longitude em graus decimais")
+
+    # Parâmetros de dados climáticos
+    origem_dados: Literal["PVGIS", "NASA"] = Field(default="PVGIS", description="Fonte de dados climáticos")
+    startyear: int = Field(default=2015, ge=2005, le=2020, description="Ano inicial dados históricos")
+    endyear: int = Field(default=2020, ge=2005, le=2020, description="Ano final dados históricos")
+
+    # Modelos de cálculo
+    modelo_decomposicao: Literal["erbs", "disc", "louche"] = Field(
+        default="louche",
+        description="Modelo de decomposição de irradiância"
+    )
+    modelo_transposicao: Literal["perez", "isotropic", "haydavies"] = Field(
+        default="perez",
+        description="Modelo de transposição para plano inclinado"
+    )
+    mount_type: Literal["open_rack_glass_glass", "close_mount_glass_glass", "open_rack_glass_polymer", "insulated_back_glass_polymer"] = Field(
+        default="open_rack_glass_glass",
+        description="Tipo de montagem (para modelo de temperatura)"
+    )
+
+    # Consumo
+    consumo_mensal_kwh: List[float] = Field(
+        ...,
+        min_items=12,
+        max_items=12,
+        description="Consumo mensal de janeiro a dezembro (kWh)"
+    )
+
+    # Perdas do sistema
+    perdas: PerdasSistema = Field(..., description="Perdas do sistema")
+
+    # Equipamentos
+    modulo: ModuloSolar = Field(..., description="Dados do módulo solar")
+    inversores: List[InversorConfig] = Field(
+        ...,
+        min_items=1,
+        max_items=10,
+        description="Lista de inversores com suas configurações"
+    )
+
+    @validator('endyear')
+    def validate_year_range(cls, v, values):
+        """Valida se endyear >= startyear"""
+        if 'startyear' in values and v < values['startyear']:
+            raise ValueError('endyear deve ser maior ou igual a startyear')
+        return v
+
+    @validator('consumo_mensal_kwh')
+    def validate_consumo(cls, v):
+        """Valida valores de consumo"""
+        if any(c < 0 for c in v):
+            raise ValueError('Consumo mensal não pode ser negativo')
+        if all(c == 0 for c in v):
+            raise ValueError('Pelo menos um mês deve ter consumo > 0')
+        return v
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "lat": -23.7617,
+                "lon": -53.3292,
+                "modelo_decomposicao": "louche",
+                "modelo_transposicao": "perez",
+                "consumo_mensal_kwh": [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500],
+                "origem_dados": "PVGIS",
+                "startyear": 2015,
+                "endyear": 2020,
+                "mount_type": "open_rack",
+                "perdas": {
+                    "sujeira": 1,
+                    "sombreamento": 2,
+                    "incompatibilidade": 1,
+                    "fiacao": 0.5,
+                    "outras": 0.5
+                },
+                "modulo": {
+                    "fabricante": "Canadian Solar",
+                    "modelo": "CS3W-540MS",
+                    "potencia_nominal_w": 550,
+                    "voc_stc": 51.16,
+                    "isc_stc": 14.55
+                },
+                "inversores": [
+                    {
+                        "inversor": {
+                            "fabricante": "WEG",
+                            "modelo": "SIW500H-M",
+                            "potencia_saida_ca_w": 5000,
+                            "efficiency_dc_ac": 0.976
+                        },
+                        "orientacoes": [
+                            {
+                                "nome": "Orientação #1",
+                                "orientacao": 45,
+                                "inclinacao": 45,
+                                "modulos_por_string": 12
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+
+
 class CacheStatsRequest(BaseModel):
-    """Requisição para estatísticas do cache (admin)"""
-    
+    """Requisição para estatísticas do cache"""
+
     include_details: bool = Field(
         default=False,
         description="Incluir detalhes dos arquivos individuais"

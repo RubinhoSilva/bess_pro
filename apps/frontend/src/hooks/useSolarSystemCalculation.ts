@@ -1,16 +1,19 @@
 import { useState, useCallback } from 'react';
-import { SolarSystemService, SolarSystemCalculationParams, SolarSystemCalculationResult, AdvancedModuleCalculationResult } from '@/lib/solarSystemService';
+import { SolarSystemService, SolarSystemCalculationParams, SolarSystemCalculationResult, AdvancedModuleCalculationResult, CompleteSystemCalculationParams, CompleteSystemCalculationResult } from '@/lib/solarSystemService';
 import toast from 'react-hot-toast';
 
 interface UseSolarSystemCalculationReturn {
   isLoading: boolean;
   result: SolarSystemCalculationResult | null;
   advancedResult: AdvancedModuleCalculationResult | null;
+  completeSystemResult: CompleteSystemCalculationResult | null;
   irradiationData: any | null;
   error: string | null;
   calculateSystem: (params: SolarSystemCalculationParams) => Promise<void>;
   calculateFromDimensioning: (dimensioningData: any) => Promise<void>;
   calculateAdvancedFromDimensioning: (dimensioningData: any) => Promise<void>;
+  calculateCompleteSystem: (params: CompleteSystemCalculationParams) => Promise<void>;
+  calculateCompleteSystemFromDimensioning: (dimensioningData: any) => Promise<void>;
   fetchIrradiationData: (params: { lat: number; lon: number; tilt?: number; azimuth?: number }) => Promise<void>;
   clearResult: () => void;
 }
@@ -19,6 +22,7 @@ export const useSolarSystemCalculation = (): UseSolarSystemCalculationReturn => 
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<SolarSystemCalculationResult | null>(null);
   const [advancedResult, setAdvancedResult] = useState<AdvancedModuleCalculationResult | null>(null);
+  const [completeSystemResult, setCompleteSystemResult] = useState<CompleteSystemCalculationResult | null>(null);
   const [irradiationData, setIrradiationData] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,9 +96,55 @@ export const useSolarSystemCalculation = (): UseSolarSystemCalculationReturn => 
     }
   }, []);
 
+  const calculateCompleteSystem = useCallback(async (params: CompleteSystemCalculationParams) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const calculation = await SolarSystemService.calculateCompleteSystem(params);
+      setCompleteSystemResult(calculation);
+
+      if (calculation.message) {
+        toast.success(calculation.message);
+      } else {
+        toast.success('Cálculo completo do sistema realizado com sucesso');
+      }
+    } catch (err: any) {
+      const errorMessage = err.message || 'Erro no cálculo completo do sistema';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const calculateCompleteSystemFromDimensioning = useCallback(async (dimensioningData: any) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const params = SolarSystemService.buildCompleteSystemParams(dimensioningData);
+      const calculation = await SolarSystemService.calculateCompleteSystem(params);
+      setCompleteSystemResult(calculation);
+
+      if (calculation.message) {
+        toast.success(calculation.message);
+      } else {
+        toast.success('Cálculo completo do sistema realizado com sucesso');
+      }
+    } catch (err: any) {
+      const errorMessage = err.message || 'Erro no cálculo completo do sistema';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const clearResult = useCallback(() => {
     setResult(null);
     setAdvancedResult(null);
+    setCompleteSystemResult(null);
     setIrradiationData(null);
     setError(null);
   }, []);
@@ -103,11 +153,14 @@ export const useSolarSystemCalculation = (): UseSolarSystemCalculationReturn => 
     isLoading,
     result,
     advancedResult,
+    completeSystemResult,
     irradiationData,
     error,
     calculateSystem,
     calculateFromDimensioning,
     calculateAdvancedFromDimensioning,
+    calculateCompleteSystem,
+    calculateCompleteSystemFromDimensioning,
     fetchIrradiationData,
     clearResult
   };

@@ -19,10 +19,8 @@ class PVGISService:
     def __init__(self):
         self.base_url = settings.PVGIS_BASE_URL
         self.timeout = settings.PVGIS_TIMEOUT
-        # CORREÇÃO 6: Alinhar período de dados PVGIS para 2018-2020 (igual ao notebook)
-        # Mudança: período específico 2018-2020 ao invés de usar configuração geral
-        self.start_year = 2018  # Mudança: era settings.PVGIS_START_YEAR (provavelmente 2005)
-        self.end_year = 2020    # Mudança: era settings.PVGIS_END_YEAR (provavelmente 2020)
+        self.start_year = 2015 
+        self.end_year = 2020 
     
     def fetch_weather_data(self, lat: float, lon: float, use_cache: bool = True) -> pd.DataFrame:
         """
@@ -141,11 +139,7 @@ class PVGISService:
                 day = int(time_str[6:8])
                 hour = int(time_str[9:11])
                 minute = int(time_str[11:13])
-                
-                # CORREÇÃO 6: Validar se ano está no período esperado 2018-2020
-                # Mudança: adicionar validação para garantir período correto
-                if not (2018 <= year <= 2020):
-                    continue  # Pula registros fora do período esperado
+            
                 
                 # Criar datetime
                 dt = pd.Timestamp(year=year, month=month, day=day,

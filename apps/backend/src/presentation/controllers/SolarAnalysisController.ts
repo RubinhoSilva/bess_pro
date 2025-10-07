@@ -184,419 +184,215 @@ export class SolarAnalysisController extends BaseController {
 
   async calculateAdvancedModules(req: Request, res: Response): Promise<Response> {
     try {
+      console.log('\n' + '='.repeat(80));
+      console.log('🚀 [NODE.JS - SolarAnalysisController] INÍCIO - calculateAdvancedModules');
+      console.log('='.repeat(80));
+
       const params = req.body;
-      
-      console.log('🔄 Recebendo requisição de cálculo avançado de módulos');
-      console.log('🔍 TEM aguasTelhado?', !!params.aguasTelhado, params.aguasTelhado?.length || 0);
-      console.log('🔍 DEBUG - Inversor original:', JSON.stringify(params.inversor, null, 2));
+
+      console.log('📥 [NODE.JS] Dados recebidos na requisição:');
+      console.log('   - Latitude:', params.lat);
+      console.log('   - Longitude:', params.lon);
+      console.log('   - Consumo Anual:', params.consumo_anual_kwh, 'kWh');
+      console.log('   - Módulo:', params.modulo?.fabricante, params.modulo?.modelo);
+      console.log('   - Potência Módulo:', params.modulo?.potencia_nominal_w, 'W');
+      console.log('   - Águas de telhado:', params.aguasTelhado?.length || 0);
 
       // Validação dos parâmetros obrigatórios
       if (!params.lat || !params.lon || !params.modulo || !params.consumo_anual_kwh) {
+        console.log('❌ [NODE.JS] Validação falhou - parâmetros obrigatórios ausentes');
         return this.badRequest(res, 'Parâmetros obrigatórios ausentes: lat, lon, modulo, consumo_anual_kwh');
       }
-      
-      // ✅ NOVO: Para novo formato com inversores embutidos, inversor global não é obrigatório
-      if (!params.inversor && !params.aguasTelhado?.some((agua: any) => agua.inversor)) {
-        return this.badRequest(res, 'Parâmetros obrigatórios ausentes: inversor (global ou embutido nas águas)');
+
+      console.log('✅ [NODE.JS] Validação inicial passou');
+
+      // Validar que cada água de telhado tem inversor embutido
+      if (params.aguasTelhado && params.aguasTelhado.length > 0) {
+        const aguasSemInversor = params.aguasTelhado.filter((agua: any) => !agua.inversor);
+        if (aguasSemInversor.length > 0) {
+          console.log('❌ [NODE.JS] Águas sem inversor:', aguasSemInversor.map((a: any) => a.nome || a.id));
+          return this.badRequest(res, `Todas as águas de telhado devem ter um inversor embutido. Águas sem inversor: ${aguasSemInversor.length}`);
+        }
+        console.log('✅ [NODE.JS] Todas as águas têm inversores embutidos');
       }
 
       // URL do serviço PVLIB (Python)
       const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
 
-      // Função para incluir apenas campos definidos
-      const mapField = (value: any) => value !== undefined && value !== null ? value : undefined;
-      const includeField = (obj: any, key: string, value: any) => {
-        if (value !== undefined && value !== null) {
-          obj[key] = value;
-        }
+      console.log('\n📊 [NODE.JS] Preparando transformação de payload para novo formato /api/v1/solar/calculate...');
+
+      // Calcular consumo mensal a partir do anual
+      const consumoMensalKwh = Array(12).fill(params.consumo_anual_kwh / 12);
+      console.log('   - Consumo mensal calculado:', consumoMensalKwh[0].toFixed(2), 'kWh/mês');
+
+      // Use perdas from frontend if available, otherwise create defaults
+      const perdas = params.perdas || {
+        sujeira: 2.0,
+        sombreamento: params.aguasTelhado?.[0]?.sombreamentoParcial || 0.0,
+        incompatibilidade: 1.0,
+        fiacao: 0.5,
+        outras: 0.5
       };
 
-      // NOVO: Verificar se está usando sistema multi-inversor (selectedInverters)
-      let isMultiInverterSystem = false;
-      let totalInverterCapacity = 0;
-      let totalMpptChannels = 0;
-      
-      // NOVO: Verificar também se há inversores embutidos nas águas
-      if (params.aguasTelhado && params.aguasTelhado.some((agua: any) => agua.inversor)) {
-        isMultiInverterSystem = true;
-        console.log('🔄 MULTI-INVERSOR: Detectado sistema com inversores embutidos nas águas');
-        
-        // Extrair inversores únicos das águas para criar selectedInverters
-        const uniqueInverters = new Map();
+      // Log what we're using for debugging
+      console.log('📊 [NODE.JS] Perdas detalhadas:', perdas);
+      console.log('   - Fonte:', params.perdas ? 'Frontend' : 'Valores padrão');
+
+      // Preparar módulo com parâmetros Sandia (defaults razoáveis se não fornecidos)
+      const modulo = {
+        fabricante: params.modulo.fabricante,
+        modelo: params.modulo.modelo,
+        potencia_nominal_w: params.modulo.potencia_nominal_w,
+        largura_mm: params.modulo.largura_mm,
+        altura_mm: params.modulo.altura_mm,
+        peso_kg: params.modulo.peso_kg || 25.0,
+        vmpp: params.modulo.vmpp,
+        impp: params.modulo.impp,
+        voc_stc: params.modulo.voc_stc || (params.modulo.vmpp * 1.2), // Estimativa se não fornecido
+        isc_stc: params.modulo.isc_stc || (params.modulo.impp * 1.1), // Estimativa se não fornecido
+        eficiencia: params.modulo.eficiencia,
+        temp_coef_pmax: params.modulo.temp_coef_pmax,
+        // Parâmetros Sandia adicionais com defaults razoáveis
+        alpha_sc: params.modulo.alpha_sc || 0.05,
+        beta_oc: params.modulo.beta_oc || -0.31,
+        gamma_r: params.modulo.gamma_r || params.modulo.temp_coef_pmax || -0.37,
+        cells_in_series: params.modulo.cells_in_series || 144,
+        a_ref: params.modulo.a_ref || 1.847,
+        il_ref: params.modulo.il_ref || params.modulo.impp || 13.9,
+        io_ref: params.modulo.io_ref || 3.31e-10,
+        rs: params.modulo.rs || 0.207,
+        rsh_ref: params.modulo.rsh_ref || 286.5
+      };
+      console.log('   - Módulo preparado com parâmetros Sandia');
+
+      // Processar águas de telhado e agrupar por inversor
+      const inversoresMap = new Map<string, any>();
+
+      if (params.aguasTelhado && params.aguasTelhado.length > 0) {
+        console.log(`🏠 [NODE.JS] Processando ${params.aguasTelhado.length} águas de telhado`);
+
         params.aguasTelhado.forEach((agua: any) => {
-          if (agua.inversor) {
-            const key = agua.inversor.modelo;
-            if (!uniqueInverters.has(key)) {
-              uniqueInverters.set(key, {
-                id: agua.inversorId,
+          console.log(`   - Água: ${agua.nome} (${agua.orientacao}°, ${agua.inclinacao}°, ${agua.numeroModulos} módulos)`);
+
+          const inversorId = agua.inversorId || `${agua.inversor.fabricante}_${agua.inversor.modelo}`;
+
+          if (!inversoresMap.has(inversorId)) {
+            // Criar entrada para novo inversor
+            inversoresMap.set(inversorId, {
+              inversor: {
                 fabricante: agua.inversor.fabricante,
                 modelo: agua.inversor.modelo,
                 potencia_saida_ca_w: agua.inversor.potencia_saida_ca_w,
+                tipo_rede: agua.inversor.tipo_rede,
                 potencia_fv_max_w: agua.inversor.potencia_fv_max_w,
+                tensao_cc_max_v: agua.inversor.tensao_cc_max_v,
                 numero_mppt: agua.inversor.numero_mppt,
                 strings_por_mppt: agua.inversor.strings_por_mppt,
-                tensao_cc_max_v: agua.inversor.tensao_cc_max_v,
-                quantity: 1
-              });
-            } else {
-              // Incrementar quantidade se já existe
-              uniqueInverters.get(key).quantity += 1;
-            }
+                eficiencia_max: agua.inversor.eficiencia_max,
+                efficiency_dc_ac: agua.inversor.eficiencia_max / 100 // Converter percentual para decimal
+              },
+              orientacoes: []
+            });
           }
-        });
-        
-        params.selectedInverters = Array.from(uniqueInverters.values());
-        console.log('📋 Inversores extraídos das águas:', params.selectedInverters.length);
-      } else if (params.selectedInverters && params.selectedInverters.length > 0) {
-        isMultiInverterSystem = true;
-        console.log('🔄 MULTI-INVERSOR: Detectado sistema com múltiplos inversores:', params.selectedInverters.length);
-        
-        // Calcular totais do sistema multi-inversor
-        params.selectedInverters.forEach((inverter: any, index: number) => {
-          const inverterCapacity = inverter.potenciaSaidaCA * inverter.quantity;
-          const mpptChannels = inverter.numeroMppt * inverter.quantity;
-          totalInverterCapacity += inverterCapacity;
-          totalMpptChannels += mpptChannels;
-          
-          console.log(`📊 Inversor ${index + 1}: ${inverter.fabricante} ${inverter.modelo}`);
-          console.log(`   - Quantidade: ${inverter.quantity}x`);
-          console.log(`   - Potência unitária: ${inverter.potenciaSaidaCA}W`);
-          console.log(`   - Potência total: ${inverterCapacity}W`);
-          console.log(`   - MPPT por unidade: ${inverter.numeroMppt}`);
-          console.log(`   - Total MPPT: ${mpptChannels}`);
-        });
-        
-        console.log(`⚡ TOTAIS DO SISTEMA:`);
-        console.log(`   - Potência total dos inversores: ${totalInverterCapacity}W`);
-        console.log(`   - Total de canais MPPT: ${totalMpptChannels}`);
-        
-        // TODO: Implementar integração completa com multi-inverter service Python
-        // Por enquanto, usar o primeiro inversor para compatibilidade com a API legada
-        const primeiroInversor = params.selectedInverters[0];
-        
-        // Mapear do formato selectedInverters para o formato legado 'inversor'
-        // IMPORTANTE: Usar o primeiro inversor como referência, mas adicionar dados agregados
-        params.inversor = {
-          fabricante: primeiroInversor.fabricante,
-          modelo: `${primeiroInversor.modelo} (Sistema Multi-Inversor)`,
-          potenciaSaidaCA: totalInverterCapacity, // Usar potência total do sistema
-          numeroMppt: totalMpptChannels, // Usar total de MPPTs
-          stringsPorMppt: primeiroInversor.stringsPorMppt,
-          tensaoCcMax: primeiroInversor.tensaoCcMax,
-          // Adicionar flags para identificar sistema multi-inversor
-          isMultiInverterSystem: true,
-          originalSinglePower: primeiroInversor.potenciaSaidaCA,
-          totalUnits: params.selectedInverters.reduce((sum: number, inv: any) => sum + inv.quantity, 0)
-        };
-        
-        console.log('📌 COMPATIBILIDADE: Dados agregados para API legada:', params.inversor);
-      }
 
-      // Mapear campos do frontend (camelCase) para Python (snake_case)
-      // Apenas se houver inversor global (formato legado)
-      let mappedInversor: any = null;
-      if (params.inversor) {
-        mappedInversor = {
-          fabricante: params.inversor.fabricante,
-          modelo: params.inversor.modelo,
-          potencia_saida_ca_w: params.inversor.potenciaSaidaCA || params.inversor.potencia_saida_ca_w,
-          tipo_rede: params.inversor.tipoRede || params.inversor.tipo_rede
-        };
-      }
-
-      // Adicionar campos opcionais apenas se existirem
-      if (mappedInversor && params.inversor) {
-        includeField(mappedInversor, 'potencia_fv_max_w', params.inversor.potenciaFvMax || params.inversor.potencia_fv_max_w);
-        includeField(mappedInversor, 'tensao_cc_max_v', params.inversor.tensaoCcMax || params.inversor.tensao_cc_max_v);
-        includeField(mappedInversor, 'numero_mppt', params.inversor.numeroMppt || params.inversor.numero_mppt);
-        includeField(mappedInversor, 'strings_por_mppt', params.inversor.stringsPorMppt || params.inversor.strings_por_mppt);
-        includeField(mappedInversor, 'vdco', params.inversor.vdco);
-        includeField(mappedInversor, 'pso', params.inversor.pso);
-        includeField(mappedInversor, 'c0', params.inversor.c0);
-        includeField(mappedInversor, 'c1', params.inversor.c1);
-        includeField(mappedInversor, 'c2', params.inversor.c2);
-        includeField(mappedInversor, 'c3', params.inversor.c3);
-        includeField(mappedInversor, 'pnt', params.inversor.pnt);
-      }
-
-      console.log('🔍 DEBUG - Inversor mapeado:', JSON.stringify(mappedInversor, null, 2));
-
-      const pythonParams: any = {
-        ...params,
-        ...(mappedInversor && { inversor: mappedInversor }),
-        // Prioridade: numeroModulosUsuario > num_modules > numeroModulos > cálculo automático
-        num_modules: params.numeroModulosUsuario || params.num_modules || params.numeroModulos || undefined,
-        // ✅ CAMPOS CONFIGURÁVEIS (com fallbacks para compatibilidade)
-        modelo_decomposicao: params.modelo_decomposicao || 'louche',
-        modelo_transposicao: params.modelo_transposicao || 'perez',
-        perdas_sistema: params.perdas_sistema || 14.0,
-        fator_seguranca: params.fator_seguranca || 1.1,
-        
-        // NOVO: Incluir dados de múltiplos inversores para futura integração
-        multi_inverter_data: params.selectedInverters ? {
-          is_multi_inverter: true,
-          system_configuration: 'multi_inverter',
-          total_inverter_units: params.selectedInverters.reduce((sum: number, inv: any) => sum + inv.quantity, 0),
-          total_ca_power_w: totalInverterCapacity,
-          total_ca_power_kw: totalInverterCapacity / 1000,
-          total_mppt_channels: totalMpptChannels,
-          inverter_models_count: params.selectedInverters.length,
-          // Breakdown detalhado por modelo de inversor (formato esperado pelo Python)
-          inverter_breakdown: params.selectedInverters.map((inv: any, index: number) => ({
-            inverter_index: index,
-            fabricante: inv.fabricante || inv.manufacturer || 'N/A',
-            modelo: inv.modelo || inv.model || 'N/A',
-            quantidade: inv.quantity || 1,
-            potencia_unitaria_w: inv.potenciaSaidaCA || inv.potencia_saida_ca_w || inv.power_output_w || 0,
-            potencia_total_w: (inv.potenciaSaidaCA || inv.potencia_saida_ca_w || inv.power_output_w || 0) * (inv.quantity || 1),
-            // Parâmetros técnicos do inversor para cálculos precisos
-            numero_mppt: inv.numeroMppt || inv.numero_mppt || inv.mppt_count || 4,
-            strings_por_mppt: inv.stringsPorMppt || inv.strings_per_mppt || inv.strings_por_mppt || 2,
-            tensao_cc_max_v: inv.tensaoCcMax || inv.tensao_cc_max_v || inv.max_dc_voltage || 1500,
-            // Parâmetros Sandia para simulação precisa (com fallbacks do inversor base se disponíveis)
-            vdco: inv.vdco || params.inversor?.vdco || null,
-            pso: inv.pso || params.inversor?.pso || null,
-            c0: inv.c0 || params.inversor?.c0 || null,
-            c1: inv.c1 || params.inversor?.c1 || null,
-            c2: inv.c2 || params.inversor?.c2 || null,
-            c3: inv.c3 || params.inversor?.c3 || null,
-            pnt: inv.pnt || params.inversor?.pnt || null,
-            // Capacidade relativa no sistema
-            percentual_potencia_sistema: parseFloat(((inv.potenciaSaidaCA * inv.quantity) / totalInverterCapacity * 100).toFixed(1))
-          })),
-          // Dados para distribuição de módulos por MPPT (futura implementação)
-          mppt_distribution_ready: true,
-          roof_areas_assigned: false, // Será true quando implementarmos distribuição por águas do telhado
-          // Dados completos originais para debugging
-          raw_selected_inverters: params.selectedInverters
-        } : {
-          is_multi_inverter: false,
-          system_configuration: 'single_inverter',
-          total_inverter_units: 1,
-          total_ca_power_w: params.inversor?.potenciaSaidaCA || 0,
-          total_ca_power_kw: (params.inversor?.potenciaSaidaCA || 0) / 1000,
-          total_mppt_channels: params.inversor?.numeroMppt || 2
-        }
-      };
-
-      // ✅ PROCESSAR MÚLTIPLAS ÁGUAS DE TELHADO COM INVERSOR EMBUTIDO
-      if (params.aguasTelhado && params.aguasTelhado.length > 0) {
-        console.log(`🏠 DETECTADAS ${params.aguasTelhado.length} águas de telhado no frontend`);
-        
-        // ✅ GERAR inversores_selecionados AUTOMATICAMENTE A PARTIR DOS INVERSORES EMBUTIDOS
-        const inversoresUnicos = new Map();
-        
-        params.aguasTelhado.forEach((agua: any) => {
-          if (agua.inversor) {
-            const chave = `${agua.inversor.fabricante}_${agua.inversor.modelo}_${agua.inversor.potencia_saida_ca_w}`;
-            
-            if (!inversoresUnicos.has(chave)) {
-              inversoresUnicos.set(chave, {
-                id: agua.inversorId?.split('_unit')[0] || `inv_${Date.now()}`,
-                inverter_id: agua.inversorId?.split('_unit')[0] || `inv_${Date.now()}`,
-                fabricante: agua.inversor.fabricante,
-                modelo: agua.inversor.modelo,
-                potencia_saida_ca_w: agua.inversor.potencia_saida_ca_w,
-                numero_mppt: agua.inversor.numero_mppt || 2,
-                strings_por_mppt: agua.inversor.strings_por_mppt || 2,
-                tensao_cc_max_v: agua.inversor.tensao_cc_max_v || 600,
-                quantity: 1
-              });
-            } else {
-              // Incrementar quantidade se já existir
-              inversoresUnicos.get(chave).quantity += 1;
-            }
-          }
-        });
-        
-        // Adicionar inversores_selecionados ao pythonParams
-        pythonParams.inversores_selecionados = Array.from(inversoresUnicos.values());
-        console.log(`🔌 Gerados ${pythonParams.inversores_selecionados.length} inversores únicos a partir das águas`);
-        
-        // Mapear de camelCase para snake_case esperado pelo Python
-        pythonParams.aguas_telhado = params.aguasTelhado.map((agua: any) => {
-          const aguaMapeada: any = {
-            id: agua.id,
+          // Adicionar orientação ao inversor
+          const inversorData = inversoresMap.get(inversorId);
+          inversorData.orientacoes.push({
             nome: agua.nome,
             orientacao: agua.orientacao,
             inclinacao: agua.inclinacao,
-            numero_modulos: agua.numeroModulos,
-            sombreamento_parcial: agua.sombreamentoParcial,
-            area_disponivel: agua.areaDisponivel,
-            inversor_id: agua.inversorId, // Manter para compatibilidade
-            mppt_numero: agua.mpptNumero  // Manter para compatibilidade
-          };
-
-          // ✅ NOVO: Processar inversor embutido na água (novo formato)
-          if (agua.inversor) {
-            console.log(`🔌 Água "${agua.nome}" tem inversor embutido:`, agua.inversor.fabricante, agua.inversor.modelo);
-            
-            // Mapear dados do inversor para o formato Python
-            aguaMapeada.inversor = {
-              fabricante: agua.inversor.fabricante,
-              modelo: agua.inversor.modelo,
-              potencia_saida_ca_w: agua.inversor.potencia_saida_ca_w,
-              tipo_rede: agua.inversor.tipo_rede,
-              potencia_fv_max_w: agua.inversor.potencia_fv_max_w,
-              tensao_cc_max_v: agua.inversor.tensao_cc_max_v,
-              numero_mppt: agua.inversor.numero_mppt,
-              strings_por_mppt: agua.inversor.strings_por_mppt,
-              eficiencia_max: agua.inversor.eficiencia_max,
-              corrente_entrada_max_a: agua.inversor.corrente_entrada_max_a,
-              potencia_aparente_max_va: agua.inversor.potencia_aparente_max_va,
-              // Parâmetros Sandia
-              vdco: agua.inversor.vdco,
-              pso: agua.inversor.pso,
-              c0: agua.inversor.c0,
-              c1: agua.inversor.c1,
-              c2: agua.inversor.c2,
-              c3: agua.inversor.c3,
-              pnt: agua.inversor.pnt
-            };
-          } else {
-            console.log(`⚠️ Água "${agua.nome}" não tem inversor embutido, usando fallback global`);
-          }
-
-          return aguaMapeada;
+            modulos_por_string: agua.numeroModulos, // Assumindo todos em série por enquanto
+            numero_strings: 1 // Pode ser ajustado conforme necessidade
+          });
         });
-        
-        // Remover tilt/azimuth individuais para não conflitar com múltiplas águas
-        delete pythonParams.tilt;
-        delete pythonParams.azimuth;
-        
-        console.log('📋 Águas mapeadas para Python:', pythonParams.aguasTelhado);
+
+        console.log(`✅ [NODE.JS] ${inversoresMap.size} inversores únicos identificados`);
       }
 
-      // Log específico baseado na origem do número de módulos
-      if (params.numeroModulosUsuario) {
-        console.log('👤 USUÁRIO: Usando número de módulos definido pelo usuário:', params.numeroModulosUsuario);
-      } else if (params.num_modules) {
-        console.log('🎯 SLIDER: Usando número específico de módulos:', params.num_modules);
-      } else if (params.numeroModulos) {
-        console.log('📊 LEGACY: Usando número de módulos do campo legado:', params.numeroModulos);
-      } else {
-        console.log('🔢 AUTO: Calculando número de módulos automaticamente baseado no consumo');
-      }
-      
+      // Converter Map para array de inversores
+      const inversores = Array.from(inversoresMap.values());
+
+      // Montar payload no novo formato esperado pelo Python
+      const pythonParams = {
+        lat: params.lat,
+        lon: params.lon,
+        origem_dados: params.origem_dados || 'PVGIS',
+        startyear: params.startyear || 2015,
+        endyear: params.endyear || 2020,
+        modelo_decomposicao: params.modelo_decomposicao || 'louche',
+        modelo_transposicao: params.modelo_transposicao || 'perez',
+        mount_type: params.mount_type || 'open_rack_glass_glass',
+        consumo_mensal_kwh: consumoMensalKwh,
+        perdas: perdas,
+        modulo: modulo,
+        inversores: inversores
+      };
+
       // Log detalhado dos dados sendo enviados ao Python
-      console.log('🚀 Enviando para API Python (módulos avançados):');
+      console.log('\n🚀 [NODE.JS] Preparando chamada para API Python (novo formato):');
       console.log('📍 Localização:', { lat: pythonParams.lat, lon: pythonParams.lon });
-      console.log('📐 Orientação:', { tilt: pythonParams.tilt, azimuth: pythonParams.azimuth });
       console.log('🔋 Módulo:', pythonParams.modulo.fabricante, pythonParams.modulo.modelo);
-      console.log('⚡ Sistema inversor:', pythonParams.multi_inverter_data.system_configuration);
-      
-      if (isMultiInverterSystem) {
-        console.log('🔢 Multi-inversor stats:');
-        console.log(`   - Total de unidades: ${pythonParams.multi_inverter_data.total_inverter_units}`);
-        console.log(`   - Potência total: ${pythonParams.multi_inverter_data.total_ca_power_kw}kW`);
-        console.log(`   - Total MPPT: ${pythonParams.multi_inverter_data.total_mppt_channels}`);
-        console.log(`   - Modelos diferentes: ${pythonParams.multi_inverter_data.inverter_models_count}`);
-        
-        console.log('📋 Breakdown detalhado por inversor:');
-        pythonParams.multi_inverter_data.inverter_breakdown.forEach((inv: any, i: number) => {
-          console.log(`   ${i + 1}. ${inv.fabricante} ${inv.modelo}`);
-          console.log(`      - Quantidade: ${inv.quantidade}x`);
-          console.log(`      - Potência unitária: ${(inv.potencia_unitaria_w / 1000).toFixed(1)}kW`);
-          console.log(`      - Potência total: ${(inv.potencia_total_w / 1000).toFixed(1)}kW`);
-          console.log(`      - Participação: ${inv.percentual_potencia_sistema}%`);
-          console.log(`      - MPPTs: ${inv.numero_mppt}x${inv.strings_por_mppt} (${inv.numero_mppt * inv.quantidade} canais)`);
-          console.log(`      - Tensão CC máx: ${inv.tensao_cc_max_v}V`);
-          
-          // Log dos parâmetros Sandia se disponíveis
-          if (inv.vdco || inv.pso || inv.c0) {
-            console.log(`      - Params Sandia: vdco=${inv.vdco || 'N/A'}, pso=${inv.pso || 'N/A'}, c0=${inv.c0 || 'N/A'}`);
-          }
-        });
-      } else if (pythonParams.inversor) {
-        console.log('🔌 Inversor único:', pythonParams.inversor.fabricante, pythonParams.inversor.modelo);
-        console.log(`   - Potência: ${(pythonParams.inversor.potencia_saida_ca_w / 1000).toFixed(1)}kW`);
-        console.log(`   - MPPTs: ${pythonParams.inversor.numero_mppt || 'N/A'}x${pythonParams.inversor.strings_por_mppt || 'N/A'}`);
-      } else {
-        console.log('🔌 Sistema multi-inversor com inversores embutidos nas águas');
-      }
-      
-      console.log('🎯 Consumo anual alvo:', pythonParams.consumo_anual_kwh, 'kWh');
-      console.log('📊 Payload completo:', JSON.stringify(pythonParams, null, 2));
-      
-      // ✅ DETECTAR MÚLTIPLAS ÁGUAS DE TELHADO
-      const hasMultipleRoofWaters = params.aguasTelhado && params.aguasTelhado.length > 0;
-      let response;
-      
-      if (hasMultipleRoofWaters) {
-        console.log(`🏠 PROCESSANDO MÚLTIPLAS ÁGUAS: ${params.aguasTelhado.length} águas detectadas`);
-        console.log('📋 Águas de telhado:', params.aguasTelhado.map((agua: any) => ({
-          nome: agua.nome,
-          orientacao: agua.orientacao,
-          inclinacao: agua.inclinacao,
-          numero_modulos: agua.numeroModulos
-        })));
-        
-        // ✅ Roteiar para endpoint de múltiplas águas
-        response = await axios.post(
-          `${pythonServiceUrl}/api/v1/multi-inverter/calculate`,
-          pythonParams,
-          {
-            timeout: 120000, // 2 minutos para ModelChain + PVGIS
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-      } else {
-        console.log('🏠 PROCESSANDO SISTEMA ÚNICO (sem múltiplas águas)');
-        
-        // Manter lógica atual para sistema simples
-        response = await axios.post(
-          `${pythonServiceUrl}/api/v1/modules/calculate`,
-          pythonParams,
-          {
-            timeout: 120000, // 2 minutos para ModelChain + PVGIS
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-      }
+      console.log('🎯 Consumo mensal:', pythonParams.consumo_mensal_kwh[0].toFixed(2), 'kWh/mês');
+      console.log('📊 Perdas:', pythonParams.perdas);
+      console.log('🏠 Inversores:', pythonParams.inversores.length);
 
-      console.log('✅ Resposta da API Python (módulos):');
-      console.log('📊 Resultado do dimensionamento:');
-      console.log(`   - Status: ${response.status}`);
-      console.log(`   - Módulos calculados: ${response.data.num_modulos}`);
-      console.log(`   - Potência total: ${response.data.potencia_total_kw}kW`);
-      console.log(`   - Energia anual: ${response.data.energia_total_anual}kWh`);
-      console.log(`   - Performance Ratio: ${response.data.pr_medio}%`);
-      console.log(`   - Yield específico: ${response.data.yield_especifico} kWh/kWp`);
-      
-      if (isMultiInverterSystem) {
-        console.log('🔄 Sistema multi-inversor processado com sucesso!');
-        console.log(`   - Capacidade total inversores: ${totalInverterCapacity / 1000}kW`);
-        console.log(`   - Canais MPPT disponíveis: ${totalMpptChannels}`);
-        console.log(`   - Razão DC/AC: ${(response.data.potencia_total_kw * 1000 / totalInverterCapacity).toFixed(2)}`);
-        console.log(`   - Oversizing: ${((response.data.potencia_total_kw * 1000 / totalInverterCapacity - 1) * 100).toFixed(1)}%`);
-        
-        // Log das configurações de strings se disponível
-        if (response.data.compatibilidade_sistema) {
-          console.log(`   - Strings recomendadas: ${response.data.compatibilidade_sistema.strings_recomendadas}`);
-          console.log(`   - Módulos por string: ${response.data.compatibilidade_sistema.modulos_por_string}`);
-          console.log(`   - Utilização do inversor: ${response.data.compatibilidade_sistema.utilizacao_inversor}%`);
+      // 💾 SALVAR PAYLOAD EM ARQUIVO JSON
+      try {
+        const fs = require('fs');
+        const path = require('path');
+
+        // Criar pasta para payloads se não existir
+        const payloadsDir = path.join(process.cwd(), 'payloads');
+        if (!fs.existsSync(payloadsDir)) {
+          fs.mkdirSync(payloadsDir, { recursive: true });
         }
+
+        // Nome do arquivo com timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `payload-new-solar-calculate-${timestamp}.json`;
+        const filepath = path.join(payloadsDir, filename);
+
+        // Salvar payload
+        fs.writeFileSync(filepath, JSON.stringify(pythonParams, null, 2), 'utf8');
+        console.log(`💾 [NODE.JS] Payload salvo em: ${filepath}`);
+      } catch (error) {
+        console.error('❌ [NODE.JS] Erro ao salvar payload:', error);
       }
 
-      // Padronizar resposta: converter W para kW e organizar formato
-      const pythonData = response.data;
-      
-      // ===== DEBUG: PERDAS_DETALHADAS =====
-      console.log('==========================================');
-      console.log('🔍 [DEBUG] pythonData keys:', Object.keys(pythonData));
-      console.log('🔍 [DEBUG] pythonData.perdas_detalhadas existe?', 'perdas_detalhadas' in pythonData);
-      console.log('🔍 [DEBUG] pythonData.perdas_detalhadas valor:', pythonData.perdas_detalhadas);
-      console.log('🔍 [DEBUG] pythonData.perdas_detalhadas tipo:', typeof pythonData.perdas_detalhadas);
-      if (pythonData.perdas_detalhadas) {
-        console.log('🔍 [DEBUG] perdas_detalhadas.total:', pythonData.perdas_detalhadas.total);
+      console.log('\n🌐 [NODE.JS] Chamando API Python - /api/v1/solar/calculate (NOVO ENDPOINT)');
+      console.log('   - URL:', `${pythonServiceUrl}/api/v1/solar/calculate`);
+      console.log('   - Timeout: 180s');
+
+      // Chamar novo endpoint de cálculo solar completo
+      const response = await axios.post(
+        `${pythonServiceUrl}/api/v1/solar/calculate`,
+        pythonParams,
+        {
+          timeout: 180000, // 3 minutos para ModelChain + PVGIS
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('\n✅ [NODE.JS] Resposta recebida do Python');
+      console.log('📊 Resultado do dimensionamento:');
+      console.log(`   - Status HTTP: ${response.status}`);
+      console.log(`   - Keys da resposta:`, Object.keys(response.data));
+
+      // Verificar se a resposta contém os dados esperados
+      if (response.data) {
+        console.log(`   - Potência total: ${response.data.potencia_total_kwp || 'N/A'} kWp`);
+        console.log(`   - Energia anual: ${response.data.energia_anual_kwh || 'N/A'} kWh`);
+        console.log(`   - Energia DC anual: ${response.data.energia_dc_anual_kwh || 'N/A'} kWh`);
+        console.log(`   - Perda clipping: ${response.data.perda_clipping_pct || 'N/A'}%`);
+        console.log(`   - PR Total: ${response.data.pr_total || 'N/A'}%`);
       }
-      console.log('==========================================');
-      
-      // Calcular breakdown detalhado de perdas
+
+      // Padronizar resposta para o frontend (mantendo compatibilidade com formato anterior)
+      const pythonData = response.data;
+
+      // Calcular breakdown detalhado de perdas (fallback se Python não fornecer)
       const systemLosses: SystemLosses = {
         perdaTemperatura: params.perdaTemperatura || 8,
         perdaSombreamento: params.perdaSombreamento || 3,
@@ -606,19 +402,31 @@ export class SolarAnalysisController extends BaseController {
         perdaInversor: params.perdaInversor || 3,
         perdaOutras: params.perdaOutras || 0
       };
-      
+
       const detailedLosses = LossesCalculationService.calculateDetailedLosses(
         systemLosses,
         params.lat
       );
-      
+
+      // Calcular número de módulos a partir da potência total
+      const modulePowerKw = (params.modulo?.potencia_nominal_w || 550) / 1000;
+      const num_modulos = Math.round(pythonData.potencia_total_kwp / modulePowerKw);
+
+      // Padronizar resposta para o frontend
       const standardizedData = {
-        num_modulos: pythonData.num_modulos,
-        potencia_total_kw: pythonData.potencia_total_kw,
+        num_modulos: num_modulos,
+        potencia_total_kw: pythonData.potencia_total_kwp,
         energia_por_modulo_kwh: pythonData.energia_por_modulo,
-        energia_total_anual_kwh: pythonData.energia_total_anual,
+        energia_total_anual_kwh: pythonData.energia_anual_kwh,
+        energia_dc_anual_kwh: pythonData.energia_dc_anual_kwh,
+        perda_clipping_kwh: pythonData.perda_clipping_kwh,
+        perda_clipping_pct: pythonData.perda_clipping_pct,
+        geracao_mensal_kwh: pythonData.geracao_mensal_kwh,
+        consumo_anual_kwh: pythonData.consumo_anual_kwh,
+        yield_especifico: pythonData.yield_especifico,
         cobertura_percentual: pythonData.cobertura_percentual,
         fator_capacidade: pythonData.fator_capacidade,
+        pr_total: pythonData.pr_total,
         hsp_equivalente_dia: pythonData.hsp_equivalente_dia,
         hsp_equivalente_anual: pythonData.hsp_equivalente_anual,
         energia_anual_std: pythonData.energia_anual_std,
@@ -637,99 +445,39 @@ export class SolarAnalysisController extends BaseController {
         parametros_completos: {
           consumo_anual_kwh: params.consumo_anual_kwh,
           localizacao: { lat: params.lat, lon: params.lon },
-          orientacao: { tilt: params.tilt, azimuth: params.azimuth },
           modulo: {
             ...params.modulo,
             // Converter W para kW e renomear com unidades
             potencia_nominal_kw: params.modulo.potencia_nominal_w / 1000,
             potencia_nominal_w: undefined // Remover campo original
           },
-          inversor: isMultiInverterSystem ? {
-            // Para sistema multi-inversor, usar o primeiro inversor como referência
-            ...params.selectedInverters[0],
-            // Converter W para kW
-            potencia_saida_ca_kw: params.selectedInverters[0].potencia_saida_ca_w / 1000,
-            potencia_fv_max_kw: params.selectedInverters[0].potencia_fv_max_w ? 
-              params.selectedInverters[0].potencia_fv_max_w / 1000 : null,
-            // Remover campos originais em W
-            potencia_saida_ca_w: undefined,
-            potencia_fv_max_w: undefined
-          } : {
-            ...params.inversor,
-            // Converter W para kW
-            potencia_saida_ca_kw: params.inversor.potencia_saida_ca_w / 1000,
-            potencia_fv_max_kw: params.inversor.potencia_fv_max_w ? 
-              params.inversor.potencia_fv_max_w / 1000 : null,
-            // Remover campos originais em W
-            potencia_saida_ca_w: undefined,
-            potencia_fv_max_w: undefined
-          },
-          perdas_sistema: pythonData.perdas_sistema || 0.15,
-          fator_seguranca: pythonData.fator_seguranca || 1.2
+          perdas: perdas, // Use the detailed perdas object
+          fator_seguranca: params.fator_seguranca || 1.1
         },
         dados_processados: pythonData.dados_processados,
         anos_analisados: pythonData.anos_analisados,
         periodo_dados: pythonData.periodo_dados,
-        
-        // NOVO: Informações do sistema de inversores para o frontend
-        sistema_inversores: isMultiInverterSystem ? {
-          tipo_sistema: 'multi_inverter',
-          total_unidades: params.selectedInverters.reduce((sum: number, inv: any) => sum + inv.quantity, 0),
-          total_potencia_ca_kw: totalInverterCapacity / 1000,
-          total_canais_mppt: totalMpptChannels,
-          modelos_diferentes: params.selectedInverters.length,
-          configuracao_detalhada: params.selectedInverters.map((inv: any, index: number) => ({
-            id: index + 1,
-            fabricante: inv.fabricante,
-            modelo: inv.modelo,
-            quantidade: inv.quantity,
-            potencia_unitaria_kw: inv.potenciaSaidaCA / 1000,
-            potencia_total_kw: (inv.potenciaSaidaCA * inv.quantity) / 1000,
-            mppt_unitario: inv.numeroMppt,
-            mppt_total: inv.numeroMppt * inv.quantity,
-            percentual_sistema: ((inv.potenciaSaidaCA * inv.quantity) / totalInverterCapacity * 100).toFixed(1) + '%'
-          })),
-          razao_modulo_inversor: (pythonData.potencia_total_kw * 1000 / totalInverterCapacity).toFixed(2),
-          compatibilidade_ok: (pythonData.potencia_total_kw * 1000) <= (totalInverterCapacity * 1.3), // Tolerância 30%
-          // Dados para futura implementação de distribuição por MPPT
-          distribuicao_mppt_ready: true,
-          aguas_telhado_assigned: false
-        } : {
-          tipo_sistema: 'single_inverter',
-          total_unidades: 1,
-          total_potencia_ca_kw: (params.inversor?.potenciaSaidaCA || 0) / 1000,
-          total_canais_mppt: params.inversor?.numeroMppt || 2,
-          modelos_diferentes: 1,
-          configuracao_detalhada: [{
-            id: 1,
-            fabricante: params.inversor?.fabricante || 'N/A',
-            modelo: params.inversor?.modelo || 'N/A',
-            quantidade: 1,
-            potencia_unitaria_kw: (params.inversor?.potenciaSaidaCA || 0) / 1000,
-            potencia_total_kw: (params.inversor?.potenciaSaidaCA || 0) / 1000,
-            mppt_unitario: params.inversor?.numeroMppt || 2,
-            mppt_total: params.inversor?.numeroMppt || 2,
-            percentual_sistema: '100%'
-          }],
-          razao_modulo_inversor: params.inversor?.potenciaSaidaCA ? 
-            (pythonData.potencia_total_kw * 1000 / params.inversor.potenciaSaidaCA).toFixed(2) : '0',
-          compatibilidade_ok: true
-        }
+        // Incluir dados das águas de telhado (mantendo formato original para compatibilidade)
+        aguas_telhado: params.aguasTelhado,
+        // Incluir dados dos inversores no novo formato (se disponível na resposta)
+        inversores: pythonData.inversores
       };
 
       // Limpar campos undefined
       const cleanData = JSON.parse(JSON.stringify(standardizedData));
-      
-      // Log final do sistema processado
-      if (isMultiInverterSystem) {
-        console.log('🎉 SUCESSO: Sistema multi-inversor processado e respondido ao frontend');
-        console.log(`   - Total de ${cleanData.sistema_inversores.total_unidades} inversores configurados`);
-        console.log(`   - Potência total: ${cleanData.sistema_inversores.total_potencia_ca_kw}kW`);
-        console.log(`   - Compatibilidade: ${cleanData.sistema_inversores.compatibilidade_ok ? 'OK' : 'ATENÇÃO'}`);
-        console.log(`   - Dados prontos para distribuição MPPT: ${cleanData.sistema_inversores.distribuicao_mppt_ready}`);
-      } else {
-        console.log('✅ Sistema inversor único processado com sucesso');
-      }
+
+      console.log('\n✅ [NODE.JS] Resposta final preparada. Enviando ao cliente...');
+      console.log('   - success: true');
+      console.log('   - num_modulos:', cleanData.num_modulos, '(calculado)');
+      console.log('   - potencia_total_kw:', cleanData.potencia_total_kw, 'kWp');
+      console.log('   - energia_total_anual_kwh:', cleanData.energia_total_anual_kwh, 'kWh');
+      console.log('   - pr_total:', cleanData.pr_total, '%');
+      console.log('   - yield_especifico:', cleanData.yield_especifico, 'kWh/kWp');
+      console.log('   - inversores:', cleanData.inversores?.length || 0);
+      console.log('   - aguas_telhado:', cleanData.aguas_telhado?.length || 0);
+      console.log('='.repeat(80));
+      console.log('🏁 [NODE.JS - SolarAnalysisController] FIM - calculateAdvancedModules');
+      console.log('='.repeat(80) + '\n');
 
       return res.status(200).json({
         success: true,
@@ -739,23 +487,29 @@ export class SolarAnalysisController extends BaseController {
 
     } catch (error: any) {
       console.error('❌ Erro ao calcular módulos avançados:', error);
-      
+
       if (error.code === 'ECONNREFUSED') {
         return this.internalServerError(res, 'Serviço PVLIB indisponível. Tente novamente em alguns instantes.');
       }
-      
+
       if (error.response?.status === 422) {
+        console.error('❌ Erro 422 - Detalhes:', error.response.data);
         return this.badRequest(res, error.response.data.detail || 'Parâmetros inválidos');
       }
 
       if (error.response?.status === 502) {
         return this.internalServerError(res, 'Erro na comunicação com PVGIS. Tente novamente.');
       }
-      
+
+      if (error.response?.status === 500) {
+        console.error('❌ Erro 500 - Detalhes:', error.response.data);
+        return this.internalServerError(res, error.response.data?.error || 'Erro interno no serviço de cálculos.');
+      }
+
       if (error.response?.data?.error) {
         return this.internalServerError(res, error.response.data.error);
       }
-      
+
       return this.internalServerError(res, 'Erro interno no cálculo avançado de módulos');
     }
   }
@@ -1006,7 +760,7 @@ export class SolarAnalysisController extends BaseController {
   async calculateMPPTLimits(req: Request, res: Response): Promise<Response> {
     try {
       const params = req.body;
-      
+
       console.log('🔄 Recebendo requisição de cálculo MPPT:', JSON.stringify(params, null, 2));
 
       // Validação dos parâmetros obrigatórios
@@ -1018,7 +772,7 @@ export class SolarAnalysisController extends BaseController {
       const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
 
       console.log('🚀 Enviando para API Python (MPPT):', JSON.stringify(params, null, 2));
-      
+
       // Chamar a API Python (MPPT Calculation)
       const response = await axios.post(
         `${pythonServiceUrl}/api/v1/mppt/calculate-modules-per-mppt`,
@@ -1043,11 +797,11 @@ export class SolarAnalysisController extends BaseController {
 
     } catch (error: any) {
       console.error('❌ Erro ao calcular limites MPPT:', error);
-      
+
       if (error.code === 'ECONNREFUSED') {
         return this.internalServerError(res, 'Serviço PVLIB indisponível. Tente novamente em alguns instantes.');
       }
-      
+
       if (error.response?.status === 422) {
         return this.badRequest(res, error.response.data.detail || 'Parâmetros inválidos para cálculo MPPT');
       }
@@ -1055,12 +809,153 @@ export class SolarAnalysisController extends BaseController {
       if (error.response?.status === 500) {
         return this.internalServerError(res, 'Erro interno no serviço de cálculos MPPT.');
       }
-      
+
       if (error.response?.data?.detail) {
         return this.badRequest(res, error.response.data.detail);
       }
-      
+
       return this.internalServerError(res, 'Erro interno no cálculo de limites MPPT');
+    }
+  }
+
+  async calculateCompleteSolarSystem(req: Request, res: Response): Promise<Response> {
+    try {
+      console.log('\n' + '='.repeat(80));
+      console.log('🚀 [NODE.JS - SolarAnalysisController] INÍCIO - calculateCompleteSolarSystem');
+      console.log('='.repeat(80));
+
+      const params = req.body;
+
+      console.log('📥 [NODE.JS] Dados recebidos na requisição:');
+      console.log('   - Latitude:', params.lat);
+      console.log('   - Longitude:', params.lon);
+      console.log('   - Origem dados:', params.origem_dados);
+      console.log('   - Período:', params.startyear, '-', params.endyear);
+      console.log('   - Modelo decomposição:', params.modelo_decomposicao);
+      console.log('   - Modelo transposição:', params.modelo_transposicao);
+      console.log('   - Consumo mensal:', params.consumo_mensal_kwh?.reduce((a: number, b: number) => a + b, 0), 'kWh/ano');
+      console.log('   - Módulo:', params.modulo?.fabricante, params.modulo?.modelo);
+      console.log('   - Inversores:', params.inversores?.length || 0);
+
+      // Validação dos parâmetros obrigatórios
+      if (!params.lat || !params.lon) {
+        console.log('❌ [NODE.JS] Validação falhou - lat/lon ausentes');
+        return this.badRequest(res, 'Parâmetros obrigatórios ausentes: lat, lon');
+      }
+
+      if (!params.modulo) {
+        console.log('❌ [NODE.JS] Validação falhou - módulo ausente');
+        return this.badRequest(res, 'Parâmetro obrigatório ausente: modulo');
+      }
+
+      if (!params.inversores || !Array.isArray(params.inversores) || params.inversores.length === 0) {
+        console.log('❌ [NODE.JS] Validação falhou - inversores ausentes ou inválidos');
+        return this.badRequest(res, 'Parâmetro obrigatório ausente ou inválido: inversores (deve ser um array com ao menos 1 inversor)');
+      }
+
+      if (!params.consumo_mensal_kwh || !Array.isArray(params.consumo_mensal_kwh) || params.consumo_mensal_kwh.length !== 12) {
+        console.log('❌ [NODE.JS] Validação falhou - consumo_mensal_kwh ausente ou inválido');
+        return this.badRequest(res, 'Parâmetro obrigatório ausente ou inválido: consumo_mensal_kwh (deve ser um array com 12 valores)');
+      }
+
+      console.log('✅ [NODE.JS] Validação inicial passou');
+
+      // URL do serviço PVLIB (Python)
+      const pythonServiceUrl = process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
+
+      console.log('\n🌐 [NODE.JS] Chamando API Python - /api/v1/solar/calculate');
+      console.log('   - URL:', `${pythonServiceUrl}/api/v1/solar/calculate`);
+      console.log('   - Timeout: 180s');
+
+      // 💾 SALVAR PAYLOAD EM ARQUIVO JSON para debug
+      try {
+        const fs = require('fs');
+        const path = require('path');
+
+        // Criar pasta para payloads se não existir
+        const payloadsDir = path.join(process.cwd(), 'payloads');
+        if (!fs.existsSync(payloadsDir)) {
+          fs.mkdirSync(payloadsDir, { recursive: true });
+        }
+
+        // Nome do arquivo com timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `payload-complete-solar-${timestamp}.json`;
+        const filepath = path.join(payloadsDir, filename);
+
+        // Salvar payload
+        fs.writeFileSync(filepath, JSON.stringify(params, null, 2), 'utf8');
+        console.log(`💾 [NODE.JS] Payload salvo em: ${filepath}`);
+      } catch (error) {
+        console.error('❌ [NODE.JS] Erro ao salvar payload:', error);
+      }
+
+      // Chamar endpoint de cálculo completo do sistema solar (PVGIS + ModelChain)
+      const response = await axios.post(
+        `${pythonServiceUrl}/api/v1/solar/calculate`,
+        params,
+        {
+          timeout: 180000, // 3 minutos para PVGIS + ModelChain completo
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('\n✅ [NODE.JS] Resposta recebida do Python');
+      console.log('📊 Resultado do cálculo completo:');
+      console.log(`   - Status HTTP: ${response.status}`);
+
+      // Log detalhado da estrutura da resposta
+      if (response.data) {
+        console.log('   - Keys da resposta:', Object.keys(response.data));
+
+        // Log de campos relevantes se existirem
+        if (response.data.potencia_total_kw) {
+          console.log(`   - Potência total: ${response.data.potencia_total_kw} kW`);
+        }
+        if (response.data.energia_total_anual_kwh) {
+          console.log(`   - Energia anual: ${response.data.energia_total_anual_kwh} kWh`);
+        }
+        if (response.data.num_modulos) {
+          console.log(`   - Número de módulos: ${response.data.num_modulos}`);
+        }
+      }
+
+      console.log('\n✅ [NODE.JS] Resposta final preparada. Enviando ao cliente...');
+      console.log('='.repeat(80));
+      console.log('🏁 [NODE.JS - SolarAnalysisController] FIM - calculateCompleteSolarSystem');
+      console.log('='.repeat(80) + '\n');
+
+      // Retornar diretamente a resposta da API Python
+      return res.status(200).json(response.data);
+
+    } catch (error: any) {
+      console.error('❌ Erro ao calcular sistema solar completo:', error);
+
+      if (error.code === 'ECONNREFUSED') {
+        return this.internalServerError(res, 'Serviço PVLIB indisponível. Tente novamente em alguns instantes.');
+      }
+
+      if (error.response?.status === 422) {
+        console.error('❌ Erro 422 - Detalhes:', error.response.data);
+        return this.badRequest(res, error.response.data.detail || 'Parâmetros inválidos');
+      }
+
+      if (error.response?.status === 502) {
+        return this.internalServerError(res, 'Erro na comunicação com PVGIS. Tente novamente.');
+      }
+
+      if (error.response?.status === 500) {
+        console.error('❌ Erro 500 - Detalhes:', error.response.data);
+        return this.internalServerError(res, error.response.data?.error || 'Erro interno no serviço de cálculos.');
+      }
+
+      if (error.response?.data?.error) {
+        return this.internalServerError(res, error.response.data.error);
+      }
+
+      return this.internalServerError(res, 'Erro interno no cálculo completo do sistema solar');
     }
   }
 }

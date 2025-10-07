@@ -136,54 +136,76 @@ class ModuleService:
     def calculate_required_modules(self, request: ModuleCalculationRequest) -> ModuleCalculationResponse:
         """
         Calcula energia gerada para número fixo de módulos
-        
+
         Args:
             request: Parâmetros do sistema fotovoltaico (deve incluir num_modules)
-            
+
         Returns:
             Resultado completo da geração de energia para o número especificado de módulos
         """
-        logger.info(f"Calculando energia para sistema em {request.lat}, {request.lon}")
-        
+        print("\n" + "=" * 80)
+        print("🐍 [PYTHON - module_service.py] INÍCIO - calculate_required_modules")
+        print("=" * 80)
+
+        logger.info(f"📍 [PYTHON - module_service] Calculando energia para sistema")
+        logger.info(f"   - Localização: {request.lat}, {request.lon}")
+        logger.info(f"   - Módulo: {request.modulo.fabricante} {request.modulo.modelo}")
+        logger.info(f"   - Consumo: {request.consumo_anual_kwh} kWh/ano")
+
         # 1. VALIDAR PARÂMETROS
+        print("\n🔍 [PYTHON - module_service] Etapa 1: Validando parâmetros...")
         validate_module_power(request.modulo.potencia_nominal_w)
+        print("✅ [PYTHON - module_service] Validação OK")
         
         # 2. BUSCAR DADOS METEOROLÓGICOS (necessário para TODOS os caminhos)
+        print("\n🌍 [PYTHON - module_service] Etapa 2: Buscando dados meteorológicos PVGIS...")
         df = self.solar_service.pvgis.fetch_weather_data(request.lat, request.lon)
         df_filtered = df  # Dados já vêm filtrados do PVGIS para 2018-2020
-        
+        print(f"✅ [PYTHON - module_service] Dados obtidos: {len(df_filtered)} registros")
+
         # Fazer decomposição GHI → DNI/DHI
+        print("\n🔬 [PYTHON - module_service] Etapa 3: Decompondo GHI → DNI/DHI (modelo: disc)...")
         df_decomposed = self.solar_service._decompose_ghi(
             df_filtered, request.lat, request.lon, 'disc'
         )
-        
+        print(f"✅ [PYTHON - module_service] Decomposição concluída")
+
         # 3. VERIFICAR TIPO DE SISTEMA (agora df_decomposed JÁ EXISTE)
+        print("\n🔀 [PYTHON - module_service] Etapa 4: Verificando tipo de sistema...")
+
         # ✅ VERIFICAR MÚLTIPLAS ÁGUAS DE TELHADO
         if hasattr(request, 'aguas_telhado') and request.aguas_telhado and len(request.aguas_telhado) > 0:
-            logger.info(f"🏠 PYTHON: Processando {len(request.aguas_telhado)} águas de telhado")
+            print(f"🏠 [PYTHON - module_service] DECISÃO: Sistema com múltiplas águas de telhado")
+            logger.info(f"   - Processando {len(request.aguas_telhado)} águas de telhado")
             for i, agua in enumerate(request.aguas_telhado):
                 logger.info(f"   - Água {i+1}: {agua.nome} ({agua.numero_modulos} módulos, {agua.orientacao}°, {agua.inclinacao}°)")
+
+            print(f"🔧 [PYTHON - module_service] Chamando _calculate_multi_roof_water_system")
+            print(f"   - df_decomposed: {len(df_decomposed)} registros")
+            print(f"   - request: ModuleCalculationRequest")
+            print(f"   - anos_dados: {len(df_decomposed)}")
             return self._calculate_multi_roof_water_system(df_decomposed, request, len(df_decomposed))
         
         # VERIFICAR SISTEMA MULTI-INVERSOR (lógica existente)
         if hasattr(request, 'multi_inverter_data') and request.multi_inverter_data:
             multi_data = request.multi_inverter_data
-            logger.info(f"🔄 PYTHON: Sistema multi-inversor detectado")
+            print(f"🔄 [PYTHON - module_service] DECISÃO: Sistema multi-inversor detectado")
             logger.info(f"   - Configuração: {multi_data.get('system_configuration', 'unknown')}")
             logger.info(f"   - Total unidades: {multi_data.get('total_inverter_units', 0)}")
             logger.info(f"   - Potência total: {multi_data.get('total_ca_power_kw', 0)}kW")
             logger.info(f"   - Total MPPT: {multi_data.get('total_mppt_channels', 0)}")
-            
+
             if multi_data.get('is_multi_inverter', False):
                 logger.info(f"   - Modelos diferentes: {multi_data.get('inverter_models_count', 0)}")
-                logger.info(f"   - Processando como multi-inversor")
+                print(f"🔧 [PYTHON - module_service] Chamando _calculate_multi_inverter_system")
                 return self._calculate_multi_inverter_system(
                     df_decomposed, request, multi_data, len(df_decomposed)
                 )
             else:
                 logger.info(f"   - Sistema inversor único com múltiplas unidades detectado")
-        
+
         # 4. SISTEMA INVERSOR ÚNICO (caminho padrão)
+        print(f"⚡ [PYTHON - module_service] DECISÃO: Sistema inversor único (padrão)")
         logger.info("Processando como sistema inversor único")
         return self._calculate_single_inverter_system(
             df_decomposed, request, len(df_decomposed)

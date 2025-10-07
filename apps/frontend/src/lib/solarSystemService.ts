@@ -147,10 +147,17 @@ export interface MultiInverterCalculationParams {
     b0?: number; b1?: number; b2?: number; b3?: number; b4?: number; b5?: number;
     dtc?: number;
   };
+  perdas?: {
+    sujeira: number;
+    sombreamento: number;
+    incompatibilidade: number;
+    fiacao: number;
+    outras: number;
+  };
   perdas_sistema?: number;
   fator_seguranca?: number;
   num_modules?: number; // Número específico de módulos (se fornecido, usa este valor ao invés de calcular automaticamente)
-  
+
   // ✅ MÚLTIPLAS ÁGUAS DE TELHADO COM INVERSORES EMBUTIDOS
   aguasTelhado: Array<{
     id: string;
@@ -294,6 +301,77 @@ export interface MPPTCalculationResponse {
     limitacao_potencia: number;
     limitacao_tensao: number;
   };
+}
+
+// Complete System Calculation Interfaces
+export interface CompleteSystemCalculationParams {
+  lat: number;
+  lon: number;
+  origem_dados?: string; // "NASA" or "PVGIS"
+  startyear?: number;
+  endyear?: number;
+  modelo_decomposicao?: string; // "louche", "erbs", etc.
+  modelo_transposicao?: string; // "perez", "hay", "isotropic", etc.
+  mount_type?: string; // "close_mount_glass_glass", "open_rack_glass_glass", etc.
+  consumo_mensal_kwh: number[]; // 12 valores mensais
+  perdas: {
+    sujeira: number;
+    sombreamento: number;
+    incompatibilidade: number;
+    fiacao: number;
+    outras: number;
+  };
+  modulo: {
+    fabricante: string;
+    modelo: string;
+    potencia_nominal_w: number;
+    largura_mm: number;
+    altura_mm: number;
+    peso_kg: number;
+    vmpp: number;
+    impp: number;
+    voc_stc: number;
+    isc_stc: number;
+    eficiencia: number;
+    temp_coef_pmax: number;
+    alpha_sc: number;
+    beta_oc: number;
+    gamma_r: number;
+    cells_in_series: number;
+    a_ref: number;
+    il_ref: number;
+    io_ref: number;
+    rs: number;
+    rsh_ref: number;
+  };
+  inversores: Array<{
+    inversor: {
+      fabricante: string;
+      modelo: string;
+      potencia_saida_ca_w: number;
+      tipo_rede: string;
+      potencia_fv_max_w: number;
+      tensao_cc_max_v: number;
+      numero_mppt: number;
+      strings_por_mppt: number;
+      eficiencia_max: number;
+      efficiency_dc_ac: number;
+    };
+    orientacoes: Array<{
+      nome: string;
+      orientacao: number; // azimuth in degrees
+      inclinacao: number; // tilt in degrees
+      modulos_por_string: number;
+      numero_strings: number;
+    }>;
+  }>;
+}
+
+export interface CompleteSystemCalculationResult {
+  success: boolean;
+  data?: any; // The actual calculation results
+  message?: string;
+  timestamp?: string;
 }
 
 export class SolarSystemService {
@@ -654,12 +732,13 @@ export class SolarSystemService {
       modelo_transposicao: 'perez',
       consumo_anual_kwh: consumoAnual,
       modulo,
-      perdas_sistema: (dimensioningData.perdaSombreamento || 3) +
-                      (dimensioningData.perdaMismatch || 2) +
-                      (dimensioningData.perdaCabeamento || 2) +
-                      (dimensioningData.perdaSujeira || 5) +
-                      (dimensioningData.perdaInversor || 3) +
-                      (dimensioningData.perdaOutras || 0),
+      perdas: {
+        sujeira: dimensioningData.perdaSujeira || 5,
+        sombreamento: dimensioningData.perdaSombreamento || 3,
+        incompatibilidade: dimensioningData.perdaMismatch || 2,
+        fiacao: dimensioningData.perdaCabeamento || 2,
+        outras: (dimensioningData.perdaInversor || 3) + (dimensioningData.perdaOutras || 0)
+      },
       fator_seguranca: 1.1,
       num_modules: dimensioningData.num_modules, // Incluir num_modules se fornecido
       // ✅ Incluir águas de telhado se existirem
@@ -746,9 +825,10 @@ export class SolarSystemService {
         modelo_transposicao: params.modelo_transposicao,
         consumo_anual_kwh: params.consumo_anual_kwh,
         modulo: params.modulo,
+        perdas: params.perdas,
         perdas_sistema: params.perdas_sistema,
         fator_seguranca: params.fator_seguranca,
-        
+
         // ✅ Enviar águas com inversor embutido
         aguasTelhado: params.aguasTelhado.map(agua => ({
           id: agua.id,
@@ -790,9 +870,9 @@ export class SolarSystemService {
   static async calculateMPPTLimits(params: MPPTCalculationRequest): Promise<MPPTCalculationResponse> {
     try {
       console.log('🔄 Chamando cálculo de limites MPPT com parâmetros:', params);
-      
+
       const response = await api.post('/solar-analysis/pvlib/mppt/calculate-modules-per-mppt', params);
-      
+
       // Aceitar tanto formato com wrapper quanto formato direto
       if (response.data) {
         if (response.data.success && response.data.data) {
@@ -805,18 +885,170 @@ export class SolarSystemService {
           return response.data;
         }
       }
-      
+
       console.error('❌ Resposta inválida do serviço MPPT:', response.data);
       throw new Error('Resposta inválida do serviço MPPT');
     } catch (error: any) {
       console.error('❌ Erro ao calcular limites MPPT:', error);
-      
+
       if (error.message?.includes('fetch')) {
         throw new Error('Erro de conexão com o servidor MPPT');
       }
-      
+
       throw new Error('Erro interno no cálculo de limites MPPT');
     }
+  }
+
+  /**
+   * NEW: Calculate complete solar system using the new comprehensive endpoint
+   * This method sends a POST request to /api/v1/solar-analysis/calculate-complete-system
+   */
+  static async calculateCompleteSystem(params: CompleteSystemCalculationParams): Promise<CompleteSystemCalculationResult> {
+    try {
+      console.log('🔄 Chamando cálculo completo do sistema com parâmetros:', params);
+
+      const response = await api.post('/solar-analysis/calculate-complete-system', params);
+
+      if (response.data) {
+        console.log('✅ Resultado do cálculo completo do sistema:', response.data);
+        return response.data;
+      }
+
+      throw new Error('Resposta inválida do serviço');
+    } catch (error: any) {
+      console.error('❌ Erro ao calcular sistema completo:', error);
+
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+
+      if (error.message?.includes('fetch')) {
+        throw new Error('Erro de conexão com o servidor');
+      }
+
+      throw new Error('Erro interno no cálculo completo do sistema');
+    }
+  }
+
+  /**
+   * Convenience method to build CompleteSystemCalculationParams from dimensioning data
+   * Maps frontend form data to the required backend structure
+   */
+  static buildCompleteSystemParams(dimensioningData: any): CompleteSystemCalculationParams {
+    // Extract monthly consumption data
+    const consumoMensal = dimensioningData.energyBills?.reduce((acc: number[], bill: any) => {
+      if (bill.consumoMensal && Array.isArray(bill.consumoMensal)) {
+        return bill.consumoMensal;
+      }
+      return acc;
+    }, Array(12).fill(400)) || Array(12).fill(400);
+
+    // Ensure we have exactly 12 values
+    const consumoMensalKwh = consumoMensal.length === 12
+      ? consumoMensal
+      : Array(12).fill(400);
+
+    // Get module data
+    const moduloSelecionado = dimensioningData.selectedModules?.[0];
+    const modulo = {
+      fabricante: moduloSelecionado?.fabricante || "Exemplo",
+      modelo: moduloSelecionado?.modelo || "585W",
+      potencia_nominal_w: moduloSelecionado?.potenciaNominal || 585,
+      largura_mm: moduloSelecionado?.larguraMm || 1100,
+      altura_mm: moduloSelecionado?.alturaMm || 2100,
+      peso_kg: moduloSelecionado?.pesoKg || 30,
+      vmpp: moduloSelecionado?.vmpp || 42.52,
+      impp: moduloSelecionado?.impp || 13.76,
+      voc_stc: moduloSelecionado?.vocStc || 51.16,
+      isc_stc: moduloSelecionado?.iscStc || 14.55,
+      eficiencia: moduloSelecionado?.eficiencia || 21.0,
+      temp_coef_pmax: moduloSelecionado?.tempCoefPmax || -0.29,
+      alpha_sc: moduloSelecionado?.alphaSc || 0.00041,
+      beta_oc: moduloSelecionado?.betaOc || -0.0025,
+      gamma_r: moduloSelecionado?.gammaR || -0.0029,
+      cells_in_series: moduloSelecionado?.cellsInSeries || 144,
+      a_ref: moduloSelecionado?.aRef || 1.8,
+      il_ref: moduloSelecionado?.iLRef || 14.86,
+      io_ref: moduloSelecionado?.iORef || 2.5e-12,
+      rs: moduloSelecionado?.rS || 0.25,
+      rsh_ref: moduloSelecionado?.rShRef || 450.0
+    };
+
+    // Build inversores array from aguasTelhado or inverters
+    const inversores: CompleteSystemCalculationParams['inversores'] = [];
+
+    if (dimensioningData.aguasTelhado && dimensioningData.aguasTelhado.length > 0) {
+      // Multi-inverter configuration with multiple roof areas
+      const inversorSelecionado = dimensioningData.inverters?.[0];
+      const inversorData = {
+        fabricante: inversorSelecionado?.fabricante || "Exemplo",
+        modelo: inversorSelecionado?.modelo || "INV-01 3.0kW",
+        potencia_saida_ca_w: inversorSelecionado?.potenciaSaidaCA || inversorSelecionado?.potencia_saida_ca_w || 5000,
+        tipo_rede: inversorSelecionado?.tipoRede || inversorSelecionado?.tipo_rede || "monofásico",
+        potencia_fv_max_w: inversorSelecionado?.potenciaFvMax || 6000,
+        tensao_cc_max_v: inversorSelecionado?.tensaoCcMax || 600,
+        numero_mppt: inversorSelecionado?.numeroMppt || 2,
+        strings_por_mppt: inversorSelecionado?.stringsPorMppt || 1,
+        eficiencia_max: inversorSelecionado?.eficienciaMax || 98.0,
+        efficiency_dc_ac: inversorSelecionado?.efficiency_dc_ac || 0.98
+      };
+
+      inversores.push({
+        inversor: inversorData,
+        orientacoes: dimensioningData.aguasTelhado.map((agua: any, index: number) => ({
+          nome: agua.nome || `MPPT-${index + 1}`,
+          orientacao: agua.orientacao || 330,
+          inclinacao: agua.inclinacao || 18,
+          modulos_por_string: Math.floor(agua.numeroModulos / (inversorData.strings_por_mppt || 1)),
+          numero_strings: inversorData.strings_por_mppt || 1
+        }))
+      });
+    } else {
+      // Single inverter configuration
+      const inversorSelecionado = dimensioningData.inverters?.[0];
+      inversores.push({
+        inversor: {
+          fabricante: inversorSelecionado?.fabricante || "Exemplo",
+          modelo: inversorSelecionado?.modelo || "INV-01 3.0kW",
+          potencia_saida_ca_w: inversorSelecionado?.potenciaSaidaCA || inversorSelecionado?.potencia_saida_ca_w || 5000,
+          tipo_rede: inversorSelecionado?.tipoRede || inversorSelecionado?.tipo_rede || "monofásico",
+          potencia_fv_max_w: inversorSelecionado?.potenciaFvMax || 6000,
+          tensao_cc_max_v: inversorSelecionado?.tensaoCcMax || 600,
+          numero_mppt: inversorSelecionado?.numeroMppt || 2,
+          strings_por_mppt: inversorSelecionado?.stringsPorMppt || 1,
+          eficiencia_max: inversorSelecionado?.eficienciaMax || 98.0,
+          efficiency_dc_ac: inversorSelecionado?.efficiency_dc_ac || 0.98
+        },
+        orientacoes: [{
+          nome: "MPPT-1A",
+          orientacao: dimensioningData.orientacao || 330,
+          inclinacao: dimensioningData.inclinacao || 18,
+          modulos_por_string: dimensioningData.modulosPorString || 4,
+          numero_strings: 1
+        }]
+      });
+    }
+
+    return {
+      lat: dimensioningData.latitude || -22.841432,
+      lon: dimensioningData.longitude || -51.957627,
+      origem_dados: "NASA",
+      startyear: 2015,
+      endyear: 2020,
+      modelo_decomposicao: "louche",
+      modelo_transposicao: "perez",
+      mount_type: "close_mount_glass_glass",
+      consumo_mensal_kwh: consumoMensalKwh,
+      perdas: {
+        sujeira: dimensioningData.perdaSujeira || 1.0,
+        sombreamento: dimensioningData.perdaSombreamento || 2.0,
+        incompatibilidade: dimensioningData.perdaMismatch || 1.0,
+        fiacao: dimensioningData.perdaCabeamento || 0.5,
+        outras: dimensioningData.perdaOutras || 0.5
+      },
+      modulo,
+      inversores
+    };
   }
 }
 

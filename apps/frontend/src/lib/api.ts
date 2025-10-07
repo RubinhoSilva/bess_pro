@@ -233,15 +233,19 @@ export const apiClient = {
     // Cálculo avançado de módulos
     calculateAdvancedModules: (data: any) =>
       api.post('/solar-analysis/calculate-advanced-modules', data),
-    
+
+    // Cálculo completo do sistema (novo endpoint com estrutura completa)
+    calculateCompleteSystem: (data: any) =>
+      api.post('/solar-analysis/calculate-complete-system', data),
+
     // Análise de irradiação mensal
     analyzeMonthlyIrradiation: (data: any) =>
       api.post('/solar-analysis/analyze-monthly-irradiation', data),
-    
+
     // Análise financeira avançada via Python
     calculateAdvancedFinancial: (data: any) =>
       api.post('/solar-analysis/calculate-advanced-financial', data),
-    
+
     // Dados de análise aprimorados
     getEnhancedAnalysisData: (params: any) =>
       api.get('/solar-analysis/enhanced-analysis-data', { params }),

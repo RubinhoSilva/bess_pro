@@ -42,6 +42,9 @@ export const createSolarAnalysisRoutes = (container: Container): Router => {
   // MPPT calculation endpoint
   router.post('/pvlib/mppt/calculate-modules-per-mppt', solarAnalysisController.calculateMPPTLimits.bind(solarAnalysisController));
 
+  // Complete solar system calculation endpoint (PVGIS + ModelChain)
+  router.post('/calculate-complete-system', solarAnalysisController.calculateCompleteSolarSystem.bind(solarAnalysisController));
+
   return router;
 };
 

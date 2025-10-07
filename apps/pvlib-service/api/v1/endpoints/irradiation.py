@@ -4,7 +4,7 @@ import logging
 
 from models.requests import IrradiationAnalysisRequest
 from models.responses import IrradiationAnalysisResponse, ErrorResponse
-from services import solar_service
+from services import irradiation_service
 from core.exceptions import SolarAPIException
 from api.dependencies import rate_limit_dependency, log_request_dependency
 
@@ -55,7 +55,7 @@ async def analyze_monthly_irradiation(
     try:
         logger.info(f"Analisando irradiação mensal para {request.lat}, {request.lon}")
         
-        result = solar_service.analyze_monthly_irradiation(request)
+        result = irradiation_service.analyze_monthly_irradiation(request)
         
         logger.info(f"Análise concluída: {result.media_anual} kWh/m²/dia média anual")
         

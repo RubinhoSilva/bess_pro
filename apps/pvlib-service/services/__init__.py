@@ -3,17 +3,19 @@ Services - Lógica de negócio e integração com APIs externas
 """
 
 from .pvgis_service import PVGISService, pvgis_service
-from .solar_service import SolarService, solar_service
-from .module_service import ModuleService, module_service
+from .nasa_service import NASAService, nasa_service
+from .solar_service import SolarCalculationService
+from .irradiation_service import IrradiationService, irradiation_service
 
 __all__ = [
     # Classes
     "PVGISService",
-    "SolarService", 
-    "ModuleService",
-    
+    "NASAService",
+    "SolarCalculationService",
+    "IrradiationService",
+
     # Instâncias singleton
     "pvgis_service",
-    "solar_service",
-    "module_service"
+    "nasa_service",
+    "irradiation_service"
 ]

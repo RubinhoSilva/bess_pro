@@ -56,16 +56,23 @@ async def calculate_required_modules(
     req_log: None = Depends(log_request_dependency)
 ):
     """Calcula módulos fotovoltaicos necessários"""
-    
+
     try:
-        logger.info(f"Calculando módulos para {request.lat}, {request.lon} - "
-                   f"{request.modulo.fabricante} {request.modulo.modelo} {request.modulo.potencia_nominal_w}W, "
-                   f"{request.consumo_anual_kwh} kWh/ano")
-        
-        # ===== DEBUG: JSON COMPLETO RECEBIDO NO PYTHON =====
         import json
+        print("\n" + "=" * 80)
+        print("🐍 [PYTHON - modules.py] INÍCIO - calculate_required_modules")
         print("=" * 80)
-        print("🐍 [PYTHON - modules.py] JSON COMPLETO RECEBIDO:")
+
+        logger.info(f"📥 [PYTHON] Recebendo requisição de cálculo de módulos")
+        logger.info(f"   - Localização: {request.lat}, {request.lon}")
+        logger.info(f"   - Módulo: {request.modulo.fabricante} {request.modulo.modelo} ({request.modulo.potencia_nominal_w}W)")
+        logger.info(f"   - Consumo anual: {request.consumo_anual_kwh} kWh/ano")
+
+        if hasattr(request, 'inversor') and request.inversor:
+            logger.info(f"   - Inversor: {request.inversor.fabricante} {request.inversor.modelo}")
+
+        print("\n" + "=" * 80)
+        print("🐍 [PYTHON - modules.py] JSON COMPLETO RECEBIDO DO NODE.JS:")
         print("=" * 80)
         
         # Converter request para dict para visualização completa
@@ -87,12 +94,22 @@ async def calculate_required_modules(
         if hasattr(request, 'num_modules') and request.num_modules:
             print(f"🧮 NÚMERO ESPECÍFICO DE MÓDULOS: {request.num_modules}")
         print("=" * 80)
-        
+
+        print("\n🔧 [PYTHON - modules.py] Chamando module_service.calculate_required_modules")
+        print("   - Passando parâmetros: request (ModuleCalculationRequest)")
+
         result = module_service.calculate_required_modules(request)
-        
-        logger.info(f"Cálculo concluído: {result.num_modulos} módulos, "
-                   f"{result.potencia_total_kw} kWp")
-        
+
+        print("\n✅ [PYTHON - modules.py] Retorno do module_service recebido")
+        logger.info(f"📊 [PYTHON] Cálculo concluído com sucesso:")
+        logger.info(f"   - Módulos: {result.num_modulos}")
+        logger.info(f"   - Potência: {result.potencia_total_kw} kWp")
+        logger.info(f"   - Energia anual: {result.energia_total_anual} kWh")
+
+        print("=" * 80)
+        print("🏁 [PYTHON - modules.py] FIM - calculate_required_modules")
+        print("=" * 80 + "\n")
+
         return result
         
     except SolarAPIException:

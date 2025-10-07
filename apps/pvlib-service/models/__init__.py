@@ -5,7 +5,7 @@ Models - Modelos Pydantic para requests e responses
 from .requests import (
     LocationRequest,
     IrradiationAnalysisRequest,
-    ModuleCalculationRequest,
+    SolarSystemCalculationRequest,
     CacheStatsRequest
 )
 
@@ -27,7 +27,7 @@ __all__ = [
     # Request models
     "LocationRequest",
     "IrradiationAnalysisRequest",
-    "ModuleCalculationRequest", 
+    "SolarSystemCalculationRequest",
     "CacheStatsRequest",
     
     # Response models - Base components
