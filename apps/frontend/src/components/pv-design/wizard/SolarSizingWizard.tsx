@@ -131,6 +131,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
       // Converter snake_case (Python) para camelCase (TypeScript)
       const transformedData = {
+        investimentoInicial: apiData.investimento_inicial,
         vpl: apiData.vpl,
         tir: apiData.tir,
         paybackSimples: apiData.payback_simples,

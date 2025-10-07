@@ -354,6 +354,10 @@ export interface HybridDimensioningResponse {
   sistema_solar: SistemaSolarResult;
   sistema_bess: SistemaBessResult;
   analise_hibrida: AnaliseHibrida;
+  metadata?: {
+    duration_ms: number;
+    timestamp: string;
+  };
 }
 
 /**

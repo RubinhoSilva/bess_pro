@@ -14,6 +14,7 @@ import { formatCurrency, formatPercentage, formatNumber } from '@/lib/formatters
 interface AdvancedFinancialAnalysisProps {
   results: {
     advancedFinancial?: {
+      investimentoInicial: number;
       vpl: number;
       tir: number;
       paybackSimples: number;
@@ -457,12 +458,12 @@ export const AdvancedFinancialAnalysis: React.FC<AdvancedFinancialAnalysisProps>
                 Indicadores Financeiros Principais
               </h4>
               <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-slate-300">Investimento Inicial:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    {formatCurrency((advancedFinancial.cashFlow || [])[0]?.valorPresente * -1 || 0)}
-                  </span>
-                </div>
+                 <div className="flex justify-between">
+                   <span className="text-gray-600 dark:text-slate-300">Investimento Inicial:</span>
+                   <span className="font-medium text-gray-900 dark:text-white">
+                     {formatCurrency(advancedFinancial.investimentoInicial || 0)}
+                   </span>
+                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-slate-300">Economia Anual Média:</span>
                   <span className="font-medium text-gray-900 dark:text-white">

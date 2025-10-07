@@ -427,19 +427,6 @@ export class BessCalculationClient {
 
     try {
 
-
-        // Nome do arquivo com timestamp
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `payload-bess-hybrid-${timestamp}.json`;
-        const filepath = path.join(payloadsDir, filename);
-
-        // Salvar payload
-        fs.writeFileSync(filepath, JSON.stringify(request, null, 2), 'utf8');
-        console.log(`💾 [BessCalculationClient] Payload salvo em: ${filepath}`);
-      } catch (error) {
-        console.error('❌ [BessCalculationClient] Erro ao salvar payload:', error);
-      }
-
       // Mapear campos do frontend para o formato esperado pelo Python
       // Frontend envia 'inversores' mas Python espera 'aguasTelhado'
       const pythonRequest = {

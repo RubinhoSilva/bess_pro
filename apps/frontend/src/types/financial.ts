@@ -70,6 +70,7 @@ export interface FinancialCalculationInput {
  * Resultado do cálculo financeiro (camelCase para frontend)
  */
 export interface FinancialCalculationResult {
+  investimentoInicial: number;
   vpl: number;
   tir: number;
   paybackSimples: number;

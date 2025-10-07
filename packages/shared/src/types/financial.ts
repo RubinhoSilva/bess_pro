@@ -123,6 +123,9 @@ export interface ScenarioAnalysis {
 // ===== RESULTADO COMPLETO =====
 
 export interface AdvancedFinancialResults {
+  // Investimento
+  investimento_inicial: number; // R$
+
   // Indicadores principais
   vpl: number; // Valor Presente Líquido (R$)
   tir: number; // Taxa Interna de Retorno (%)

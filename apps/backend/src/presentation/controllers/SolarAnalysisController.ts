@@ -792,6 +792,9 @@ export class SolarAnalysisController extends BaseController {
       const financialData = response.data.data;
       
       const standardizedData = {
+        // Investimento
+        investimento_inicial: financialInput.investimento_inicial,
+        
         // Indicadores principais
         vpl: financialData.vpl,
         tir: financialData.tir,

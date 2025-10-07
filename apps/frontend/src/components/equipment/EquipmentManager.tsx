@@ -657,7 +657,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                     <Input
                       id="tempCoefPmax"
                       value={moduleForm.tempCoefPmax || ''}
-                      onChange={(e) => setModuleForm(prev => ({ ...prev, tempCoefPmax: e.target.value }))}
+                      onChange={(e) => setModuleForm(prev => ({ ...prev, tempCoefPmax: parseFloat(e.target.value) || 0 }))}
                       placeholder="-0.40"
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
@@ -670,7 +670,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                     <Input
                       id="tempCoefVoc"
                       value={moduleForm.tempCoefVoc || ''}
-                      onChange={(e) => setModuleForm(prev => ({ ...prev, tempCoefVoc: e.target.value }))}
+                      onChange={(e) => setModuleForm(prev => ({ ...prev, tempCoefVoc: parseFloat(e.target.value) || 0 }))}
                       placeholder="-0.27"
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
@@ -683,7 +683,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                     <Input
                       id="tempCoefIsc"
                       value={moduleForm.tempCoefIsc || ''}
-                      onChange={(e) => setModuleForm(prev => ({ ...prev, tempCoefIsc: e.target.value }))}
+                      onChange={(e) => setModuleForm(prev => ({ ...prev, tempCoefIsc: parseFloat(e.target.value) || 0 }))}
                       placeholder="0.048"
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
