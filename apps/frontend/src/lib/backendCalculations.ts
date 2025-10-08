@@ -174,7 +174,7 @@ const handleCalculate = async () => {
           perdaMismatch: currentDimensioning.perdaMismatch,
           perdaCabeamento: currentDimensioning.perdaCabeamento,
           perdaSujeira: currentDimensioning.perdaSujeira,
-          perdaInversor: currentDimensioning.perdaInversor,
+
           perdaTemperatura: currentDimensioning.perdaTemperatura
         }, currentDimensioning.eficienciaSistema || 85),
         perdas: 5,

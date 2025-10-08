@@ -3,7 +3,7 @@ export interface SystemLosses {
   perdaMismatch?: number;
   perdaCabeamento?: number;
   perdaSujeira?: number;
-  perdaInversor?: number;
+
   perdaTemperatura?: number;
   perdaOutras?: number;
 }
@@ -14,7 +14,7 @@ export interface DetailedLossesBreakdown {
   mismatch: number[];     // % perdas por mês devido a descasamento
   cabeamento: number[];   // % perdas por mês devido a cabeamento
   sujeira: number[];      // % perdas por mês devido à sujeira
-  inversor: number[];     // % perdas por mês devido ao inversor
+
   outras?: number[];      // % perdas por mês devido a outros fatores
   total: number[];        // % perdas totais por mês
 }
@@ -37,7 +37,7 @@ export class LossesCalculationService {
       mismatch: systemLosses.perdaMismatch || 2,
       cabeamento: systemLosses.perdaCabeamento || 2,
       sujeira: systemLosses.perdaSujeira || 5,
-      inversor: systemLosses.perdaInversor || 3,
+
       outras: systemLosses.perdaOutras || 0
     };
     
@@ -51,7 +51,6 @@ export class LossesCalculationService {
       mismatch: [],
       cabeamento: [],
       sujeira: [],
-      inversor: [],
       outras: [],
       total: []
     };
@@ -69,7 +68,7 @@ export class LossesCalculationService {
       // Perdas constantes ao longo do ano
       losses.mismatch[month] = baseLosses.mismatch;
       losses.cabeamento[month] = baseLosses.cabeamento;
-      losses.inversor[month] = baseLosses.inversor;
+
       losses.outras![month] = baseLosses.outras;
       
       // Total de perdas por mês
@@ -78,7 +77,6 @@ export class LossesCalculationService {
                            losses.mismatch[month] + 
                            losses.cabeamento[month] + 
                            losses.sujeira[month] + 
-                           losses.inversor[month] + 
                            (losses.outras![month] || 0);
     }
     

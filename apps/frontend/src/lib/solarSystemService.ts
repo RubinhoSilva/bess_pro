@@ -597,7 +597,7 @@ export class SolarSystemService {
       perdaMismatch: dimensioningData.perdaMismatch,
       perdaCabeamento: dimensioningData.perdaCabeamento,
       perdaSujeira: dimensioningData.perdaSujeira,
-      perdaInversor: dimensioningData.perdaInversor,
+
       perdaOutras: dimensioningData.perdaOutras
     });
     
@@ -749,11 +749,11 @@ export class SolarSystemService {
       consumo_anual_kwh: consumoAnual,
       modulo,
       perdas: {
-        sujeira: dimensioningData.perdaSujeira || 5,
-        sombreamento: dimensioningData.perdaSombreamento || 3,
-        incompatibilidade: dimensioningData.perdaMismatch || 2,
-        fiacao: dimensioningData.perdaCabeamento || 2,
-        outras: (dimensioningData.perdaInversor || 3) + (dimensioningData.perdaOutras || 0)
+        sujeira: dimensioningData.perdaSujeira ?? 5,
+        sombreamento: dimensioningData.perdaSombreamento ?? 3,
+        incompatibilidade: dimensioningData.perdaMismatch ?? 2,
+        fiacao: dimensioningData.perdaCabeamento ?? 2,
+        outras: dimensioningData.perdaOutras ?? 0
       },
       fator_seguranca: 1.1,
       num_modules: dimensioningData.num_modules, // Incluir num_modules se fornecido
@@ -762,19 +762,18 @@ export class SolarSystemService {
     };
 
     // ===== DEBUG: PERDAS CALCULADAS E ENVIADAS PARA PVLIB =====
-    const perdasTotal = (dimensioningData.perdaSombreamento || 3) + 
-                       (dimensioningData.perdaMismatch || 2) + 
-                       (dimensioningData.perdaCabeamento || 2) + 
-                       (dimensioningData.perdaSujeira || 5) + 
-                       (dimensioningData.perdaInversor || 3) + 
-                       (dimensioningData.perdaOutras || 0);
+    const perdasTotal = (dimensioningData.perdaSombreamento ?? 3) + 
+                       (dimensioningData.perdaMismatch ?? 2) + 
+                       (dimensioningData.perdaCabeamento ?? 2) + 
+                       (dimensioningData.perdaSujeira ?? 5) + 
+                       (dimensioningData.perdaOutras ?? 0);
     console.log('🎯 [SolarSystemService] Perdas TOTAIS sendo enviadas para PVLIB:', perdasTotal + '%');
     console.log('🔧 [SolarSystemService] Breakdown das perdas:', {
       sombreamento: dimensioningData.perdaSombreamento || 3,
       mismatch: dimensioningData.perdaMismatch || 2,
       cabeamento: dimensioningData.perdaCabeamento || 2,
       sujeira: dimensioningData.perdaSujeira || 5,
-      inversor: dimensioningData.perdaInversor || 3,
+
       outras: dimensioningData.perdaOutras || 0,
       TOTAL: perdasTotal
     });

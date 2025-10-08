@@ -200,21 +200,21 @@ class SolarModuleData(BaseModel):
 class PerdasSistema(BaseModel):
     """Perdas do sistema fotovoltaico"""
 
-    sujeira: float = Field(default=1.0, ge=0, le=20, description="Perdas por sujeira (%)")
-    sombreamento: float = Field(default=2.0, ge=0, le=30, description="Perdas por sombreamento (%)")
-    incompatibilidade: float = Field(default=1.0, ge=0, le=10, description="Perdas por incompatibilidade/mismatch (%)")
-    fiacao: float = Field(default=0.5, ge=0, le=10, description="Perdas por fiação (%)")
-    outras: float = Field(default=0.5, ge=0, le=15, description="Outras perdas (%)")
+    sujeira: float = Field(..., ge=0, le=20, description="Perdas por sujeira (%)")
+    sombreamento: float = Field(..., ge=0, le=30, description="Perdas por sombreamento (%)")
+    incompatibilidade: float = Field(..., ge=0, le=10, description="Perdas por incompatibilidade/mismatch (%)")
+    fiacao: float = Field(..., ge=0, le=10, description="Perdas por fiação (%)")
+    outras: float = Field(..., ge=0, le=15, description="Outras perdas (%)")
 
     class Config:
         schema_extra = {
-            "example": {
-                "sujeira": 1.0,
-                "sombreamento": 2.0,
-                "incompatibilidade": 1.0,
-                "fiacao": 0.5,
-                "outras": 0.5
-            }
+        "example": {
+            "sujeira": 2.0,
+            "sombreamento": 3.0,
+            "incompatibilidade": 2.0,
+            "fiacao": 2.0,
+            "outras": 1.0
+        }
         }
 
 

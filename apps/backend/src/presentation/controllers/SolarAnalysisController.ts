@@ -230,17 +230,24 @@ export class SolarAnalysisController extends BaseController {
       console.log('   - Consumo mensal calculado:', consumoMensalKwh[0].toFixed(2), 'kWh/mês');
 
       // Use perdas from frontend if available, otherwise create defaults
-      const perdas = params.perdas || {
+      const perdas = params.perdas ?? {
         sujeira: 2.0,
-        sombreamento: params.aguasTelhado?.[0]?.sombreamentoParcial || 0.0,
+        sombreamento: params.aguasTelhado?.[0]?.sombreamentoParcial ?? 0.0,
         incompatibilidade: 1.0,
         fiacao: 0.5,
         outras: 0.5
       };
 
       // Log what we're using for debugging
-      console.log('📊 [NODE.JS] Perdas detalhadas:', perdas);
-      console.log('   - Fonte:', params.perdas ? 'Frontend' : 'Valores padrão');
+      console.log('📊 [NODE.JS] Perdas detalhadas recebidas do frontend:', perdas);
+      console.log('   - Fonte:', params.perdas ? 'Frontend (exato)' : 'Valores padrão (fallback)');
+      console.log('   - Valores individuais:');
+      console.log('     * Sujeira:', perdas.sujeira, '%');
+      console.log('     * Sombreamento:', perdas.sombreamento, '%');
+      console.log('     * Incompatibilidade:', perdas.incompatibilidade, '%');
+      console.log('     * Fiação:', perdas.fiacao, '%');
+      console.log('     * Outras:', perdas.outras, '%');
+      console.log('   - Total:', (perdas.sujeira + perdas.sombreamento + perdas.incompatibilidade + perdas.fiacao + perdas.outras), '%');
 
       // Preparar módulo com parâmetros Sandia (defaults razoáveis se não fornecidos)
       const modulo = {
@@ -441,7 +448,7 @@ export class SolarAnalysisController extends BaseController {
         perdaMismatch: params.perdaMismatch || 2,
         perdaCabeamento: params.perdaCabeamento || 2,
         perdaSujeira: params.perdaSujeira || 5,
-        perdaInversor: params.perdaInversor || 3,
+
         perdaOutras: params.perdaOutras || 0
       };
 

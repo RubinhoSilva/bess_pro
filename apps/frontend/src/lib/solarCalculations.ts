@@ -30,7 +30,7 @@ export interface SolarCalculationOptions {
   // Perdas específicas do usuário
   perdaMismatch?: number;
   perdaCabeamento?: number;
-  perdaInversor?: number;
+
 }
 
 export interface DetailedSolarResults {
@@ -491,7 +491,7 @@ export class AdvancedSolarCalculator {
       outrasPerdasPercentual = 0,
       perdaMismatch = 2,
       perdaCabeamento = 2,
-      perdaInversor = 3
+
     } = options;
     
     return {
@@ -501,14 +501,14 @@ export class AdvancedSolarCalculator {
       mismatch: Array(12).fill(perdaMismatch),
       cabeamento: Array(12).fill(perdaCabeamento),
       sujeira: Array(12).fill(considerarSujeira ? sujeira : 0),
-      inversor: Array(12).fill(perdaInversor),
+
       outras: outrasPerdasPercentual > 0 ? Array(12).fill(outrasPerdasPercentual) : undefined,
       total: irradiacao.map((_, month) => {
         const shadingLoss = considerarSombreamento ? (sombreamento[month] || sombreamento[0] || 0) : 0;
         const mismatchLoss = perdaMismatch;
         const cablingLoss = perdaCabeamento;
         const soilingLoss = considerarSujeira ? sujeira : 0;
-        const inverterLoss = perdaInversor;
+
         const otherLoss = outrasPerdasPercentual || 0;
         
         // Perdas não são simplesmente aditivas - aplicar fórmula multiplicativa

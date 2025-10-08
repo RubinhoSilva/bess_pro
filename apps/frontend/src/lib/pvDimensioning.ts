@@ -11,7 +11,6 @@ export function calculateSystemEfficiency(losses: SystemLosses | undefined, fall
                      (losses.perdaMismatch || 2) + 
                      (losses.perdaCabeamento || 2) + 
                      (losses.perdaSujeira || 5) + 
-                     (losses.perdaInversor || 3) + 
                      (losses.perdaOutras || 0);
   
   return Math.max(0, Math.min(100, 100 - totalLosses));
@@ -23,7 +22,7 @@ export interface SystemLosses {
   perdaMismatch?: number;
   perdaCabeamento?: number;
   perdaSujeira?: number;
-  perdaInversor?: number;
+
   perdaOutras?: number;
 }
 

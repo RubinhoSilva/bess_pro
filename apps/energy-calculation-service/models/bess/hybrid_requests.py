@@ -204,7 +204,7 @@ class HybridDimensioningRequest(BaseModel):
                         "sombreamento": 3.0,
                         "incompatibilidade": 1.0,
                         "fiacao": 0.5,
-                        "outras": 0.5
+                        "outras": 1.0
                     },
                     "modulo": {
                         "fabricante": "Canadian Solar",
