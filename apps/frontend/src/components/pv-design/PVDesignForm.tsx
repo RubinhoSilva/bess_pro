@@ -294,11 +294,12 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         };
 
         // Calcular resultados detalhados
+        const debugCalculationInfo = {
           potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
           localizacao: solarOptions.location,
           irradiacaoMensal: (solarOptions as any).irradiationData,
           parametrosSistema: (solarOptions as any).systemParams
-        });
+        };
 
         const advancedResults = await AdvancedSolarCalculator.calculateDetailedSolar(
           potenciaPico,
@@ -318,13 +319,14 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         // Cálculos financeiros básicos (manter compatibilidade)
         const tarifaB = currentDimensioning.tarifaEnergiaB || 0.8;
         const custoFioB = currentDimensioning.custoFioB || (tarifaB * 0.3);
+        const debugFinancialInfo = {
           tarifaEnergiaB: `R$ ${tarifaB.toFixed(4)}/kWh`,
           custoFioB: `R$ ${custoFioB.toFixed(4)}/kWh`,
           investimentoTotal: `R$ ${totalInvestment.toLocaleString('pt-BR')}`,
           vidaUtil: `${currentDimensioning.vidaUtil || 25} anos`,
           inflacaoEnergia: `${currentDimensioning.inflacaoEnergia || 4.5}%`,
           taxaDesconto: `${currentDimensioning.taxaDesconto || 8.0}%`
-        });
+        };
 
         const parametrosFinanceiros = {
           totalInvestment,
@@ -360,7 +362,9 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         const financialApiResponse = await apiClient.solarAnalysis.calculateAdvancedFinancial(basicFinancialApiInput);
         const financialResults = financialApiResponse.data;
         if (financialResults) {
+          // Financial results received
         } else {
+          // No financial results
         }
 
         // Análise financeira avançada
@@ -428,6 +432,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         };
 
         // Log: Finalizando todos os cálculos
+        const debugFinalResults = {
           potenciaPico: `${(potenciaPico || 0).toFixed(2)} kWp`,
           numeroModulos: numeroModulos || 0,
           areaEstimada: `${(areaEstimada || 0).toFixed(2)} m²`, 
@@ -438,15 +443,16 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           tir: `${((financialResults?.tir || 0) * 100).toFixed(2)}%`,
           economiaAnual: `R$ ${((financialResults as any)?.economiaAnual || 0).toLocaleString('pt-BR')}`,
           co2Evitado: `${((advancedResults as any)?.co2Savings || 0).toFixed(0)} kg/ano`
-        });
+        };
         
+        const debugPerformanceInfo = {
           irradiacaoMedia: `${(irradiacaoMediaAnual || 0).toFixed(2)} kWh/m²/dia`,
           hsol: `${((advancedResults as any)?.hsol || 0).toFixed(2)} horas`,
           pr: `${((advancedResults as any)?.pr || 0).toFixed(3)}`,
           fatorCapacidade: `${((advancedResults as any)?.capacityFactor || 0).toFixed(1)}%`,
           consumoTotal: `${(consumoTotalAnual || 0).toFixed(0)} kWh/ano`,
           autossuficiencia: `${(((geracaoEstimadaAnual||0)/(consumoTotalAnual||1))*100).toFixed(1)}%`
-        });
+        };
         
         
         // Cálculos adicionais do resumo financeiro
@@ -454,10 +460,10 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         const paybackMeses = (financialResults?.payback || 0) * 12;
         const roiAnual = totalInvestment > 0 ? (economiaAnual / totalInvestment) * 100 : 0;
         
-        
         // Tentar integração com backend se habilitado
         if (shouldUseBackendCalculations()) {
           try {
+            const debugBackendInfo = { attemptingBackendIntegration: true };
             
             const backendParams = {
               systemParams: {
@@ -488,6 +494,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
               }
             };
             
+            const debugBackendParams = { backendParams };
             
             const enhancedResults = await BackendCalculationService.enhanceWithBackendCalculations(
               '', // Não precisa mais de projectId
@@ -501,8 +508,10 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
             }
             
           } catch (error) {
+            const debugBackendError = { error };
           }
         } else {
+          const debugBackendDisabled = { backendCalculationsDisabled: true };
         }
         
 
@@ -661,11 +670,11 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           </Button>
           
           <div className="relative">
-            <Button 
-              onClick={() => {
-
-                saveDimensioning();
-              }} 
+          <Button 
+            onClick={() => {
+              const debugSaveInfo = { savingDimensioning: true };
+              saveDimensioning();
+            }}
               disabled={isSaving || !currentDimensioning.customer || !currentDimensioning.dimensioningName?.trim()}
               variant="outline" 
               className="text-blue-600 dark:text-blue-400 border-blue-500 hover:bg-blue-500/20 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50"

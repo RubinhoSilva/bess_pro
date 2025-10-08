@@ -20,7 +20,6 @@ export const useCreateKanbanColumn = () => {
       toast.success('Coluna criada com sucesso!');
     },
     onError: (error) => {
-      console.error('Error creating column:', error);
       toast.error('Erro ao criar coluna');
     },
   });
@@ -37,7 +36,6 @@ export const useUpdateKanbanColumn = () => {
       toast.success('Coluna atualizada com sucesso!');
     },
     onError: (error) => {
-      console.error('Error updating column:', error);
       toast.error('Erro ao atualizar coluna');
     },
   });
@@ -53,7 +51,6 @@ export const useDeleteKanbanColumn = () => {
       toast.success('Coluna removida com sucesso!');
     },
     onError: (error) => {
-      console.error('Error deleting column:', error);
       toast.error('Erro ao remover coluna');
     },
   });
@@ -69,7 +66,6 @@ export const useReorderKanbanColumns = () => {
       toast.success('Colunas reordenadas com sucesso!');
     },
     onError: (error) => {
-      console.error('Error reordering columns:', error);
       toast.error('Erro ao reordenar colunas');
     },
   });

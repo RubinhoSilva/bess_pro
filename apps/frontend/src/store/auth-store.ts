@@ -176,7 +176,6 @@ export const useAuthStore = create<AuthStore>()(
           });
           
           // Don't throw error to avoid unhandled rejections
-          console.warn('Auth check failed, user will be redirected to login');
         }
       },
     }),

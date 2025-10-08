@@ -103,7 +103,6 @@ export function useDeleteClient() {
       toast.success('Cliente excluído com sucesso!');
     },
     onError: (error: any, id) => {
-      console.error('Erro ao deletar cliente:', error, 'ID:', id);
       const message = error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Erro ao excluir cliente';
       toast.error(typeof message === 'string' ? message : 'Erro ao excluir cliente');
     },

@@ -49,7 +49,6 @@ export const useInviteUserToTeam = () => {
       toast.success('Convite enviado com sucesso!');
     },
     onError: (error: any) => {
-      console.error('Erro ao convidar usuário:', error);
       const errorMessage = error.response?.data?.error?.message || 'Erro ao enviar convite';
       toast.error(errorMessage);
     },
@@ -78,7 +77,6 @@ export const useUpdateUserRole = () => {
       toast.success('Role do usuário alterada com sucesso!');
     },
     onError: (error: any) => {
-      console.error('Erro ao alterar role do usuário:', error);
       const errorMessage = error.response?.data?.error?.message || 'Erro ao alterar role';
       toast.error(errorMessage);
     },
@@ -99,7 +97,6 @@ export const useRemoveUserFromTeam = () => {
       toast.success('Usuário removido do team com sucesso!');
     },
     onError: (error: any) => {
-      console.error('Erro ao remover usuário:', error);
       const errorMessage = error.response?.data?.error?.message || 'Erro ao remover usuário';
       toast.error(errorMessage);
     },

@@ -193,7 +193,7 @@ export async function calculateHybridSystem(
  * ```typescript
  * const health = await healthCheckBess();
  * if (health.status === 'healthy') {
- *   console.log('Serviço BESS está disponível');
+ *   // Serviço BESS está disponível
  * }
  * ```
  */
@@ -213,8 +213,6 @@ export async function healthCheckBess(): Promise<BessHealthCheckResponse> {
     return response.data;
 
   } catch (error: any) {
-    console.error('❌ [FRONTEND] Health check do serviço BESS falhou:', error);
-
     throw new Error(
       error.response?.data?.error ||
       'Não foi possível verificar o status do serviço BESS'
@@ -235,7 +233,7 @@ export async function healthCheckBess(): Promise<BessHealthCheckResponse> {
  * ```typescript
  * const errors = validateHybridRequest(request);
  * if (errors.length > 0) {
- *   console.error('Erros de validação:', errors);
+ *   // Erros de validação encontrados
  * }
  * ```
  */

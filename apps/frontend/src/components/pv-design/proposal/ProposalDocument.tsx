@@ -40,23 +40,27 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
   const showServices = settings?.show_services ?? true;
 
   // Log para verificar dados recebidos
+  const debugResultsInfo = { results };
 
   // Log para verificar configurações das páginas
+  const debugPagesInfo = {
     showIntro,
     showTech,
     showFinancial,
     showServices,
     totalPages: 1 + (showIntro ? 1 : 0) + (showTech ? 3 : 0) + (showFinancial ? 2 : 0) + (showServices ? 2 : 0) + 1
-  });
+  };
 
   // Log para detectar quando o componente está montado
   React.useEffect(() => {
+    const debugMountInfo = { mounted: true };
     
     const pages = document.querySelectorAll('.proposal-page');
     
     pages.forEach((page, index) => {
       const element = page as HTMLElement;
       const rect = element.getBoundingClientRect();
+      const debugPageInfo = {
         width: rect.width,
         height: rect.height,
         scrollHeight: element.scrollHeight,
@@ -64,7 +68,7 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
         clientHeight: element.clientHeight,
         overflow: window.getComputedStyle(element).overflow,
         pageBreakAfter: window.getComputedStyle(element).pageBreakAfter
-      });
+      };
     });
   }, []);
 

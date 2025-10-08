@@ -35,7 +35,6 @@ class SocketService {
       });
 
       this.socket.on('connect_error', (error) => {
-        console.error('❌ Erro na conexão WebSocket:', error);
         this.isConnected = false;
       });
     }

@@ -179,7 +179,6 @@ export function useLazyComponent<P extends object>(
       setComponent(() => module.default);
     } catch (err) {
       setError(err as Error);
-      console.error('Error loading component:', err);
     } finally {
       setIsLoading(false);
     }

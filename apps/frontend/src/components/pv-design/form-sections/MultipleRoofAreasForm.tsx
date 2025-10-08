@@ -141,11 +141,6 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
           geracaoAnual: Math.round(geracaoEstimadaAnual)
         };
         
-          numeroModulos: numeroModulosCalculados,
-          areaEstimada: Math.round(areaEstimada),
-          geracaoAnual: Math.round(geracaoEstimadaAnual)
-        });
-        
         onAguasChange(aguasAtualizadas);
       }
     }
@@ -173,6 +168,7 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
     onAguasChange(updatedAreas);
 
     try {
+      const requestData = {
         totalAguas: aguasTelhado.length,
         aguas: aguasTelhado.map(a => ({
           nome: a.nome,
@@ -182,7 +178,7 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
         })),
         latitude,
         longitude
-      });
+      };
 
       // Preparar dados do inversor para incluir em cada água
       const inverterData = selectedInverters && selectedInverters.length > 0 ? {
@@ -253,15 +249,16 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
             isCalculando: false
           };
         });
-        
-          areaTotal: dados.area_necessaria_m2,
-          geracaoTotal: dados.energia_total_anual_kwh,
-          distribuicao: finalAreas.map(a => ({
-            nome: a.nome,
-            area: a.areaCalculada?.toFixed(2),
-            geracao: a.geracaoAnual?.toFixed(2)
-          }))
-        });
+          
+          const debugInfo = {
+            areaTotal: dados.area_necessaria_m2,
+            geracaoTotal: dados.energia_total_anual_kwh,
+            distribuicao: finalAreas.map(a => ({
+              nome: a.nome,
+              area: a.areaCalculada?.toFixed(2),
+              geracao: a.geracaoAnual?.toFixed(2)
+            }))
+          };
         
         onAguasChange(finalAreas);
       } else {

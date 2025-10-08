@@ -254,7 +254,6 @@ export class PVGISAPI {
       const data: PVGISResponse = await response.json();
       return data;
     } catch (error) {
-      console.error('Erro ao buscar dados PVGIS:', error);
       throw error;
     }
   }
@@ -286,7 +285,6 @@ export class PVGISAPI {
       const data: PVGISHorizonResponse = await response.json();
       return data;
     } catch (error) {
-      console.error('Erro ao buscar perfil de horizonte PVGIS:', error);
       throw error;
     }
   }
@@ -334,7 +332,6 @@ export class PVGISAPI {
       const data: PVGISDailyRadiationResponse = await response.json();
       return data;
     } catch (error) {
-      console.error('Erro ao buscar irradiação diária PVGIS:', error);
       throw error;
     }
   }
@@ -371,7 +368,7 @@ export class PVGISAPI {
           bestMonthlyYields = result.outputs.monthly.map(m => m.E_m);
         }
       } catch (error) {
-        console.warn(`Erro ao testar ângulo ${angle}:`, error);
+
       }
     }
 

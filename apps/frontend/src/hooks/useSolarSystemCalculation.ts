@@ -92,7 +92,6 @@ export const useSolarSystemCalculation = (): UseSolarSystemCalculationReturn => 
     } catch (err: any) {
       const errorMessage = err.message || 'Erro ao buscar dados de irradiação';
       setError(errorMessage);
-      console.error('Erro ao buscar dados de irradiação:', err);
     }
   }, []);
 

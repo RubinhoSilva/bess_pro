@@ -68,7 +68,7 @@ export function ConfirmationDialogExample() {
             cancelText: 'Descartar',
             variant: 'info'
           },
-          () => {/* // // // console.log('Dados salvos') */}
+          () => {/* Dados salvos */}
         )}
       >
         Salvar com Confirmação

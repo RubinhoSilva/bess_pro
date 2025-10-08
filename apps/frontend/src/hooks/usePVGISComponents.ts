@@ -71,7 +71,6 @@ export const usePVGISComponents = (): UsePVGISComponentsResult => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        // console.error('❌ Erro na resposta PVGIS:', errorText);
         throw new Error(`Erro na API PVGIS: ${response.status} ${response.statusText}`);
       }
 
@@ -157,7 +156,7 @@ export const usePVGISComponents = (): UsePVGISComponentsResult => {
             }
           }
         } catch (basicError) {
-          // console.warn('Erro ao buscar dados básicos PVGIS:', basicError);
+          // Silently fail for basic data
         }
       }
       
@@ -199,7 +198,6 @@ export const usePVGISComponents = (): UsePVGISComponentsResult => {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      // console.error('❌ Erro ao buscar componentes PVGIS:', error);
       setError(`Falha ao obter componentes de radiação: ${errorMessage}`);
       setData(null);
     } finally {

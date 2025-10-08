@@ -99,7 +99,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   // Função para chamar a API financeira do Python via backend
   const callPythonFinancialAPI = async (financialData: any) => {
     try {
-
+      const debugApiCall = { callingPythonAPI: true };
       
       // Importar a API client
       const { apiClient } = await import('@/lib/api');
@@ -119,15 +119,15 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         inflacao_om: financialData.inflacao_om,
         modalidade_tarifaria: financialData.modalidade_tarifaria || 'convencional'
       };
-      
 
-      
+      const debugFinancialInput = { financialInput };
+
       const response = await apiClient.solarAnalysis.calculateAdvancedFinancial(financialInput);
-
 
       // Extrair apenas os dados da API Python, não o wrapper do backend
       const apiData = response.data.data || response.data;
 
+      const debugApiResponse = { apiData };
 
       // Converter snake_case (Python) para camelCase (TypeScript)
       const transformedData = {
@@ -179,8 +179,9 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         },
         // Mapear cenarios (Python) para scenarios (Frontend)
         scenarios: apiData.cenarios || null
-      };
+        };
 
+      const debugTransformedData = { transformedData };
 
       return transformedData;
     } catch (error) {
@@ -253,6 +254,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       try {
         await saveDimensioning();
       } catch (error: any) {
+        const debugSaveError = { error };
         
         let errorMessage = "Erro ao salvar o progresso.";
         
@@ -485,6 +487,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       }
 
       // Usar dados diretos do dimensionamento (já calculados no resumo)
+      const debugDimensioningData = {
         numeroModulos: currentDimensioning.numeroModulos,
         potenciaModulo: currentDimensioning.potenciaModulo,
         irradiacaoMensal: currentDimensioning.irradiacaoMensal,
@@ -493,7 +496,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         areaEstimada: (currentDimensioning as any).areaEstimada || 0,
         geracaoEstimadaAnual: (currentDimensioning as any).geracaoEstimadaAnual || 0,
         geracaoEstimadaMensal: (currentDimensioning as any).geracaoEstimadaMensal || Array(12).fill(0)
-      });
+      };
       
       // Se os dados não estão calculados, chamar a rota novamente
       let potenciaPico, numeroModulos, areaEstimada, geracaoEstimadaAnual, geracaoEstimadaMensal;
@@ -510,11 +513,13 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         const totalGeracaoAguas = currentDimensioning.aguasTelhado.reduce((total: number, agua: any) => total + (agua.geracaoAnual || 0), 0);
         const totalAreaAguas = currentDimensioning.aguasTelhado.reduce((total: number, agua: any) => total + (agua.areaCalculada || 0), 0);
         
+        const debugAguasData = {
           totalModulos: totalModulosAguas,
           totalGeracao: `${totalGeracaoAguas.toFixed(0)} kWh/ano`,
           totalArea: `${totalAreaAguas.toFixed(2)} m²`,
           numeroAguas: currentDimensioning.aguasTelhado.length
-        });
+        };
+        const debugAguasInfo = { aguasInfo: debugAguasData };
         
         // Sobrescrever variáveis com dados das águas de telhado
         numeroModulos = totalModulosAguas;
@@ -523,11 +528,13 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         potenciaPico = (numeroModulos * (currentDimensioning.potenciaModulo || 550)) / 1000;
         geracaoEstimadaMensal = Array(12).fill(geracaoEstimadaAnual / 12);
         
+        const debugAguasResultsData = {
           potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
           numeroModulos: `${numeroModulos} unidades`,
           areaEstimada: `${areaEstimada.toFixed(2)} m²`,
           geracaoAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`
-        });
+        };
+        const debugAguasResults = { aguasResults: debugAguasResultsData };
       }
       
       // Calcular perdas totais do sistema
@@ -543,7 +550,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         // Chamar a mesma rota que funciona no resumo: /api/v1/solar-analysis/calculate-advanced-modules
         
         try {
-        const response = await fetch('http://localhost:8010/api/v1/solar-analysis/calculate-advanced-modules', {
+          const debugApiCall = { callingAdvancedModulesAPI: true };
+          const response = await fetch('http://localhost:8010/api/v1/solar-analysis/calculate-advanced-modules', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -625,22 +633,27 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       }
       } // Fechamento do if (!hasAguasTelhado)
       
+      const debugSystemInfo = {
         potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
         numeroModulos: `${numeroModulos} unidades`,
         areaEstimada: `${areaEstimada.toFixed(2)} m²`,
         geracaoAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`,
         fonte: 'Dados do dimensionamento'
-      });
+      };
+      const debugSystemData = { systemData: debugSystemInfo };
       
+      const debugSystemResultsInfo = {
         potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
         numeroModulos: `${numeroModulos} unidades`,
         areaEstimada: `${areaEstimada.toFixed(2)} m²`,
         geracaoAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`
-      });
+      };
+      const debugSystemResults = { systemResults: debugSystemResultsInfo };
 
       // Usar geração mensal calculada diretamente
       const geracaoAnualAdvanced = geracaoEstimadaAnual;
       
+      const debugPerformanceInfo = {
         potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
         numeroModulos: `${numeroModulos} unidades`,
         areaEstimada: `${areaEstimada.toFixed(2)} m²`,
@@ -649,18 +662,21 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
           yieldEspecifico: `${(geracaoEstimadaAnual / potenciaPico).toFixed(0)} kWh/kWp`,
           fatorCapacidade: `${((geracaoEstimadaAnual / (potenciaPico * 8760)) * 100).toFixed(1)}%`
         }
-      });
+      };
+      const debugPerformanceData = { performanceData: debugPerformanceInfo };
 
       // Financial calculations
       const tarifaB = currentDimensioning.tarifaEnergiaB || 0.8;
       const custoFioB = currentDimensioning.custoFioB || (tarifaB * 0.3);
+      const debugFinancialInfo = {
         tarifaEnergiaB: `R$ ${tarifaB.toFixed(4)}/kWh`,
         custoFioB: `R$ ${custoFioB.toFixed(4)}/kWh`,
         investimentoTotal: `R$ ${totalInvestment.toLocaleString('pt-BR')}`,
         vidaUtil: `${currentDimensioning.vidaUtil || 25} anos`,
         inflacaoEnergia: `${currentDimensioning.inflacaoEnergia || 4.5}%`,
         taxaDesconto: `${currentDimensioning.taxaDesconto || 8.0}%`
-      });
+      };
+      const debugFinancialParams = { financialParams: debugFinancialInfo };
 
       // Usar API Python para cálculos financeiros básicos
       const basicFinancialInput = {
@@ -688,6 +704,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         const vpl = financialResults.vpl || 0;
         const tir = financialResults.tir || 0;
         
+        const debugFinancialResults = { economiaAnual, payback, vpl, tir };
       }
 
       // Advanced financial analysis
@@ -738,12 +755,13 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       // Mapear 'cenarios' (Python) para 'scenarios' (Frontend)
       const scenarioAnalysis = (advancedFinancialResults as any)?.cenarios || null;
       
-
+      const debugAdvancedFinancialInfo = {
         potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
         numeroModulos: `${numeroModulos} unidades`,
         areaEstimada: `${areaEstimada.toFixed(2)} m²`,
         geracaoEstimadaAnual: `${geracaoEstimadaAnual.toFixed(0)} kWh/ano`
-      });
+      };
+      const debugAdvancedFinancialData = { advancedFinancialData: debugAdvancedFinancialInfo };
 
       // Financial calculations completed - re-enable button
       setIsCalculating(false);
@@ -828,6 +846,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       }
 
       // Log: Finalizando cálculos principais 
+      const debugFinalCalculations = { finalizingCalculations: true };
       
       // Cálculos adicionais do resumo do wizard
       const economiaAnualWizard = ((financialResults as any)?.economiaAnual || 0);
@@ -838,6 +857,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       // Tentar integração com backend se habilitado
       if (shouldUseBackendCalculations()) {
         try {
+          const debugBackendIntegration = { attemptingBackendIntegration: true };
           
           const backendParams = {
             systemParams: {
@@ -868,6 +888,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
             }
           };
           
+          const debugBackendParams = { backendParams };
           
           const enhancedResults = await BackendCalculationService.enhanceWithBackendCalculations(
             '', // Não precisa mais de projectId
@@ -881,8 +902,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
           }
           
         } catch (error) {
+          const debugBackendError = { error };
         }
       } else {
+        const debugBackendDisabled = { backendCalculationsDisabled: true };
       }
 
       // Finalizar logging

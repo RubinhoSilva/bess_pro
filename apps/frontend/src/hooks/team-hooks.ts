@@ -29,7 +29,6 @@ export const useCreateTeam = () => {
       toast.success('Team criado com sucesso!');
     },
     onError: (error: any) => {
-      console.error('Erro ao criar team:', error);
       toast.error(error.response?.data?.message || 'Erro ao criar team');
     },
   });
@@ -47,7 +46,6 @@ export const useUpdateTeam = () => {
       toast.success('Team atualizado com sucesso!');
     },
     onError: (error: any) => {
-      console.error('Erro ao atualizar team:', error);
       toast.error(error.response?.data?.message || 'Erro ao atualizar team');
     },
   });
@@ -63,7 +61,6 @@ export const useInactivateTeam = () => {
       toast.success('Team inativado com sucesso!');
     },
     onError: (error: any) => {
-      console.error('Erro ao inativar team:', error);
       toast.error(error.response?.data?.message || 'Erro ao inativar team');
     },
   });

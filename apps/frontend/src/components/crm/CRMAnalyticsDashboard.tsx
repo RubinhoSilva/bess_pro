@@ -224,6 +224,7 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
     };
     
     // Debug: log the client type distribution
+    const debugInfo = {
       ...stats,
       totalLeads: filteredLeads.length,
       sampleLeads: filteredLeads.slice(0, 5).map(lead => ({
@@ -239,7 +240,7 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
         name: lead.name,
         clientType: lead.clientType
       })).slice(0, 3)
-    });
+    };
     
     return stats;
   }, [filteredLeads]);

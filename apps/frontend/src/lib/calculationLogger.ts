@@ -37,32 +37,6 @@ export class FrontendCalculationLogger {
     // Adicionar dados extras se disponíveis
     if (log.description) {
       console.group(consoleMessage);
-      console.info('📋 Descrição:', log.description);
-    } else {
-    }
-    
-    if (log.formula) {
-      console.info('🧮 Fórmula:', log.formula);
-    }
-    
-    if (log.variables) {
-      console.info('📊 Variáveis:', log.variables);
-    }
-    
-    if (log.operation) {
-      console.info('⚙️ Operação:', log.operation);
-    }
-    
-    if (log.units) {
-      console.info('📏 Unidades:', log.units);
-    }
-    
-    if (log.references && log.references.length > 0) {
-      console.info('📚 Referências:', log.references);
-    }
-    
-    if (log.data) {
-      console.info('💾 Resultado:', log.data);
     }
     
     if (log.description) {

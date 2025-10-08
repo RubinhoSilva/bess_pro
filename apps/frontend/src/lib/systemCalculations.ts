@@ -110,12 +110,7 @@ export class SystemCalculations {
         geracaoEstimadaAnual = pvlibResult.annual_energy;
         geracaoEstimadaMensal = pvlibResult.monthly_energy;
         usedPVLIB = true;
-          geracaoAnual: geracaoEstimadaAnual.toFixed(2),
-          coordenadas: { latitude, longitude },
-          orientacao: { tilt: inclinacao, azimuth: orientacao }
-        });
       } catch (error) {
-        console.warn('Erro ao usar PVLIB, usando cálculo PVGIS:', error);
         // Fallback para cálculo PVGIS
         geracaoEstimadaMensal = this.calculateWithPVGIS(potenciaPico, irradiacaoMensal, eficienciaDecimal);
         geracaoEstimadaAnual = geracaoEstimadaMensal.reduce((a, b) => a + b, 0);

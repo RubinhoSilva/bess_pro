@@ -54,7 +54,6 @@ export function useSafeData<T>(
       setIsValid(true);
       setError(null);
     } catch (err) {
-      console.error('Erro na validação de dados:', err);
       setSafeData(defaultValue);
       setIsValid(false);
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
@@ -87,7 +86,6 @@ export function useSafeProperty<T extends Record<string, any>, K extends keyof T
         setValue(defaultValue);
       }
     } catch (err) {
-      console.error(`Erro ao acessar propriedade ${String(key)}:`, err);
       setValue(defaultValue);
     }
   }, [obj, key, defaultValue]);

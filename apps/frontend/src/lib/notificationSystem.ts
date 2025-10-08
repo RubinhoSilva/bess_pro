@@ -224,7 +224,7 @@ export class NotificationManager {
       };
       localStorage.setItem(this.storage_key, JSON.stringify(data));
     } catch (error) {
-      console.warn('Failed to save notifications to storage:', error);
+      // Silently fail for storage operations
     }
   }
 
@@ -247,7 +247,6 @@ export class NotificationManager {
         );
       }
     } catch (error) {
-      console.warn('Failed to load notifications from storage:', error);
       this.notifications = [];
     }
   }

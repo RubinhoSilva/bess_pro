@@ -125,6 +125,7 @@ const validateAndNormalizeResults = (results: any) => {
   }
 
   // Log dos dados recebidos para debug
+  const debugResultsData = { results };
 
   const normalized: any = {
     ...results,
@@ -307,6 +308,7 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
       // 6. Pega todas as páginas
       const pages = proposalElement.querySelectorAll('.proposal-page');
 
+      const debugPagesCount = { pagesCount: pages.length };
 
       if (pages.length === 0) {
         throw new Error('Nenhuma página encontrada no documento');
@@ -316,6 +318,7 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
       pages.forEach((page, index) => {
         const element = page as HTMLElement;
         const rect = element.getBoundingClientRect();
+        const debugPageInfo = {
           offsetWidth: element.offsetWidth,
           offsetHeight: element.offsetHeight,
           scrollWidth: element.scrollWidth,
@@ -330,7 +333,8 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
             top: rect.top,
             left: rect.left
           }
-        });
+        };
+        const debugPageDetails = { pageDetails: debugPageInfo };
       });
 
       // 7. Cria o PDF
@@ -339,10 +343,11 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
 
-      // 8. Processa cada página
+       // 8. Processa cada página
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i] as HTMLElement;
 
+        const debugPageProcessing = { processingPage: i };
 
         // Ajusta o scrollWidth para páginas muito largas (como a Page 6)
         const captureWidth = Math.min(page.scrollWidth, 792); // Limita a largura máxima
@@ -358,10 +363,12 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
           logging: true, // Ativa logs do html2canvas
         });
 
+        const debugCanvasData = {
           canvasWidth: canvas.width,
           canvasHeight: canvas.height,
           dataURLLength: canvas.toDataURL('image/png').length
-        });
+        };
+        const debugCanvasInfo = { canvasInfo: debugCanvasData };
 
         const imgData = canvas.toDataURL('image/png');
         const imgProps = pdf.getImageProperties(imgData);

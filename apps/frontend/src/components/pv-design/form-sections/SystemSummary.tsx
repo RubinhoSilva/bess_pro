@@ -29,10 +29,11 @@ interface SystemSummaryProps {
 }
 
 const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '', onDimensioningChange, aguasTelhado = [], showDimensioningSlider = false }) => {
+  const debugInitialInfo = {
     aguasTelhado: aguasTelhado.map(agua => ({ id: agua.id, nome: agua.nome, numeroModulos: agua.numeroModulos })),
     formDataModulos: formData.numeroModulos,
     formDataModulosCalculado: formData.numeroModulosCalculado
-  });
+  };
   // All hooks must be declared at the top level
   const [systemResults, setSystemResults] = useState<SystemCalculationResults | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -55,13 +56,14 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '',
   // Calcular totais das águas de telhado usando estado local
   const getTotalModulosDimensionados = () => {
     const total = localAguasTelhado.reduce((total, agua) => total + agua.numeroModulos, 0);
+    const debugModulosInfo = {
       localAguasTelhado: localAguasTelhado.map(agua => ({ 
         id: agua.id, 
         nome: agua.nome, 
         numeroModulos: agua.numeroModulos 
       })), 
       total 
-    });
+    };
     return total;
   };
 

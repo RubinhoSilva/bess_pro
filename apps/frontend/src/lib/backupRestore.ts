@@ -138,7 +138,7 @@ export class BackupRestoreManager {
       // Manter apenas os 5 backups mais recentes
       this.cleanupAutoBackups();
     } catch (error) {
-      console.warn('Não foi possível criar backup automático:', error);
+      // Silently fail for auto backup
     }
   }
 
@@ -156,7 +156,6 @@ export class BackupRestoreManager {
             backups.push({ key, backup });
           }
         } catch (error) {
-          console.warn(`Backup corrompido encontrado: ${key}`);
           localStorage.removeItem(key);
         }
       }
@@ -268,7 +267,7 @@ export class BackupRestoreManager {
     const maxAge = 365 * 24 * 60 * 60 * 1000; // 1 ano
     
     if (age > maxAge) {
-      console.warn('Backup muito antigo - pode haver problemas de compatibilidade');
+      // Backup muito antigo - pode haver problemas de compatibilidade
     }
   }
 

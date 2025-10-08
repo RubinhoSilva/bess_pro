@@ -54,7 +54,6 @@ export class PDFGenerator {
 
       return new Blob([this.pdf.output('blob')], { type: 'application/pdf' });
     } catch (error) {
-      console.error('Error generating PDF:', error);
       throw new Error('Falha ao gerar PDF da proposta');
     }
   }

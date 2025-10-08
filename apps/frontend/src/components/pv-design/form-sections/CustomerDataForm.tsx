@@ -89,8 +89,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
           pageSize: 20 
         });
         
-        // // // // console.log('Response structure:', leadsResponse.data);
-        
+
         // Tentar diferentes estruturas de resposta
         let leadsData = null;
         if (leadsResponse?.data?.data?.leads) {
@@ -188,7 +187,6 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
     try {
       // Validar se o cliente possui dados necessários
       if (!customer || !customer.id || !customer.displayName) {
-        // // // // // console.error('Cliente inválido selecionado:', customer);
         return;
       }
 
@@ -237,7 +235,6 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
       setSearchTerm(customer.displayName);
       setIsDropdownOpen(false);
     } catch (error) {
-      // // // // // console.error('Erro ao selecionar cliente:', error);
       // Manter dropdown aberto em caso de erro
     }
   };
@@ -306,7 +303,6 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   {searchResults.map((result, index) => {
                     // Validação de segurança para cada resultado
                     if (!result || !result.id || !result.displayName) {
-                      // // // // // console.warn('Resultado inválido ignorado:', result);
                       return null;
                     }
                     

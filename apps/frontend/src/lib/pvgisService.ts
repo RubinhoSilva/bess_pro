@@ -71,12 +71,6 @@ export const fetchPVGISData = async (
   // Converter orientação para convenção PVGIS
   const pvgisOrientation = convertOrientationToPVGIS(orientacao);
 
-    orientacaoSistema: orientacao,
-    orientacaoPVGIS: pvgisOrientation,
-    inclinacao: inclinacao,
-    dataSource: dataSource || 'pvgis (padrão)'
-  });
-
   // Detectar ambiente automaticamente
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const baseUrl = isDevelopment
@@ -101,6 +95,7 @@ export const fetchPVGISData = async (
   const url = `${baseUrl}?${params.toString()}`;
 
   try {
+    const debugPVGISCall = { callingPVGIS: true };
 
     // Endpoint PVGIS agora é público - não requer autenticação
     const response = await fetch(url, {
@@ -111,11 +106,11 @@ export const fetchPVGISData = async (
       // Aumentar timeout para 60 segundos
       signal: AbortSignal.timeout(60000),
     });
-    
+
+    const debugResponse = { responseStatus: response.status };
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Erro na resposta:', errorText);
       throw new Error(`Erro na API PVGIS: ${response.status} ${response.statusText}`);
     }
 
@@ -152,8 +147,6 @@ export const fetchPVGISData = async (
     };
     
   } catch (error) {
-    console.error('Erro ao buscar dados PVGIS:', error);
-    
     if (error instanceof Error) {
       throw new Error(`Falha ao obter dados de irradiação: ${error.message}`);
     }

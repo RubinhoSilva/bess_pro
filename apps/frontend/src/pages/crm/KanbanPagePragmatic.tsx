@@ -311,8 +311,6 @@ const KanbanPagePragmatic: React.FC = () => {
           const [draggedColumn] = reorderedColumns.splice(draggedIndex, 1);
           reorderedColumns.splice(targetIndex, 0, draggedColumn);
 
-          });
-
           handleReorderColumns(reorderedColumns);
         }
       },
