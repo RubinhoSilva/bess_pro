@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Calculator, Battery, Sun, Fuel } from 'lucide-react';
 import { BESSSystemConfiguration } from './BESSAnalysisTool';
 import { useToast } from '@/components/ui/use-toast';
-import CustomerDataForm from '../pv-design/form-sections/CustomerDataForm';
 import { CustomCurrencyInput } from '@/components/ui/currency-input';
 import { calculateHybridSystem, validateHybridRequest } from '@/lib/bessAnalysisService';
 import { HybridDimensioningRequest, SistemaSolarParams } from '@/types/bess';
@@ -65,7 +64,6 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
   isLeadLocked = false
 }) => {
   const { toast } = useToast();
-  const [currentLead, setCurrentLead] = useState(selectedLead || null);
   const [inputs, setInputs] = useState<SimulationInputs>({
     latitude: -23.5505,
     longitude: -46.6333,
@@ -103,26 +101,12 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
     setInputs(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleLeadChange = (field: string, value: any) => {
-    if (field === 'lead' || field === 'customer') {
-      setCurrentLead(value);
-    }
-  };
-
   const runBESSSimulation = async () => {
     // ========================================================================
     // ETAPA 1: VALIDAÇÕES
     // ========================================================================
 
-    // Validar se o lead está selecionado
-    if (!currentLead) {
-      toast({
-        variant: "destructive",
-        title: "Lead obrigatório",
-        description: "Selecione um lead antes de executar a simulação.",
-      });
-      return;
-    }
+
 
     // Validar se tem dados solares quando solar está selecionado
     if (systemConfig.solar && (!inputs.potenciaSolar || !inputs.irradiacao)) {
@@ -348,8 +332,8 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
         ...response.data,
         // Adicionar metadados úteis
         _metadata: {
-          leadId: currentLead.id,
-          leadName: currentLead.name,
+          leadId: selectedLead?.id,
+          leadName: selectedLead?.name,
           systemConfig,
           calculatedAt: new Date().toISOString(),
           duration_ms: response.metadata.duration_ms,
@@ -410,15 +394,6 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
           </div>
         </div>
       </motion.div>
-
-      {/* Campo de Lead */}
-      <div className="mb-6">
-        <CustomerDataForm 
-          formData={{ lead: currentLead, customer: currentLead }}
-          onFormChange={handleLeadChange}
-          isLeadLocked={isLeadLocked}
-        />
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Dados Gerais */}
@@ -700,7 +675,7 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
       >
         <Button
           onClick={runBESSSimulation}
-          disabled={isSimulating || !currentLead}
+          disabled={isSimulating || !selectedLead}
           size="lg"
           className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white px-10 py-6 text-xl font-semibold rounded-full shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -717,15 +692,15 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
           )}
         </Button>
         
-        {!currentLead && (
+        {!selectedLead && (
           <p className="text-red-500 text-sm mt-2">
             ⚠️ Selecione um lead para executar a simulação
           </p>
         )}
         
-        {currentLead && (
+        {selectedLead && (
           <p className="text-green-600 text-sm mt-2">
-            ✅ Lead selecionado: {currentLead.name}
+            ✅ Lead selecionado: {selectedLead.name}
           </p>
         )}
       </motion.div>

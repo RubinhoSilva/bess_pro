@@ -132,6 +132,9 @@ interface DimensioningData {
   perdaOutras?: number;
   selectedModuleId?: string;
   moduloSelecionado?: string;
+  fabricanteModulo?: string;
+  fabricanteModuloNome?: string;
+  modeloModulo?: string;
   eficienciaModulo?: number;
   tensaoModulo?: number;
   correnteModulo?: number;
@@ -247,6 +250,9 @@ const getInitialDimensioningData = (): DimensioningData => ({
   
   // Dados adicionais do módulo
   moduloSelecionado: '',
+  fabricanteModulo: '',
+  fabricanteModuloNome: '',
+  modeloModulo: '',
   eficienciaModulo: 0,
   tensaoModulo: 0,
   correnteModulo: 0,
@@ -400,7 +406,14 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
         numeroModulos: 20,
         sombreamentoParcial: 0,
         areaDisponivel: 50
-      }]
+      }],
+      // Ensure module fields are properly loaded
+      fabricanteModulo: data.fabricanteModulo || '',
+      fabricanteModuloNome: data.fabricanteModuloNome || '',
+      modeloModulo: data.modeloModulo || '',
+      eficienciaModulo: data.eficienciaModulo || 0,
+      tensaoModulo: data.tensaoModulo || 0,
+      correnteModulo: data.correnteModulo || 0
     };
     
     setCurrentDimensioning(loadedData);
@@ -411,6 +424,12 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     sessionStorage.setItem('continueDimensioning', 'true');
     
     console.log('📂 Dimensionamento carregado explicitamente:', data.dimensioningName);
+    console.log('🔍 [loadDimensioning] Dados do módulo carregados:', {
+      fabricanteModulo: loadedData.fabricanteModulo,
+      moduloSelecionado: loadedData.moduloSelecionado,
+      fabricanteModuloNome: loadedData.fabricanteModuloNome,
+      modeloModulo: loadedData.modeloModulo
+    });
     toast.success(`Dimensionamento "${data.dimensioningName}" carregado com sucesso.`);
   }, []);
 

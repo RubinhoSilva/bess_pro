@@ -92,6 +92,13 @@ function PVDesignPageContent() {
           numeroModulos: project.projectData.numeroModulos || 0,
           eficienciaSistema: project.projectData.eficienciaSistema || 85,
           selectedModuleId: project.projectData.selectedModuleId,
+          moduloSelecionado: project.projectData.selectedModuleId || project.projectData.moduloSelecionado || '',
+          fabricanteModulo: project.projectData.fabricanteModulo || '',
+          fabricanteModuloNome: project.projectData.fabricanteModuloNome || '',
+          modeloModulo: project.projectData.modeloModulo || '',
+          eficienciaModulo: project.projectData.eficienciaModulo || 0,
+          tensaoModulo: project.projectData.tensaoModulo || 0,
+          correnteModulo: project.projectData.correnteModulo || 0,
           
           // Inversores
           inverters: project.projectData.inverters || [{

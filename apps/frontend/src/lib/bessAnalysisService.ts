@@ -93,16 +93,45 @@ export async function calculateHybridSystem(
 
     console.log(`✅ [FRONTEND] Cálculo híbrido concluído em ${duration}ms`);
     console.log('🔍 [DEBUG] Estrutura completa da resposta:', response.data);
+    console.log('🔍 [DEBUG] response.data.data:', response.data.data);
+    console.log('🔍 [DEBUG] response.data.metadata:', response.data.metadata);
+    console.log('🔍 [DEBUG] response.data.timestamp:', response.data.timestamp);
     
-    // Backend retorna estrutura: {success: true, data: {sistema_solar, sistema_bess, analise_hibrida, metadata?}, metadata: {...}}
-    const actualData = response.data.data;
-    const actualMetadata = response.data.metadata || {
-      duration_ms: duration,
-      timestamp: new Date().toISOString(),
-    };
+    // Backend Node.js aninha a resposta do Python:
+    // {success: true, data: {success: true, data: {sistema_solar, sistema_bess, analise_hibrida}}, timestamp: '...'}
+    let actualData, actualMetadata;
+    
+    if (response.data.success && response.data.data && response.data.data.sistema_solar) {
+      // Estrutura completa com aninhamento: {success: true, data: {success: true, data: {...}}}
+      actualData = response.data.data;
+      actualMetadata = response.data.metadata || {
+        duration_ms: duration,
+        timestamp: response.data.timestamp || new Date().toISOString(),
+      };
+    } else if (response.data.success && response.data.data) {
+      // Estrutura simples: {success: true, data: {...}, metadata: {...}}
+      actualData = response.data.data;
+      actualMetadata = response.data.metadata || {
+        duration_ms: duration,
+        timestamp: response.data.timestamp || new Date().toISOString(),
+      };
+    } else if (response.data.sistema_solar) {
+      // Estrutura direta: {sistema_solar, sistema_bess, analise_hibrida, ...}
+      actualData = response.data;
+      actualMetadata = {
+        duration_ms: duration,
+        timestamp: response.data.timestamp || new Date().toISOString(),
+      };
+    } else {
+      // Estrutura inesperada
+      console.error('❌ [DEBUG] Estrutura de resposta inesperada:', response.data);
+      console.error('❌ [DEBUG] Chaves encontradas:', Object.keys(response.data));
+      throw new Error('Estrutura de resposta inválida do servidor');
+    }
 
     console.log('🔍 [DEBUG] actualData extraído:', actualData);
     console.log('🔍 [DEBUG] actualData.sistema_solar:', actualData?.sistema_solar);
+    console.log('🔍 [DEBUG] Chaves em actualData:', actualData ? Object.keys(actualData) : 'actualData é null/undefined');
 
     // Validação segura antes de acessar propriedades aninhadas
     if (!actualData || !actualData.sistema_solar) {

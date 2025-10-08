@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Battery, Zap, Sun, Fuel } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import ErrorBoundary from '@/components/ui/error-boundary';
 import SystemSelector from './SystemSelector';
 import BESSSimulationForm from './BESSSimulationForm';
 import BESSDashboard from './BESSDashboard';
@@ -26,6 +27,19 @@ const BESSAnalysisTool: React.FC<BESSAnalysisToolProps> = ({ onComplete, preSele
   const [selectedLead, setSelectedLead] = useState<any>(preSelectedLead || null);
   const [systemConfig, setSystemConfig] = useState<BESSSystemConfiguration | null>(null);
   const [simulationResults, setSimulationResults] = useState<any>(null);
+  const [formData, setFormData] = useState<any>({
+    customer: preSelectedLead || null,
+    lead: preSelectedLead || null,
+    dimensioningName: '',
+    grupoTarifario: 'B',
+    tarifaEnergiaB: 0.75,
+    custoFioB: 0.30,
+    concessionaria: '',
+    tipoRede: 'monofasico',
+    tensaoRede: '220',
+    fatorSimultaneidade: 100,
+    tipoTelhado: 'ceramico'
+  });
   const { toast } = useToast();
 
   // Mostrar notificação quando lead é pré-selecionado
@@ -53,7 +67,25 @@ const BESSAnalysisTool: React.FC<BESSAnalysisToolProps> = ({ onComplete, preSele
 
   const handleLeadSelection = (lead: any) => {
     setSelectedLead(lead);
-    setCurrentStep('selection');
+    setFormData(prev => ({
+      ...prev,
+      customer: lead,
+      lead: lead
+    }));
+    // Não avança automaticamente para o próximo passo
+    // O usuário deve clicar no botão "Continuar" para avançar
+  };
+
+  const handleFormChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Se for um lead, também atualiza o selectedLead
+    if ((field === 'lead' || field === 'customer') && value) {
+      handleLeadSelection(value);
+    }
   };
 
   const handleNewSimulation = () => {
@@ -205,28 +237,26 @@ const BESSAnalysisTool: React.FC<BESSAnalysisToolProps> = ({ onComplete, preSele
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.5 }}
             >
-              <div className="max-w-2xl mx-auto">
-                <CustomerDataForm 
-                  formData={{ customer: selectedLead, lead: selectedLead }} 
-                  onFormChange={(field: string, value: any) => {
-                    if ((field === 'lead' || field === 'customer') && value) {
-                      handleLeadSelection(value);
-                    }
-                  }}
-                  isLeadLocked={!!preSelectedLead}
-                />
-                {selectedLead && (
-                  <div className="flex justify-center mt-8">
-                    <Button
-                      onClick={() => setCurrentStep('selection')}
-                      size="lg"
-                      className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-8 py-3"
-                    >
-                      Continuar para Seleção do Sistema
-                    </Button>
-                  </div>
-                )}
-              </div>
+              <ErrorBoundary>
+                <div className="max-w-2xl mx-auto">
+                  <CustomerDataForm 
+                    formData={formData} 
+                    onFormChange={handleFormChange}
+                    isLeadLocked={!!preSelectedLead}
+                  />
+                  {selectedLead && (
+                    <div className="flex justify-center mt-8">
+                      <Button
+                        onClick={() => setCurrentStep('selection')}
+                        size="lg"
+                        className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-8 py-3"
+                      >
+                        Continuar para Seleção do Sistema
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -238,7 +268,9 @@ const BESSAnalysisTool: React.FC<BESSAnalysisToolProps> = ({ onComplete, preSele
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.5 }}
             >
-              <SystemSelector onSelectionComplete={handleSystemSelection} />
+              <ErrorBoundary>
+                <SystemSelector onSelectionComplete={handleSystemSelection} />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -250,13 +282,15 @@ const BESSAnalysisTool: React.FC<BESSAnalysisToolProps> = ({ onComplete, preSele
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.5 }}
             >
-              <BESSSimulationForm
-                systemConfig={systemConfig}
-                onSimulationComplete={handleSimulationComplete}
-                onBack={() => setCurrentStep('selection')}
-                selectedLead={selectedLead}
-                isLeadLocked={!!preSelectedLead}
-              />
+              <ErrorBoundary>
+                <BESSSimulationForm
+                  systemConfig={systemConfig}
+                  onSimulationComplete={handleSimulationComplete}
+                  onBack={() => setCurrentStep('selection')}
+                  selectedLead={selectedLead}
+                  isLeadLocked={!!preSelectedLead}
+                />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -268,12 +302,14 @@ const BESSAnalysisTool: React.FC<BESSAnalysisToolProps> = ({ onComplete, preSele
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.5 }}
             >
-              <BESSDashboard
-                results={simulationResults}
-                systemConfig={systemConfig!}
-                onNewSimulation={handleNewSimulation}
-                onBackToForm={handleBackToForm}
-              />
+              <ErrorBoundary>
+                <BESSDashboard
+                  results={simulationResults}
+                  systemConfig={systemConfig!}
+                  onNewSimulation={handleNewSimulation}
+                  onBackToForm={handleBackToForm}
+                />
+              </ErrorBoundary>
             </motion.div>
           )}
         </AnimatePresence>

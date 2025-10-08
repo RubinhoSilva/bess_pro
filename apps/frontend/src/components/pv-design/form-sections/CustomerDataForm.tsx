@@ -438,8 +438,9 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                 <CustomCurrencyInput
                   value={formData.custoFioB}
                   onValueChange={(value) => onFormChange('custoFioB', value)}
-                  placeholder="R$ 0,00"
+                  placeholder="R$ 0,0000"
                   className="bg-background border-border text-foreground"
+                  decimals={4}
                 />
               </div>
 

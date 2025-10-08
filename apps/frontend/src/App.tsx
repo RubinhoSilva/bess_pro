@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/auth-store'
 import { ThemeProvider } from './contexts/ThemeContext'
+import ErrorBoundary from './components/ui/error-boundary'
 
 // Pages
 import LoginPage from './pages/auth/LoginPage'
@@ -43,8 +44,9 @@ function App() {
   const { isAuthenticated } = useAuthStore()
 
   return (
-    <ThemeProvider>
-      <Routes>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <Routes>
       {/* Public Routes */}
       <Route 
         path="/login" 
@@ -147,8 +149,9 @@ function App() {
         path="*" 
         element={<Navigate to={isAuthenticated ? "/dashboard/services" : "/login"} replace />} 
       />
-      </Routes>
-    </ThemeProvider>
+        </Routes>
+      </ThemeProvider>
+    </ErrorBoundary>
   )
 }
 
