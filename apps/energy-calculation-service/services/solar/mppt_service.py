@@ -44,12 +44,21 @@ class MPPTService:
 
             # REGRA 1: Limitação por potência
             print("\n⚡ [MPPT SERVICE] Etapa 2: Calculando limitação por POTÊNCIA...")
-            print(f"   Fórmula: Potência_CA ÷ Potência_Módulo")
-            print(f"   Cálculo: {request.potencia_saida_ca_w}W ÷ {request.potencia_modulo_w}W")
-            num_modulos_por_potencia = math.floor(request.potencia_saida_ca_w / request.potencia_modulo_w)
+
+            # Usar potencia_fv_max_w (DC) se disponível, caso contrário usar potencia_saida_ca_w (AC)
+            potencia_limitante = request.potencia_fv_max_w or request.potencia_saida_ca_w
+            potencia_tipo = "DC (potencia_fv_max_w)" if request.potencia_fv_max_w else "AC (potencia_saida_ca_w - fallback)"
+
+            print(f"   Potência CA nominal: {request.potencia_saida_ca_w}W")
+            print(f"   Potência FV máxima DC: {request.potencia_fv_max_w}W" if request.potencia_fv_max_w else "   Potência FV máxima DC: não informada (usando potência CA)")
+            print(f"   Potência limitante: {potencia_limitante}W ({potencia_tipo})")
+            print(f"   Fórmula: Potência_Limitante ÷ Potência_Módulo")
+            print(f"   Cálculo: {potencia_limitante}W ÷ {request.potencia_modulo_w}W")
+            print(potencia_limitante / request.potencia_modulo_w)
+            num_modulos_por_potencia = math.floor(potencia_limitante / request.potencia_modulo_w)
             print(f"   Resultado: {num_modulos_por_potencia} módulos no total (floor)")
             print(f"✅ [MPPT SERVICE] Limitação por potência: {num_modulos_por_potencia} módulos máximo")
-            logger.info(f"Limitação por potência: {num_modulos_por_potencia} módulos máximo")
+            logger.info(f"Limitação por potência: {num_modulos_por_potencia} módulos máximo (usando {potencia_tipo})")
 
             # REGRA 2: Limitação por tensão - obter temperatura mínima do PVGIS
             print("\n🌡️  [MPPT SERVICE] Etapa 3: Obtendo temperatura mínima do PVGIS...")
@@ -77,16 +86,16 @@ class MPPTService:
 
             # Calcular módulos máximos por MPPT por limitação de tensão
             print("\n🔌 [MPPT SERVICE] Etapa 5: Calculando limitação por TENSÃO...")
-            tensao_mppt_max = request.faixa_mppt_max_v or request.tensao_cc_max_v
-            print(f"   Tensão MPPT Máxima: {tensao_mppt_max}V")
+            tensao_cc_max_v = request.tensao_cc_max_v or request.faixa_mppt_max_v
+            print(f"   Tensão MPPT Máxima: {tensao_cc_max_v}V")
             print(f"   Fórmula: Módulos_por_MPPT = floor(V_MPPT_max ÷ VocCold)")
-            print(f"   Cálculo: floor({tensao_mppt_max}V ÷ {voc_cold:.2f}V)")
-            num_modulos_por_tensao_mppt = math.floor(tensao_mppt_max / voc_cold)
+            print(f"   Cálculo: floor({tensao_cc_max_v}V ÷ {voc_cold:.2f}V)")
+            num_modulos_por_tensao_mppt = math.floor(tensao_cc_max_v / voc_cold)
             print(f"   Resultado: {num_modulos_por_tensao_mppt} módulos por MPPT")
             num_modulos_por_tensao_total = num_modulos_por_tensao_mppt * request.numero_mppt
             print(f"   Total no sistema: {num_modulos_por_tensao_mppt} × {request.numero_mppt} MPPTs = {num_modulos_por_tensao_total} módulos")
             print(f"✅ [MPPT SERVICE] Limitação por tensão: {num_modulos_por_tensao_mppt} módulos por MPPT")
-            logger.info(f"Limitação por tensão: {num_modulos_por_tensao_mppt} módulos por MPPT (max {tensao_mppt_max}V / {voc_cold:.2f}V)")
+            logger.info(f"Limitação por tensão: {num_modulos_por_tensao_mppt} módulos por MPPT (max {tensao_cc_max_v}V / {voc_cold:.2f}V)")
             
             # REGRA FINAL: Calcular limite por MPPT individual
             print("\n🎯 [MPPT SERVICE] Etapa 6: Determinando limitação CRÍTICA...")
@@ -99,18 +108,28 @@ class MPPTService:
             modulos_por_mppt_tensao = num_modulos_por_tensao_mppt
             print(f"   Opção B - Tensão: {modulos_por_mppt_tensao} módulos por MPPT")
 
+            #Limitar por quantidade de strings
+            print(f"   Considerando strings por MPPT: {request.strings_por_mppt}")
+            modulos_por_mppt_string = modulos_por_mppt_tensao // request.strings_por_mppt
+            print(f"   Ajustado por strings: {modulos_por_mppt_string} módulos por MPPT")
+
+            #ajuste por corrente 
+            #Corrente Curto-Circuito (Isc) do modulo adicionar no request
+            # if not(request.strings_por_mppt * 1.25 * request.isc < request.corrente_mppt_max_a):
+            #     return "" # ele vai passar a mensagem depois, precisa exibir la parao usuário
+
             # Definir variáveis de limitação para resposta
             limitacao_potencia = {
                 "modulos_maximos_total": num_modulos_por_potencia,
                 "modulos_por_mppt": modulos_por_mppt_potencia,
-                "descricao": f"Limitação por potência: {request.potencia_saida_ca_w}W ÷ {request.potencia_modulo_w}W = {num_modulos_por_potencia} módulos no total"
+                "descricao": f"Limitação por potência: {potencia_limitante}W ({potencia_tipo}) ÷ {request.potencia_modulo_w}W = {num_modulos_por_potencia} módulos no total"
             }
 
             limitacao_tensao = {
                 "voc_cold": round(voc_cold, 2),
-                "tensao_mppt_max": tensao_mppt_max,
+                "tensao_mppt_max": tensao_cc_max_v,
                 "modulos_por_mppt": modulos_por_mppt_tensao,
-                "descricao": f"Limitação por tensão: {tensao_mppt_max}V ÷ {voc_cold:.2f}V = {modulos_por_mppt_tensao} módulos por MPPT"
+                "descricao": f"Limitação por tensão: {tensao_cc_max_v}V ÷ {voc_cold:.2f}V = {modulos_por_mppt_tensao} módulos por MPPT"
             }
 
             # Usar o menor dos dois como limite real por MPPT
@@ -175,12 +194,32 @@ class MPPTService:
     
     def _validate_inverter_parameters(self, request: MPPTCalculationRequest) -> None:
         """Valida parâmetros básicos do inversor e módulo"""
-        
+
         if request.potencia_saida_ca_w <= 0:
             raise ValidationError("Potência de saída CA deve ser maior que zero")
-        
+
         if request.potencia_modulo_w <= 0:
             raise ValidationError("Potência do módulo deve ser maior que zero")
+
+        # Validação de oversizing
+        if request.potencia_fv_max_w and request.potencia_saida_ca_w:
+            oversizing_ratio = request.potencia_fv_max_w / request.potencia_saida_ca_w
+
+            if oversizing_ratio < 1.0:
+                raise ValidationError(
+                    f"Potência FV máxima ({request.potencia_fv_max_w}W) não pode ser menor "
+                    f"que potência de saída CA ({request.potencia_saida_ca_w}W). "
+                    f"Ratio atual: {oversizing_ratio:.2f}"
+                )
+
+            if oversizing_ratio > 2.0:
+                logger.warning(
+                    f"Oversizing muito alto detectado: {oversizing_ratio:.1%} "
+                    f"({request.potencia_fv_max_w}W DC / {request.potencia_saida_ca_w}W AC). "
+                    f"Típico: 120-150%"
+                )
+
+            logger.info(f"Oversizing ratio: {oversizing_ratio:.1%} (DC/AC)")
         
         if request.voc_stc <= 0:
             raise ValidationError("Tensão Voc STC deve ser maior que zero")

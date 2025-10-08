@@ -76,7 +76,7 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
         // Update main form fields if only one module type
         onFormChange('potenciaModulo', selectedModule.potenciaNominal);
         onFormChange('eficienciaModulo', selectedModule.eficiencia);
-        onFormChange('tensaoModulo', selectedModule.vmpp);
+        onFormChange('tensaoModulo', selectedModule.voc);
         onFormChange('correnteModulo', selectedModule.impp);
       }
     }

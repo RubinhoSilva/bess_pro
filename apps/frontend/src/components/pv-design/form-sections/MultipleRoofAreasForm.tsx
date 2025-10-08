@@ -74,6 +74,7 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
     fabricante: inv.fabricante,
     modelo: inv.modelo,
     potenciaSaidaCA: inv.potenciaSaidaCA,
+    potenciaFvMax: inv.potenciaFvMax,
     tensaoCcMax: inv.tensaoCcMaxV,
     numeroMppt: inv.numeroMppt,
     stringsPorMppt: inv.stringsPorMppt,

@@ -92,7 +92,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
       onFormChange('moduloSelecionado', moduleId);
       onFormChange('potenciaModulo', selectedModule.potenciaNominal);
       onFormChange('eficienciaModulo', selectedModule.eficiencia);
-      onFormChange('tensaoModulo', selectedModule.vmpp);
+      onFormChange('tensaoModulo', selectedModule.voc);
       onFormChange('correnteModulo', selectedModule.impp);
       onFormChange('fabricanteModuloNome', selectedModule.fabricante);
       onFormChange('modeloModulo', selectedModule.modelo);
@@ -151,43 +151,43 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
         // Também atualiza os dados do módulo
         onFormChange('potenciaModulo', moduleByModel.potenciaNominal);
         onFormChange('eficienciaModulo', moduleByModel.eficiencia);
-        onFormChange('tensaoModulo', moduleByModel.vmpp);
+        onFormChange('tensaoModulo', moduleByModel.voc);
         onFormChange('correnteModulo', moduleByModel.impp);
       } else {
         // Module not found
       }
     }
-    
+
     // Tentar encontrar o módulo pelo nome do modelo se não tiver ID
     if (!formData.moduloSelecionado && formData.modeloModulo && solarModules.length > 0) {
       // Searching for module by model name
-      
+
       // Primeiro tenta busca exata
-      let moduleByModel = solarModules.find((m: any) => 
-        m.modelo === formData.modeloModulo && 
+      let moduleByModel = solarModules.find((m: any) =>
+        m.modelo === formData.modeloModulo &&
         m.fabricante === formData.fabricanteModuloNome
       );
-      
+
       // Se não encontrar, tenta busca parcial pelo modelo
       if (!moduleByModel) {
-        moduleByModel = solarModules.find((m: any) => 
-          m.modelo.includes(formData.modeloModulo) || 
+        moduleByModel = solarModules.find((m: any) =>
+          m.modelo.includes(formData.modeloModulo) ||
           formData.modeloModulo.includes(m.modelo)
         );
       }
-      
+
       // Se ainda não encontrar, pega o primeiro módulo do fabricante
       if (!moduleByModel && formData.fabricanteModuloNome) {
         moduleByModel = solarModules.find((m: any) => m.fabricante === formData.fabricanteModuloNome);
       }
-      
+
       if (moduleByModel) {
         // Auto-preencher o ID do módulo
         onFormChange('moduloSelecionado', moduleByModel.id);
         // Também atualiza os dados do módulo
         onFormChange('potenciaModulo', moduleByModel.potenciaNominal);
         onFormChange('eficienciaModulo', moduleByModel.eficiencia);
-        onFormChange('tensaoModulo', moduleByModel.vmpp);
+        onFormChange('tensaoModulo', moduleByModel.voc);
         onFormChange('correnteModulo', moduleByModel.impp);
       } else {
         // Module not found

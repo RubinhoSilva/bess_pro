@@ -19,7 +19,8 @@ class MPPTCalculationRequest(BaseModel):
     longitude: float = Field(..., description="Longitude para buscar dados climáticos")
     
     # Parâmetros críticos para cálculo MPPT
-    potencia_saida_ca_w: float = Field(..., description="Potência de saída CA em watts")
+    potencia_saida_ca_w: float = Field(..., description="Potência de saída CA nominal em watts")
+    potencia_fv_max_w: Optional[float] = Field(None, description="Potência FV máxima de entrada DC em watts (para cálculo de módulos)")
     tensao_cc_max_v: Optional[float] = Field(default=1000, description="Tensão CC máxima suportada (V)")
     numero_mppt: int = Field(default=2, description="Número de canais MPPT")
     strings_por_mppt: Optional[int] = Field(default=2, description="Número de strings por MPPT")
@@ -41,6 +42,7 @@ class MPPTCalculationRequest(BaseModel):
                 "latitude": -21.2037,
                 "longitude": -50.4364,
                 "potencia_saida_ca_w": 5000,
+                "potencia_fv_max_w": 7500,
                 "tensao_cc_max_v": 600,
                 "numero_mppt": 2,
                 "strings_por_mppt": 2,

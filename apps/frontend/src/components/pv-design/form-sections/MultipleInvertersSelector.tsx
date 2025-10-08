@@ -69,6 +69,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
     fabricante: inv.fabricante,
     modelo: inv.modelo,
     potenciaSaidaCA: inv.potenciaSaidaCA,
+    potenciaFvMax: inv.potenciaFvMax,
     tensaoCcMax: inv.tensaoCcMax,
     numeroMppt: inv.numeroMppt,
     stringsPorMppt: inv.stringsPorMppt,

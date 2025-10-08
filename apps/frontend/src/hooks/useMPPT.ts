@@ -40,7 +40,8 @@ export function useMPPTCalculation(params: MPPTCalculationParams) {
         temp_coef_voc: params.modulo.tempCoefVoc,
         latitude: params.coordinates.latitude,
         longitude: params.coordinates.longitude,
-        potencia_saida_ca_w: params.inversor.potenciaFvMax || params.inversor.potenciaSaidaCA,
+        potencia_saida_ca_w: params.inversor.potenciaSaidaCA,
+        potencia_fv_max_w: params.inversor.potenciaFvMax,
         tensao_cc_max_v: params.inversor.tensaoCcMax || 1000,
         numero_mppt: params.inversor.numeroMppt || 2,
         strings_por_mppt: params.inversor.stringsPorMppt || 2,
@@ -68,7 +69,8 @@ export function useMPPTCalculation(params: MPPTCalculationParams) {
 
 export interface MPPTLimitsByInverter {
   [inverterId: string]: {
-    modulosPorMppt: number;
+    modulosPorMppt: number; // Mantido para compatibilidade, mas usar modulosPorString
+    modulosPorString: number; // ✅ Valor recomendado de configuracao_recomendada
     modulosTotal: number;
     limitacaoPrincipal: string;
     isLoading: boolean;
@@ -119,7 +121,8 @@ export function useMultipleMPPTCalculations(
           temp_coef_voc: modulo.tempCoefVoc,
           latitude: coordinates.latitude,
           longitude: coordinates.longitude,
-          potencia_saida_ca_w: inverter.potenciaFvMax || inverter.potenciaSaidaCA,
+          potencia_saida_ca_w: inverter.potenciaSaidaCA,
+          potencia_fv_max_w: inverter.potenciaFvMax,
           tensao_cc_max_v: inverter.tensaoCcMax || 1000,
           numero_mppt: inverter.numeroMppt || 2,
           strings_por_mppt: inverter.stringsPorMppt || 2,
@@ -140,11 +143,12 @@ export function useMultipleMPPTCalculations(
 
   // Converter results para o formato esperado
   const results: MPPTLimitsByInverter = {};
-  
+
   inverters.forEach((inverter, index) => {
     const query = queries[index];
     results[inverter.id] = {
       modulosPorMppt: query.data?.modulos_por_mppt || 0,
+      modulosPorString: query.data?.configuracao_recomendada?.modulos_por_string || 0,
       modulosTotal: query.data?.modulos_total_sistema || 0,
       limitacaoPrincipal: query.data?.limitacao_principal || '',
       isLoading: query.isLoading,

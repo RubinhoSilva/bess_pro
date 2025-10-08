@@ -265,6 +265,7 @@ export interface MPPTCalculationRequest {
   latitude: number;
   longitude: number;
   potencia_saida_ca_w: number;
+  potencia_fv_max_w?: number;
   tensao_cc_max_v?: number;
   numero_mppt?: number;
   strings_por_mppt?: number;
@@ -961,7 +962,7 @@ export class SolarSystemService {
           nome: agua.nome || `MPPT-${index + 1}`,
           orientacao: agua.orientacao || 330,
           inclinacao: agua.inclinacao || 18,
-          modulos_por_string: Math.floor(agua.numeroModulos / (inversorData.strings_por_mppt || 1)),
+          modulos_por_string: agua.numeroModulos,
           numero_strings: inversorData.strings_por_mppt || 1
         }))
       });
