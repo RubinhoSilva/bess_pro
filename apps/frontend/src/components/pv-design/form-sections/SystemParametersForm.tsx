@@ -50,13 +50,13 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
         console.log('🔍 [SystemParametersForm] Módulos disponíveis para o fabricante:', {
           fabricanteId: formData.fabricanteModulo,
           quantidade: availableModules.length,
-          moduloSelecionadoExiste: availableModules.some(m => m.id === formData.moduloSelecionado),
+          moduloSelecionadoExiste: availableModules.some((m: any) => m.id === formData.moduloSelecionado),
           moduloSelecionado: formData.moduloSelecionado,
-          fabricantesDisponiveis: moduleManufacturersList.map(m => ({ id: m.id, name: m.name })),
-          modulosDoFabricante: solarModules.filter(m => {
+          fabricantesDisponiveis: moduleManufacturersList.map((m: any) => ({ id: m.id, name: m.name })),
+          modulosDoFabricante: solarModules.filter((m: any) => {
             const manufacturer = moduleManufacturersList.find(man => man.id === formData.fabricanteModulo);
             return manufacturer && m.fabricante === manufacturer.name;
-          }).map(m => ({ id: m.id, modelo: m.modelo, fabricante: m.fabricante }))
+          }).map((m: any) => ({ id: m.id, modelo: m.modelo, fabricante: m.fabricante }))
         });
       }
     }
@@ -73,7 +73,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
       selectedManufacturer: selectedManufacturer,
       selectedManufacturerName: selectedManufacturer?.name,
       totalModules: solarModules.length,
-      modulesByManufacturer: solarModules.filter(m => m.fabricante === selectedManufacturer?.name).length
+      modulesByManufacturer: solarModules.filter((m: any) => m.fabricante === selectedManufacturer?.name).length
     });
     
     const filtered = solarModules.filter((module: any) => {
@@ -93,7 +93,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
     
     console.log('✅ [getAvailableModules] Resultado do filtro:', {
       totalFiltrados: filtered.length,
-      idsFiltrados: filtered.map(m => ({ id: m.id, modelo: m.modelo, fabricante: m.fabricante }))
+      idsFiltrados: filtered.map((m: any) => ({ id: m.id, modelo: m.modelo, fabricante: m.fabricante }))
     });
     
     return filtered;
@@ -128,12 +128,12 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
   // Verificar se o módulo selecionado existe nos módulos disponíveis
   useEffect(() => {
     if (formData.moduloSelecionado && solarModules.length > 0) {
-      const selectedModule = solarModules.find(m => m.id === formData.moduloSelecionado);
+      const selectedModule = solarModules.find((m: any) => m.id === formData.moduloSelecionado);
       if (!selectedModule) {
         console.warn('⚠️ [SystemParametersForm] Módulo selecionado não encontrado na lista:', {
           moduloSelecionado: formData.moduloSelecionado,
           totalModulos: solarModules.length,
-          modulosDisponiveis: solarModules.slice(0, 5).map(m => ({ id: m.id, modelo: m.modelo, fabricante: m.fabricante }))
+          modulosDisponiveis: solarModules.slice(0, 5).map((m: any) => ({ id: m.id, modelo: m.modelo, fabricante: m.fabricante }))
         });
       } else {
         console.log('✅ [SystemParametersForm] Módulo selecionado encontrado:', selectedModule);
@@ -148,14 +148,14 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
       });
       
       // Primeiro tenta busca exata
-      let moduleByModel = solarModules.find(m => 
+      let moduleByModel = solarModules.find((m: any) => 
         m.modelo === formData.modeloModulo && 
         m.fabricante === formData.fabricanteModuloNome
       );
       
       // Se não encontrar, tenta busca parcial pelo modelo
       if (!moduleByModel) {
-        moduleByModel = solarModules.find(m => 
+        moduleByModel = solarModules.find((m: any) => 
           m.modelo.includes(formData.modeloModulo) || 
           formData.modeloModulo.includes(m.modelo)
         );
@@ -164,7 +164,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
       
       // Se ainda não encontrar, pega o primeiro módulo do fabricante
       if (!moduleByModel && formData.fabricanteModuloNome) {
-        moduleByModel = solarModules.find(m => m.fabricante === formData.fabricanteModuloNome);
+        moduleByModel = solarModules.find((m: any) => m.fabricante === formData.fabricanteModuloNome);
         console.log('🔍 [SystemParametersForm] Primeiro módulo do fabricante:', moduleByModel);
       }
       
@@ -193,7 +193,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
       console.log('📋 [SystemParametersForm] Estrutura dos módulos:', {
         total: solarModules.length,
         exemplo: solarModules[0],
-        fabricantes: [...new Set(solarModules.map(m => m.fabricante))].slice(0, 5)
+        fabricantes: Array.from(new Set(solarModules.map((m: any) => m.fabricante))).slice(0, 5)
       });
     }
     if (moduleManufacturersList.length > 0) {
@@ -254,7 +254,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                           <SelectValue placeholder="Selecione o fabricante" />
                         </SelectTrigger>
                         <SelectContent>
-                          {moduleManufacturersList.map((manufacturer: any) => (
+                          {moduleManufacturersList.map((manufacturer: any): JSX.Element => (
                             <SelectItem key={manufacturer.id} value={manufacturer.id}>
                               {manufacturer.name}
                             </SelectItem>
@@ -278,7 +278,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                              const availableModules = getAvailableModules();
                              // Fallback: se não encontrar módulos pelo filtro normal, tenta busca direta pelo nome
                              const fallbackModules = availableModules.length === 0 && formData.fabricanteModuloNome
-                               ? solarModules.filter(m => m.fabricante === formData.fabricanteModuloNome)
+                                ? solarModules.filter((m: any) => m.fabricante === formData.fabricanteModuloNome)
                                : availableModules;
                              
                              console.log('🔄 [SelectContent] Módulos para exibir:', {
@@ -288,7 +288,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                              });
                              
                              return fallbackModules.length > 0 ? fallbackModules : availableModules;
-                           })().map((module: any) => (
+                            })().map((module: any): JSX.Element => (
                              <SelectItem key={module.id} value={module.id}>
                                {module.modelo} - {module.potenciaNominal}W
                              </SelectItem>

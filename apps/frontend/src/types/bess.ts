@@ -366,10 +366,14 @@ export interface HybridDimensioningResponse {
 export interface HybridCalculationApiResponse {
   success: boolean;
   data: HybridDimensioningResponse;
-  metadata: {
+  metadata?: {
     duration_ms: number;
     timestamp: string;
   };
+  timestamp?: string;
+  sistema_solar?: SistemaSolarResult;
+  sistema_bess?: SistemaBessResult;
+  analise_hibrida?: AnaliseHibrida;
 }
 
 /**

@@ -324,7 +324,7 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
 
       toast({
         title: "Cálculo concluído!",
-        description: `Análise híbrida completa em ${(response.metadata.duration_ms / 1000).toFixed(1)}s`,
+        description: `Análise híbrida completa em ${((response.metadata?.duration_ms || 0) / 1000).toFixed(1)}s`,
       });
 
       // Passar resultado completo para o dashboard
@@ -336,7 +336,7 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
           leadName: selectedLead?.name,
           systemConfig,
           calculatedAt: new Date().toISOString(),
-          duration_ms: response.metadata.duration_ms,
+          duration_ms: response.metadata?.duration_ms || 0,
         },
       });
 

@@ -67,7 +67,7 @@ const BESSAnalysisTool: React.FC<BESSAnalysisToolProps> = ({ onComplete, preSele
 
   const handleLeadSelection = (lead: any) => {
     setSelectedLead(lead);
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       customer: lead,
       lead: lead
@@ -77,7 +77,7 @@ const BESSAnalysisTool: React.FC<BESSAnalysisToolProps> = ({ onComplete, preSele
   };
 
   const handleFormChange = (field: string, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       [field]: value
     }));

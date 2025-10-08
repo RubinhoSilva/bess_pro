@@ -13,6 +13,7 @@ import { api } from './api';
 import {
   HybridDimensioningRequest,
   HybridCalculationApiResponse,
+  HybridDimensioningResponse,
   BessHealthCheckResponse,
 } from '../types/bess';
 import { FrontendCalculationLogger } from './calculationLogger';
@@ -146,7 +147,7 @@ export async function calculateHybridSystem(
     // Retornar no formato esperado pelo frontend
     return {
       success: true,
-      data: actualData,
+      data: actualData as HybridDimensioningResponse,
       metadata: actualMetadata,
     };
 
