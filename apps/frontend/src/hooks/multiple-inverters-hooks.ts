@@ -29,6 +29,7 @@ export const useMultipleInverters = (): UseMultipleInvertersReturn => {
       fabricante: inverter.fabricante,
       modelo: inverter.modelo,
       potenciaSaidaCA: inverter.potenciaSaidaCA,
+      potenciaFvMax: inverter.potenciaFvMax,
       numeroMppt: inverter.numeroMppt || 2,
       stringsPorMppt: inverter.stringsPorMppt || 2,
       tensaoCcMax: inverter.tensaoCcMax || 1000,

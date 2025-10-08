@@ -7,6 +7,7 @@ export interface MPPTCalculationParams {
     fabricante: string;
     modelo: string;
     potenciaSaidaCA: number;
+    potenciaFvMax?: number;
     tensaoCcMax?: number;
     numeroMppt?: number;
     stringsPorMppt?: number;
@@ -39,7 +40,7 @@ export function useMPPTCalculation(params: MPPTCalculationParams) {
         temp_coef_voc: params.modulo.tempCoefVoc,
         latitude: params.coordinates.latitude,
         longitude: params.coordinates.longitude,
-        potencia_saida_ca_w: params.inversor.potenciaSaidaCA,
+        potencia_saida_ca_w: params.inversor.potenciaFvMax || params.inversor.potenciaSaidaCA,
         tensao_cc_max_v: params.inversor.tensaoCcMax || 1000,
         numero_mppt: params.inversor.numeroMppt || 2,
         strings_por_mppt: params.inversor.stringsPorMppt || 2,
@@ -85,6 +86,7 @@ export function useMultipleMPPTCalculations(
     fabricante: string;
     modelo: string;
     potenciaSaidaCA: number;
+    potenciaFvMax?: number;
     tensaoCcMax?: number;
     numeroMppt?: number;
     stringsPorMppt?: number;
@@ -117,7 +119,7 @@ export function useMultipleMPPTCalculations(
           temp_coef_voc: modulo.tempCoefVoc,
           latitude: coordinates.latitude,
           longitude: coordinates.longitude,
-          potencia_saida_ca_w: inverter.potenciaSaidaCA,
+          potencia_saida_ca_w: inverter.potenciaFvMax || inverter.potenciaSaidaCA,
           tensao_cc_max_v: inverter.tensaoCcMax || 1000,
           numero_mppt: inverter.numeroMppt || 2,
           strings_por_mppt: inverter.stringsPorMppt || 2,

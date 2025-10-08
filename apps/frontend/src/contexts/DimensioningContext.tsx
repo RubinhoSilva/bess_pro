@@ -69,6 +69,7 @@ export interface SelectedInverter {
   fabricante: string;
   modelo: string;
   potenciaSaidaCA: number;
+  potenciaFvMax?: number;
   numeroMppt: number;
   stringsPorMppt: number;
   tensaoCcMax: number;

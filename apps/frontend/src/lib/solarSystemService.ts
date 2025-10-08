@@ -674,7 +674,7 @@ export class SolarSystemService {
     const inversor = inversorSelecionado ? {
       fabricante: inversorSelecionado.fabricante || "WEG",
       modelo: inversorSelecionado.modelo || "SIW500H-M",
-      potencia_saida_ca_w: inversorSelecionado.potencia_saida_ca_w || inversorSelecionado.potenciaSaidaCA || 5000,
+      potencia_saida_ca_w: inversorSelecionado.potenciaFvMax || inversorSelecionado.potencia_saida_ca_w || inversorSelecionado.potenciaSaidaCA || 5000,
       tipo_rede: inversorSelecionado.tipo_rede || inversorSelecionado.tipoRede || "Monofásico 220V",
       potencia_fv_max_w: inversorSelecionado.potenciaFvMax,
       tensao_cc_max_v: inversorSelecionado.tensaoCcMax,
@@ -817,7 +817,7 @@ export class SolarSystemService {
       const inversorPadrao = inversorGlobal || {
         fabricante: "WEG",
         modelo: "SIW500H-M",
-        potencia_saida_ca_w: 5000,
+        potencia_saida_ca_w: 7500,
         tipo_rede: "Monofásico 220V",
         potencia_fv_max_w: 7500,
         tensao_cc_max_v: 600,
@@ -1029,7 +1029,7 @@ export class SolarSystemService {
         inversor: {
           fabricante: inversorSelecionado?.fabricante || "Exemplo",
           modelo: inversorSelecionado?.modelo || "INV-01 3.0kW",
-          potencia_saida_ca_w: inversorSelecionado?.potenciaSaidaCA || inversorSelecionado?.potencia_saida_ca_w || 5000,
+        potencia_saida_ca_w: inversorSelecionado?.potenciaFvMax || inversorSelecionado?.potenciaSaidaCA || inversorSelecionado?.potencia_saida_ca_w || 5000,
           tipo_rede: inversorSelecionado?.tipoRede || inversorSelecionado?.tipo_rede || "monofásico",
           potencia_fv_max_w: inversorSelecionado?.potenciaFvMax || 6000,
           tensao_cc_max_v: inversorSelecionado?.tensaoCcMax || 600,
