@@ -72,6 +72,11 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
     pesoKg: 0,
   });
 
+  // Temp string values for temperature coefficients (to allow free typing)
+  const [tempCoefPmaxStr, setTempCoefPmaxStr] = useState<string>('');
+  const [tempCoefVocStr, setTempCoefVocStr] = useState<string>('');
+  const [tempCoefIscStr, setTempCoefIscStr] = useState<string>('');
+
   const createModule = useCreateSolarModule();
 
   // Auto-populate iLRef when isc changes
@@ -83,22 +88,30 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.fabricante || !formData.modelo || !formData.potenciaNominal) {
       return;
     }
 
+    // Convert temperature coefficient strings to numbers
+    const dataToSave = {
+      ...formData,
+      tempCoefPmax: tempCoefPmaxStr ? parseFloat(tempCoefPmaxStr) || 0 : 0,
+      tempCoefVoc: tempCoefVocStr ? parseFloat(tempCoefVocStr) || 0 : 0,
+      tempCoefIsc: tempCoefIscStr ? parseFloat(tempCoefIscStr) || 0 : 0,
+    };
+
     try {
-      const newModule = await createModule.mutateAsync(formData);
+      const newModule = await createModule.mutateAsync(dataToSave);
       onModuleAdded?.(newModule);
-      
+
       // Auto-select the newly added module
       if (onModuleSelected && newModule?.id) {
         onModuleSelected(newModule.id);
       }
-      
+
       onOpenChange(false);
-      
+
       // Reset form
       setFormData({
         manufacturerId: '',
@@ -126,6 +139,9 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
         espessuraMm: 0,
         pesoKg: 0,
       });
+      setTempCoefPmaxStr('');
+      setTempCoefVocStr('');
+      setTempCoefIscStr('');
     } catch (error) {
     }
   };
@@ -300,8 +316,9 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                 <div className="relative">
                   <Input
                     id="tempCoefPmax"
-                    value={formData.tempCoefPmax || ''}
-                    onChange={(e) => updateFormData('tempCoefPmax', e.target.value)}
+                    type="text"
+                    value={tempCoefPmaxStr}
+                    onChange={(e) => setTempCoefPmaxStr(e.target.value)}
                     placeholder="-0.40"
                   />
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
@@ -313,8 +330,9 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                 <div className="relative">
                   <Input
                     id="tempCoefVoc"
-                    value={formData.tempCoefVoc || ''}
-                    onChange={(e) => updateFormData('tempCoefVoc', e.target.value)}
+                    type="text"
+                    value={tempCoefVocStr}
+                    onChange={(e) => setTempCoefVocStr(e.target.value)}
                     placeholder="-0.27"
                   />
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
@@ -326,8 +344,9 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                 <div className="relative">
                   <Input
                     id="tempCoefIsc"
-                    value={formData.tempCoefIsc || ''}
-                    onChange={(e) => updateFormData('tempCoefIsc', e.target.value)}
+                    type="text"
+                    value={tempCoefIscStr}
+                    onChange={(e) => setTempCoefIscStr(e.target.value)}
                     placeholder="0.048"
                   />
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>

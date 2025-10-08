@@ -49,7 +49,12 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   // Current editing items
   const [currentModule, setCurrentModule] = useState<SolarModule | null>(null);
   const [currentInverter, setCurrentInverter] = useState<Inverter | null>(null);
-  
+
+  // Temp string values for temperature coefficients (to allow free typing)
+  const [tempCoefPmaxStr, setTempCoefPmaxStr] = useState<string>('');
+  const [tempCoefVocStr, setTempCoefVocStr] = useState<string>('');
+  const [tempCoefIscStr, setTempCoefIscStr] = useState<string>('');
+
   // Form states
   const [moduleForm, setModuleForm] = useState<SolarModuleInput>({
     manufacturerId: '',
@@ -122,27 +127,35 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   // Handlers
   const handleSaveModule = async () => {
     if (!moduleForm.modelo || !moduleForm.fabricante || moduleForm.potenciaNominal <= 0) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Campos obrigatórios', 
-        description: 'Fabricante, Modelo e Potência são obrigatórios.' 
+      toast({
+        variant: 'destructive',
+        title: 'Campos obrigatórios',
+        description: 'Fabricante, Modelo e Potência são obrigatórios.'
       });
       return;
     }
-    
+
+    // Convert temperature coefficient strings to numbers
+    const dataToSave = {
+      ...moduleForm,
+      tempCoefPmax: tempCoefPmaxStr ? parseFloat(tempCoefPmaxStr) || 0 : 0,
+      tempCoefVoc: tempCoefVocStr ? parseFloat(tempCoefVocStr) || 0 : 0,
+      tempCoefIsc: tempCoefIscStr ? parseFloat(tempCoefIscStr) || 0 : 0,
+    };
+
     try {
       if (currentModule) {
-        await updateModuleMutation.mutateAsync({ id: currentModule.id, ...moduleForm });
+        await updateModuleMutation.mutateAsync({ id: currentModule.id, ...dataToSave });
       } else {
-        await createModuleMutation.mutateAsync(moduleForm);
+        await createModuleMutation.mutateAsync(dataToSave);
       }
       
       setIsModuleDialogOpen(false);
       setCurrentModule(null);
-      setModuleForm({ 
+      setModuleForm({
         manufacturerId: '',
-        fabricante: '', 
-        modelo: '', 
+        fabricante: '',
+        modelo: '',
         potenciaNominal: 0,
         eficiencia: 0,
         vmpp: 0,
@@ -165,6 +178,9 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
         espessuraMm: 0,
         pesoKg: 0,
       });
+      setTempCoefPmaxStr('');
+      setTempCoefVocStr('');
+      setTempCoefIscStr('');
       onUpdate?.();
     } catch (error) {
       // Error handling is done in the hooks with toast
@@ -306,6 +322,12 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       garantiaAnos: module.garantiaAnos,
       tolerancia: module.tolerancia?.toString()
     });
+
+    // Populate temperature coefficient strings
+    setTempCoefPmaxStr(module.tempCoefPmax?.toString() || '');
+    setTempCoefVocStr(module.tempCoefVoc?.toString() || '');
+    setTempCoefIscStr(module.tempCoefIsc?.toString() || '');
+
     setIsModuleDialogOpen(true);
   };
 
@@ -355,10 +377,10 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
 
   const handleNewModule = () => {
     setCurrentModule(null);
-    setModuleForm({ 
+    setModuleForm({
       manufacturerId: '',
-      fabricante: '', 
-      modelo: '', 
+      fabricante: '',
+      modelo: '',
       potenciaNominal: 0,
       eficiencia: 0,
       vmpp: 0,
@@ -381,6 +403,9 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       espessuraMm: 0,
       pesoKg: 0,
     });
+    setTempCoefPmaxStr('');
+    setTempCoefVocStr('');
+    setTempCoefIscStr('');
     setIsModuleDialogOpen(true);
   };
 
@@ -728,8 +753,9 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                   <div className="relative">
                     <Input
                       id="tempCoefPmax"
-                      value={moduleForm.tempCoefPmax || ''}
-                      onChange={(e) => setModuleForm(prev => ({ ...prev, tempCoefPmax: parseFloat(e.target.value) || 0 }))}
+                      type="text"
+                      value={tempCoefPmaxStr}
+                      onChange={(e) => setTempCoefPmaxStr(e.target.value)}
                       placeholder="-0.40"
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
@@ -741,8 +767,9 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                   <div className="relative">
                     <Input
                       id="tempCoefVoc"
-                      value={moduleForm.tempCoefVoc || ''}
-                      onChange={(e) => setModuleForm(prev => ({ ...prev, tempCoefVoc: parseFloat(e.target.value) || 0 }))}
+                      type="text"
+                      value={tempCoefVocStr}
+                      onChange={(e) => setTempCoefVocStr(e.target.value)}
                       placeholder="-0.27"
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
@@ -754,8 +781,9 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                   <div className="relative">
                     <Input
                       id="tempCoefIsc"
-                      value={moduleForm.tempCoefIsc || ''}
-                      onChange={(e) => setModuleForm(prev => ({ ...prev, tempCoefIsc: parseFloat(e.target.value) || 0 }))}
+                      type="text"
+                      value={tempCoefIscStr}
+                      onChange={(e) => setTempCoefIscStr(e.target.value)}
                       placeholder="0.048"
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">%</span>
