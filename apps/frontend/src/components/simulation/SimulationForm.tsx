@@ -89,7 +89,6 @@ export default function SimulationForm({ onSimulationComplete, activeSystems }: 
       toast.success('Simulação concluída com sucesso!');
       
     } catch (error) {
-      console.error('Erro na simulação:', error);
       toast.error('Erro ao executar a simulação');
     } finally {
       setIsCalculating(false);

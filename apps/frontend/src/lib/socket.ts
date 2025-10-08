@@ -14,7 +14,6 @@ class SocketService {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
         (isProduction ? 'https://api.besspro.vizad.com.br' : 'http://localhost:8010');
       
-      console.log('🔌 Tentando conectar ao WebSocket:', API_BASE_URL);
       
       this.socket = io(API_BASE_URL, {
         transports: ['polling', 'websocket'], // polling primeiro para melhor compatibilidade
@@ -28,12 +27,10 @@ class SocketService {
       });
 
       this.socket.on('connect', () => {
-        console.log('🔌 Conectado ao servidor WebSocket');
         this.isConnected = true;
       });
 
       this.socket.on('disconnect', () => {
-        console.log('🔌 Desconectado do servidor WebSocket');
         this.isConnected = false;
       });
 
@@ -49,7 +46,6 @@ class SocketService {
   joinCalculationLogs(): void {
     if (this.socket && this.isConnected) {
       this.socket.emit('join-calculation-logs');
-      console.log('📊 Entrando na sala de logs de cálculos');
     }
   }
 

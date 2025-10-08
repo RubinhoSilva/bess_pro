@@ -198,7 +198,6 @@ const ReportsPage: React.FC = () => {
       // Aqui poderia atualizar o estado local ou recarregar dados
       
     } catch (error) {
-      console.error('Erro ao gerar relatório:', error);
       toast({
         title: "Erro na geração",
         description: "Não foi possível gerar o relatório. Tente novamente.",
@@ -256,7 +255,6 @@ const ReportsPage: React.FC = () => {
       });
       
     } catch (error) {
-      console.error('Erro no download:', error);
       toast({
         title: "Erro no download",
         description: "Não foi possível baixar o relatório. Tente novamente.",

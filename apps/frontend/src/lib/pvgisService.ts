@@ -71,7 +71,6 @@ export const fetchPVGISData = async (
   // Converter orientação para convenção PVGIS
   const pvgisOrientation = convertOrientationToPVGIS(orientacao);
 
-  console.log('🧭 Conversão de orientação:', {
     orientacaoSistema: orientacao,
     orientacaoPVGIS: pvgisOrientation,
     inclinacao: inclinacao,
@@ -102,8 +101,6 @@ export const fetchPVGISData = async (
   const url = `${baseUrl}?${params.toString()}`;
 
   try {
-    console.log('Buscando dados PVGIS para:', { latitude, longitude });
-    console.log('URL da requisição:', url);
 
     // Endpoint PVGIS agora é público - não requer autenticação
     const response = await fetch(url, {
@@ -115,7 +112,6 @@ export const fetchPVGISData = async (
       signal: AbortSignal.timeout(60000),
     });
     
-    console.log('Resposta recebida:', response.status, response.statusText);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -124,7 +120,6 @@ export const fetchPVGISData = async (
     }
 
     const response_data = await response.json();
-    console.log('Dados PVGIS recebidos:', response_data);
     
     // O backend retorna { success: true, data: {...} }
     const data = response_data.success ? response_data.data : response_data;
@@ -134,13 +129,10 @@ export const fetchPVGISData = async (
     }
 
     // Processar dados mensais do PVGIS (H(i)_d = irradiação diária)
-    console.log('📊 Dados PVGIS monthly.fixed:', data.outputs.monthly.fixed);
     const monthlyRadiation = data.outputs.monthly.fixed.map((item: any) => item['H(i)_d']);
-    console.log('📈 Monthly radiation values:', monthlyRadiation);
     
     // Calcular soma anual
     const yearlySum = monthlyRadiation.reduce((sum: number, value: number) => sum + value, 0) * 30.44; // Converter para kWh/m²/year
-    console.log('📊 Yearly sum calculated:', yearlySum);
 
     return {
       inputs: {
@@ -227,7 +219,6 @@ export const calculateYearlyAverage = (monthlyData: number[]): number => {
  */
 export const geocodeAddress = async (address: string): Promise<PVGISLocation | null> => {
   // Simulação de geocoding - em produção usaria API real
-  console.log('Geocoding address:', address);
   
   // Retorna coordenadas aproximadas do centro do Brasil como exemplo
   return {

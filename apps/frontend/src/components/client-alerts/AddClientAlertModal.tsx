@@ -64,7 +64,6 @@ export default function AddClientAlertModal({ isOpen, onClose, clientId, clientN
       onClose();
       resetForm();
     } catch (error) {
-      console.error('Erro ao criar alerta:', error);
     }
   };
 

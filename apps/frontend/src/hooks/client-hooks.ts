@@ -22,9 +22,7 @@ export function useClients(params?: {
   return useQuery({
     queryKey: clientKeys.list(params),
     queryFn: () => {
-      console.log('Fetching clients with params:', params);
       return apiClient.clients.list(params).then((response) => {
-        console.log('Clients fetched:', response.data.data);
         return response.data.data as ClientListResponse;
       });
     },
@@ -64,8 +62,6 @@ export function useUpdateClient() {
     mutationFn: ({ id, data }: { id: string; data: UpdateClientData }) => 
       apiClient.clients.update(id, data),
     onSuccess: (response, { id }) => {
-      console.log('Update success - Response:', response);
-      console.log('Update success - ID:', id);
       
       // Invalidar todas as queries relacionadas a clientes para garantir atualização
       queryClient.invalidateQueries({ queryKey: clientKeys.all });
@@ -87,7 +83,6 @@ export function useDeleteClient() {
   
   return useMutation({
     mutationFn: (id: string) => {
-      console.log('Tentando deletar cliente com ID:', id);
       return apiClient.clients.delete(id);
     },
     onSuccess: (_, id) => {

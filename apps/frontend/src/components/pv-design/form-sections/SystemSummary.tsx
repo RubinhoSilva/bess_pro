@@ -29,7 +29,6 @@ interface SystemSummaryProps {
 }
 
 const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '', onDimensioningChange, aguasTelhado = [], showDimensioningSlider = false }) => {
-  console.log('🔄 [SystemSummary] Re-renderizando com props:', {
     aguasTelhado: aguasTelhado.map(agua => ({ id: agua.id, nome: agua.nome, numeroModulos: agua.numeroModulos })),
     formDataModulos: formData.numeroModulos,
     formDataModulosCalculado: formData.numeroModulosCalculado
@@ -56,7 +55,6 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '',
   // Calcular totais das águas de telhado usando estado local
   const getTotalModulosDimensionados = () => {
     const total = localAguasTelhado.reduce((total, agua) => total + agua.numeroModulos, 0);
-    console.log('🔢 Total módulos dimensionados:', { 
       localAguasTelhado: localAguasTelhado.map(agua => ({ 
         id: agua.id, 
         nome: agua.nome, 

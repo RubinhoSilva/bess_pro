@@ -106,10 +106,6 @@ const BESSDashboard: React.FC<BESSDashboardProps> = ({
   onBackToForm
 }) => {
   // Debug log para verificar dados recebidos
-  console.log('🔍 [DASHBOARD] Dados recebidos:', results);
-  console.log('🔍 [DASHBOARD] sistema_solar:', results.sistema_solar);
-  console.log('🔍 [DASHBOARD] sistema_bess:', results.sistema_bess);
-  console.log('🔍 [DASHBOARD] analise_hibrida:', results.analise_hibrida);
 
   // Destructure dos resultados com validação
   const sistema_solar = results.sistema_solar || {};
@@ -118,7 +114,6 @@ const BESSDashboard: React.FC<BESSDashboardProps> = ({
 
   // Verificar se dados são válidos
   if (!sistema_solar || !sistema_bess || !analise_hibrida) {
-    console.error('❌ [DASHBOARD] Dados inválidos recebidos:', { sistema_solar, sistema_bess, analise_hibrida });
     return (
       <Card className="border-red-200 bg-red-50">
         <CardContent className="p-6">

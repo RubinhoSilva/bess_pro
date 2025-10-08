@@ -40,7 +40,6 @@ export default function ForgotPasswordPage() {
         toast.success('Email enviado com sucesso!');
       }
     } catch (error: any) {
-      console.error('Forgot password error:', error);
       const errorMessage = error.response?.data?.error?.message || 'Erro ao enviar email';
       toast.error(errorMessage);
     } finally {

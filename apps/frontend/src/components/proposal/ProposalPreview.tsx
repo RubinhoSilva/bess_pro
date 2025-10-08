@@ -99,7 +99,6 @@ export const ProposalPreview: React.FC<ProposalPreviewProps> = ({
       
       toast.success('PDF gerado com sucesso!', { id: 'pdf-generation' });
     } catch (error) {
-      console.error('Error generating PDF:', error);
       toast.error('Erro ao gerar PDF', { id: 'pdf-generation' });
     }
   };

@@ -141,7 +141,6 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
           geracaoAnual: Math.round(geracaoEstimadaAnual)
         };
         
-        console.log('🏠 [MultipleRoofAreasForm] Atualizando primeira água com dados da API:', {
           numeroModulos: numeroModulosCalculados,
           areaEstimada: Math.round(areaEstimada),
           geracaoAnual: Math.round(geracaoEstimadaAnual)
@@ -166,7 +165,6 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
   // Função para atualizar geração de TODAS as águas de telhado
   const handleAtualizarGeracao = async (areaId: string) => {
     if (!latitude || !longitude) {
-      console.warn('Latitude/longitude não disponíveis para cálculo');
       return;
     }
 
@@ -175,7 +173,6 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
     onAguasChange(updatedAreas);
 
     try {
-      console.log('🏠 Calculando geração para TODAS as águas de telhado:', {
         totalAguas: aguasTelhado.length,
         aguas: aguasTelhado.map(a => ({
           nome: a.nome,
@@ -257,7 +254,6 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
           };
         });
         
-        console.log('✅ Geração calculada e distribuída:', {
           areaTotal: dados.area_necessaria_m2,
           geracaoTotal: dados.energia_total_anual_kwh,
           distribuicao: finalAreas.map(a => ({
@@ -275,7 +271,6 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
       }
         
     } catch (error) {
-      console.error('❌ Erro ao calcular geração:', error);
       
       // Remover estado de carregamento de TODAS
       const finalAreas = aguasTelhado.map(a => ({ ...a, isCalculando: false }));

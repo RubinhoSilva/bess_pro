@@ -199,7 +199,6 @@ const ProjectsDashboard: React.FC = () => {
         setSelectedProject(project);
       }
     } catch (error) {
-      console.error('Error loading project:', error);
       toast({
         variant: "destructive",
         title: "Erro ao carregar projeto",
@@ -217,7 +216,6 @@ const ProjectsDashboard: React.FC = () => {
         description: "O projeto foi criado com sucesso!"
       });
     } catch (error) {
-      console.error('Erro ao criar projeto:', error);
       toast({
         variant: "destructive",
         title: "Erro ao criar projeto",
@@ -254,7 +252,6 @@ const ProjectsDashboard: React.FC = () => {
       });
       
     } catch (error) {
-      console.error('Erro ao duplicar projeto:', error);
       toast({
         variant: "destructive",
         title: "Erro ao duplicar projeto",
@@ -286,7 +283,6 @@ const ProjectsDashboard: React.FC = () => {
       setIsDeleteDialogOpen(false);
       
     } catch (error) {
-      console.error('Erro ao excluir projeto:', error);
       toast({
         variant: "destructive",
         title: "Erro ao excluir projeto",
@@ -302,12 +298,10 @@ const ProjectsDashboard: React.FC = () => {
 
   const handleDeletePVDimensioning = async (projectId: string, dimensioningId: string) => {
     // TODO: implementar quando API estiver disponível
-    console.log('Função de deletar dimensionamento PV será implementada em breve');
   };
 
   const handleDeleteBESSAnalysis = async (projectId: string, analysisId: string) => {
     // TODO: implementar quando API estiver disponível
-    console.log('Função de deletar análise BESS será implementada em breve');
   };
 
   const handleGenerateProposal = async (projectId: string) => {
@@ -320,7 +314,6 @@ const ProjectsDashboard: React.FC = () => {
         setProposalProject(project);
       }
     } catch (error) {
-      console.error('Error loading project for proposal:', error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar os dados do projeto.",

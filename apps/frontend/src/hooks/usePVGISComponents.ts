@@ -59,8 +59,6 @@ export const usePVGISComponents = (): UsePVGISComponentsResult => {
       });
 
       const url = `${baseUrl}?${params.toString()}`;
-      console.log('🌞 Buscando componentes PVGIS para:', { latitude: location.latitude, longitude: location.longitude });
-      console.log('📡 URL da requisição:', url);
 
       const response = await fetch(url, {
         method: 'GET',
@@ -73,12 +71,11 @@ export const usePVGISComponents = (): UsePVGISComponentsResult => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Erro na resposta PVGIS:', errorText);
+        // console.error('❌ Erro na resposta PVGIS:', errorText);
         throw new Error(`Erro na API PVGIS: ${response.status} ${response.statusText}`);
       }
 
       const responseData = await response.json();
-      console.log('📊 Dados PVGIS recebidos:', responseData);
 
       // Processar dados conforme estrutura retornada pelo PVGIS
       const pvgisData = responseData.success ? responseData.data : responseData;
@@ -122,7 +119,6 @@ export const usePVGISComponents = (): UsePVGISComponentsResult => {
 
       // Se não temos dados válidos, usar dados do endpoint básico PVGIS
       if (monthlyComponents.total.every(val => val === 0)) {
-        console.log('⚠️ Dados mensais vazios, buscando do endpoint básico PVGIS');
         
         try {
           // Usar endpoint básico que funciona melhor
@@ -151,7 +147,6 @@ export const usePVGISComponents = (): UsePVGISComponentsResult => {
             const basicPvgisData = basicData.success ? basicData.data : basicData;
             
             if (basicPvgisData.outputs?.monthly?.fixed) {
-              console.log('✅ Dados básicos PVGIS encontrados');
               const monthlyFixed = basicPvgisData.outputs.monthly.fixed;
               monthlyComponents.total = monthlyFixed.map((item: any) => item['H(i)_d'] || 0);
               
@@ -162,13 +157,12 @@ export const usePVGISComponents = (): UsePVGISComponentsResult => {
             }
           }
         } catch (basicError) {
-          console.warn('Erro ao buscar dados básicos PVGIS:', basicError);
+          // console.warn('Erro ao buscar dados básicos PVGIS:', basicError);
         }
       }
       
       // Se ainda não temos dados, usar estimativas padrão para a região
       if (monthlyComponents.total.every(val => val === 0)) {
-        console.log('⚠️ Usando estimativas padrão para região Brasil');
         // Estimativas mensais típicas para Brasil (kWh/m²/dia)
         const brasliEstimatives = [5.2, 5.8, 5.4, 4.9, 4.1, 3.8, 4.2, 5.1, 5.6, 6.1, 5.9, 5.3];
         monthlyComponents.total = brasliEstimatives;
@@ -201,12 +195,11 @@ export const usePVGISComponents = (): UsePVGISComponentsResult => {
         }
       };
 
-      console.log('✅ Componentes PVGIS processados:', processedData);
       setData(processedData);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error('❌ Erro ao buscar componentes PVGIS:', error);
+      // console.error('❌ Erro ao buscar componentes PVGIS:', error);
       setError(`Falha ao obter componentes de radiação: ${errorMessage}`);
       setData(null);
     } finally {

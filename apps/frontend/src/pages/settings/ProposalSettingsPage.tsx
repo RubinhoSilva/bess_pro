@@ -76,7 +76,6 @@ const ProposalSettingsPage = () => {
     try {
       await updateSettings.mutateAsync(localSettings);
     } catch (error) {
-      console.error('Erro ao salvar configurações:', error);
     }
   };
 

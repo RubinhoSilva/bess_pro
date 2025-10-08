@@ -60,14 +60,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   
   // Debug temporário - logs iniciais
   if (selectedManufacturerId && invertersArray.length > 0 && manufacturersArray.length > 0) {
-    console.log('🔍 Debug - Fabricante ID selecionado:', selectedManufacturerId);
-    console.log('🔍 Debug - Fabricantes disponíveis:', manufacturersArray.map((m: any) => ({ id: m.id, name: m.name })));
-    console.log('🔍 Debug - Primeiro inversor:', {
-      id: invertersArray[0]?.id,
-      fabricante: invertersArray[0]?.fabricante,
-      manufacturerId: invertersArray[0]?.manufacturerId,
-      modelo: invertersArray[0]?.modelo
-    });
+
   }
 
   // Preparar dados para MPPT calculations
@@ -177,12 +170,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
 
   // Debug do estado após availableInverters ser declarado
   useEffect(() => {
-    console.log('🔍 Estado atual:', {
-      selectedManufacturerId,
-      selectedInverterId,
-      availableInverters: availableInverters.length,
-      totalInverters: invertersArray.length
-    });
+
   }, [selectedManufacturerId, selectedInverterId, availableInverters.length, invertersArray.length]);
 
   // Reset seleção de inversor quando fabricante muda
@@ -198,7 +186,6 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
           selectedInverter.fabricante === selectedManufacturer.name;
           
         if (!belongsToManufacturer) {
-          console.log('🔄 Resetando seleção de inversor - não pertence ao fabricante selecionado');
           setSelectedInverterId('');
         }
       }
@@ -254,7 +241,6 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
               <Select 
                 value={selectedInverterId} 
                 onValueChange={(value) => {
-                  console.log('🔧 Selecionando inversor:', value);
                   setSelectedInverterId(value);
                 }}
                 disabled={!selectedManufacturerId}

@@ -97,7 +97,6 @@ export const TeamForm: React.FC<TeamFormProps> = ({ team, onSubmit, onCancel }) 
       
       onSubmit();
     } catch (error) {
-      console.error('Erro ao salvar team:', error);
     } finally {
       setIsLoading(false);
     }

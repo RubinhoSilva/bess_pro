@@ -216,26 +216,6 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
         orientationSource = 'formData_principal';
       }
 
-      console.log('🔧 Parâmetros sendo enviados via backend:', {
-        location,
-        parameters: { tilt: userTilt, azimuth: userAzimuth }, // ✅ CORRIGIDO: mostrar valores reais
-        dataSource,
-        formDataAvailable: !!formData,
-        orientacaoFromFormData: formData?.orientacao,
-        inclinacaoFromFormData: formData?.inclinacao,
-        aguasTelhadoCount: formData?.aguasTelhado?.length || 0,
-        orientationSource
-      });
-
-      console.log('🎯 Usando orientação do usuário:', {
-        tilt: userTilt,
-        azimuth: userAzimuth,
-        source: orientationSource,
-        details: orientationSource === 'primeira_agua_telhado' ?
-          { primeiraAgua: formData?.aguasTelhado?.[0] } :
-          { formDataValues: { orientacao: formData?.orientacao, inclinacao: formData?.inclinacao } }
-      });
-
       // Preparar dados da requisição com suporte a múltiplas águas
       const requestData: any = {
         lat: location.latitude,
@@ -244,17 +224,8 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
         data_source: dataSource // Passar fonte de dados selecionada
       };
 
-      console.log('🔍 [DEBUG] PVGISIntegration - Dados da requisição:', {
-        requestData,
-        dataSource,
-        formDataFonteDados: formData?.fonteDados,
-        location,
-        'dataSource === formData.fonteDados': dataSource === formData?.fonteDados
-      });
-
       // ✅ Enviar múltiplas águas se existirem
       if (formData && formData.aguasTelhado && formData.aguasTelhado.length > 1) {
-        console.log(`🏠 Enviando ${formData.aguasTelhado.length} águas de telhado para cálculo`);
         requestData.aguas_telhado = formData.aguasTelhado.map((agua: any) => ({
           id: agua.id,
           nome: agua.nome,
@@ -273,7 +244,6 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
       // Chamar o backend Node.js que se comunica com a API Python
       const response = await api.post('/solar-analysis/analyze-monthly-irradiation', requestData);
 
-      console.log('✅ Resposta do backend recebida:', response.data);
       
       const formattedCity = `Lat: ${response.data.data.coordenadas.lat.toFixed(4)}, Lon: ${response.data.data.coordenadas.lon.toFixed(4)}`;
 
@@ -319,7 +289,6 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
       });
 
     } catch (error: any) {
-      console.error('❌ Erro ao obter dados via backend:', error);
       
       let message = 'Erro desconhecido ao obter dados meteorológicos';
       

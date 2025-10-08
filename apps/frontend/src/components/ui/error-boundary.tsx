@@ -26,7 +26,6 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('🚨 ErrorBoundary capturou um erro:', error, errorInfo);
     
     // Registrar erro em serviço de monitoramento (ex: Sentry, LogRocket)
     if (this.props.onError) {
@@ -57,7 +56,6 @@ export class ErrorBoundary extends Component<Props, State> {
       
       localStorage.setItem('errorLogs', JSON.stringify(existingLogs));
     } catch (e) {
-      console.warn('Não foi possível salvar o erro no localStorage:', e);
     }
 
     this.setState({ errorInfo });
@@ -183,7 +181,6 @@ export class ErrorBoundary extends Component<Props, State> {
 // Hook para uso funcional
 export const useErrorHandler = () => {
   return (error: Error, errorInfo?: ErrorInfo) => {
-    console.error('🚨 Erro capturado pelo hook:', error, errorInfo);
     
     // Salvar erro no localStorage
     try {
@@ -208,7 +205,6 @@ export const useErrorHandler = () => {
       
       localStorage.setItem('errorLogs', JSON.stringify(existingLogs));
     } catch (e) {
-      console.warn('Não foi possível salvar o erro no localStorage:', e);
     }
   };
 };

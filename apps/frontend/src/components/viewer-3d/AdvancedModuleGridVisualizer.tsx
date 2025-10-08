@@ -187,7 +187,6 @@ export const AdvancedModuleGridVisualizer: React.FC<AdvancedModuleGridVisualizer
 
     // Check if grid fits in area
     if (totalGridWidth > areaWidth || totalGridHeight > areaHeight) {
-      console.warn('Grid doesn\'t fit in selected area');
     }
 
     // Generate modules

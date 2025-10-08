@@ -13,13 +13,11 @@ export function ConfirmationDialogExample() {
   const handleDeleteUser = async () => {
     // Simular operação async
     await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log('Usuário deletado');
   };
 
   const handleResetData = async () => {
     // Simular operação async
     await new Promise(resolve => setTimeout(resolve, 500));
-    console.log('Dados resetados');
   };
 
   return (
@@ -70,7 +68,7 @@ export function ConfirmationDialogExample() {
             cancelText: 'Descartar',
             variant: 'info'
           },
-          () => console.log('Dados salvos')
+          () => {/* // // // console.log('Dados salvos') */}
         )}
       >
         Salvar com Confirmação

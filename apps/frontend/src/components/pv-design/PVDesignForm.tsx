@@ -294,8 +294,6 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         };
 
         // Calcular resultados detalhados
-        console.log('🔢 === CÁLCULOS SOLARES AVANÇADOS (FORM) ===');
-        console.log('📍 Parâmetros para cálculo solar:', {
           potenciaPico: `${potenciaPico.toFixed(2)} kWp`,
           localizacao: solarOptions.location,
           irradiacaoMensal: (solarOptions as any).irradiationData,
@@ -311,21 +309,15 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         const geracaoEstimadaMensal = advancedResults.geracaoEstimada.mensal;
         const geracaoAnualAdvanced = advancedResults.geracaoEstimada.anual;
 
-        console.log('☀️ === RESULTADOS DE GERAÇÃO (FORM) ===');
-        console.log('📊 Geração mensal calculada:');
         geracaoEstimadaMensal.forEach((geracao, index) => {
           const irradiacao = currentDimensioning.irradiacaoMensal[index];
           const eficiencia = (currentDimensioning.eficienciaSistema || 85) / 100;
           const diasMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][index];
-          console.log(`   Mês ${index + 1}: ${potenciaPico.toFixed(2)} kWp × ${irradiacao} kWh/m²/dia × ${diasMes} dias × ${eficiencia} = ${geracao.toFixed(0)} kWh`);
         });
-        console.log(`📈 Geração anual total: ${geracaoEstimadaMensal.map(g => g.toFixed(0)).join(' + ')} = ${geracaoAnualAdvanced.toFixed(0)} kWh/ano`);
 
         // Cálculos financeiros básicos (manter compatibilidade)
-        console.log('🔢 === CÁLCULOS FINANCEIROS (FORM) ===');
         const tarifaB = currentDimensioning.tarifaEnergiaB || 0.8;
         const custoFioB = currentDimensioning.custoFioB || (tarifaB * 0.3);
-        console.log('💰 Parâmetros tarifários:', {
           tarifaEnergiaB: `R$ ${tarifaB.toFixed(4)}/kWh`,
           custoFioB: `R$ ${custoFioB.toFixed(4)}/kWh`,
           investimentoTotal: `R$ ${totalInvestment.toLocaleString('pt-BR')}`,
@@ -345,17 +337,9 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           taxaDesconto: currentDimensioning.taxaDesconto || 8.0,
         };
         
-        console.log('💵 === PARÂMETROS FINANCEIROS DETALHADOS ===');
-        console.log(`💰 Investimento total: R$ ${totalInvestment.toLocaleString('pt-BR')}`);
-        console.log(`⚡ Tarifa energia (Grupo B): R$ ${(parametrosFinanceiros.tarifaEnergiaB).toFixed(4)}/kWh`);
-        console.log(`🔌 Custo do fio B: R$ ${(parametrosFinanceiros.custoFioB).toFixed(4)}/kWh`);
-        console.log(`⏳ Vida útil do sistema: ${parametrosFinanceiros.vidaUtil} anos`);
-        console.log(`📈 Inflação energia: ${parametrosFinanceiros.inflacaoEnergia}% ao ano`);
-        console.log(`📊 Taxa de desconto: ${parametrosFinanceiros.taxaDesconto}% ao ano`);
         
         // Cálculos derivados dos parâmetros
         const tarifaEfetiva = parametrosFinanceiros.tarifaEnergiaB - parametrosFinanceiros.custoFioB;
-        console.log(`💡 Tarifa efetiva (energia - fio B): R$ ${tarifaEfetiva.toFixed(4)}/kWh`);
         
         // Usar API Python para cálculos financeiros básicos
         const basicFinancialApiInput = {
@@ -375,14 +359,8 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         
         const financialApiResponse = await apiClient.solarAnalysis.calculateAdvancedFinancial(basicFinancialApiInput);
         const financialResults = financialApiResponse.data;
-        console.log('📊 === RESULTADOS FINANCEIROS CALCULADOS ===');
         if (financialResults) {
-          console.log(`💰 Payback calculado: ${(financialResults.payback || 0).toFixed(2)} anos`);
-          console.log(`📈 VPL calculado: R$ ${(financialResults.vpl || 0).toLocaleString('pt-BR')}`);
-          console.log(`📊 TIR calculada: ${((financialResults.tir || 0) * 100).toFixed(2)}%`);
-          console.log(`💵 Economia anual calculada: R$ ${((financialResults as any).economiaAnual || 0).toLocaleString('pt-BR')}`);
         } else {
-          console.log('⚠️ Nenhum resultado financeiro calculado');
         }
 
         // Análise financeira avançada
@@ -449,21 +427,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           ...financialResults,
         };
 
-        console.log('✅ === CÁLCULO FINALIZADO COM SUCESSO ===');
-        console.log('📈 Resumo dos resultados:', {
-          potencia_pico: potenciaPico,
-          numero_modulos: numeroModulos,
-          area_estimada: areaEstimada,
-          geracao_anual: geracaoEstimadaAnual, // Do resumo sistema
-          investimento_total: totalInvestment,
-          payback: financialResults.payback,
-          vpl: financialResults.vpl,
-          tir: financialResults.tir
-        });
-
         // Log: Finalizando todos os cálculos
-        console.log('✅ === TODOS OS CÁLCULOS FINALIZADOS ===');
-        console.log('🎯 Resultados finais completos:', {
           potenciaPico: `${(potenciaPico || 0).toFixed(2)} kWp`,
           numeroModulos: numeroModulos || 0,
           areaEstimada: `${(areaEstimada || 0).toFixed(2)} m²`, 
@@ -476,7 +440,6 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           co2Evitado: `${((advancedResults as any)?.co2Savings || 0).toFixed(0)} kg/ano`
         });
         
-        console.log('🔍 Detalhes técnicos completos:', {
           irradiacaoMedia: `${(irradiacaoMediaAnual || 0).toFixed(2)} kWh/m²/dia`,
           hsol: `${((advancedResults as any)?.hsol || 0).toFixed(2)} horas`,
           pr: `${((advancedResults as any)?.pr || 0).toFixed(3)}`,
@@ -485,30 +448,16 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           autossuficiencia: `${(((geracaoEstimadaAnual||0)/(consumoTotalAnual||1))*100).toFixed(1)}%`
         });
         
-        console.log('💰 === ANÁLISE FINANCEIRA DETALHADA ===');
-        console.log(`💵 Investimento inicial: R$ ${(totalInvestment || 0).toLocaleString('pt-BR')}`);
-        console.log(`📈 Economia anual: R$ ${((financialResults as any)?.economiaAnual || 0).toLocaleString('pt-BR')}`);
-        console.log(`📅 Economia mensal: R$ ${(((financialResults as any)?.economiaAnual || 0)/12).toLocaleString('pt-BR')} (economia anual ÷ 12)`);
-        console.log(`⏱️ Payback simples: ${(financialResults?.payback || 0).toFixed(1)} anos`);
-        console.log(`📊 VPL (25 anos): R$ ${(financialResults?.vpl || 0).toLocaleString('pt-BR')}`);
-        console.log(`📈 TIR: ${((financialResults?.tir || 0) * 100).toFixed(2)}%`);
-        console.log(`💰 Economia total (25 anos): R$ ${(((financialResults as any)?.economiaAnual || 0) * 25).toLocaleString('pt-BR')} (economia anual × 25)`);
         
         // Cálculos adicionais do resumo financeiro
         const economiaAnual = ((financialResults as any)?.economiaAnual || 0);
         const paybackMeses = (financialResults?.payback || 0) * 12;
         const roiAnual = totalInvestment > 0 ? (economiaAnual / totalInvestment) * 100 : 0;
         
-        console.log('🔢 === CÁLCULOS DO RESUMO FINANCEIRO ===');
-        console.log(`⏰ Payback em meses: ${paybackMeses.toFixed(1)} meses (${(financialResults?.payback || 0).toFixed(1)} anos × 12)`);
-        console.log(`📊 ROI anual: ${roiAnual.toFixed(2)}% (economia anual ÷ investimento × 100)`);
-        console.log(`💡 Economia por kWh gerado: R$ ${(geracaoEstimadaAnual > 0 ? economiaAnual / geracaoEstimadaAnual : 0).toFixed(3)}/kWh`);
-        console.log(`🏠 Economia mensal por R$ investido: R$ ${(totalInvestment > 0 ? (economiaAnual/12) / (totalInvestment/1000) : 0).toFixed(2)} por R$ 1.000 investidos`);
         
         // Tentar integração com backend se habilitado
         if (shouldUseBackendCalculations()) {
           try {
-            console.log('🌐 === INTEGRAÇÃO COM BACKEND (FORM - SEM PROJETO) ===');
             
             const backendParams = {
               systemParams: {
@@ -539,7 +488,6 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
               }
             };
             
-            console.log('📤 Enviando para backend (standalone):', backendParams);
             
             const enhancedResults = await BackendCalculationService.enhanceWithBackendCalculations(
               '', // Não precisa mais de projectId
@@ -549,20 +497,14 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
             
             // Mesclar resultados se disponíveis
             if (enhancedResults && enhancedResults !== results) {
-              console.log('✅ === RESULTADOS DO BACKEND RECEBIDOS ===');
-              console.log('🔄 Mesclando resultados frontend + backend...');
               results = enhancedResults;
             }
             
-            console.log('🌐 === FIM INTEGRAÇÃO BACKEND ===');
           } catch (error) {
-            console.log('⚠️ Erro na integração backend (usando frontend):', error);
           }
         } else {
-          console.log('ℹ️ Backend desabilitado - usando apenas frontend');
         }
         
-        console.log('📊 === FORM: DIMENSIONAMENTO CONCLUÍDO ===');
 
         onCalculationComplete(results);
         
@@ -584,7 +526,6 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
         });
 
       } catch (error) {
-        console.error("Calculation Error:", error);
         toast({ 
           variant: "destructive", 
           title: "Erro no cálculo", 
@@ -722,11 +663,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           <div className="relative">
             <Button 
               onClick={() => {
-                console.log('🔘 Botão Salvar clicado!', {
-                  isSaving,
-                  customer: currentDimensioning.customer,
-                  dimensioningName: currentDimensioning.dimensioningName
-                });
+
                 saveDimensioning();
               }} 
               disabled={isSaving || !currentDimensioning.customer || !currentDimensioning.dimensioningName?.trim()}

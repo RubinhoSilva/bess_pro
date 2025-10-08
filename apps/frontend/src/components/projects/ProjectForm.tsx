@@ -135,7 +135,6 @@ export default function ProjectForm({ onSuccess, onCancel, initialData, project,
       toast.success('Projeto criado com sucesso!');
       onSuccess?.();
     } catch (error: any) {
-      console.error('Error creating project:', error);
       toast.error(error.message || 'Erro ao criar projeto');
     }
   };

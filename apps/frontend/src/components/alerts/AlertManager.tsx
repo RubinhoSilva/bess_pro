@@ -73,7 +73,6 @@ export function AlertManager({ leadId, showCreateButton = true }: AlertManagerPr
         alertTime: ''
       });
     } catch (error) {
-      console.error('Erro ao criar alerta:', error);
     }
   };
 
@@ -81,7 +80,6 @@ export function AlertManager({ leadId, showCreateButton = true }: AlertManagerPr
     try {
       await updateAlertStatus.mutateAsync({ alertId, status });
     } catch (error) {
-      console.error('Erro ao atualizar status do alerta:', error);
     }
   };
 

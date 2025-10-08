@@ -59,7 +59,6 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
         setInitialLeads(formattedLeads);
       }
     } catch (error) {
-      console.warn('Erro ao carregar leads iniciais:', error);
       setInitialLeads([]);
     }
   }, []);
@@ -90,7 +89,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
           pageSize: 20 
         });
         
-        // console.log('Response structure:', leadsResponse.data);
+        // // // // console.log('Response structure:', leadsResponse.data);
         
         // Tentar diferentes estruturas de resposta
         let leadsData = null;
@@ -115,7 +114,6 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
           });
         }
       } catch (error) {
-        console.warn('Erro ao buscar leads:', error);
         // Não interromper a busca se leads falharem
       }
 
@@ -138,14 +136,12 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
               }
             }
           } catch (clientError) {
-            console.warn('Erro ao processar cliente:', clientError);
           }
         });
       }
 
       setSearchResults(results);
     } catch (error) {
-      console.error('Erro crítico na busca:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -177,7 +173,6 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
         const validCompanies = Array.isArray(companies) ? companies : [];
         setEnergyCompanies(validCompanies);
       } catch (error) {
-        console.error('Erro ao carregar concessionárias:', error);
         setEnergyCompanies([]);
         toast.error('Erro ao carregar lista de concessionárias');
       } finally {
@@ -193,7 +188,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
     try {
       // Validar se o cliente possui dados necessários
       if (!customer || !customer.id || !customer.displayName) {
-        // console.error('Cliente inválido selecionado:', customer);
+        // // // // // console.error('Cliente inválido selecionado:', customer);
         return;
       }
 
@@ -242,7 +237,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
       setSearchTerm(customer.displayName);
       setIsDropdownOpen(false);
     } catch (error) {
-      // console.error('Erro ao selecionar cliente:', error);
+      // // // // // console.error('Erro ao selecionar cliente:', error);
       // Manter dropdown aberto em caso de erro
     }
   };
@@ -311,7 +306,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   {searchResults.map((result, index) => {
                     // Validação de segurança para cada resultado
                     if (!result || !result.id || !result.displayName) {
-                      // console.warn('Resultado inválido ignorado:', result);
+                      // // // // // console.warn('Resultado inválido ignorado:', result);
                       return null;
                     }
                     

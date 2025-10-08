@@ -207,7 +207,6 @@ export const AdvancedShadingAnalysisPanel: React.FC<AdvancedShadingAnalysisPanel
         onAnalysisUpdate(analysis);
       }
     } catch (error) {
-      console.error('Shading analysis failed:', error);
     } finally {
       setIsAnalyzing(false);
       setAnalysisProgress(100);

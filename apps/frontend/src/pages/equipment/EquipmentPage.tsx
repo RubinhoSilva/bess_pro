@@ -222,7 +222,6 @@ export default function EquipmentPage() {
             <CardContent>
               <EquipmentManager onUpdate={() => {
                 // Callback para quando equipamentos são atualizados
-                console.log('Equipamentos atualizados');
               }} />
             </CardContent>
           </Card>

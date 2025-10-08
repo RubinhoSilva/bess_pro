@@ -108,7 +108,6 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
       });
       
     } catch (error) {
-      console.error('Erro na exportação PDF:', error);
       
       const errorMessage = error instanceof Error 
         ? error.message 
@@ -133,7 +132,6 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
         text: subtitle,
         url: window.location.href,
       }).catch((error) => {
-        console.log('Error sharing:', error);
         toast({
           title: "Erro ao compartilhar",
           description: "Não foi possível compartilhar o relatório.",

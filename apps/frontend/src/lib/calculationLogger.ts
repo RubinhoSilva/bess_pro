@@ -39,7 +39,6 @@ export class FrontendCalculationLogger {
       console.group(consoleMessage);
       console.info('📋 Descrição:', log.description);
     } else {
-      console.log(consoleMessage);
     }
     
     if (log.formula) {
@@ -197,23 +196,18 @@ export class FrontendCalculationLogger {
   clearLogs(): void {
     this.logs = [];
     console.clear();
-    console.log('🗑️ [Frontend] Logs limpos');
   }
 
   // Método para logar início de seção de cálculos
   startCalculationSection(title: string): void {
     console.group(`🎯 [INÍCIO] ${title}`);
-    console.log(`⏰ Iniciado em: ${new Date().toLocaleString('pt-BR')}`);
   }
 
   // Método para logar fim de seção de cálculos
   endCalculationSection(title: string, summary?: any): void {
-    console.log(`⏰ Finalizado em: ${new Date().toLocaleString('pt-BR')}`);
     if (summary) {
-      console.log('📊 Resumo:', summary);
     }
     console.groupEnd();
-    console.log(`✅ [CONCLUÍDO] ${title}`);
   }
 
   // Método para logar chamadas de API

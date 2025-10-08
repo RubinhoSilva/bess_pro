@@ -121,19 +121,10 @@ const Section: React.FC<{ title: string; children: React.ReactNode; delay?: numb
 // Função para validar e normalizar dados
 const validateAndNormalizeResults = (results: any) => {
   if (!results) {
-    console.warn('🚨 PVResultsDashboard: results is null/undefined');
     return null;
   }
 
   // Log dos dados recebidos para debug
-  console.log('📊 PVResultsDashboard: Dados recebidos:', {
-    hasFluxoCaixa: !!results.fluxoCaixa,
-    fluxoCaixaLength: results.fluxoCaixa?.length,
-    hasGeracaoMensal: !!results.geracaoEstimadaMensal,
-    geracaoMensalLength: results.geracaoEstimadaMensal?.length,
-    hasAdvancedSolar: !!results.advancedSolar,
-    hasAdvancedFinancial: !!results.advancedFinancial
-  });
 
   const normalized: any = {
     ...results,
@@ -226,21 +217,6 @@ const validateAndNormalizeResults = (results: any) => {
     lcoe: normalized.advancedFinancial?.indicadores?.custoNiveladoEnergia || 0
   };
 
-  console.log('📊 PVResultsDashboard: Dados enriquecidos:', {
-    potenciaSistema: enrichedResults.potenciaSistema,
-    geracaoAnual: enrichedResults.geracaoAnual,
-    economiaProjetada: enrichedResults.economiaProjetada,
-    performanceRatio: enrichedResults.performanceRatio,
-    yield: enrichedResults.yield,
-    roi: enrichedResults.roi,
-    lcoe: enrichedResults.lcoe,
-    // Debug dos dados originais
-    originalEconomiaAnualEstimada: results.economiaAnualEstimada,
-    originalEconomiaAnualMedia: results.economiaAnualMedia,
-    advancedFinancialEconomia: results.advancedFinancial?.economiaAnualMedia,
-    geracaoAnualCalculada
-  });
-
   return enrichedResults;
 };
 
@@ -331,7 +307,6 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
       // 6. Pega todas as páginas
       const pages = proposalElement.querySelectorAll('.proposal-page');
 
-      console.log(`📄 Found ${pages.length} pages for PDF generation`);
 
       if (pages.length === 0) {
         throw new Error('Nenhuma página encontrada no documento');
@@ -341,7 +316,6 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
       pages.forEach((page, index) => {
         const element = page as HTMLElement;
         const rect = element.getBoundingClientRect();
-        console.log(`📄 Page ${index + 1} details:`, {
           offsetWidth: element.offsetWidth,
           offsetHeight: element.offsetHeight,
           scrollWidth: element.scrollWidth,
@@ -364,13 +338,11 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      console.log(`📋 PDF dimensions: ${pdfWidth}x${pdfHeight}mm`);
 
       // 8. Processa cada página
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i] as HTMLElement;
 
-        console.log(`📸 Capturing page ${i + 1}/${pages.length}...`);
 
         // Ajusta o scrollWidth para páginas muito largas (como a Page 6)
         const captureWidth = Math.min(page.scrollWidth, 792); // Limita a largura máxima
@@ -386,7 +358,6 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
           logging: true, // Ativa logs do html2canvas
         });
 
-        console.log(`📸 Canvas created for page ${i + 1}:`, {
           canvasWidth: canvas.width,
           canvasHeight: canvas.height,
           dataURLLength: canvas.toDataURL('image/png').length
@@ -398,15 +369,6 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
 
         // Ajusta a altura para caber exatamente na página
         const adjustedImgHeight = Math.min(imgHeight, pdfHeight - 0.5); // -0.5mm de margem de segurança
-
-        console.log(`🖼️ Image properties for page ${i + 1}:`, {
-          imgWidth: imgProps.width,
-          imgHeight: imgProps.height,
-          calculatedImgHeight: imgHeight,
-          adjustedImgHeight: adjustedImgHeight,
-          pdfPageHeight: pdfHeight,
-          willFit: adjustedImgHeight <= pdfHeight
-        });
 
         if (i > 0) {
           pdf.addPage();
@@ -428,7 +390,6 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
       setShowProposalPreview(false);
 
     } catch (error: any) {
-      console.error('Erro ao gerar PDF:', error);
       setShowProposalPreview(false);
       alert(`Erro ao gerar PDF: ${error.message}`);
     } finally {

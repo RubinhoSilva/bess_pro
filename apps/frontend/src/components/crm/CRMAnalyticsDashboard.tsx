@@ -224,7 +224,6 @@ export const CRMAnalyticsDashboard: React.FC<CRMAnalyticsProps> = ({
     };
     
     // Debug: log the client type distribution
-    console.log('🔍 Client Type Distribution Analysis:', {
       ...stats,
       totalLeads: filteredLeads.length,
       sampleLeads: filteredLeads.slice(0, 5).map(lead => ({

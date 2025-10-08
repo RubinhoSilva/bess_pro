@@ -212,7 +212,6 @@ const AdvancedPDFGenerator: React.FC<AdvancedPDFGeneratorProps> = ({ results, on
       }
       
     } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
       
       let errorMessage = 'Erro desconhecido ao gerar o relatório.';
       
@@ -295,7 +294,6 @@ const AdvancedPDFGenerator: React.FC<AdvancedPDFGeneratorProps> = ({ results, on
 
       return pdfString; // Em implementação real, seria um buffer de PDF
     } catch (error) {
-      console.error('Erro na geração dos dados PDF:', error);
       throw new Error(`Falha na preparação dos dados: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
@@ -327,10 +325,8 @@ const AdvancedPDFGenerator: React.FC<AdvancedPDFGeneratorProps> = ({ results, on
       // Cleanup
       setTimeout(() => URL.revokeObjectURL(url), 100);
       
-      console.log(`📄 Relatório salvo como: ${a.download}`);
       
     } catch (error) {
-      console.error('Erro no download:', error);
       throw new Error(`Falha no download: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };

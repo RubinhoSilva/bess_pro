@@ -47,7 +47,6 @@ export const ModelUploadDialog: React.FC<ModelUploadDialogProps> = ({
       toast.success('Modelo carregado com sucesso!');
       onClose();
     } catch (error) {
-      console.error('Erro ao carregar modelo:', error);
       toast.error('Erro ao carregar modelo 3D');
     } finally {
       setIsUploading(false);

@@ -118,13 +118,6 @@ export const LeadForm: React.FC<LeadFormProps> = ({
   // Atualizar formulário quando lead for carregado
   useEffect(() => {
     if (lead) {
-      console.log('🔄 Populando formulário com dados do lead:', {
-        leadId: lead.id,
-        value: lead.value,
-        powerKwp: lead.powerKwp,
-        clientType: lead.clientType,
-        tags: lead.tags,
-      });
 
       form.reset({
         name: lead.name || '',
@@ -158,7 +151,6 @@ export const LeadForm: React.FC<LeadFormProps> = ({
 
       await onSubmit(formattedData as CreateLeadRequest | UpdateLeadRequest);
     } catch (error) {
-      console.error('Erro ao salvar lead:', error);
     }
   };
 

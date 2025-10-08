@@ -62,7 +62,6 @@ export default function ClientAlertsList({ alerts, showClientInfo = false, onEdi
     try {
       await updateMutation.mutateAsync({ id: alertId, input: { status: newStatus } });
     } catch (error) {
-      console.error('Erro ao atualizar status do alerta:', error);
     }
   };
 

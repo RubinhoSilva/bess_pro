@@ -308,20 +308,17 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
   // Função para calcular geração do sistema completo (todas as águas juntas)
   const handleCalculateGeneration = async (aguaId: string) => {
     if (!latitude || !longitude) {
-      console.warn('Latitude/longitude não disponíveis para cálculo');
       return;
     }
 
     const agua = aguasTelhado.find(a => a.id === aguaId);
     if (!agua) {
-      console.warn('Água não encontrada');
       return;
     }
 
     // Verificar se existe pelo menos uma água com módulos
     const totalModulos = aguasTelhado.reduce((sum, a) => sum + (a.numeroModulos || 0), 0);
     if (totalModulos === 0) {
-      console.warn('Nenhuma água tem módulos configurados para calcular');
       return;
     }
 
@@ -546,7 +543,6 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         
       onAguasChange(finalAguas);
     } catch (error) {
-      console.error('❌ Erro ao calcular geração:', error);
       
       // Remover estado de carregamento de TODAS as águas
       const finalAguas = aguasTelhado.map(a => ({ ...a, isCalculando: false }));

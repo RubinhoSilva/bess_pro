@@ -50,7 +50,6 @@ export default function ClientsPage() {
 
   const getStatusBadge = (status: ClientStatus) => {
     if (!status) {
-      console.warn('Status undefined para cliente:', status);
     }
     
     const statusConfig = {

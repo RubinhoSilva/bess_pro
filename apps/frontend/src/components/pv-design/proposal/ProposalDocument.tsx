@@ -40,23 +40,8 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
   const showServices = settings?.show_services ?? true;
 
   // Log para verificar dados recebidos
-  console.log('📄 ProposalDocument rendering with:', {
-    potenciaSistema: results?.potenciaSistema,
-    potenciaPico: results?.potenciaPico,
-    geracaoAnual: results?.geracaoAnual,
-    geracaoEstimadaMensalLength: results?.geracaoEstimadaMensal?.length,
-    fluxoCaixaLength: results?.fluxoCaixa?.length,
-    hasAdvancedSolar: !!results?.advancedSolar,
-    hasAdvancedFinancial: !!results?.advancedFinancial,
-    performanceRatio: results?.performanceRatio,
-    yield: results?.yield,
-    roi: results?.roi,
-    lcoe: results?.lcoe,
-    economiaProjetada: results?.economiaProjetada,
-  });
 
   // Log para verificar configurações das páginas
-  console.log('📋 Page settings:', {
     showIntro,
     showTech,
     showFinancial,
@@ -66,15 +51,12 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
 
   // Log para detectar quando o componente está montado
   React.useEffect(() => {
-    console.log('🖨️ ProposalDocument mounted, checking page elements...');
     
     const pages = document.querySelectorAll('.proposal-page');
-    console.log(`📄 Found ${pages.length} proposal pages`);
     
     pages.forEach((page, index) => {
       const element = page as HTMLElement;
       const rect = element.getBoundingClientRect();
-      console.log(`📄 Page ${index + 1}:`, {
         width: rect.width,
         height: rect.height,
         scrollHeight: element.scrollHeight,

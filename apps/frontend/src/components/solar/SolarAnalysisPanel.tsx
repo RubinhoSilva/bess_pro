@@ -86,7 +86,6 @@ export const SolarAnalysisPanel: React.FC<SolarAnalysisPanelProps> = ({
         onAnalysisComplete(result);
       }
     } catch (error) {
-      console.error('Erro na análise solar:', error);
     }
   };
 

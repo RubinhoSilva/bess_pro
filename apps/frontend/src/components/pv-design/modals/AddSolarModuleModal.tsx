@@ -127,7 +127,6 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
         pesoKg: 0,
       });
     } catch (error) {
-      console.error('Erro ao criar módulo:', error);
     }
   };
 

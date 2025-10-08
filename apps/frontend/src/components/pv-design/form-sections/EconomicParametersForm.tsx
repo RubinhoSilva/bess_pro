@@ -24,7 +24,6 @@ export default function EconomicParametersForm({ formData, onFormChange }: Econo
         const companies = await energyCompanyService.getActiveCompanies();
         setEnergyCompanies(companies);
       } catch (error) {
-        console.error('Erro ao carregar concessionárias:', error);
         toast.error('Erro ao carregar concessionárias de energia');
       } finally {
         setLoadingCompanies(false);

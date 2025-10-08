@@ -182,7 +182,6 @@ const LeadsPage = () => {
       });
       setAllLeads(data);
     } catch (error) {
-      console.error('Erro ao buscar leads:', error);
       toast.error('Erro ao buscar leads');
     } finally {
       setLoading(false);
@@ -239,7 +238,6 @@ const LeadsPage = () => {
       toast.success('Lead excluído com sucesso!');
       fetchLeads();
     } catch (error) {
-      console.error('Erro ao excluir lead:', error);
       toast.error('Erro ao excluir lead');
     } finally {
       setDeletingLead(null);
@@ -270,7 +268,6 @@ const LeadsPage = () => {
       setSelectedLead(null);
       fetchLeads();
     } catch (error: any) {
-      console.error('Erro ao salvar lead:', error);
       
       // O interceptor do axios já mostra o toast para erros 409 (conflito)
       // Só mostrar toast genérico se não for um erro conhecido

@@ -95,7 +95,6 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
         potenciaAparenteMax: 0,
       });
     } catch (error) {
-      console.error('Erro ao criar inversor:', error);
     }
   };
 

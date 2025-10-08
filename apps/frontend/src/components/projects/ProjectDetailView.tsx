@@ -77,7 +77,6 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             const fullProject = detailResponse.data?.data || detailResponse.data;
             projectsWithDetails.push(fullProject);
           } catch (error) {
-            console.error('Erro ao carregar projeto:', proj.id, error);
             projectsWithDetails.push(proj); // Usar dados básicos se falhar
           }
         } else {
@@ -103,7 +102,6 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
       setDimensionings(projectDimensionings);
     } catch (error) {
-      console.error('Erro ao carregar dimensionamentos:', error);
       toast({
         variant: "destructive",
         title: "Erro",
@@ -190,7 +188,6 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         description: "O dimensionamento foi copiado com sucesso."
       });
     } catch (error) {
-      console.error('Erro ao duplicar dimensionamento:', error);
       toast({
         variant: "destructive",
         title: "Erro",
@@ -211,7 +208,6 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         description: "O dimensionamento foi removido com sucesso."
       });
     } catch (error) {
-      console.error('Erro ao excluir dimensionamento:', error);
       toast({
         variant: "destructive",
         title: "Erro",

@@ -86,7 +86,6 @@ export const ModelLoader: React.FC<ModelLoaderProps> = ({
       </group>
     );
   } catch (error) {
-    console.error('Erro ao carregar modelo 3D:', error);
     
     // Fallback: render a simple placeholder cube
     return (

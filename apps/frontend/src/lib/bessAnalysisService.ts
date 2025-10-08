@@ -199,7 +199,6 @@ export async function calculateHybridSystem(
  */
 export async function healthCheckBess(): Promise<BessHealthCheckResponse> {
   try {
-    console.log('🏥 [FRONTEND] Verificando saúde do serviço BESS');
 
     // Chamar endpoint do backend Node.js
     // GET /api/v1/bess-analysis/health
@@ -210,7 +209,6 @@ export async function healthCheckBess(): Promise<BessHealthCheckResponse> {
       }
     );
 
-    console.log(`✅ [FRONTEND] Serviço BESS está ${response.data.status}`);
 
     return response.data;
 

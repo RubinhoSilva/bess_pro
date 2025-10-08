@@ -90,7 +90,6 @@ export default function CalculationLogsDemo() {
         description: `${response.data.logs.summary.totalOperations} operações executadas com sucesso.`,
       });
     } catch (error) {
-      console.error('Erro ao executar cálculo:', error);
       toast({
         title: "Erro no cálculo",
         description: "Ocorreu um erro ao executar os cálculos detalhados.",

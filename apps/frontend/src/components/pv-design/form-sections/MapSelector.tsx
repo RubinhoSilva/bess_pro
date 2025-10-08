@@ -108,7 +108,6 @@ const MapSelector: React.FC<MapSelectorProps> = ({
   // Função para obter localização atual do usuário
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      console.warn('Geolocation não é suportada neste navegador');
       return;
     }
 
@@ -138,7 +137,6 @@ const MapSelector: React.FC<MapSelectorProps> = ({
         setIsLocatingUser(false);
       },
       (error) => {
-        console.error('Erro ao obter localização:', error);
         setIsLocatingUser(false);
       },
       {
@@ -172,7 +170,6 @@ const MapSelector: React.FC<MapSelectorProps> = ({
       const data = await response.json();
       setSearchResults(data);
     } catch (error) {
-      console.error('Erro na busca:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -197,7 +194,6 @@ const MapSelector: React.FC<MapSelectorProps> = ({
       const data = await response.json();
       return data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     } catch (error) {
-      console.error('Erro ao buscar endereço:', error);
       return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     }
   };

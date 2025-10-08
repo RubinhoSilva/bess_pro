@@ -57,7 +57,6 @@ export default function ResetPasswordPage() {
         const response = await api.get(`/auth/validate-reset-token?token=${token}&email=${email}`);
         const data = response.data;
         
-        console.log('🔍 Frontend - resposta da validação:', data);
         
         // A resposta vem encapsulada em data.data
         const validationResult = data.data;
@@ -68,7 +67,6 @@ export default function ResetPasswordPage() {
           setError(validationResult.message || 'Token inválido ou expirado');
         }
       } catch (err) {
-        console.error('Token validation error:', err);
         setError('Erro ao validar token. Link pode estar expirado.');
       } finally {
         setIsValidating(false);
@@ -97,7 +95,6 @@ export default function ResetPasswordPage() {
         toast.success('Senha redefinida com sucesso!');
       }
     } catch (error: any) {
-      console.error('Reset password error:', error);
       const errorMessage = error.response?.data?.error?.message || 'Erro ao redefinir senha';
       toast.error(errorMessage);
     } finally {

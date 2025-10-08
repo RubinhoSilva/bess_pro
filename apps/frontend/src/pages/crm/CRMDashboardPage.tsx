@@ -37,7 +37,6 @@ const CRMDashboardPage: React.FC = () => {
       const data = await leadsApi.getLeads();
       setLeads(data);
     } catch (error) {
-      console.error('Erro ao carregar leads:', error);
       toast.error('Erro ao carregar dados do dashboard');
     } finally {
       setLoading(false);
@@ -56,7 +55,6 @@ const CRMDashboardPage: React.FC = () => {
       await fetchLeads(); // Recarregar leads
       toast.success('Lead criado com sucesso!');
     } catch (error: any) {
-      console.error('Erro ao criar lead:', error);
       
       // O interceptor do axios já mostra o toast para erros 409 (conflito)
       // Só mostrar toast genérico se não for um erro conhecido

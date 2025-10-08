@@ -6,7 +6,6 @@ export default function BESSAnalysisPage() {
   const location = useLocation();
   
   const handleComplete = (results: any) => {
-    console.log('BESS Analysis Results:', results);
   };
 
   // Passar o lead pré-selecionado para o componente

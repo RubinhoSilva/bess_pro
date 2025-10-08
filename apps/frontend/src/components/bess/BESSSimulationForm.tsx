@@ -307,7 +307,6 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
       setTimeout(() => setCalculationStage('Simulando operação BESS (8760 horas)...'), 30000);
       setTimeout(() => setCalculationStage('Analisando cenários financeiros...'), 60000);
 
-      console.log('🔋⚡ [FRONTEND] Iniciando cálculo híbrido:', request);
 
       // CHAMADA REAL AO BACKEND
       const response = await calculateHybridSystem(request);
@@ -320,7 +319,6 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
       // ETAPA 6: PROCESSAR RESULTADO E PASSAR PARA DASHBOARD
       // ========================================================================
 
-      console.log('✅ [FRONTEND] Cálculo concluído:', response);
 
       toast({
         title: "Cálculo concluído!",
@@ -341,7 +339,6 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
       });
 
     } catch (error: any) {
-      console.error('❌ [FRONTEND] Erro no cálculo híbrido:', error);
 
       toast({
         variant: "destructive",

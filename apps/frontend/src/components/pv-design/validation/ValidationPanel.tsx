@@ -90,7 +90,6 @@ const ValidationPanel: React.FC<ValidationPanelProps> = ({
         onValidationChange(result);
       }
     } catch (error) {
-      console.error('Erro na validação:', error);
     } finally {
       setIsValidating(false);
     }

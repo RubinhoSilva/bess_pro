@@ -215,7 +215,6 @@ const KanbanPagePragmatic: React.FC = () => {
       setTimeout(() => refetch(), 500);
       
     } catch (error) {
-      console.error('Erro ao atualizar lead:', error);
       toast.error('Erro ao mover lead');
       
       // Rollback - remover update otimista
@@ -312,11 +311,6 @@ const KanbanPagePragmatic: React.FC = () => {
           const [draggedColumn] = reorderedColumns.splice(draggedIndex, 1);
           reorderedColumns.splice(targetIndex, 0, draggedColumn);
 
-          console.log('🔄 Reordenando colunas:', {
-            from: draggedIndex,
-            to: targetIndex,
-            draggedColumn: draggedColumn.name,
-            newOrder: reorderedColumns.map(c => c.name)
           });
 
           handleReorderColumns(reorderedColumns);
@@ -378,7 +372,6 @@ const KanbanPagePragmatic: React.FC = () => {
       toast.success('Lead excluído com sucesso!');
       refetch();
     } catch (error) {
-      console.error('Erro ao excluir lead:', error);
       toast.error('Erro ao excluir lead');
     } finally {
       setIsDeleteAlertOpen(false);
@@ -446,7 +439,6 @@ const KanbanPagePragmatic: React.FC = () => {
       });
       cancelEditingColumn();
     } catch (error) {
-      console.error('Error updating column:', error);
       cancelEditingColumn();
     }
   };
@@ -886,7 +878,6 @@ const KanbanPagePragmatic: React.FC = () => {
                 setDefaultStage(null);
                 refetch();
               } catch (error) {
-                console.error('Erro ao salvar lead:', error);
                 toast.error('Erro ao salvar lead');
               }
             }}

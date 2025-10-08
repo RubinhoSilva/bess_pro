@@ -96,7 +96,6 @@ export function AdvancedTemplatesPage() {
       }
       // PDF já é baixado automaticamente pela mutation
     } catch (error) {
-      console.error('Erro ao gerar proposta:', error);
     }
   };
 

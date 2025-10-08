@@ -110,7 +110,6 @@ export class SystemCalculations {
         geracaoEstimadaAnual = pvlibResult.annual_energy;
         geracaoEstimadaMensal = pvlibResult.monthly_energy;
         usedPVLIB = true;
-        console.log('✅ PVLIB usado com sucesso:', {
           geracaoAnual: geracaoEstimadaAnual.toFixed(2),
           coordenadas: { latitude, longitude },
           orientacao: { tilt: inclinacao, azimuth: orientacao }

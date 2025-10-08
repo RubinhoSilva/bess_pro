@@ -110,7 +110,6 @@ export default function LiveCalculationLogs() {
       });
 
     } catch (error) {
-      console.error('Erro no cálculo:', error);
       addLog({
         id: `error-${Date.now()}`,
         timestamp: new Date().toISOString(),

@@ -89,7 +89,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const updateProjectMutation = useUpdateProject();
 
   const loadProject = useCallback((projectData: any, source: string = 'manual') => {
-    console.log('Loading project:', projectData);
     
     const fullProjectData = { ...getInitialFormData(), ...projectData.projectData };
     
@@ -167,7 +166,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         toast.success('Projeto salvo com sucesso!');
       }
     } catch (error: any) {
-      console.error('Error saving project:', error);
       toast.error(error.message || 'Erro ao salvar projeto');
     }
   }, [
