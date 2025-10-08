@@ -14,7 +14,9 @@ import {
   DialogFooter, 
   DialogDescription 
 } from '@/components/ui/dialog';
-import { PlusCircle, Edit, Trash2, Package, Unplug, Loader2, Search } from 'lucide-react';
+import { 
+  PlusCircle, Edit, Trash2, Package, Unplug, Loader2, Search, Lock, Info 
+} from 'lucide-react';
 import { 
   useSolarModules, 
   useCreateSolarModule, 
@@ -215,9 +217,19 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
     }
   };
 
-  const handleDeleteModule = async (id: string) => {
+  const handleDeleteModule = async (module: SolarModule) => {
+    // Verificar se é um equipamento público
+    if (module.userId === 'public-equipment-system') {
+      toast({
+        variant: 'destructive',
+        title: 'Equipamento público não pode ser excluído',
+        description: 'Este é um equipamento público do sistema e não pode ser removido.'
+      });
+      return;
+    }
+
     try {
-      await deleteModuleMutation.mutateAsync(id);
+      await deleteModuleMutation.mutateAsync(module.id);
       toast({ title: 'Módulo excluído.' });
       onUpdate?.();
     } catch (error) {
@@ -229,9 +241,19 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
     }
   };
 
-  const handleDeleteInverter = async (id: string) => {
+  const handleDeleteInverter = async (inverter: Inverter) => {
+    // Verificar se é um equipamento público
+    if (inverter.userId === 'public-equipment-system') {
+      toast({
+        variant: 'destructive',
+        title: 'Equipamento público não pode ser excluído',
+        description: 'Este é um equipamento público do sistema e não pode ser removido.'
+      });
+      return;
+    }
+
     try {
-      await deleteInverterMutation.mutateAsync(id);
+      await deleteInverterMutation.mutateAsync(inverter.id);
       toast({ title: 'Inversor excluído.' });
       onUpdate?.();
     } catch (error) {
@@ -244,6 +266,16 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   };
 
   const handleEditModule = (module: SolarModule) => {
+    // Verificar se é um equipamento público
+    if (module.userId === 'public-equipment-system') {
+      toast({
+        variant: 'destructive',
+        title: 'Equipamento público não pode ser editado',
+        description: 'Este é um equipamento público do sistema e não pode ser modificado. Você pode criar uma cópia com suas próprias especificações.'
+      });
+      return;
+    }
+
     setCurrentModule(module);
     setModuleForm({
       manufacturerId: module.manufacturerId || '',
@@ -272,12 +304,22 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       datasheetUrl: module.datasheetUrl,
       certificacoes: module.certificacoes,
       garantiaAnos: module.garantiaAnos,
-      tolerancia: module.tolerancia
+      tolerancia: module.tolerancia?.toString()
     });
     setIsModuleDialogOpen(true);
   };
 
   const handleEditInverter = (inverter: Inverter) => {
+    // Verificar se é um equipamento público
+    if (inverter.userId === 'public-equipment-system') {
+      toast({
+        variant: 'destructive',
+        title: 'Equipamento público não pode ser editado',
+        description: 'Este é um equipamento público do sistema e não pode ser modificado. Você pode criar uma cópia com suas próprias especificações.'
+      });
+      return;
+    }
+
     setCurrentInverter(inverter);
     setInverterForm({
       manufacturerId: inverter.manufacturerId || '',
@@ -404,34 +446,49 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
             ) : modules.length === 0 ? (
               <p className="text-slate-400 text-center py-4">Nenhum módulo cadastrado</p>
             ) : (
-              modules.map((module: any) => (
-                <div key={module.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                  <div>
-                    <span className="font-medium">{module.fabricante} {module.modelo}</span>
-                    <span className="text-sm text-slate-400 ml-2">({module.potenciaNominal}W)</span>
-                    {module.tipoCelula && (
-                      <span className="text-xs text-slate-500 block">{module.tipoCelula}</span>
-                    )}
+              modules.map((module: any) => {
+                const isPublic = module.userId === 'public-equipment-system';
+                return (
+                  <div key={module.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{module.fabricante} {module.modelo}</span>
+                        <span className="text-sm text-slate-400">({module.potenciaNominal}W)</span>
+                        {isPublic && (
+                          <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                            <Lock className="w-3 h-3" />
+                            <span>Público</span>
+                          </div>
+                        )}
+                      </div>
+                      {module.tipoCelula && (
+                        <span className="text-xs text-slate-500 block">{module.tipoCelula}</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleEditModule(module)}
+                        disabled={isPublic}
+                        title={isPublic ? 'Equipamento público não pode ser editado' : 'Editar módulo'}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-red-500" 
+                        onClick={() => handleDeleteModule(module)}
+                        disabled={isPublic}
+                        title={isPublic ? 'Equipamento público não pode ser excluído' : 'Excluir módulo'}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleEditModule(module)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-red-500" 
-                      onClick={() => handleDeleteModule(module.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </CardContent>
         </Card>
@@ -459,34 +516,49 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
             ) : inverters.length === 0 ? (
               <p className="text-slate-400 text-center py-4">Nenhum inversor cadastrado</p>
             ) : (
-              inverters.map((inverter: any) => (
-                <div key={inverter.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                  <div>
-                    <span className="font-medium">{inverter.fabricante} {inverter.modelo}</span>
-                    <span className="text-sm text-slate-400 ml-2">({inverter.potenciaSaidaCA}W)</span>
-                    {inverter.tipoRede && (
-                      <span className="text-xs text-slate-500 block">{inverter.tipoRede}</span>
-                    )}
+              inverters.map((inverter: any) => {
+                const isPublic = inverter.userId === 'public-equipment-system';
+                return (
+                  <div key={inverter.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{inverter.fabricante} {inverter.modelo}</span>
+                        <span className="text-sm text-slate-400">({inverter.potenciaSaidaCA}W)</span>
+                        {isPublic && (
+                          <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                            <Lock className="w-3 h-3" />
+                            <span>Público</span>
+                          </div>
+                        )}
+                      </div>
+                      {inverter.tipoRede && (
+                        <span className="text-xs text-slate-500 block">{inverter.tipoRede}</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleEditInverter(inverter)}
+                        disabled={isPublic}
+                        title={isPublic ? 'Equipamento público não pode ser editado' : 'Editar inversor'}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-red-500" 
+                        onClick={() => handleDeleteInverter(inverter)}
+                        disabled={isPublic}
+                        title={isPublic ? 'Equipamento público não pode ser excluído' : 'Excluir inversor'}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleEditInverter(inverter)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-red-500" 
-                      onClick={() => handleDeleteInverter(inverter.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </CardContent>
         </Card>

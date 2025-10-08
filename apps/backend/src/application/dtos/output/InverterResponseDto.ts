@@ -1,5 +1,6 @@
 export interface InverterResponseDto {
   id: string;
+  userId: string;
   fabricante: string;
   modelo: string;
   potenciaSaidaCA: number; // Potência nominal de saída CA (W)

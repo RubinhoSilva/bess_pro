@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 // Types
 export interface SolarModule {
   id: string;
+  userId: string;
   manufacturerId: string;
   fabricante: string;
   modelo: string;
@@ -22,12 +23,7 @@ export interface SolarModule {
   tempCoefPmax?: number;
   tempCoefVoc?: number;
   tempCoefIsc?: number;
-  pesoKg?: number;
-  datasheetUrl?: string;
-  certificacoes?: string[];
-  garantiaAnos?: number;
-  tolerancia?: string;
-  areaM2?: number;
+  tolerancia?: number;
   densidadePotencia?: number;
   // Parâmetros para modelo espectral
   material?: string;     // Material da célula (c-Si, a-Si, CdTe, etc.)
@@ -49,6 +45,12 @@ export interface SolarModule {
   a0?: number; a1?: number; a2?: number; a3?: number; a4?: number;
   b0?: number; b1?: number; b2?: number; b3?: number; b4?: number; b5?: number;
   dtc?: number;          // Delta T para SAPM [°C]
+  
+  // Propriedades físicas e comerciais
+  pesoKg?: number;
+  datasheetUrl?: string;
+  certificacoes?: string[];
+  garantiaAnos?: number;
   
   createdAt: string;
   updatedAt: string;
@@ -79,6 +81,7 @@ export interface Manufacturer {
 
 export interface Inverter {
   id: string;
+  userId: string;
   manufacturerId: string;
   fabricante: string;
   modelo: string;

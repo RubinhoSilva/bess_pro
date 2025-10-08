@@ -10,6 +10,7 @@ export class InverterMapper {
     
     return {
       id: inverter.id!,
+      userId: inverter.userId,
       fabricante: inverter.fabricante,
       modelo: inverter.modelo,
       potenciaSaidaCA: inverter.potenciaSaidaCA,

@@ -1,5 +1,6 @@
 export interface SolarModuleResponseDto {
   id: string;
+  userId: string;
   fabricante: string;
   modelo: string;
   potenciaNominal: number; // Watts

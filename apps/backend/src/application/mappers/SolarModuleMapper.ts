@@ -9,6 +9,7 @@ export class SolarModuleMapper {
     
     return {
       id: module.id!,
+      userId: module.userId,
       fabricante: module.fabricante,
       modelo: module.modelo,
       potenciaNominal: module.potenciaNominal,
