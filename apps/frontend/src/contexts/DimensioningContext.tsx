@@ -317,29 +317,19 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     const shouldContinue = sessionStorage.getItem('continueDimensioning');
     const savedData = localStorage.getItem('currentDimensioning');
     
-    console.log('🔍 [INIT] Estado inicial do storage:', {
-      shouldContinue,
-      hasSavedData: !!savedData,
-      url: window.location.href
-    });
+
     
     if (shouldContinue === 'true' && savedData) {
       try {
         const parsed = JSON.parse(savedData);
-        console.log('📂 [INIT] Carregando dimensionamento salvo:', {
-          hasLatLng: !!(parsed.latitude && parsed.longitude),
-          hasIrradiation: parsed.irradiacaoMensal?.length > 0,
-          latitude: parsed.latitude,
-          longitude: parsed.longitude,
-          irradiationLength: parsed.irradiacaoMensal?.length
-        });
+
         return { ...getInitialDimensioningData(), ...parsed };
       } catch (e) {
-        console.warn('Error parsing saved dimensioning data:', e);
+
       }
     }
     
-    console.log('✨ [INIT] Iniciando novo dimensionamento limpo');
+
     return getInitialDimensioningData();
   });
   
@@ -424,13 +414,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     // Mark that user explicitly loaded a dimensioning
     sessionStorage.setItem('continueDimensioning', 'true');
     
-    console.log('📂 Dimensionamento carregado explicitamente:', data.dimensioningName);
-    console.log('🔍 [loadDimensioning] Dados do módulo carregados:', {
-      fabricanteModulo: loadedData.fabricanteModulo,
-      moduloSelecionado: loadedData.moduloSelecionado,
-      fabricanteModuloNome: loadedData.fabricanteModuloNome,
-      modeloModulo: loadedData.modeloModulo
-    });
+
     toast.success(`Dimensionamento "${data.dimensioningName}" carregado com sucesso.`);
   }, []);
 
@@ -449,7 +433,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     localStorage.removeItem('dimensioningId');
     sessionStorage.removeItem('continueDimensioning');
     
-    console.log('🧼 Dimensionamento limpo - valores padrão restaurados');
+
   }, []);
 
   const createNewDimensioning = useCallback((customerId: string, customerData: Customer) => {
@@ -475,16 +459,12 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     setCurrentDimensioning(newDimensioning);
     setIsDimensioningLoaded(false); // Changed to false for new dimensioning
     
-    console.log('✨ Novo dimensionamento criado para:', customerData.name);
+
     toast.success(`Novo dimensionamento criado para ${customerData.name}`);
   }, []);
 
   const saveDimensioning = useCallback(async () => {
-    console.log('🔧 Iniciando salvamento do dimensionamento...', {
-      dimensioningName: currentDimensioning.dimensioningName,
-      customer: currentDimensioning.customer,
-      dimensioningId
-    });
+
 
     // Detectar ambiente automaticamente
     const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -506,7 +486,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     // O dimensionamento será salvo diretamente com o nome informado
 
     setIsSaving(true);
-    console.log('💾 Definindo isSaving como true...');
+
     
     try {
       // Preparar dados para a API - agora usando o nome do dimensionamento como nome do projeto
@@ -522,7 +502,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
         }
       };
 
-      console.log('📋 Dados preparados para envio:', projectData);
+
 
       // Configurar headers com token de autenticação
       const token = localStorage.getItem('auth-token') || sessionStorage.getItem('auth-token');
@@ -536,9 +516,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
       let response: any;
       if (!dimensioningId) {
         // Criar novo dimensionamento (projeto)
-        console.log('🚀 Enviando POST para criar novo dimensionamento...');
         response = await axios.post(`${baseUrl}/projects`, projectData, config);
-        console.log('✅ Resposta recebida:', response.data);
         
         const projectId = response.data.data.id;
         setDimensioningId(projectId);
@@ -568,7 +546,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
         });
       }
     } catch (error: any) {
-      console.error('Erro ao salvar dimensionamento:', error);
+
       
       let errorMessage = "Não foi possível salvar o dimensionamento.";
       
@@ -598,7 +576,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
 
   // Função para forçar limpeza completa - útil para debug e reset
   const forceCleanStart = useCallback(() => {
-    console.log('🧹 [FORCE CLEAN] Forçando limpeza completa de todos os dados...');
+
     
     // Limpar todos os storages
     sessionStorage.removeItem('continueDimensioning');
@@ -612,7 +590,7 @@ export function DimensioningProvider({ children }: { children: React.ReactNode }
     setIsDimensioningLoaded(false);
     setDimensioningId(null);
     
-    console.log('✨ [FORCE CLEAN] Limpeza completa realizada - estado zerado');
+
   }, []);
 
   const contextValue: DimensioningContextType = {

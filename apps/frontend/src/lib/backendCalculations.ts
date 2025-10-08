@@ -54,8 +54,7 @@ export class BackendCalculationService {
     params: BackendCalculationParams
   ): Promise<BackendCalculationResult | null> {
     try {
-      console.log('🌐 === INICIANDO CÁLCULO VIA BACKEND API (STANDALONE) ===');
-      console.log('📤 Parâmetros enviados para o backend:', params);
+
       
       // Fazer a chamada para a nova API standalone (formato correto para o backend)
       const response = await apiClient.calculations.solarSystemStandalone({
@@ -85,14 +84,11 @@ export class BackendCalculationService {
       logger.apiCall('/calculations/solar-system', 'POST', params);
       logger.apiResponse('/calculations/solar-system', 200, result);
 
-      console.log('✅ Cálculo do backend finalizado com sucesso!');
-      console.log('📋 Dados retornados do backend:', result);
-      console.log('🌐 === FIM CÁLCULO BACKEND API ===');
+
 
       return result;
     } catch (error: any) {
-      console.error('❌ Erro na API do backend:', error);
-      console.log('⚠️  Falback: usando cálculos locais do frontend');
+
       return null;
     }
   }
@@ -104,7 +100,7 @@ export class BackendCalculationService {
     projectId: string,
     params: BackendCalculationParams
   ): Promise<BackendCalculationResult | null> {
-    console.log('⚠️  Método legado detectado, redirecionando para standalone...');
+
     return this.calculateSolarSystemStandalone(params);
   }
 
@@ -116,20 +112,13 @@ export class BackendCalculationService {
     frontendResults: any,
     backendParams: BackendCalculationParams
   ): Promise<any> {
-    console.log('🔄 === ENHANCEMENT COM BACKEND ===');
-    console.log('📋 Resultados do frontend (antes do backend):', {
-      potenciaPico: frontendResults.potenciaPico,
-      numeroModulos: frontendResults.numeroModulos,
-      geracaoAnual: frontendResults.geracaoEstimadaAnual,
-      investimento: frontendResults.totalInvestment
-    });
+
     
     // Tentar obter cálculos do backend (usando novo método standalone)
     const backendResults = await this.calculateSolarSystemStandalone(backendParams);
     
     if (backendResults) {
-      console.log('✅ === MESCLANDO FRONTEND + BACKEND ===');
-      console.log('🔄 Resultados do backend:', backendResults);
+
       
       // Mesclar resultados frontend e backend
       const mergedResults = {
@@ -139,15 +128,11 @@ export class BackendCalculationService {
         _backendRawLogs: backendResults._rawLogs
       };
       
-      console.log('🎯 Resultados finais (frontend + backend):', {
-        temBackendLogs: !!(mergedResults.backendLogs?.length),
-        totalBackendLogs: mergedResults.backendLogs?.length || 0,
-        temRawLogs: !!(mergedResults._backendRawLogs?.length)
-      });
+
       
       return mergedResults;
     } else {
-      console.log('ℹ️  Usando apenas resultados do frontend (backend falhou)');
+
       return frontendResults;
     }
   }
@@ -223,12 +208,7 @@ export function shouldUseBackendCalculations(): boolean {
   const backendEnabled = import.meta.env.VITE_USE_BACKEND_CALCULATIONS === 'true';
   const hasConnection = navigator.onLine;
   
-  console.log('🔧 Configuração do backend:', {
-    VITE_USE_BACKEND_CALCULATIONS: import.meta.env.VITE_USE_BACKEND_CALCULATIONS,
-    backendEnabled,
-    hasConnection,
-    shouldUse: backendEnabled && hasConnection
-  });
+
   
   return backendEnabled && hasConnection;
 }

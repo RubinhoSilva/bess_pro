@@ -386,12 +386,12 @@ export class SolarSystemService {
    */
   static async calculateSystem(params: SolarSystemCalculationParams): Promise<SolarSystemCalculationResult> {
     try {
-      console.log('🔄 Chamando serviço de cálculo solar com parâmetros:', params);
+
       
       const response = await api.post('/solar-analysis/calculate-system', params);
       
       if (response.data && response.data.data) {
-        console.log('✅ Resultado do cálculo solar:', response.data);
+
         const data = response.data.data;
         return {
           potenciaPico: data.potenciaPico || 0,
@@ -403,7 +403,7 @@ export class SolarSystemService {
       
       throw new Error('Resposta inválida do serviço');
     } catch (error: any) {
-      console.error('❌ Erro ao calcular sistema solar:', error);
+
       
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
@@ -444,12 +444,12 @@ export class SolarSystemService {
    */
   static async calculateIrradiationCorrection(params: any): Promise<IrradiationCorrectionResult> {
     try {
-      console.log('🔄 Chamando cálculo de irradiação corrigida com parâmetros:', params);
+
       
       const response = await api.post('/solar-analysis/calculate-irradiation-correction', params);
       
       if (response.data && response.data.data) {
-        console.log('✅ Resultado da irradiação corrigida:', response.data);
+
         const data = response.data.data;
         return {
           irradiacaoCorrigida: data.irradiacaoCorrigida || Array(12).fill(10),
@@ -459,7 +459,7 @@ export class SolarSystemService {
       
       throw new Error('Resposta inválida do serviço');
     } catch (error: any) {
-      console.error('❌ Erro ao calcular irradiação corrigida:', error);
+
       
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
@@ -478,12 +478,12 @@ export class SolarSystemService {
    */
   static async calculateModuleCount(params: any): Promise<ModuleCountResult> {
     try {
-      console.log('🔄 Chamando cálculo de número de módulos com parâmetros:', params);
+
       
       const response = await api.post('/solar-analysis/calculate-module-count', params);
       
       if (response.data && response.data.data) {
-        console.log('✅ Resultado do número de módulos:', response.data);
+
         const data = response.data.data;
         return {
           numeroModulos: data.numeroModulos || 25,
@@ -493,7 +493,7 @@ export class SolarSystemService {
       
       throw new Error('Resposta inválida do serviço');
     } catch (error: any) {
-      console.error('❌ Erro ao calcular número de módulos:', error);
+
       
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
@@ -522,7 +522,7 @@ export class SolarSystemService {
     coordenadas: { lat: number; lon: number };
   }> {
     try {
-      console.log('🔄 Buscando dados de análise avançada:', params);
+
       
       const response = await api.get('/solar-analysis/enhanced-analysis-data', {
         params: {
@@ -539,7 +539,7 @@ export class SolarSystemService {
       
       return response.data;
     } catch (error: any) {
-      console.error('❌ Erro ao buscar dados de análise avançada:', error);
+
       throw new Error('Erro ao buscar dados de irradiação mensal');
     }
   }
@@ -549,34 +549,28 @@ export class SolarSystemService {
    */
   static async calculateAdvancedModules(params: MultiInverterCalculationParams, inversorGlobal?: any): Promise<AdvancedModuleCalculationResult> {
     try {
-      console.log('🔄 Chamando cálculo avançado de módulos com parâmetros:', params);
+
       
       // ✅ PROCESSAR MÚLTIPLAS ÁGUAS DE TELHADO
       const processedParams = this._processRoofWatersForCalculation(params, inversorGlobal);
 
-      console.log('📡 [SOLAR_SERVICE] PAYLOAD COMPLETO ANTES DE ENVIAR:');
-      console.log(JSON.stringify(processedParams, null, 2));
-      console.log('📡 [SOLAR_SERVICE] Verificação de campos críticos:', {
-        origem_dados: processedParams.origem_dados,
-        startyear: processedParams.startyear,
-        endyear: processedParams.endyear
-      });
+
 
       // Fazer chamada através do backend Node.js
       const response = await api.post('/solar-analysis/calculate-advanced-modules', processedParams);
       
-      console.log('✅ Resultado bruto da API:', response.data);
+
       
       // A resposta agora vem no formato { success: true, data: {...}, timestamp: "..." }
       if (response.data && response.data.success && response.data.data) {
-        console.log('✅ Dados processados do cálculo avançado:', response.data.data);
+
         return response.data.data;
       }
       
       // Fallback para compatibilidade
       return response.data;
     } catch (error: any) {
-      console.error('❌ Erro no cálculo avançado de módulos:', error);
+
       
       if (error.message.includes('fetch')) {
         throw new Error('Erro de conexão com o serviço Python');
@@ -591,15 +585,7 @@ export class SolarSystemService {
    */
   static async calculateAdvancedFromDimensioning(dimensioningData: any): Promise<AdvancedModuleCalculationResult> {
     // ===== DEBUG: DADOS RECEBIDOS NO SOLARSYSTEMSERVICE =====
-    console.log('📥 [SolarSystemService] Dados recebidos para cálculo:', dimensioningData);
-    console.log('🔧 [SolarSystemService] Perdas recebidas:', {
-      perdaSombreamento: dimensioningData.perdaSombreamento,
-      perdaMismatch: dimensioningData.perdaMismatch,
-      perdaCabeamento: dimensioningData.perdaCabeamento,
-      perdaSujeira: dimensioningData.perdaSujeira,
 
-      perdaOutras: dimensioningData.perdaOutras
-    });
     
     // Calcular consumo anual
     const consumoAnual = dimensioningData.energyBills?.reduce((total: number, bill: any) => {
@@ -710,16 +696,12 @@ export class SolarSystemService {
     };
 
     // ✅ PROCESSAR MÚLTIPLAS ÁGUAS DE TELHADO
-    console.log('🏠 [SolarSystemService] Verificando águas de telhado:', {
-      hasAguasTelhado: !!dimensioningData.aguasTelhado,
-      numAguas: dimensioningData.aguasTelhado?.length || 0,
-      aguas: dimensioningData.aguasTelhado
-    });
+
 
     // Validar e clampar tilt e azimuth apenas se não houver múltiplas águas
     let tiltValue, azimuthValue;
     if (dimensioningData.aguasTelhado && dimensioningData.aguasTelhado.length > 1) {
-      console.log('🏠 Múltiplas águas detectadas, usando tilt/azimuth padrão para fallback');
+
       tiltValue = 20;
       azimuthValue = 180;
     } else {
@@ -732,10 +714,10 @@ export class SolarSystemService {
     const validatedAzimuth = Math.max(0, Math.min(360, azimuthValue));
 
     if (validatedTilt !== tiltValue) {
-      console.warn(`⚠️ Tilt corrigido de ${tiltValue}° para ${validatedTilt}° (limite: 0-90°)`);
+
     }
     if (validatedAzimuth !== azimuthValue) {
-      console.warn(`⚠️ Azimuth corrigido de ${azimuthValue}° para ${validatedAzimuth}° (limite: 0-360°)`);
+
     }
 
     const params: MultiInverterCalculationParams = {
@@ -767,34 +749,9 @@ export class SolarSystemService {
                        (dimensioningData.perdaCabeamento ?? 2) + 
                        (dimensioningData.perdaSujeira ?? 5) + 
                        (dimensioningData.perdaOutras ?? 0);
-    console.log('🎯 [SolarSystemService] Perdas TOTAIS sendo enviadas para PVLIB:', perdasTotal + '%');
-    console.log('🔧 [SolarSystemService] Breakdown das perdas:', {
-      sombreamento: dimensioningData.perdaSombreamento || 3,
-      mismatch: dimensioningData.perdaMismatch || 2,
-      cabeamento: dimensioningData.perdaCabeamento || 2,
-      sujeira: dimensioningData.perdaSujeira || 5,
 
-      outras: dimensioningData.perdaOutras || 0,
-      TOTAL: perdasTotal
-    });
 
-    console.log('🔧 Parâmetros completos sendo enviados:', {
-      modulo: modulo.fabricante + ' ' + modulo.modelo,
-      inversor: inversor.fabricante + ' ' + inversor.modelo,
-      parametros_espectrais: {
-        material: modulo.material,
-        technology: modulo.technology
-      },
-      parametros_sandia: {
-        vdco: inversor.vdco,
-        pso: inversor.pso,
-        c0: inversor.c0,
-        c1: inversor.c1,
-        c2: inversor.c2,
-        c3: inversor.c3,
-        pnt: inversor.pnt
-      }
-    });
+
 
     return this.calculateAdvancedModules(params, inversor);
   }
@@ -803,14 +760,11 @@ export class SolarSystemService {
     * ✅ Processa múltiplas águas de telhado para cálculo
     */
   private static _processRoofWatersForCalculation(params: MultiInverterCalculationParams, inversorGlobal?: any): any {
-    console.log('🏠 Processando águas de telhado para cálculo:', {
-      hasAguasTelhado: !!params.aguasTelhado,
-      numAguas: params.aguasTelhado?.length || 0
-    });
+
 
     // Se há águas de telhado, enviar estrutura completa com inversor embutido
     if (params.aguasTelhado && params.aguasTelhado.length > 0) {
-      console.log(`🏠 Enviando ${params.aguasTelhado.length} águas de telhado para cálculo avançado`);
+
       
       // ✅ Usar inversor global ou criar padrão WEG para embutir
       const inversorPadrao = inversorGlobal || {
@@ -862,23 +816,13 @@ export class SolarSystemService {
         }))
       };
 
-      console.log('📋 Estrutura enviada:', {
-        numAguas: processedParams.aguasTelhado.length,
-        aguas: processedParams.aguasTelhado.map(a => ({
-          nome: a.nome,
-          modulos: a.numeroModulos,
-          orientacao: a.orientacao,
-          inclinacao: a.inclinacao,
-          temInversor: !!a.inversor,
-          inversorModelo: a.inversor?.modelo
-        }))
-      });
+
 
       return processedParams;
     }
 
     // Fallback para sistema único - manter estrutura original
-    console.log('🏠 Sistema único detectado, mantendo estrutura original');
+
     return params;
   }
 
@@ -887,7 +831,7 @@ export class SolarSystemService {
    */
   static async calculateMPPTLimits(params: MPPTCalculationRequest): Promise<MPPTCalculationResponse> {
     try {
-      console.log('🔄 Chamando cálculo de limites MPPT com parâmetros:', params);
+
 
       const response = await api.post('/solar-analysis/pvlib/mppt/calculate-modules-per-mppt', params);
 
@@ -895,19 +839,19 @@ export class SolarSystemService {
       if (response.data) {
         if (response.data.success && response.data.data) {
           // Formato com wrapper: { success: true, data: {...} }
-          console.log('✅ Resultado do cálculo MPPT (com wrapper):', response.data.data);
+
           return response.data.data;
         } else if (response.data.modulos_por_mppt !== undefined) {
           // Formato direto: { modulos_por_mppt: 18, ... }
-          console.log('✅ Resultado do cálculo MPPT (formato direto):', response.data);
+
           return response.data;
         }
       }
 
-      console.error('❌ Resposta inválida do serviço MPPT:', response.data);
+
       throw new Error('Resposta inválida do serviço MPPT');
     } catch (error: any) {
-      console.error('❌ Erro ao calcular limites MPPT:', error);
+
 
       if (error.message?.includes('fetch')) {
         throw new Error('Erro de conexão com o servidor MPPT');
@@ -923,18 +867,18 @@ export class SolarSystemService {
    */
   static async calculateCompleteSystem(params: CompleteSystemCalculationParams): Promise<CompleteSystemCalculationResult> {
     try {
-      console.log('🔄 Chamando cálculo completo do sistema com parâmetros:', params);
+
 
       const response = await api.post('/solar-analysis/calculate-complete-system', params);
 
       if (response.data) {
-        console.log('✅ Resultado do cálculo completo do sistema:', response.data);
+
         return response.data;
       }
 
       throw new Error('Resposta inválida do serviço');
     } catch (error: any) {
-      console.error('❌ Erro ao calcular sistema completo:', error);
+
 
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);

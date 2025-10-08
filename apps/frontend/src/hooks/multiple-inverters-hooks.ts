@@ -41,12 +41,12 @@ export const useMultipleInverters = (): UseMultipleInvertersReturn => {
 
   const removeInverter = useCallback((id: string) => {
     // Esta função será usada pelo componente pai
-    console.log('Removing inverter:', id);
+
   }, []);
 
   const updateInverterQuantity = useCallback((id: string, quantity: number) => {
     // Esta função será usada pelo componente pai
-    console.log('Updating inverter quantity:', id, quantity);
+
   }, []);
 
   const calculateTotalPower = useCallback((selectedInverters: SelectedInverter[]): number => {

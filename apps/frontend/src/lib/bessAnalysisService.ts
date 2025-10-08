@@ -72,10 +72,7 @@ export async function calculateHybridSystem(
       lon: request.sistema_solar.lon,
     });
 
-    console.log('🔋⚡ [FRONTEND] Iniciando cálculo de sistema híbrido Solar + BESS');
-    console.log(`   BESS: ${request.capacidade_kwh}kWh, ${request.potencia_kw}kW`);
-    console.log(`   Solar: (${request.sistema_solar.lat}, ${request.sistema_solar.lon})`);
-    console.log(`   Estratégia: ${request.estrategia || 'arbitragem'}`);
+
 
     // Chamar endpoint do backend Node.js
     // POST /api/v1/bess-analysis/calculate-hybrid
@@ -92,11 +89,7 @@ export async function calculateHybridSystem(
 
     bessLogger.result('Hybrid System Calculation', `Completed in ${duration}ms`, { duration });
 
-    console.log(`✅ [FRONTEND] Cálculo híbrido concluído em ${duration}ms`);
-    console.log('🔍 [DEBUG] Estrutura completa da resposta:', response.data);
-    console.log('🔍 [DEBUG] response.data.data:', response.data.data);
-    console.log('🔍 [DEBUG] response.data.metadata:', response.data.metadata);
-    console.log('🔍 [DEBUG] response.data.timestamp:', response.data.timestamp);
+
     
     // Backend Node.js aninha a resposta do Python:
     // {success: true, data: {success: true, data: {sistema_solar, sistema_bess, analise_hibrida}}, timestamp: '...'}
@@ -125,24 +118,18 @@ export async function calculateHybridSystem(
       };
     } else {
       // Estrutura inesperada
-      console.error('❌ [DEBUG] Estrutura de resposta inesperada:', response.data);
-      console.error('❌ [DEBUG] Chaves encontradas:', Object.keys(response.data));
+
       throw new Error('Estrutura de resposta inválida do servidor');
     }
 
-    console.log('🔍 [DEBUG] actualData extraído:', actualData);
-    console.log('🔍 [DEBUG] actualData.sistema_solar:', actualData?.sistema_solar);
-    console.log('🔍 [DEBUG] Chaves em actualData:', actualData ? Object.keys(actualData) : 'actualData é null/undefined');
+
 
     // Validação segura antes de acessar propriedades aninhadas
     if (!actualData || !actualData.sistema_solar) {
       throw new Error('Resposta inválida do servidor: dados do sistema solar não encontrados');
     }
 
-    console.log(`   Solar: ${actualData.sistema_solar.potencia_total_kwp.toFixed(2)}kWp`);
-    console.log(`   BESS: ${actualData.sistema_bess?.ciclos_equivalentes_ano?.toFixed(1) || 'N/A'} ciclos/ano`);
-    console.log(`   Autossuficiência: ${actualData.analise_hibrida?.autossuficiencia?.autossuficiencia_percentual?.toFixed(1) || 'N/A'}%`);
-    console.log(`   VPL: R$ ${actualData.analise_hibrida?.retorno_financeiro?.npv_reais?.toFixed(2) || 'N/A'}`);
+
 
     // Retornar no formato esperado pelo frontend
     return {
@@ -160,9 +147,7 @@ export async function calculateHybridSystem(
       responseData: error.response?.data 
     });
 
-    console.error(`❌ [FRONTEND] Erro ao calcular sistema híbrido (${duration}ms):`, error);
-    console.error('Status:', error.response?.status);
-    console.error('Response data:', error.response?.data);
+
 
     // Re-throw com mensagem mais descritiva
     if (error.response?.status === 400) {

@@ -30,6 +30,7 @@ export interface SolarCalculationOptions {
   // Perdas específicas do usuário
   perdaMismatch?: number;
   perdaCabeamento?: number;
+  perdaInversor?: number;
 
 }
 
@@ -110,7 +111,7 @@ export class AdvancedSolarCalculator {
     
     // Se temos dados avançados da API, usar eles
     if (advancedResult && advancedResult.perdas_detalhadas) {
-      console.log('✅ Usando dados avançados da API Python');
+
       
       return {
         irradiacaoMensal: irradiationData?.irradiacaoMensal || this.getRegionalIrradiation(options.location),
@@ -151,10 +152,10 @@ export class AdvancedSolarCalculator {
         azimuth,
         options
       );
-      console.log('✅ PVLIB Avançado usado com sucesso para análise solar detalhada');
+
       return pvlibResults;
     } catch (error) {
-      console.warn('⚠️ PVLIB não disponível, usando cálculos estimados:', error);
+
       // Fallback para cálculos estimados
       return await this.calculateWithEstimatedData(potenciaKw, options);
     }
@@ -171,7 +172,7 @@ export class AdvancedSolarCalculator {
     options: SolarCalculationOptions
   ): Promise<DetailedSolarResults> {
     
-    console.log('🔄 PVLIB: Tentando usar serviço PVLIB completo...');
+
     
     // Estimar irradiação horizontal base (para referência)
     const stateCode = location.state || 'SP';
@@ -180,7 +181,7 @@ export class AdvancedSolarCalculator {
     // Tentar obter irradiação corrigida da nossa API Python primeiro
     let irradiacaoInclinada: number[];
     try {
-      console.log('📡 PVLIB: Chamando nossa API Python para correção de irradiação...');
+
       const correctionResult = await SolarSystemService.calculateIrradiationCorrection({
         baseIrradiation,
         latitude: location.latitude,
@@ -189,9 +190,9 @@ export class AdvancedSolarCalculator {
       });
       
       irradiacaoInclinada = correctionResult.irradiacaoCorrigida;
-      console.log('✅ PVLIB: Usando irradiação corrigida da nossa API Python:', irradiacaoInclinada);
+
     } catch (error) {
-      console.warn('⚠️ PVLIB: Nossa API Python não disponível, tentando serviço PVLIB original...');
+
       
       // Fallback para o serviço PVLIB original
       try {
@@ -229,9 +230,9 @@ export class AdvancedSolarCalculator {
           const diasMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
           return geracao / (potenciaKw * diasMes[geracaoMensal.indexOf(geracao)] * 0.86);
         });
-        console.log('📊 PVLIB: Usando dados do serviço PVLIB original');
+
       } catch (pvlibError) {
-        console.warn('⚠️ PVLIB: Serviço PVLIB original também não disponível, usando correção local');
+
         // Fallback final para correção local
         irradiacaoInclinada = await this.correctForTiltAndAzimuth(
           baseIrradiation,
@@ -356,11 +357,11 @@ export class AdvancedSolarCalculator {
     tilt: number,
     azimuth: number
   ): Promise<number[]> {
-    console.log('🔄 Iniciando correção de inclinação com parâmetros:', { baseIrradiation, latitude, tilt, azimuth });
+
     
     try {
       // Tentar usar API Python primeiro
-      console.log('📡 Chamando API Python para correção de irradiação...');
+
       const result = await SolarSystemService.calculateIrradiationCorrection({
         baseIrradiation,
         latitude,
@@ -368,10 +369,10 @@ export class AdvancedSolarCalculator {
         azimuth
       });
       
-      console.log('✅ Usando irradiação corrigida da API Python:', result.irradiacaoCorrigida);
+
       return result.irradiacaoCorrigida;
     } catch (error) {
-      console.warn('⚠️ API Python não disponível, usando cálculo local:', error);
+
       
       // Fallback para cálculo local
       return baseIrradiation.map((irr, month) => {
@@ -491,6 +492,7 @@ export class AdvancedSolarCalculator {
       outrasPerdasPercentual = 0,
       perdaMismatch = 2,
       perdaCabeamento = 2,
+      perdaInversor = 3,
 
     } = options;
     
@@ -501,6 +503,7 @@ export class AdvancedSolarCalculator {
       mismatch: Array(12).fill(perdaMismatch),
       cabeamento: Array(12).fill(perdaCabeamento),
       sujeira: Array(12).fill(considerarSujeira ? sujeira : 0),
+      inversor: Array(12).fill(perdaInversor),
 
       outras: outrasPerdasPercentual > 0 ? Array(12).fill(outrasPerdasPercentual) : undefined,
       total: irradiacao.map((_, month) => {
@@ -510,6 +513,7 @@ export class AdvancedSolarCalculator {
         const soilingLoss = considerarSujeira ? sujeira : 0;
 
         const otherLoss = outrasPerdasPercentual || 0;
+        const inverterLoss = perdaInversor || 0;
         
         // Perdas não são simplesmente aditivas - aplicar fórmula multiplicativa
         const totalEfficiency = (1 - shadingLoss/100) * 

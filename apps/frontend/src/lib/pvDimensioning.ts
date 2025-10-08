@@ -22,7 +22,7 @@ export interface SystemLosses {
   perdaMismatch?: number;
   perdaCabeamento?: number;
   perdaSujeira?: number;
-
+  perdaInversor?: number;
   perdaOutras?: number;
 }
 
