@@ -38,7 +38,7 @@ const navigation = [
   { name: 'Projetos', href: '/dashboard/projects', icon: Zap },
   { name: 'Análise BESS', href: '/dashboard/bess-analysis', icon: Battery },
   { name: 'Dimensionamento PV', href: '/dashboard/pv-design', icon: TrendingUp },
-  { name: 'Visualizador 3D', href: '/dashboard/model3d-viewer', icon: Box },
+  // { name: 'Visualizador 3D', href: '/dashboard/model3d-viewer', icon: Box }, // Temporariamente desabilitado
   // { name: 'Mapas & Localização', href: '/dashboard/geo-map', icon: MapPin }, // Temporariamente desabilitado
   { name: 'Clientes', href: '/dashboard/clients', icon: Users },
   { name: 'Equipamentos', href: '/dashboard/equipment', icon: Package },
