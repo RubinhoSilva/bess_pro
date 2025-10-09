@@ -61,10 +61,16 @@ class StandardizedWeatherData:
     def _validate_dataframe(self):
         """Validate that DataFrame has required columns and structure."""
         required_columns = {'ghi', 'temp_air', 'wind_speed', 'pressure'}
+        optional_columns = {'dni', 'dhi'}  # DNI/DHI são opcionais mas desejáveis
+        
         missing_columns = required_columns - set(self.dataframe.columns)
-
         if missing_columns:
             raise ValueError(f"DataFrame missing required columns: {missing_columns}")
+
+        # Verificar se DNI/DHI estão disponíveis (log informativo)
+        available_optional = optional_columns & set(self.dataframe.columns)
+        if available_optional:
+            logger.debug(f"DNI/DHI disponíveis no DataFrame: {available_optional}")
 
         if not isinstance(self.dataframe.index, pd.DatetimeIndex):
             raise ValueError("DataFrame index must be DatetimeIndex")
@@ -208,8 +214,11 @@ def normalize_nasa_data(
         df.columns = df.columns.str.upper()
 
         # Map NASA POWER columns to our standard format
+        # AGORA INCLUINDO DNI E DHI!
         column_mapping = {
             'GHI': 'ghi',
+            'DNI': 'dni',  # ✅ Direct Normal Irradiance do NASA POWER
+            'DHI': 'dhi',  # ✅ Diffuse Horizontal Irradiance do NASA POWER
             'T2M': 'temp_air',
             'TAMB': 'temp_air',  # Alternative name
             'TEMP_AIR': 'temp_air',  # Already mapped by pvlib map_variables=True
@@ -226,12 +235,20 @@ def normalize_nasa_data(
                 normalized_df[standard_col] = df[nasa_col]
                 logger.debug(f"Mapped NASA column {nasa_col} -> {standard_col}")
 
-        # Check for required columns
+        # Check for required columns (DNI/DHI são opcionais mas desejáveis)
         required_columns = {'ghi', 'temp_air', 'wind_speed'}
+        optional_columns = {'dni', 'dhi'}
+        
         missing_columns = required_columns - set(normalized_df.columns)
-
         if missing_columns:
             raise ValueError(f"NASA POWER data missing required columns: {missing_columns}")
+        
+        # Logar se DNI/DHI estão disponíveis
+        available_optional = optional_columns & set(normalized_df.columns)
+        if available_optional:
+            logger.info(f"✅ NASA POWER DNI/DHI disponíveis: {available_optional}")
+        else:
+            logger.info("⚠️ NASA POWER DNI/DHI não disponíveis, será necessária decomposição")
 
         # Add pressure (standard atmospheric pressure if not available)
         if 'pressure' not in normalized_df.columns:

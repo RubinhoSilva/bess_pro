@@ -7,12 +7,12 @@ import numpy as np
 import pandas as pd
 import pvlib
 from pvlib.temperature import TEMPERATURE_MODEL_PARAMETERS
-from pvlib.iotools import get_nasa_power
-import requests
 import logging
 from typing import Dict, Any
 
 from models.solar.requests import SolarSystemCalculationRequest
+from services.solar.pvgis_service import pvgis_service
+from services.solar.nasa_service import nasa_service
 
 logger = logging.getLogger(__name__)
 
@@ -124,17 +124,31 @@ class SolarCalculationService:
         df = None
 
         if preferred_source == 'NASA':
-            logger.info("Tentando fonte primária: NASA POWER")
-            df = SolarCalculationService._buscar_dados_nasa(lat, lon, startyear, endyear)
-            if df is None:
-                logger.warning("NASA falhou, tentando PVGIS como fallback")
-                df = SolarCalculationService._buscar_dados_pvgis(lat, lon, startyear, endyear)
+            logger.info("Tentando fonte primária: NASA POWER (com cache)")
+            try:
+                df = nasa_service.fetch_weather_data(lat, lon, use_cache=True)
+                logger.info("NASA POWER dados obtidos com sucesso (usando cache)")
+            except Exception as e:
+                logger.warning(f"NASA falhou: {e}, tentando PVGIS como fallback")
+                try:
+                    df = pvgis_service.fetch_weather_data(lat, lon, use_cache=True)
+                    logger.info("PVGIS fallback obtido com sucesso (usando cache)")
+                except Exception as e2:
+                    logger.error(f"Ambas as fontes falharam. NASA: {e}, PVGIS: {e2}")
+                    df = None
         else:  # PVGIS
-            logger.info("Tentando fonte primária: PVGIS")
-            df = SolarCalculationService._buscar_dados_pvgis(lat, lon, startyear, endyear)
-            if df is None:
-                logger.warning("PVGIS falhou, tentando NASA como fallback")
-                df = SolarCalculationService._buscar_dados_nasa(lat, lon, startyear, endyear)
+            logger.info("Tentando fonte primária: PVGIS (com cache)")
+            try:
+                df = pvgis_service.fetch_weather_data(lat, lon, use_cache=True)
+                logger.info("PVGIS dados obtidos com sucesso (usando cache)")
+            except Exception as e:
+                logger.warning(f"PVGIS falhou: {e}, tentando NASA como fallback")
+                try:
+                    df = nasa_service.fetch_weather_data(lat, lon, use_cache=True)
+                    logger.info("NASA fallback obtido com sucesso (usando cache)")
+                except Exception as e2:
+                    logger.error(f"Ambas as fontes falharam. PVGIS: {e}, NASA: {e2}")
+                    df = None
 
         if df is None or df.empty:
             logger.error("Falha ao obter dados de ambas as fontes (NASA e PVGIS)")
@@ -142,6 +156,19 @@ class SolarCalculationService:
         
         logger.info(f"Dados obtidos: {len(df)} registros de {df.index.min()} a {df.index.max()}")
         logger.info(f"Resumo irradiação - GHI: {df['ghi'].mean():.1f}±{df['ghi'].std():.1f} W/m²")
+        
+        # Verificar se DNI/DHI foram fornecidos pela fonte (PVGIS ou NASA POWER)
+        if 'dni' in df.columns and 'dhi' in df.columns:
+            dni_mean = df['dni'].mean()
+            dhi_mean = df['dhi'].mean()
+            if dni_mean > 0 and dhi_mean > 0:
+                logger.info(f"✅ DNI/DHI de alta qualidade disponíveis: DNI={dni_mean:.1f}±{df['dni'].std():.1f} W/m², DHI={dhi_mean:.1f}±{df['dhi'].std():.1f} W/m²")
+                logger.info("✅ Usando dados de irradiação direta da fonte (sem decomposição necessária)")
+            else:
+                logger.info("⚠️ DNI/DHI zerados, será necessária decomposição de GHI")
+        else:
+            logger.info("⚠️ Colunas DNI/DHI não encontradas, será necessária decomposição de GHI")
+            
         logger.info(f"Resumo temperatura: {df['temp_air'].mean():.1f}±{df['temp_air'].std():.1f} °C")
 
         # Calcular número de anos para normalização
@@ -150,8 +177,11 @@ class SolarCalculationService:
 
         # Calcular posição solar
         logger.info("Calculando posição solar")
+        logger.info(df.columns)
+
         solar_pos = pvlib.solarposition.get_solarposition(df.index, lat, lon)
         logger.debug(f"Posição solar calculada: zenite médio {solar_pos['zenith'].mean():.1f}°")
+        
 
         # Decompor se necessário
         if df['dni'].sum() == 0:
@@ -366,115 +396,6 @@ class SolarCalculationService:
             'inversores': inverter_summary
         }
 
-    @staticmethod
-    def _buscar_dados_nasa(lat: float, lon: float, startyear: int, endyear: int) -> pd.DataFrame:
-        """Busca dados NASA POWER"""
-        try:
-            logger.info(f"Buscando dados NASA POWER: {lat},{lon} [{startyear}-{endyear}]")
-
-            df_utc, metadata = get_nasa_power(
-                latitude=lat,
-                longitude=lon,
-                start=f'{startyear}-01-01',
-                end=f'{endyear}-12-31',
-                parameters=['ghi', 'dni', 'dhi', 'temp_air', 'wind_speed'],
-                community='re',
-                map_variables=True
-            )
-
-            if df_utc.empty:
-                logger.warning("NASA POWER retornou dataframe vazio")
-                return None
-
-            df = df_utc.copy()
-            logger.debug(f"NASA RAW: {len(df)} registros, colunas: {list(df.columns)}")
-
-            # Limpar e converter dados
-            null_counts = {}
-            for col in ['ghi', 'dni', 'dhi', 'temp_air', 'wind_speed']:
-                if col in df.columns:
-                    null_count = df[col].isnull().sum()
-                    if null_count > 0:
-                        null_counts[col] = null_count
-                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
-
-            if null_counts:
-                logger.warning(f"Valores nulos encontrados e preenchidos com zero: {null_counts}")
-
-            df.index = df.index.tz_convert('America/Sao_Paulo')
-            df = df[(df.index.year >= startyear) & (df.index.year <= endyear)]
-            df = df[~df.index.duplicated(keep='first')]
-
-            logger.info(f"NASA POWER sucesso: {len(df)} registros processados")
-            logger.debug(f"Período dos dados: {df.index.min()} a {df.index.max()}")
-            return df
-
-        except Exception as e:
-            logger.error(f"Erro ao buscar dados NASA POWER: {str(e)}")
-            logger.debug(f"Exception details:", exc_info=True)
-            return None
-
-    @staticmethod
-    def _buscar_dados_pvgis(lat: float, lon: float, startyear: int, endyear: int) -> pd.DataFrame:
-        """Busca dados PVGIS"""
-        try:
-            logger.info(f"Buscando dados PVGIS: {lat},{lon} [{startyear}-{endyear}]")
-
-            url = f"https://re.jrc.ec.europa.eu/api/v5_2/seriescalc?lat={lat}&lon={lon}&startyear={startyear}&endyear={endyear}&outputformat=json&usehorizon=1&selectrad=1&angle=0&aspect=0"
-            logger.debug(f"URL PVGIS: {url}")
-            
-            r = requests.get(url, timeout=60)
-            r.raise_for_status()
-            data = r.json()
-
-            hourly = data.get('outputs', {}).get('hourly', [])
-            if not hourly:
-                logger.warning("PVGIS retornou dados horários vazios")
-                return None
-
-            logger.debug(f"PVGIS RAW: {len(hourly)} registros horários")
-
-            recs = []
-            parse_errors = 0
-            for rec in hourly:
-                try:
-                    dt = pd.to_datetime(rec['time'], format='%Y%m%d:%H%M', utc=True)
-                    recs.append({
-                        'datetime': dt,
-                        'ghi': float(rec.get('G(i)', 0.0)),
-                        'dni': float(rec.get('Gb(n)', 0.0)),
-                        'dhi': float(rec.get('Gd(i)', 0.0)),
-                        'temp_air': float(rec.get('T2m', 25.0)),
-                        'wind_speed': float(rec.get('WS10m', 2.0))
-                    })
-                except Exception as parse_error:
-                    parse_errors += 1
-                    continue
-
-            if parse_errors > 0:
-                logger.warning(f"Erros de parsing PVGIS: {parse_errors} registros ignorados")
-
-            df = pd.DataFrame(recs).set_index('datetime')
-            if df.empty:
-                logger.error("DataFrame PVGIS vazio após processamento")
-                return None
-
-            df.index = df.index.tz_convert('America/Sao_Paulo')
-            
-            # Verificar qualidade dos dados
-            null_counts = df.isnull().sum()
-            if null_counts.any():
-                logger.warning(f"Valores nulos PVGIS: {null_counts[null_counts > 0].to_dict()}")
-                df = df.fillna(0.0)
-
-            logger.info(f"PVGIS sucesso: {len(df)} registros processados")
-            logger.debug(f"Período PVGIS: {df.index.min()} a {df.index.max()}")
-            return df
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Erro de requisição PVGIS: {str(e)}")
-            return None
-        except Exception as e:
-            logger.error(f"Erro ao processar dados PVGIS: {str(e)}")
-            logger.debug(f"Exception details:", exc_info=True)
-            return None
+    # REMOVIDO: Funções _buscar_dados_nasa e _buscar_dados_pvgis foram removidas
+# Agora usamos os serviços com cache: nasa_service.fetch_weather_data() e pvgis_service.fetch_weather_data()
+# Isso garante uso do cache geohash e legado já implementado

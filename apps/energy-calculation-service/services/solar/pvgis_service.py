@@ -145,8 +145,10 @@ class PVGISService:
                 dt = pd.Timestamp(year=year, month=month, day=day,
                                 hour=hour, minute=minute, tz='UTC')
                 
-                # Extrair e validar dados
+                # Extrair e validar dados - AGORA INCLUINDO DNI E DHI DO PVGIS!
                 ghi = float(record['G(i)'])
+                dni = float(record.get('Gb(n)', 0.0))  # Direct Normal Irradiation
+                dhi = float(record.get('Gd(n)', 0.0))  # Diffuse Horizontal Irradiation
                 temp_air = float(record.get('T2m', 25))
                 wind_speed = float(record.get('WS10m', 2))
                 
@@ -165,6 +167,8 @@ class PVGISService:
                 processed_record = {
                     'datetime': dt,
                     'ghi': ghi,
+                    'dni': dni,  # ✅ AGORA SALVANDO DNI DO PVGIS
+                    'dhi': dhi,  # ✅ AGORA SALVANDO DHI DO PVGIS
                     'temp_air': temp_air,
                     'wind_speed': wind_speed,
                     'pressure': 101325.0,  # Pressão padrão

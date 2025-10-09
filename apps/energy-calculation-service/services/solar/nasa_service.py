@@ -172,9 +172,11 @@ class NASAService:
 
             # Parâmetros NASA POWER
             # ALLSKY_SFC_SW_DWN: GHI (W/m²)
+            # ALLSKY_SFC_SW_DNI: DNI (W/m²) 
+            # ALLSKY_SFC_SW_DIFF: DHI (W/m²)
             # T2M: Temperature at 2m (°C)
             # WS10M: Wind speed at 10m (m/s)
-            parameters = "ALLSKY_SFC_SW_DWN,T2M,WS10M,PS"
+            parameters = "ALLSKY_SFC_SW_DWN,ALLSKY_SFC_SW_DNI,ALLSKY_SFC_SW_DIFF,T2M,WS10M,PS"
 
             # Construir URL
             url = (
@@ -207,6 +209,8 @@ class NASAService:
             # NASA POWER retorna dados em formato: {"YYYYMMDDHH": value}
             if 'ALLSKY_SFC_SW_DWN' in parameters_data:
                 ghi_data = parameters_data['ALLSKY_SFC_SW_DWN']
+                dni_data = parameters_data.get('ALLSKY_SFC_SW_DNI', {})  # ✅ DNI do NASA POWER
+                dhi_data = parameters_data.get('ALLSKY_SFC_SW_DIFF', {})  # ✅ DHI do NASA POWER
                 temp_data = parameters_data.get('T2M', {})
                 wind_data = parameters_data.get('WS10M', {})
                 pressure_data = parameters_data.get('PS', {})
@@ -225,7 +229,9 @@ class NASAService:
                                 tz='UTC'
                             )
 
-                            # Extrair dados
+                            # Extrair dados AGORA COM DNI/DHI!
+                            dni = dni_data.get(timestamp_str, 0.0)  # ✅ DNI
+                            dhi = dhi_data.get(timestamp_str, 0.0)  # ✅ DHI
                             temp = temp_data.get(timestamp_str, 25.0)
                             wind = wind_data.get(timestamp_str, 2.0)
                             pressure = pressure_data.get(timestamp_str, 101325.0)
@@ -241,6 +247,8 @@ class NASAService:
                             record = {
                                 'datetime': dt,
                                 'ghi': max(0, ghi),  # GHI em W/m²
+                                'dni': max(0, dni),  # ✅ DNI em W/m²
+                                'dhi': max(0, dhi),  # ✅ DHI em W/m²
                                 'temp_air': temp,
                                 'wind_speed': max(0, wind),
                                 'pressure': pressure
