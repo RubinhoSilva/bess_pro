@@ -201,6 +201,11 @@ export class SolarAnalysisController extends BaseController {
       console.log('   - Módulo:', params.modulo?.fabricante, params.modulo?.modelo);
       console.log('   - Potência Módulo:', params.modulo?.potencia_nominal_w, 'W');
       console.log('   - Águas de telhado:', params.aguasTelhado?.length || 0);
+      console.log('\n🔍 [NODE.JS] Coeficientes de temperatura RECEBIDOS do frontend:');
+      console.log('   - temp_coef_pmax:', params.modulo?.temp_coef_pmax);
+      console.log('   - alpha_sc:', params.modulo?.alpha_sc);
+      console.log('   - beta_oc:', params.modulo?.beta_oc);
+      console.log('   - gamma_r:', params.modulo?.gamma_r);
 
       // Validação dos parâmetros obrigatórios
       if (!params.lat || !params.lon || !params.modulo || !params.consumo_anual_kwh) {
@@ -275,6 +280,11 @@ export class SolarAnalysisController extends BaseController {
         rsh_ref: params.modulo.rsh_ref
       };
       console.log('   - Módulo preparado com parâmetros Sandia');
+      console.log('\n🔍 [NODE.JS] Coeficientes de temperatura PREPARADOS para Python:');
+      console.log('   - temp_coef_pmax:', modulo.temp_coef_pmax);
+      console.log('   - alpha_sc:', modulo.alpha_sc, '(undefined =', modulo.alpha_sc === undefined, ')');
+      console.log('   - beta_oc:', modulo.beta_oc, '(undefined =', modulo.beta_oc === undefined, ')');
+      console.log('   - gamma_r:', modulo.gamma_r, '(undefined =', modulo.gamma_r === undefined, ')');
 
       // Processar águas de telhado e agrupar por inversor
       const inversoresMap = new Map<string, any>();
@@ -411,6 +421,16 @@ export class SolarAnalysisController extends BaseController {
       } catch (error) {
         console.error('❌ [SolarAnalysisController] Erro ao salvar payload solar:', error);
       }
+
+      console.log('\n🚀 [NODE.JS] ENVIANDO PARA PYTHON - pythonParams.modulo:');
+      console.log(JSON.stringify({
+        fabricante: pythonParams.modulo?.fabricante,
+        modelo: pythonParams.modulo?.modelo,
+        temp_coef_pmax: pythonParams.modulo?.temp_coef_pmax,
+        alpha_sc: pythonParams.modulo?.alpha_sc,
+        beta_oc: pythonParams.modulo?.beta_oc,
+        gamma_r: pythonParams.modulo?.gamma_r
+      }, null, 2));
 
       // Chamar novo endpoint de cálculo solar completo
       const response = await axios.post(

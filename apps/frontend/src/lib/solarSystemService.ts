@@ -592,6 +592,18 @@ export class SolarSystemService {
     const moduloSelecionado = dimensioningData.selectedModules?.[0];
     const inversorSelecionado = dimensioningData.inverters?.[0];
 
+    console.log('🔍 [solarSystemService.calculateAdvancedFromDimensioning] moduloSelecionado RECEBIDO:', JSON.stringify({
+      alphaSc: moduloSelecionado?.alphaSc,
+      betaOc: moduloSelecionado?.betaOc,
+      gammaR: moduloSelecionado?.gammaR,
+      alpha_sc: moduloSelecionado?.alpha_sc,
+      beta_oc: moduloSelecionado?.beta_oc,
+      gamma_r: moduloSelecionado?.gamma_r,
+      tempCoefPmax: moduloSelecionado?.tempCoefPmax,
+      tempCoefVoc: moduloSelecionado?.tempCoefVoc,
+      tempCoefIsc: moduloSelecionado?.tempCoefIsc
+    }, null, 2));
+
     // Se não há módulo ou inversor selecionado, usar dados padrão
     const modulo = moduloSelecionado ? {
       fabricante: moduloSelecionado.fabricante || "Canadian Solar",
@@ -606,10 +618,10 @@ export class SolarSystemService {
       isc_stc: moduloSelecionado.isc || moduloSelecionado.isc_stc,
       eficiencia: moduloSelecionado.eficiencia,
       temp_coef_pmax: moduloSelecionado.tempCoefPmax || moduloSelecionado.temp_coef_pmax,
-      // Coeficientes de temperatura (mapeamento correto conforme usuário)
-     alpha_sc: moduloSelecionado.tempCoefPmax,
-      beta_oc: moduloSelecionado.tempCoefVoc,
-      gamma_r: moduloSelecionado.tempCoefIsc,
+      // Coeficientes de temperatura Sandia
+      alpha_sc: moduloSelecionado.alpha_sc || moduloSelecionado.alphaSc || moduloSelecionado.tempCoefPmax,
+      beta_oc: moduloSelecionado.beta_oc || moduloSelecionado.betaOc || moduloSelecionado.tempCoefVoc,
+      gamma_r: moduloSelecionado.gamma_r || moduloSelecionado.gammaR || moduloSelecionado.tempCoefIsc,
       // Parâmetros do modelo de diodo único
       cells_in_series: moduloSelecionado.numeroCelulas || moduloSelecionado.cells_in_series,
       a_ref: moduloSelecionado.aRef || moduloSelecionado.a_ref,
@@ -655,6 +667,15 @@ export class SolarSystemService {
       b0: 0.0, b1: 0.0, b2: 0.0, b3: 0.0, b4: 0.0, b5: 0.0,
       dtc: 3.0
     };
+
+    console.log('✅ [solarSystemService.calculateAdvancedFromDimensioning] modulo CONSTRUÍDO:', JSON.stringify({
+      fabricante: modulo.fabricante,
+      modelo: modulo.modelo,
+      temp_coef_pmax: modulo.temp_coef_pmax,
+      alpha_sc: modulo.alpha_sc,
+      beta_oc: modulo.beta_oc,
+      gamma_r: modulo.gamma_r
+    }, null, 2));
 
     const inversor = inversorSelecionado ? {
       fabricante: inversorSelecionado.fabricante || "WEG",
@@ -924,9 +945,9 @@ export class SolarSystemService {
       isc_stc: moduloSelecionado?.iscStc,
       eficiencia: moduloSelecionado?.eficiencia,
       temp_coef_pmax: moduloSelecionado?.tempCoefPmax,
-      alpha_sc: moduloSelecionado.tempCoefPmax,
-      beta_oc: moduloSelecionado.tempCoefVoc,
-      gamma_r: moduloSelecionado.tempCoefIsc,
+      alpha_sc: moduloSelecionado?.alphaSc || moduloSelecionado?.tempCoefPmax,
+      beta_oc: moduloSelecionado?.betaOc || moduloSelecionado?.tempCoefVoc,
+      gamma_r: moduloSelecionado?.gammaR || moduloSelecionado?.tempCoefIsc,
       cells_in_series: moduloSelecionado?.cellsInSeries,
       a_ref: moduloSelecionado?.aRef,
       il_ref: moduloSelecionado?.iLRef,

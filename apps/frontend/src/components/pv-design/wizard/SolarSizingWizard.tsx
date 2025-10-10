@@ -590,13 +590,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
                 voc_stc: selectedModuleFull.voc,
                 isc_stc: selectedModuleFull.isc,
                 eficiencia: selectedModuleFull.eficiencia,
-                // Mapeamento correto conforme usuário:
-                // alpha_sc → tempCoefPmax (coef. temperatura da potência)
-                // beta_oc → tempCoefVoc (coef. temperatura da tensão)
-                // gamma_r → tempCoefIsc (coef. temperatura da corrente)
-                alpha_sc: selectedModuleFull.tempCoefPmax,
-                beta_oc: selectedModuleFull.tempCoefVoc,
-                gamma_r: selectedModuleFull.tempCoefIsc,
+                // Coeficientes de temperatura Sandia
+                alpha_sc: selectedModuleFull.alphaSc || selectedModuleFull.tempCoefPmax,
+                beta_oc: selectedModuleFull.betaOc || selectedModuleFull.tempCoefVoc,
+                gamma_r: selectedModuleFull.gammaR || selectedModuleFull.tempCoefIsc,
                 // Parâmetros do modelo de diodo único
                 cells_in_series: selectedModuleFull.numeroCelulas,
                 a_ref: selectedModuleFull.aRef,

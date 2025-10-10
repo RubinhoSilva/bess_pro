@@ -426,9 +426,9 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
             isc_stc: selectedModule.isc,
             eficiencia: selectedModule.eficiencia,
             temp_coef_pmax: selectedModule.tempCoefPmax,
-            alpha_sc: selectedModule.tempCoefPmax,
-            beta_oc: selectedModule.tempCoefVoc,
-            gamma_r: selectedModule.tempCoefIsc,
+            alpha_sc: selectedModule.alphaSc || selectedModule.tempCoefPmax,
+            beta_oc: selectedModule.betaOc || selectedModule.tempCoefVoc,
+            gamma_r: selectedModule.gammaR || selectedModule.tempCoefIsc,
             // Parâmetros do modelo de diodo único
             cells_in_series: selectedModule.numeroCelulas,
             a_ref: selectedModule.aRef,
@@ -440,7 +440,23 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
             material: selectedModule.material,
             technology: selectedModule.technology
           }];
-        })() : [],
+        })().map(m => {
+          console.log('🔍 [WaterSelectionForm] selectedModule ENVIADO:', JSON.stringify({
+            fabricante: m.fabricante,
+            modelo: m.modelo,
+            alphaSc: selectedModule?.alphaSc,
+            betaOc: selectedModule?.betaOc,
+            gammaR: selectedModule?.gammaR,
+            tempCoefPmax: selectedModule?.tempCoefPmax,
+            tempCoefVoc: selectedModule?.tempCoefVoc,
+            tempCoefIsc: selectedModule?.tempCoefIsc,
+            alpha_sc: m.alpha_sc,
+            beta_oc: m.beta_oc,
+            gamma_r: m.gamma_r,
+            temp_coef_pmax: m.temp_coef_pmax
+          }, null, 2));
+          return m;
+        }) : [],
         // ✅ NOVOS CAMPOS AUSENTES
         modelo_decomposicao: 'louche',
         modelo_transposicao: 'perez',
