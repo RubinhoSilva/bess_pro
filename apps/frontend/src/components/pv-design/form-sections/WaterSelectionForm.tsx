@@ -426,9 +426,9 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
             isc_stc: selectedModule.isc,
             eficiencia: selectedModule.eficiencia,
             temp_coef_pmax: selectedModule.tempCoefPmax,
-            alpha_sc: selectedModule.alphaSc,
-            beta_oc: selectedModule.betaOc,
-            gamma_r: selectedModule.gammaR,
+            alpha_sc: selectedModule.tempCoefPmax,
+            beta_oc: selectedModule.tempCoefVoc,
+            gamma_r: selectedModule.tempCoefIsc,
             // Parâmetros do modelo de diodo único
             cells_in_series: selectedModule.numeroCelulas,
             a_ref: selectedModule.aRef,
