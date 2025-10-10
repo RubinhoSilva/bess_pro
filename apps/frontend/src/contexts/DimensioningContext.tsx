@@ -69,11 +69,25 @@ export interface SelectedInverter {
   fabricante: string;
   modelo: string;
   potenciaSaidaCA: number;
+  tipoRede: string; // Tipo de rede (Monofásico, Bifásico, Trifásico)
   potenciaFvMax?: number;
   numeroMppt: number;
   stringsPorMppt: number;
   tensaoCcMax: number;
+  eficienciaMax?: number;
+  correnteEntradaMax?: number;
+  potenciaAparenteMax?: number;
+  faixaMpptMin?: number;
+  faixaMpptMax?: number;
   quantity: number; // Quantidade deste inversor
+  // Parâmetros Sandia para modelagem avançada
+  vdco?: number;
+  pso?: number;
+  c0?: number;
+  c1?: number;
+  c2?: number;
+  c3?: number;
+  pnt?: number;
 }
 
 export interface CableSizing {

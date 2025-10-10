@@ -555,8 +555,6 @@ export class SolarSystemService {
       // ✅ PROCESSAR MÚLTIPLAS ÁGUAS DE TELHADO
       const processedParams = this._processRoofWatersForCalculation(params, inversorGlobal);
 
-
-
       // Fazer chamada através do backend Node.js
       const response = await api.post('/solar-analysis/calculate-advanced-modules', processedParams);
       
@@ -585,9 +583,6 @@ export class SolarSystemService {
    * Calcula sistema avançado a partir dos dados do dimensionamento
    */
   static async calculateAdvancedFromDimensioning(dimensioningData: any): Promise<AdvancedModuleCalculationResult> {
-    // ===== DEBUG: DADOS RECEBIDOS NO SOLARSYSTEMSERVICE =====
-
-    
     // Calcular consumo anual
     const consumoAnual = dimensioningData.energyBills?.reduce((total: number, bill: any) => {
       return total + bill.consumoMensal?.reduce((sum: number, consumo: number) => sum + consumo, 0) || 0;
@@ -600,28 +595,31 @@ export class SolarSystemService {
     // Se não há módulo ou inversor selecionado, usar dados padrão
     const modulo = moduloSelecionado ? {
       fabricante: moduloSelecionado.fabricante || "Canadian Solar",
-      modelo: moduloSelecionado.modelo || "CS3W-540MS", 
-      potencia_nominal_w: moduloSelecionado.potenciaNominal || 540,
-      largura_mm: moduloSelecionado.larguraMm || 2261, // Garantir dimensões padrão
-      altura_mm: moduloSelecionado.alturaMm || 1134,   // Garantir dimensões padrão
+      modelo: moduloSelecionado.modelo || "CS3W-540MS",
+      potencia_nominal_w: moduloSelecionado.potenciaNominal || moduloSelecionado.potencia_nominal_w || 540,
+      largura_mm: moduloSelecionado.larguraMm || moduloSelecionado.largura_mm || 2261,
+      altura_mm: moduloSelecionado.alturaMm || moduloSelecionado.altura_mm || 1134,
+      peso_kg: moduloSelecionado.pesoKg || moduloSelecionado.peso_kg,
       vmpp: moduloSelecionado.vmpp,
       impp: moduloSelecionado.impp,
+      voc_stc: moduloSelecionado.voc || moduloSelecionado.voc_stc,
+      isc_stc: moduloSelecionado.isc || moduloSelecionado.isc_stc,
       eficiencia: moduloSelecionado.eficiencia,
-      temp_coef_pmax: moduloSelecionado.tempCoefPmax,
-      peso_kg: moduloSelecionado.pesoKg,
+      temp_coef_pmax: moduloSelecionado.tempCoefPmax || moduloSelecionado.temp_coef_pmax,
+      // Coeficientes de temperatura (mapeamento correto conforme usuário)
+      alpha_sc: moduloSelecionado.alphaSc || moduloSelecionado.alpha_sc,
+      beta_oc: moduloSelecionado.betaOc || moduloSelecionado.beta_oc,
+      gamma_r: moduloSelecionado.gammaR || moduloSelecionado.gamma_r,
+      // Parâmetros do modelo de diodo único
+      cells_in_series: moduloSelecionado.numeroCelulas || moduloSelecionado.cells_in_series,
+      a_ref: moduloSelecionado.aRef || moduloSelecionado.a_ref,
+      il_ref: moduloSelecionado.iLRef || moduloSelecionado.il_ref,
+      io_ref: moduloSelecionado.iORef || moduloSelecionado.io_ref,
+      rs: moduloSelecionado.rS || moduloSelecionado.rs,
+      rsh_ref: moduloSelecionado.rShRef || moduloSelecionado.rsh_ref,
       // Parâmetros para modelo espectral
       material: moduloSelecionado.material,
       technology: moduloSelecionado.technology,
-      // Parâmetros do modelo de diodo único
-      a_ref: moduloSelecionado.aRef,
-      i_l_ref: moduloSelecionado.iLRef,
-      i_o_ref: moduloSelecionado.iORef,
-      r_s: moduloSelecionado.rS,
-      r_sh_ref: moduloSelecionado.rShRef,
-      // Coeficientes de temperatura
-      alpha_sc: moduloSelecionado.alphaSc,
-      beta_oc: moduloSelecionado.betaOc,
-      gamma_r: moduloSelecionado.gammaR,
       // Parâmetros SAPM térmicos
       a0: moduloSelecionado.a0, a1: moduloSelecionado.a1, a2: moduloSelecionado.a2,
       a3: moduloSelecionado.a3, a4: moduloSelecionado.a4,
@@ -812,8 +810,8 @@ export class SolarSystemService {
           sombreamentoParcial: agua.sombreamentoParcial || 0,
           inversorId: agua.inversorId,
           mpptNumero: agua.mpptNumero,
-          // ✅ Incluir inversor embutido padrão
-          inversor: inversorPadrao
+          // ✅ Usar inversor da água (se existir), senão fallback para padrão
+          inversor: agua.inversor || inversorPadrao
         }))
       };
 
@@ -914,27 +912,27 @@ export class SolarSystemService {
     // Get module data
     const moduloSelecionado = dimensioningData.selectedModules?.[0];
     const modulo = {
-      fabricante: moduloSelecionado?.fabricante || "Exemplo",
-      modelo: moduloSelecionado?.modelo || "585W",
-      potencia_nominal_w: moduloSelecionado?.potenciaNominal || 585,
-      largura_mm: moduloSelecionado?.larguraMm || 1100,
-      altura_mm: moduloSelecionado?.alturaMm || 2100,
-      peso_kg: moduloSelecionado?.pesoKg || 30,
-      vmpp: moduloSelecionado?.vmpp || 42.52,
-      impp: moduloSelecionado?.impp || 13.76,
-      voc_stc: moduloSelecionado?.vocStc || 51.16,
-      isc_stc: moduloSelecionado?.iscStc || 14.55,
-      eficiencia: moduloSelecionado?.eficiencia || 21.0,
-      temp_coef_pmax: moduloSelecionado?.tempCoefPmax || -0.29,
-      alpha_sc: moduloSelecionado?.alphaSc || 0.00041,
-      beta_oc: moduloSelecionado?.betaOc || -0.0025,
-      gamma_r: moduloSelecionado?.gammaR || -0.0029,
-      cells_in_series: moduloSelecionado?.cellsInSeries || 144,
-      a_ref: moduloSelecionado?.aRef || 1.8,
-      il_ref: moduloSelecionado?.iLRef || 14.86,
-      io_ref: moduloSelecionado?.iORef || 2.5e-12,
-      rs: moduloSelecionado?.rS || 0.25,
-      rsh_ref: moduloSelecionado?.rShRef || 450.0
+      fabricante: moduloSelecionado?.fabricante,
+      modelo: moduloSelecionado?.modelo,
+      potencia_nominal_w: moduloSelecionado?.potenciaNominal,
+      largura_mm: moduloSelecionado?.larguraMm,
+      altura_mm: moduloSelecionado?.alturaMm,
+      peso_kg: moduloSelecionado?.pesoKg,
+      vmpp: moduloSelecionado?.vmpp,
+      impp: moduloSelecionado?.impp,
+      voc_stc: moduloSelecionado?.vocStc,
+      isc_stc: moduloSelecionado?.iscStc,
+      eficiencia: moduloSelecionado?.eficiencia,
+      temp_coef_pmax: moduloSelecionado?.tempCoefPmax,
+      alpha_sc: moduloSelecionado?.alphaSc,
+      beta_oc: moduloSelecionado?.betaOc,
+      gamma_r: moduloSelecionado?.gammaR,
+      cells_in_series: moduloSelecionado?.cellsInSeries,
+      a_ref: moduloSelecionado?.aRef,
+      il_ref: moduloSelecionado?.iLRef,
+      io_ref: moduloSelecionado?.iORef,
+      rs: moduloSelecionado?.rS,
+      rsh_ref: moduloSelecionado?.rShRef
     };
 
     // Build inversores array from aguasTelhado or inverters
@@ -943,58 +941,60 @@ export class SolarSystemService {
     if (dimensioningData.aguasTelhado && dimensioningData.aguasTelhado.length > 0) {
       // Multi-inverter configuration with multiple roof areas
       const inversorSelecionado = dimensioningData.inverters?.[0];
+
       const inversorData = {
-        fabricante: inversorSelecionado?.fabricante || "Exemplo",
-        modelo: inversorSelecionado?.modelo || "INV-01 3.0kW",
-        potencia_saida_ca_w: inversorSelecionado?.potenciaSaidaCA || inversorSelecionado?.potencia_saida_ca_w || 5000,
-        tipo_rede: inversorSelecionado?.tipoRede || inversorSelecionado?.tipo_rede || "monofásico",
-        potencia_fv_max_w: inversorSelecionado?.potenciaFvMax || 6000,
-        tensao_cc_max_v: inversorSelecionado?.tensaoCcMax || 600,
-        numero_mppt: inversorSelecionado?.numeroMppt || 2,
-        strings_por_mppt: inversorSelecionado?.stringsPorMppt || 1,
-        eficiencia_max: inversorSelecionado?.eficienciaMax || 98.0,
-        efficiency_dc_ac: inversorSelecionado?.efficiency_dc_ac || 0.98
+        fabricante: inversorSelecionado?.fabricante,
+        modelo: inversorSelecionado?.modelo,
+        potencia_saida_ca_w: inversorSelecionado?.potenciaSaidaCA || inversorSelecionado?.potencia_saida_ca_w,
+        tipo_rede: inversorSelecionado?.tipoRede || inversorSelecionado?.tipo_rede,
+        potencia_fv_max_w: inversorSelecionado?.potenciaFvMax,
+        tensao_cc_max_v: inversorSelecionado?.tensaoCcMax,
+        numero_mppt: inversorSelecionado?.numeroMpp,
+        strings_por_mppt: inversorSelecionado?.stringsPorMppt,
+        eficiencia_max: inversorSelecionado?.eficienciaMax,
+        efficiency_dc_ac: inversorSelecionado?.efficiency_dc_ac
       };
 
       inversores.push({
         inversor: inversorData,
         orientacoes: dimensioningData.aguasTelhado.map((agua: any, index: number) => ({
           nome: agua.nome || `MPPT-${index + 1}`,
-          orientacao: agua.orientacao || 330,
-          inclinacao: agua.inclinacao || 18,
+          orientacao: agua.orientacao,
+          inclinacao: agua.inclinacao,
           modulos_por_string: agua.numeroModulos,
-          numero_strings: inversorData.strings_por_mppt || 1
+          numero_strings: inversorData.strings_por_mppt
         }))
       });
     } else {
       // Single inverter configuration
       const inversorSelecionado = dimensioningData.inverters?.[0];
+
       inversores.push({
         inversor: {
-          fabricante: inversorSelecionado?.fabricante || "Exemplo",
-          modelo: inversorSelecionado?.modelo || "INV-01 3.0kW",
-        potencia_saida_ca_w: inversorSelecionado?.potenciaFvMax || inversorSelecionado?.potenciaSaidaCA || inversorSelecionado?.potencia_saida_ca_w || 5000,
-          tipo_rede: inversorSelecionado?.tipoRede || inversorSelecionado?.tipo_rede || "monofásico",
-          potencia_fv_max_w: inversorSelecionado?.potenciaFvMax || 6000,
-          tensao_cc_max_v: inversorSelecionado?.tensaoCcMax || 600,
-          numero_mppt: inversorSelecionado?.numeroMppt || 2,
-          strings_por_mppt: inversorSelecionado?.stringsPorMppt || 1,
-          eficiencia_max: inversorSelecionado?.eficienciaMax || 98.0,
-          efficiency_dc_ac: inversorSelecionado?.efficiency_dc_ac || 0.98
+          fabricante: inversorSelecionado?.fabricante ,
+          modelo: inversorSelecionado?.modelo,
+        potencia_saida_ca_w: inversorSelecionado?.potenciaFvMax || inversorSelecionado?.potenciaSaidaCA || inversorSelecionado?.potencia_saida_ca_w,
+          tipo_rede: inversorSelecionado?.tipoRede || inversorSelecionado?.tipo_rede,
+          potencia_fv_max_w: inversorSelecionado?.potenciaFvMax,
+          tensao_cc_max_v: inversorSelecionado?.tensaoCcMax,
+          numero_mppt: inversorSelecionado?.numeroMppt,
+          strings_por_mppt: inversorSelecionado?.stringsPorMppt,
+          eficiencia_max: inversorSelecionado?.eficienciaMax,
+          efficiency_dc_ac: inversorSelecionado?.efficiency_dc_ac
         },
         orientacoes: [{
           nome: "MPPT-1A",
-          orientacao: dimensioningData.orientacao || 330,
-          inclinacao: dimensioningData.inclinacao || 18,
-          modulos_por_string: dimensioningData.modulosPorString || 4,
+          orientacao: dimensioningData.orientacao,
+          inclinacao: dimensioningData.inclinacao,
+          modulos_por_string: dimensioningData.modulosPorString,
           numero_strings: 1
         }]
       });
     }
 
     return {
-      lat: dimensioningData.latitude || -22.841432,
-      lon: dimensioningData.longitude || -51.957627,
+      lat: dimensioningData.latitude,
+      lon: dimensioningData.longitude,
       origem_dados: "NASA",
       startyear: 2015,
       endyear: 2020,
@@ -1003,11 +1003,11 @@ export class SolarSystemService {
       mount_type: "close_mount_glass_glass",
       consumo_mensal_kwh: consumoMensalKwh,
       perdas: {
-        sujeira: dimensioningData.perdaSujeira || 1.0,
-        sombreamento: dimensioningData.perdaSombreamento || 2.0,
-        incompatibilidade: dimensioningData.perdaMismatch || 1.0,
-        fiacao: dimensioningData.perdaCabeamento || 0.5,
-        outras: dimensioningData.perdaOutras || 0.5
+        sujeira: dimensioningData.perdaSujeira,
+        sombreamento: dimensioningData.perdaSombreamento,
+        incompatibilidade: dimensioningData.perdaMismatch,
+        fiacao: dimensioningData.perdaCabeamento,
+        outras: dimensioningData.perdaOutras
       },
       modulo,
       inversores

@@ -13,6 +13,7 @@ import { BackendCalculationService, shouldUseBackendCalculations } from '@/lib/b
 import { FrontendCalculationLogger } from '@/lib/calculationLogger';
 import { PVDimensioningService } from '@/lib/pvDimensioning';
 import { SystemCalculations } from '@/lib/systemCalculations';
+import { useSolarModules } from '@/hooks/equipment-hooks';
 
 // Import existing form components
 import CustomerDataForm from '../form-sections/CustomerDataForm';
@@ -87,13 +88,24 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   const [calculationResults, setCalculationResults] = useState<any>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const { toast } = useToast();
-  const { 
-    currentDimensioning, 
+  const {
+    currentDimensioning,
     updateDimensioning,
     saveDimensioning,
     dimensioningId,
     isSaving
   } = useDimensioning();
+
+  // Buscar módulos solares para obter dados completos
+  const { data: solarModulesData } = useSolarModules();
+  const solarModules = solarModulesData?.modules || [];
+
+  // Buscar módulo completo selecionado pelo ID
+  const selectedModuleFull = useMemo(() => {
+    const moduleId = currentDimensioning.moduloSelecionado || currentDimensioning.selectedModuleId;
+    if (!moduleId || solarModules.length === 0) return undefined;
+    return solarModules.find((m: any) => m.id === moduleId);
+  }, [currentDimensioning.moduloSelecionado, currentDimensioning.selectedModuleId, solarModules]);
 
 
   // Função para chamar a API financeira do Python via backend
@@ -565,46 +577,59 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
             modelo_decomposicao: "louche",
             modelo_transposicao: "perez",
             consumo_anual_kwh: consumoTotalAnual || 6000,
-            modulo: {
-              fabricante: "Canadian Solar",
-              modelo: "CS3W-540MS",
-              potencia_nominal_w: currentDimensioning.potenciaModulo || 540,
-              largura_mm: 2256,
-              altura_mm: 1133,
-              vmpp: 41.4,
-              impp: 13.05,
-              eficiencia: 20.9,
-              temp_coef_pmax: -0.37,
-              peso_kg: 27.5,
-              material: "c-Si",
-              technology: "mono-Si",
-              a_ref: 1.8,
-              i_l_ref: 13.91,
-              i_o_ref: 3.712e-12,
-              r_s: 0.348,
-              r_sh_ref: 381.68,
-              alpha_sc: 0.0004,
-              beta_oc: -0.0028,
-              gamma_r: -0.0004,
-              a0: -3.56,
-              a1: -0.075,
-              a2: 0,
-              a3: 0,
-              a4: 0,
-              b0: 0,
-              b1: 0,
-              b2: 0,
-              b3: 0,
-              b4: 0,
-              b5: 0,
-              dtc: 3
-            },
-            inversor: {
-              fabricante: "WEG",
-              modelo: "SIW500H-M",
-              potencia_saida_ca_w: 5000,
-              tipo_rede: "Monofásico 220V"
-            },
+            modulo: selectedModuleFull ? (() => {
+              return {
+                fabricante: selectedModuleFull.fabricante,
+                modelo: selectedModuleFull.modelo,
+                potencia_nominal_w: selectedModuleFull.potenciaNominal,
+                largura_mm: selectedModuleFull.larguraMm,
+                altura_mm: selectedModuleFull.alturaMm,
+                peso_kg: selectedModuleFull.pesoKg,
+                vmpp: selectedModuleFull.vmpp,
+                impp: selectedModuleFull.impp,
+                voc_stc: selectedModuleFull.voc,
+                isc_stc: selectedModuleFull.isc,
+                eficiencia: selectedModuleFull.eficiencia,
+                // Mapeamento correto conforme usuário:
+                // alpha_sc → tempCoefPmax (coef. temperatura da potência)
+                // beta_oc → tempCoefVoc (coef. temperatura da tensão)
+                // gamma_r → tempCoefIsc (coef. temperatura da corrente)
+                alpha_sc: selectedModuleFull.tempCoefPmax,
+                beta_oc: selectedModuleFull.tempCoefVoc,
+                gamma_r: selectedModuleFull.tempCoefIsc,
+                // Parâmetros do modelo de diodo único
+                cells_in_series: selectedModuleFull.numeroCelulas,
+                a_ref: selectedModuleFull.aRef,
+                il_ref: selectedModuleFull.iLRef,
+                io_ref: selectedModuleFull.iORef,
+                rs: selectedModuleFull.rS,
+                rsh_ref: selectedModuleFull.rShRef,
+                // Parâmetros opcionais
+                material: selectedModuleFull.material,
+                technology: selectedModuleFull.technology,
+                a0: selectedModuleFull.a0,
+                a1: selectedModuleFull.a1,
+                a2: selectedModuleFull.a2,
+                a3: selectedModuleFull.a3,
+                a4: selectedModuleFull.a4,
+                b0: selectedModuleFull.b0,
+                b1: selectedModuleFull.b1,
+                b2: selectedModuleFull.b2,
+                b3: selectedModuleFull.b3,
+                b4: selectedModuleFull.b4,
+                b5: selectedModuleFull.b5,
+                dtc: selectedModuleFull.dtc
+              };
+            })() : null,
+            inversor: currentDimensioning.selectedInverters?.[0] ? (() => {
+              const inv = currentDimensioning.selectedInverters[0];
+              return {
+                fabricante: inv.fabricante,
+                modelo: inv.modelo,
+                potencia_saida_ca_w: inv.potenciaSaidaCA,
+                tipo_rede: inv.tipoRede
+              };
+            })() : null,
             perdas_sistema: perdasSistema,
             fator_seguranca: 1.1
           })
@@ -990,7 +1015,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         return (
           <div className="space-y-6">
             {/* Configuração das Orientações com MPPT */}
-            <WaterSelectionForm 
+            <WaterSelectionForm
               aguasTelhado={currentDimensioning.aguasTelhado || []}
               selectedInverters={currentDimensioning.selectedInverters || []}
               onAguasChange={(aguas) => handleFormChange('aguasTelhado', aguas)}
@@ -1007,11 +1032,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
               perdaSujeira={currentDimensioning.perdaSujeira}
               perdaInversor={currentDimensioning.perdaInversor}
               perdaOutras={currentDimensioning.perdaOutras}
-              selectedModule={{
-                potenciaNominal: currentDimensioning.potenciaModulo || 550,
-                vocStc: currentDimensioning.tensaoModulo || 49.7,
-                tempCoefVoc: -0.27 // Default value - could be made configurable
-              }}
+              selectedModule={selectedModuleFull}
             />
           </div>
         );

@@ -110,7 +110,7 @@ class SolarModuleData(BaseModel):
         description="Potência nominal em Watts (STC)"
     )
     eficiencia: float = Field(..., ge=10, le=30, description="Eficiência do módulo (%)")
-    temp_coef_pmax: float = Field(..., ge=-1, le=0, description="Coeficiente de temperatura de Pmax (%/°C)")
+    temp_coef_pmax: float = Field(..., ge=-1, le=1, description="Coeficiente de temperatura de Pmax (%/°C)")
 
     # Dimensões
     comprimento: Optional[float] = Field(None, ge=1000, le=3000, description="Comprimento em mm")
@@ -239,7 +239,7 @@ class ModuloSolar(BaseModel):
 
     # Coeficientes de temperatura
     eficiencia: float = Field(..., ge=10, le=30, description="Eficiência do módulo (%)")
-    temp_coef_pmax: float = Field(..., ge=-1, le=0, description="Coeficiente de temperatura Pmax (%/°C)")
+    temp_coef_pmax: float = Field(..., ge=-1, le=1, description="Coeficiente de temperatura Pmax (%/°C)")
 
     # Parâmetros Sandia (obrigatórios para pvlib)
     alpha_sc: float = Field(..., description="Coef. temp. Isc normalizado (1/°C)")

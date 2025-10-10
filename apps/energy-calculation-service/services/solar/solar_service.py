@@ -252,10 +252,26 @@ class SolarCalculationService:
                     'poa_direct': poa_irrad['poa_direct'], 'poa_diffuse': poa_irrad['poa_diffuse']
                 }, index=df.index)
 
+                logger.info(f"    POA médio para {mppt_id}: {weather_mppt['poa_global'].mean():.1f} W/m²")
+                logger.info(f"    POA direto médio para {mppt_id}: {weather_mppt['poa_direct'].mean():.1f} W/m²")
+                logger.info(f"    POA difuso médio para {mppt_id}: {weather_mppt['poa_diffuse'].mean():.1f} W/m²")
+                logger.info(f"    Temperatura média para {mppt_id}: {weather_mppt['temp_air'].mean():.1f} °C")
+                logger.info(f"    Velocidade do vento média para {mppt_id}: {weather_mppt['wind_speed'].mean():.1f} m/s")
+                logger.info(f"    Irradiação média GHI para {mppt_id}: {weather_mppt['ghi'].mean():.1f} W/m²")
+                logger.info(f"    Irradiação média DNI para {mppt_id}: {weather_mppt['dni'].mean():.1f} W/m²")
+                logger.info(f"    Irradiação média DHI para {mppt_id}: {weather_mppt['dhi'].mean():.1f} W/m²")
+            
+
                 pdc_stc_array = current_mppt_kwp * 1000.0
 
+                logger.info(f"Surface tilt: {mppt['tilt']}°, azimuth: {mppt['azimuth']}°, kWp MPPT: {current_mppt_kwp:.2f} kWp")
+                logger.info(f"Module Parameters: {module_parameters}")
+                logger.info(f"Inverter parameters (Paco set to MPPT kWp): Paco={pdc_stc_array}W")
+                logger.info(f"Temperature model parameters: {temperature_model_params}")
+
+
                 # Criar sistema PV
-                logger.debug(f"    Criando sistema PV: {pdc_stc_array}W STC")
+                logger.info(f"    Criando sistema PV: {pdc_stc_array}W STC")
                 system = pvlib.pvsystem.PVSystem(
                     surface_tilt=mppt['tilt'], surface_azimuth=mppt['azimuth'],
                     module_parameters={**module_parameters, 'module_type':'glass_glass'},
@@ -279,7 +295,7 @@ class SolarCalculationService:
                 dc_inv_total_pure += dc_pre_clipping_mppt
                 
                 dc_mppt_energy = dc_pre_clipping_mppt.sum() / 1000.0 / n_anos
-                logger.debug(f"    Energia DC MPPT: {dc_mppt_energy:.0f} kWh/ano")
+                logger.info(f"    Energia DC MPPT: {dc_pre_clipping_mppt.sum() / 1000.0:.0f} kWh/ano")
 
             # Aplicar eficiência e clipping
             dc_pre_clipping_with_eff = dc_inv_total_pure * efficiency_factor

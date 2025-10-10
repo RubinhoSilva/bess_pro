@@ -256,23 +256,23 @@ export class SolarAnalysisController extends BaseController {
         potencia_nominal_w: params.modulo.potencia_nominal_w,
         largura_mm: params.modulo.largura_mm,
         altura_mm: params.modulo.altura_mm,
-        peso_kg: params.modulo.peso_kg || 25.0,
+        peso_kg: params.modulo.peso_kg,
         vmpp: params.modulo.vmpp,
         impp: params.modulo.impp,
-        voc_stc: params.modulo.voc_stc || (params.modulo.vmpp * 1.2), // Estimativa se não fornecido
-        isc_stc: params.modulo.isc_stc || (params.modulo.impp * 1.1), // Estimativa se não fornecido
+        voc_stc: params.modulo.voc_stc, // Estimativa se não fornecido
+        isc_stc: params.modulo.isc_stc , // Estimativa se não fornecido
         eficiencia: params.modulo.eficiencia,
         temp_coef_pmax: params.modulo.temp_coef_pmax,
         // Parâmetros Sandia adicionais com defaults razoáveis
-        alpha_sc: params.modulo.alpha_sc || 0.05,
-        beta_oc: params.modulo.beta_oc || -0.31,
-        gamma_r: params.modulo.gamma_r || params.modulo.temp_coef_pmax || -0.37,
-        cells_in_series: params.modulo.cells_in_series || 144,
-        a_ref: params.modulo.a_ref || 1.847,
-        il_ref: params.modulo.il_ref || params.modulo.impp || 13.9,
-        io_ref: params.modulo.io_ref || 3.31e-10,
-        rs: params.modulo.rs || 0.207,
-        rsh_ref: params.modulo.rsh_ref || 286.5
+        alpha_sc: params.modulo.alpha_sc,
+        beta_oc: params.modulo.beta_oc ,
+        gamma_r: params.modulo.gamma_r,
+        cells_in_series: params.modulo.cells_in_series,
+        a_ref: params.modulo.a_ref,
+        il_ref: params.modulo.il_ref,
+        io_ref: params.modulo.io_ref,
+        rs: params.modulo.rs,
+        rsh_ref: params.modulo.rsh_ref
       };
       console.log('   - Módulo preparado com parâmetros Sandia');
 
@@ -340,12 +340,12 @@ export class SolarAnalysisController extends BaseController {
       const pythonParams = {
         lat: params.lat,
         lon: params.lon,
-        origem_dados: params.origem_dados, // OBRIGATÓRIO: sem fallback
+        origem_dados: params.origem_dados,
         startyear: params.startyear || 2015,
         endyear: params.endyear || 2020,
         modelo_decomposicao: params.modelo_decomposicao || 'louche',
         modelo_transposicao: params.modelo_transposicao || 'perez',
-        mount_type: params.mount_type || 'open_rack_glass_glass',
+        mount_type: params.mount_type || 'close_mount_glass_glass',
         consumo_mensal_kwh: consumoMensalKwh,
         perdas: perdas,
         modulo: modulo,

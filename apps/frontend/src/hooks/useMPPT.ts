@@ -42,13 +42,13 @@ export function useMPPTCalculation(params: MPPTCalculationParams) {
         longitude: params.coordinates.longitude,
         potencia_saida_ca_w: params.inversor.potenciaSaidaCA,
         potencia_fv_max_w: params.inversor.potenciaFvMax,
-        tensao_cc_max_v: params.inversor.tensaoCcMax || 1000,
-        numero_mppt: params.inversor.numeroMppt || 2,
-        strings_por_mppt: params.inversor.stringsPorMppt || 2,
-        corrente_entrada_max_a: params.inversor.correnteEntradaMax || 20,
-        faixa_mppt_min_v: params.inversor.faixaMpptMin || 200,
-        faixa_mppt_max_v: params.inversor.faixaMpptMax || 800,
-        tipo_rede: params.inversor.tipoRede || "Monofásico 220V"
+        tensao_cc_max_v: params.inversor.tensaoCcMax,
+        numero_mppt: params.inversor.numeroMppt,
+        strings_por_mppt: params.inversor.stringsPorMppt,
+        corrente_entrada_max_a: params.inversor.correnteEntradaMax,
+        faixa_mppt_min_v: params.inversor.faixaMpptMin,
+        faixa_mppt_max_v: params.inversor.faixaMpptMax,
+        tipo_rede: params.inversor.tipoRede
       };
 
       return SolarSystemService.calculateMPPTLimits(request);
@@ -123,13 +123,13 @@ export function useMultipleMPPTCalculations(
           longitude: coordinates.longitude,
           potencia_saida_ca_w: inverter.potenciaSaidaCA,
           potencia_fv_max_w: inverter.potenciaFvMax,
-          tensao_cc_max_v: inverter.tensaoCcMax || 1000,
-          numero_mppt: inverter.numeroMppt || 2,
-          strings_por_mppt: inverter.stringsPorMppt || 2,
-          corrente_entrada_max_a: inverter.correnteEntradaMax || 20,
-          faixa_mppt_min_v: inverter.faixaMpptMin || 200,
-          faixa_mppt_max_v: inverter.faixaMpptMax || 800,
-          tipo_rede: inverter.tipoRede || "Monofásico 220V"
+          tensao_cc_max_v: inverter.tensaoCcMax,
+          numero_mppt: inverter.numeroMppt,
+          strings_por_mppt: inverter.stringsPorMppt,
+          corrente_entrada_max_a: inverter.correnteEntradaMax,
+          faixa_mppt_min_v: inverter.faixaMpptMin,
+          faixa_mppt_max_v: inverter.faixaMpptMax,
+          tipo_rede: inverter.tipoRede
         };
 
         return SolarSystemService.calculateMPPTLimits(request);

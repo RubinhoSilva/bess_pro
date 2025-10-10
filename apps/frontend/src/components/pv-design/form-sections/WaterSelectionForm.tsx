@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AguaTelhado, SelectedInverter } from '@/contexts/DimensioningContext';
 import { SolarSystemService } from '@/lib/solarSystemService';
 import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
+import { SolarModule } from '@/hooks/equipment-hooks';
 
 interface WaterSelectionFormProps {
   aguasTelhado: AguaTelhado[];
@@ -30,12 +31,8 @@ interface WaterSelectionFormProps {
   perdaSujeira?: number;
   perdaInversor?: number;
   perdaOutras?: number;
-  // Props para MPPT calculations
-  selectedModule?: {
-    potenciaNominal: number;
-    vocStc?: number;
-    tempCoefVoc?: number;
-  };
+  // Props para MPPT calculations - agora usa SolarModule completo
+  selectedModule?: SolarModule;
 }
 
 export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
@@ -257,35 +254,29 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     tensaoCcMax: inv.tensaoCcMax,
     numeroMppt: inv.numeroMppt,
     stringsPorMppt: inv.stringsPorMppt,
-    correnteEntradaMax: (inv as any).correnteEntradaMax || 0,
-    faixaMpptMin: (inv as any).faixaMpptMin || 0,
-    faixaMpptMax: (inv as any).faixaMpptMax || 0,
-    tipoRede: (inv as any).tipoRede || ''
+    correnteEntradaMax: inv.correnteEntradaMax,
+    faixaMpptMin: inv.faixaMpptMin,
+    faixaMpptMax: inv.faixaMpptMax,
+    tipoRede: inv.tipoRede
   })) || [];
-
-  const defaultModule = {
-    potenciaNominal: potenciaModulo,
-    vocStc: 49.7,
-    tempCoefVoc: -0.27
-  };
 
   const defaultCoordinates = {
     latitude: latitude || -15.7942,
     longitude: longitude || -47.8822
   };
 
-  // Hook para calcular limites MPPT
-  const moduleToUse = selectedModule && 
-                     typeof selectedModule.vocStc === 'number' && 
-                     typeof selectedModule.tempCoefVoc === 'number' 
-    ? selectedModule 
-    : defaultModule;
+  // Hook para calcular limites MPPT - agora usa selectedModule completo
+  const moduleToUse = selectedModule && selectedModule.voc && selectedModule.tempCoefVoc ? {
+    potenciaNominal: selectedModule.potenciaNominal,
+    vocStc: selectedModule.voc,
+    tempCoefVoc: selectedModule.tempCoefVoc
+  } : undefined;
     
   const mpptLimits = useMultipleMPPTCalculations(
     invertersForMPPT,
-    moduleToUse as { potenciaNominal: number; vocStc: number; tempCoefVoc: number; },
+    moduleToUse || { potenciaNominal: potenciaModulo, vocStc: 0, tempCoefVoc: 0 },
     defaultCoordinates,
-    Boolean(selectedModule?.vocStc && selectedModule?.tempCoefVoc && selectedInverters?.length)
+    Boolean(moduleToUse && selectedInverters?.length)
   );
 
   // Calcular limite máximo de módulos baseado nos inversores
@@ -380,32 +371,24 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         fabricante: selectedInverters[0].fabricante,
         modelo: selectedInverters[0].modelo,
         potencia_saida_ca_w: selectedInverters[0].potenciaSaidaCA,
-        tipo_rede: (selectedInverters[0] as any).tipoRede || "Monofásico 220V",
-        potencia_fv_max_w: (selectedInverters[0] as any).potenciaFvMax || undefined,
-        tensao_cc_max_v: selectedInverters[0].tensaoCcMax || 1000,
-        numero_mppt: selectedInverters[0].numeroMppt || 2,
-        strings_por_mppt: selectedInverters[0].stringsPorMppt || 2,
-        eficiencia_max: (selectedInverters[0] as any).eficienciaMax || undefined,
-        corrente_entrada_max_a: (selectedInverters[0] as any).correnteEntradaMax || undefined,
-        potencia_aparente_max_va: (selectedInverters[0] as any).potenciaAparenteMax || undefined,
-        // Parâmetros Sandia (se disponíveis)
-        vdco: (selectedInverters[0] as any).vdco || undefined,
-        pso: (selectedInverters[0] as any).pso || undefined,
-        c0: (selectedInverters[0] as any).c0 || undefined,
-        c1: (selectedInverters[0] as any).c1 || undefined,
-        c2: (selectedInverters[0] as any).c2 || undefined,
-        c3: (selectedInverters[0] as any).c3 || undefined,
-        pnt: (selectedInverters[0] as any).pnt || undefined
-      } : {
-        fabricante: 'WEG',
-        modelo: 'SIW500H-M',
-        potencia_saida_ca_w: 5000,
-        tipo_rede: "Monofásico 220V",
-        tensao_cc_max_v: 600,
-        numero_mppt: 2,
-        strings_por_mppt: 2,
-        eficiencia_max: 97.6
-      };
+        tipo_rede: selectedInverters[0].tipoRede,
+        potencia_fv_max_w: selectedInverters[0].potenciaFvMax,
+        tensao_cc_max_v: selectedInverters[0].tensaoCcMax,
+        numero_mppt: selectedInverters[0].numeroMppt,
+        strings_por_mppt: selectedInverters[0].stringsPorMppt,
+        eficiencia_max: selectedInverters[0].eficienciaMax,
+        efficiency_dc_ac: (selectedInverters[0].eficienciaMax ?? 0) / 100,
+        corrente_entrada_max_a: selectedInverters[0].correnteEntradaMax,
+        potencia_aparente_max_va: selectedInverters[0].potenciaAparenteMax,
+        // Parâmetros Sandia
+        vdco: selectedInverters[0].vdco,
+        pso: selectedInverters[0].pso,
+        c0: selectedInverters[0].c0,
+        c1: selectedInverters[0].c1,
+        c2: selectedInverters[0].c2,
+        c3: selectedInverters[0].c3,
+        pnt: selectedInverters[0].pnt
+      } : undefined;
 
       // Preparar dados para o cálculo usando TODAS as águas de telhado
       const dimensioningData = {
@@ -429,64 +412,35 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         energyBills: [{ 
           consumoMensal: [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500] // 6000 kWh/ano padrão
         }],
-        selectedModules: selectedModule ? [{
-          fabricante: (selectedModule as any).fabricante || 'Canadian Solar',
-          modelo: (selectedModule as any).modelo || 'CS3W-540MS',
-          potenciaNominal: selectedModule.potenciaNominal || potenciaModulo,
-          larguraMm: (selectedModule as any).larguraMm || 2261,
-          alturaMm: (selectedModule as any).alturaMm || 1134,
-          vmpp: (selectedModule as any).vmpp || 41.4,
-          impp: (selectedModule as any).impp || 13.05,
-          voc: (selectedModule as any).voc || selectedModule.vocStc || 49.7,
-          isc: (selectedModule as any).isc || 13.91,
-          eficiencia: (selectedModule as any).eficiencia || 20.9,
-          tempCoefPmax: (selectedModule as any).tempCoefPmax || -0.37,
-          tempCoefVoc: selectedModule.tempCoefVoc || -0.28,
-          // Parâmetros avançados (se disponíveis)
-          alphaSc: (selectedModule as any).alphaSc || undefined,
-          betaOc: (selectedModule as any).betaOc || undefined,
-          gammaR: (selectedModule as any).gammaR || undefined,
-          aRef: (selectedModule as any).aRef || undefined,
-          iLRef: (selectedModule as any).iLRef || undefined,
-          iORef: (selectedModule as any).iORef || undefined,
-          rS: (selectedModule as any).rS || undefined,
-          rShRef: (selectedModule as any).rShRef || undefined,
-          // Parâmetros SAPM térmicos
-          a0: (selectedModule as any).a0 || undefined,
-          a1: (selectedModule as any).a1 || undefined,
-          a2: (selectedModule as any).a2 || undefined,
-          a3: (selectedModule as any).a3 || undefined,
-          a4: (selectedModule as any).a4 || undefined,
-          b0: (selectedModule as any).b0 || undefined,
-          b1: (selectedModule as any).b1 || undefined,
-          b2: (selectedModule as any).b2 || undefined,
-          b3: (selectedModule as any).b3 || undefined,
-          b4: (selectedModule as any).b4 || undefined,
-          b5: (selectedModule as any).b5 || undefined,
-          dtc: (selectedModule as any).dtc || undefined,
-          // Outros parâmetros
-          material: (selectedModule as any).material || 'c-Si',
-          technology: (selectedModule as any).technology || 'mono-Si',
-          numerocelulas: (selectedModule as any).numeroCelulas || 144,
-          pesoKg: (selectedModule as any).pesoKg || 27.5
-        }] : [{
-          fabricante: 'Canadian Solar',
-          modelo: 'CS3W-540MS',
-          potenciaNominal: potenciaModulo,
-          larguraMm: 2261,
-          alturaMm: 1134,
-          vmpp: 41.4,
-          impp: 13.05,
-          voc: 49.7,
-          isc: 13.91,
-          eficiencia: 20.9,
-          tempCoefPmax: -0.37,
-          tempCoefVoc: -0.28,
-          material: 'c-Si',
-          technology: 'mono-Si',
-          numerocelulas: 144,
-          pesoKg: 27.5
-        }],
+        selectedModules: selectedModule ? (() => {
+          return [{
+            fabricante: selectedModule.fabricante,
+            modelo: selectedModule.modelo,
+            potencia_nominal_w: selectedModule.potenciaNominal,
+            largura_mm: selectedModule.larguraMm,
+            altura_mm: selectedModule.alturaMm,
+            peso_kg: selectedModule.pesoKg,
+            vmpp: selectedModule.vmpp,
+            impp: selectedModule.impp,
+            voc_stc: selectedModule.voc,
+            isc_stc: selectedModule.isc,
+            eficiencia: selectedModule.eficiencia,
+            temp_coef_pmax: selectedModule.tempCoefPmax,
+            alpha_sc: selectedModule.alphaSc,
+            beta_oc: selectedModule.betaOc,
+            gamma_r: selectedModule.gammaR,
+            // Parâmetros do modelo de diodo único
+            cells_in_series: selectedModule.numeroCelulas,
+            a_ref: selectedModule.aRef,
+            il_ref: selectedModule.iLRef,
+            io_ref: selectedModule.iORef,
+            rs: selectedModule.rS,
+            rsh_ref: selectedModule.rShRef,
+            // Outros parâmetros
+            material: selectedModule.material,
+            technology: selectedModule.technology
+          }];
+        })() : [],
         // ✅ NOVOS CAMPOS AUSENTES
         modelo_decomposicao: 'louche',
         modelo_transposicao: 'perez',

@@ -29,13 +29,28 @@ export const useMultipleInverters = (): UseMultipleInvertersReturn => {
       fabricante: inverter.fabricante,
       modelo: inverter.modelo,
       potenciaSaidaCA: inverter.potenciaSaidaCA,
+      tipoRede: inverter.tipoRede,
       potenciaFvMax: inverter.potenciaFvMax,
       numeroMppt: inverter.numeroMppt || 2,
       stringsPorMppt: inverter.stringsPorMppt || 2,
       tensaoCcMax: inverter.tensaoCcMax || 1000,
-      quantity
+      eficienciaMax: inverter.eficienciaMax,
+      correnteEntradaMax: inverter.correnteEntradaMax,
+      potenciaAparenteMax: inverter.potenciaAparenteMax,
+      // Extrair faixaMpptMin e faixaMpptMax do campo faixaMppt (formato: "min-max")
+      faixaMpptMin: inverter.faixaMppt ? parseInt(inverter.faixaMppt.split('-')[0]) : undefined,
+      faixaMpptMax: inverter.faixaMppt ? parseInt(inverter.faixaMppt.split('-')[1]) : undefined,
+      quantity,
+      // Parâmetros Sandia (se disponíveis)
+      vdco: (inverter as any).vdco,
+      pso: (inverter as any).pso,
+      c0: (inverter as any).c0,
+      c1: (inverter as any).c1,
+      c2: (inverter as any).c2,
+      c3: (inverter as any).c3,
+      pnt: (inverter as any).pnt
     };
-    
+
     return selectedInverter;
   }, []);
 
