@@ -1,6 +1,7 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { FrontendCalculationLogger } from './calculationLogger';
+import { ErrorHandler } from '../errors/ErrorHandler';
 
 // Configuração base da API
 const getApiBaseUrl = () => {
@@ -79,6 +80,9 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Use centralized error handling
+    const appError = ErrorHandler.handle(error, 'api-request');
+    
     // Handle auth errors globally
     if (error.response?.status === 401) {
       localStorage.removeItem('auth-token');
@@ -90,23 +94,10 @@ api.interceptors.response.use(
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
-      return Promise.reject(new Error('Sessão expirada'));
+      return Promise.reject(appError);
     }
     
-    // Handle validation errors
-    if (error.response?.status === 400 && error.response?.data?.error?.details) {
-      error.response.data.error.details.forEach((detail: any) => {
-        toast.error(detail.msg || detail.message);
-      });
-    }
-
-    // Handle conflict errors (409) - like duplicate email
-    if (error.response?.status === 409) {
-      const message = error.response.data?.error?.message || 'Conflito de dados';
-      toast.error(message);
-    }
-
-    return Promise.reject(error);
+    return Promise.reject(appError);
   }
 );
 

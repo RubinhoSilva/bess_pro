@@ -33,6 +33,7 @@ import {
   type InverterInput,
   ManufacturerType
 } from '@/hooks/legacy-equipment-hooks';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 interface EquipmentManagerProps {
   onUpdate?: () => void;
@@ -40,6 +41,7 @@ interface EquipmentManagerProps {
 
 export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) => {
   const { toast } = useToast();
+  const { executeWithErrorHandling, error, isError } = useErrorHandler();
   
   // State
   const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false);
@@ -143,7 +145,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       tempCoefIsc: tempCoefIscStr ? parseFloat(tempCoefIscStr) || 0 : 0,
     };
 
-    try {
+    await executeWithErrorHandling(async () => {
       if (currentModule) {
         await updateModuleMutation.mutateAsync({ id: currentModule.id, ...dataToSave });
       } else {
@@ -182,9 +184,14 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       setTempCoefVocStr('');
       setTempCoefIscStr('');
       onUpdate?.();
-    } catch (error) {
-      // Error handling is done in the hooks with toast
-    }
+    }, {
+      operation: 'save-module',
+      context: { 
+        isEdit: !!currentModule,
+        modelName: moduleForm.modelo,
+        manufacturer: moduleForm.fabricante 
+      }
+    });
   };
 
   const handleSaveInverter = async () => {
@@ -197,7 +204,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       return;
     }
     
-    try {
+    await executeWithErrorHandling(async () => {
       if (currentInverter) {
         await updateInverterMutation.mutateAsync({ id: currentInverter.id, ...inverterForm });
         toast({ title: 'Inversor atualizado com sucesso!' });
@@ -223,14 +230,14 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
         potenciaAparenteMax: 0,
       });
       onUpdate?.();
-    } catch (error) {
-      const errorMessage = (error as any)?.response?.data?.message || (error as any)?.message || 'Verifique os dados e tente novamente.';
-      toast({ 
-        variant: 'destructive',
-        title: 'Erro ao salvar inversor', 
-        description: errorMessage
-      });
-    }
+    }, {
+      operation: 'save-inverter',
+      context: { 
+        isEdit: !!currentInverter,
+        modelName: inverterForm.modelo,
+        manufacturer: inverterForm.fabricante 
+      }
+    });
   };
 
   const handleDeleteModule = async (module: SolarModule) => {
@@ -244,17 +251,17 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       return;
     }
 
-    try {
+    await executeWithErrorHandling(async () => {
       await deleteModuleMutation.mutateAsync(module.id);
       toast({ title: 'Módulo excluído.' });
       onUpdate?.();
-    } catch (error) {
-      toast({ 
-        variant: 'destructive',
-        title: 'Erro ao excluir módulo', 
-        description: 'Tente novamente.' 
-      });
-    }
+    }, {
+      operation: 'delete-module',
+      context: { 
+        modelName: module.modelo,
+        manufacturer: module.fabricante 
+      }
+    });
   };
 
   const handleDeleteInverter = async (inverter: Inverter) => {
@@ -268,17 +275,17 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       return;
     }
 
-    try {
+    await executeWithErrorHandling(async () => {
       await deleteInverterMutation.mutateAsync(inverter.id);
       toast({ title: 'Inversor excluído.' });
       onUpdate?.();
-    } catch (error) {
-      toast({ 
-        variant: 'destructive',
-        title: 'Erro ao excluir inversor', 
-        description: 'Tente novamente.' 
-      });
-    }
+    }, {
+      operation: 'delete-inverter',
+      context: { 
+        modelName: inverter.modelo,
+        manufacturer: inverter.fabricante 
+      }
+    });
   };
 
   const handleEditModule = (module: SolarModule) => {

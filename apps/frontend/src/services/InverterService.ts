@@ -8,6 +8,7 @@ import {
   CreateInverterRequest, 
   UpdateInverterRequest
 } from '@bess-pro/shared';
+import { ErrorHandler } from '../errors/ErrorHandler';
 
 export class InverterService {
   private static instance: InverterService;
@@ -21,17 +22,10 @@ export class InverterService {
     return InverterService.instance;
   }
 
-  // Error handling - apenas repassa erro do backend
-  private handleError(error: any, operation: string): never {
-    console.error(`InverterService ${operation} error:`, error);
-    
-    // Repassa exatamente o erro do backend sem modificar
-    const backendMessage = error.response?.data?.error?.message || 
-                          error.response?.data?.message || 
-                          error.message || 
-                          'Unknown error occurred';
-    
-    throw new Error(backendMessage);
+  // Error handling - centralized error processing
+  private handleError(error: unknown, operation: string): never {
+    const appError = ErrorHandler.handle(error, `InverterService.${operation}`);
+    throw appError;
   }
 
   // CRUD operations

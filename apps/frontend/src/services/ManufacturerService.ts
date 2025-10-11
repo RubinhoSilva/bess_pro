@@ -8,6 +8,7 @@ import {
   CreateManufacturerRequest, 
   UpdateManufacturerRequest
 } from '@bess-pro/shared';
+import { ErrorHandler } from '../errors/ErrorHandler';
 
 export class ManufacturerService {
   private static instance: ManufacturerService;
@@ -21,17 +22,10 @@ export class ManufacturerService {
     return ManufacturerService.instance;
   }
 
-  // Error handling - apenas repassa erro do backend
-  private handleError(error: any, operation: string): never {
-    console.error(`ManufacturerService ${operation} error:`, error);
-    
-    // Repassa exatamente o erro do backend sem modificar
-    const backendMessage = error.response?.data?.error?.message || 
-                          error.response?.data?.message || 
-                          error.message || 
-                          'Unknown error occurred';
-    
-    throw new Error(backendMessage);
+  // Error handling - centralized error processing
+  private handleError(error: unknown, operation: string): never {
+    const appError = ErrorHandler.handle(error, `ManufacturerService.${operation}`);
+    throw appError;
   }
 
   // CRUD operations
