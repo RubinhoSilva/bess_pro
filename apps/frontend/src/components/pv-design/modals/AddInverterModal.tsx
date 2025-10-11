@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Plus } from 'lucide-react';
-import { useCreateInverter, type InverterInput } from '@/hooks/equipment-hooks';
+import { useCreateInverter, type InverterInput } from '@/hooks/legacy-equipment-hooks';
 
 interface AddInverterModalProps {
   open: boolean;
@@ -100,7 +100,7 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
 
   const updateFormData = (field: keyof InverterInput, value: any) => {
     if (field === 'dimensoes') {
-      setFormData(prev => ({ ...prev, dimensoes: { ...prev.dimensoes, ...value } }));
+      setFormData((prev: any) => ({ ...prev, dimensoes: { ...prev.dimensoes, ...value } }));
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }

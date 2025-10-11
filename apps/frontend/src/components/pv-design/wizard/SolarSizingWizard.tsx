@@ -13,7 +13,7 @@ import { BackendCalculationService, shouldUseBackendCalculations } from '@/lib/b
 import { FrontendCalculationLogger } from '@/lib/calculationLogger';
 import { PVDimensioningService } from '@/lib/pvDimensioning';
 import { SystemCalculations } from '@/lib/systemCalculations';
-import { useSolarModules } from '@/hooks/equipment-hooks';
+import { useSolarModules } from '@/hooks/legacy-equipment-hooks';
 
 // Import existing form components
 import CustomerDataForm from '../form-sections/CustomerDataForm';

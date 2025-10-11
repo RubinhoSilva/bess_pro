@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Package, Unplug, Plus, Trash2, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useSolarModules, useInverters, useManufacturersList, SolarModule, Inverter, Manufacturer, ManufacturerType } from '@/hooks/equipment-hooks';
+import { useSolarModules, useInverters, useManufacturersList, SolarModule, Inverter, Manufacturer, ManufacturerType } from '@/hooks/legacy-equipment-hooks';
 
 interface EquipmentSelectionFormProps {
   formData: any;
@@ -33,8 +33,8 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
   const { data: solarModulesData, isLoading: loadingModules } = useSolarModules({ pageSize: 100 });
   const { data: invertersData, isLoading: loadingInverters } = useInverters({ pageSize: 100 });
 
-  const moduleManufacturers = solarModuleManufacturers || [];
-  const inverterManufacturersList = inverterManufacturers || [];
+  const moduleManufacturers = solarModuleManufacturers?.manufacturers || [];
+  const inverterManufacturersList = inverterManufacturers?.manufacturers || [];
   const solarModules = solarModulesData?.modules || [];
   const inverters = invertersData?.inverters || [];
 

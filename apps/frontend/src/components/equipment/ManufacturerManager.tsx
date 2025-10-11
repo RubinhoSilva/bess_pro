@@ -19,7 +19,7 @@ import {
   ManufacturerInput,
   Manufacturer,
   ManufacturerFilters
-} from '@/hooks/equipment-hooks';
+} from '@/hooks/legacy-equipment-hooks';
 import toast from 'react-hot-toast';
 
 interface ManufacturerFormData {
@@ -53,7 +53,7 @@ export function ManufacturerManager() {
   const [certificationsInput, setCertificationsInput] = useState('');
   
   // Estados para paginação e filtros
-  const [filters, setFilters] = useState<ManufacturerFilters>({
+  const [filters, setFilters] = useState<any>({
     page: 1,
     limit: 10,
     sortBy: 'name',
@@ -75,7 +75,7 @@ export function ManufacturerManager() {
       setEditingManufacturer(manufacturer);
       setFormData({
         name: manufacturer.name,
-        type: manufacturer.type,
+        type: manufacturer.type as any,
         description: manufacturer.description || '',
         website: manufacturer.website || '',
         country: manufacturer.country || '',
@@ -119,7 +119,7 @@ export function ManufacturerManager() {
     }
 
     try {
-      const submitData: ManufacturerInput = {
+      const submitData: any = {
         name: formData.name.trim(),
         type: formData.type,
         description: formData.description.trim() || undefined,
@@ -128,7 +128,8 @@ export function ManufacturerManager() {
         logoUrl: formData.logoUrl.trim() || undefined,
         supportEmail: formData.supportEmail.trim() || undefined,
         supportPhone: formData.supportPhone.trim() || undefined,
-        certifications: formData.certifications.length > 0 ? formData.certifications : undefined
+        certifications: formData.certifications.length > 0 ? formData.certifications : undefined,
+        isActive: true
       };
 
       if (editingManufacturer) {
@@ -161,7 +162,7 @@ export function ManufacturerManager() {
   // Funções para manipular filtros e paginação
   const handleSearch = (value: string) => {
     setSearchTerm(value);
-    setFilters(prev => ({
+    setFilters((prev: any) => ({
       ...prev,
       search: value || undefined,
       page: 1 // Reset para primeira página ao buscar
@@ -169,15 +170,15 @@ export function ManufacturerManager() {
   };
 
   const handleTypeFilter = (type: ManufacturerType | 'ALL') => {
-    setFilters(prev => ({
+    setFilters((prev: any) => ({
       ...prev,
       type: type === 'ALL' ? undefined : type,
-      page: 1 // Reset para primeira página ao filtrar
+      page: 1
     }));
   };
 
   const handleSort = (sortBy: string) => {
-    setFilters(prev => ({
+    setFilters((prev: any) => ({
       ...prev,
       sortBy,
       sortOrder: prev.sortBy === sortBy && prev.sortOrder === 'asc' ? 'desc' : 'asc'
@@ -185,14 +186,14 @@ export function ManufacturerManager() {
   };
 
   const handlePageChange = (page: number) => {
-    setFilters(prev => ({
+    setFilters((prev: any) => ({
       ...prev,
       page
     }));
   };
 
   const handleLimitChange = (limit: number) => {
-    setFilters(prev => ({
+    setFilters((prev: any) => ({
       ...prev,
       limit,
       page: 1 // Reset para primeira página ao mudar limite

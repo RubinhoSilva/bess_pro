@@ -1,4 +1,4 @@
-import { SolarModule, Inverter } from '@/hooks/equipment-hooks';
+import { SolarModule, Inverter } from '@/hooks/legacy-equipment-hooks';
 import { FrontendCalculationLogger } from './calculationLogger';
 
 // Função utilitária para calcular eficiência do sistema a partir das perdas específicas

@@ -8,7 +8,7 @@ import { Trash2, Plus, Zap, Cpu, AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SelectedInverter } from '@/contexts/DimensioningContext';
-import { useInverters, useManufacturersList, Inverter, ManufacturerType } from '@/hooks/equipment-hooks';
+import { useInverters, useManufacturersList, Inverter, ManufacturerType } from '@/hooks/legacy-equipment-hooks';
 import { useMultipleInverters } from '@/hooks/multiple-inverters-hooks';
 import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
 import { AddInverterModal } from '../modals/AddInverterModal';
@@ -56,7 +56,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
 
   // Extrair arrays da resposta da API
   const invertersArray = invertersData?.inverters || [];
-  const manufacturersArray = manufacturersData || [];
+  const manufacturersArray = manufacturersData?.manufacturers || [];
   
   // Debug temporário - logs iniciais
   if (selectedManufacturerId && invertersArray.length > 0 && manufacturersArray.length > 0) {

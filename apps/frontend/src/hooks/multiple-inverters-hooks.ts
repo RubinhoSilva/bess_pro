@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { SelectedInverter } from '@/contexts/DimensioningContext';
-import { Inverter } from './equipment-hooks';
+import { Inverter } from './legacy-equipment-hooks';
 
 export interface UseMultipleInvertersReturn {
   addInverter: (inverter: Inverter, quantity?: number) => SelectedInverter;

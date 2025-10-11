@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { moduleApi } from '../../api/equipment';
+import { moduleService } from '../../services';
 import { ModuleFilters } from '@bess-pro/shared';
 
 // Query keys
@@ -15,25 +15,9 @@ export const moduleQueryKeys = {
 export const useModulesList = (filters?: ModuleFilters) => {
   return useQuery({
     queryKey: moduleQueryKeys.list(filters),
-    queryFn: () => moduleApi.getModules({ 
-      filters: { 
-        searchTerm: filters?.searchTerm || '',
-        manufacturer: filters?.manufacturer,
-        model: filters?.model,
-        minPower: filters?.minPower,
-        maxPower: filters?.maxPower,
-        minEfficiency: filters?.minEfficiency,
-        cellType: filters?.cellType,
-        technology: filters?.technology,
-        minPrice: filters?.minPrice,
-        maxPrice: filters?.maxPrice,
-        manufacturerId: filters?.manufacturerId,
-        status: filters?.status
-      }, 
-      pagination: { page: 1, limit: 100 } 
-    }),
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes
+    queryFn: () => moduleService.getModules(filters),
+    staleTime: 10 * 60 * 1000, // 10 minutes - longer cache without service cache
+    gcTime: 30 * 60 * 1000, // 30 minutes - longer garbage collection
   });
 };
 
@@ -41,9 +25,10 @@ export const useModulesList = (filters?: ModuleFilters) => {
 export const useModule = (id: string) => {
   return useQuery({
     queryKey: moduleQueryKeys.detail(id),
-    queryFn: () => moduleApi.getModuleById(id),
+    queryFn: () => moduleService.getModuleById(id),
     enabled: !!id,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 15 * 60 * 1000, // 15 minutes - longer cache for individual items
+    gcTime: 30 * 60 * 1000, // 30 minutes
   });
 };
 
@@ -52,7 +37,7 @@ export const useCreateModule = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: moduleApi.createModule,
+    mutationFn: moduleService.createModule,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: moduleQueryKeys.lists() });
     },
@@ -69,7 +54,7 @@ export const useUpdateModule = () => {
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
-      moduleApi.updateModule(id, data),
+      moduleService.updateModule(id, data),
     onSuccess: (updatedModule) => {
       queryClient.setQueryData(moduleQueryKeys.detail(updatedModule.id), updatedModule);
       queryClient.invalidateQueries({ queryKey: moduleQueryKeys.lists() });
@@ -86,7 +71,7 @@ export const useDeleteModule = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: moduleApi.deleteModule,
+    mutationFn: moduleService.deleteModule,
     onSuccess: (_, deletedId) => {
       queryClient.removeQueries({ queryKey: moduleQueryKeys.detail(deletedId) });
       queryClient.invalidateQueries({ queryKey: moduleQueryKeys.lists() });
@@ -104,7 +89,7 @@ export const useToggleModuleStatus = () => {
 
   return useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      moduleApi.toggleModuleStatus(id, isActive),
+      moduleService.toggleModuleStatus(id, isActive),
     onSuccess: (updatedModule) => {
       queryClient.setQueryData(moduleQueryKeys.detail(updatedModule.id), updatedModule);
       queryClient.invalidateQueries({ queryKey: moduleQueryKeys.lists() });

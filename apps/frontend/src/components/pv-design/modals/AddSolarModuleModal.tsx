@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Plus } from 'lucide-react';
-import { useCreateSolarModule, type SolarModuleInput } from '@/hooks/equipment-hooks';
+import { useCreateSolarModule, type SolarModuleInput } from '@/hooks/legacy-equipment-hooks';
 
 interface AddSolarModuleModalProps {
   open: boolean;

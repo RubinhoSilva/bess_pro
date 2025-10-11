@@ -6,7 +6,7 @@ import { ArrowLeft, Package, Unplug, Settings, Plus, Upload, Download, Building2
 import { useNavigate } from 'react-router-dom';
 import { EquipmentManager } from '@/components/equipment/EquipmentManager';
 import { ManufacturerManager } from '@/components/equipment/ManufacturerManager';
-import { useSolarModules, useInverters, useManufacturersList } from '@/hooks/equipment-hooks';
+import { useSolarModules, useInverters, useManufacturersList } from '@/hooks/legacy-equipment-hooks';
 
 export default function EquipmentPage() {
   const navigate = useNavigate();
@@ -16,9 +16,9 @@ export default function EquipmentPage() {
   const { data: invertersData, isLoading: loadingInverters } = useInverters({ pageSize: 1 });
   const { data: manufacturersData, isLoading: loadingManufacturers } = useManufacturersList();
 
-  const totalSolarModules = solarModulesData?.total || 0;
-  const totalInverters = invertersData?.total || 0;
-  const totalManufacturers = manufacturersData?.length || 0;
+  const totalSolarModules = solarModulesData?.pagination?.total || 0;
+  const totalInverters = invertersData?.pagination?.total || 0;
+  const totalManufacturers = manufacturersData?.pagination?.total || 0;
 
   const handleBackToDashboard = () => {
     navigate('/dashboard');

@@ -32,7 +32,7 @@ import {
   type SolarModuleInput,
   type InverterInput,
   ManufacturerType
-} from '@/hooks/equipment-hooks';
+} from '@/hooks/legacy-equipment-hooks';
 
 interface EquipmentManagerProps {
   onUpdate?: () => void;
@@ -114,8 +114,8 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   
   const modules = modulesData?.modules || [];
   const inverters = invertersData?.inverters || [];
-  const moduleManufacturersList = moduleManufacturers || [];
-  const inverterManufacturersList = inverterManufacturers || [];
+  const moduleManufacturersList = moduleManufacturers?.manufacturers || [];
+  const inverterManufacturersList = inverterManufacturers?.manufacturers || [];
 
   // Auto-populate iLRef when isc changes
   useEffect(() => {
@@ -320,7 +320,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       datasheetUrl: module.datasheetUrl,
       certificacoes: module.certificacoes,
       garantiaAnos: module.garantiaAnos,
-      tolerancia: module.tolerancia?.toString()
+      tolerancia: module.tolerancia || 0
     });
 
     // Populate temperature coefficient strings

@@ -21,7 +21,7 @@ import SystemParametersForm from './form-sections/SystemParametersForm';
 import EquipmentSelectionForm from './form-sections/EquipmentSelectionForm';
 import FinancialForm from './form-sections/FinancialForm';
 import PaymentConditionsForm from './form-sections/PaymentConditionsForm';
-import ValidationPanel from './validation/ValidationPanel';
+
 import BackupManager from './backup/BackupManager';
 
 interface PVDesignFormProps {
@@ -41,7 +41,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
     isSaving
   } = useDimensioning();
   const [isCalculating, setIsCalculating] = useState(false);
-  const [validationResult, setValidationResult] = useState<any>(null);
+
   const notificationManager = NotificationManager.getInstance();
 
   const handleFormChange = (field: string, value: any) => {
@@ -62,15 +62,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
     });
   };
 
-  const handleValidationChange = (result: any) => {
-    setValidationResult(result);
-    
-    if (result.errors.length > 0) {
-      notificationManager.validationIssue(result.errors.length, 'error');
-    } else if (result.warnings.length > 0) {
-      notificationManager.validationIssue(result.warnings.length, 'warning');
-    }
-  };
+
 
   const totalInvestment = useMemo(() => {
     const subtotal = (currentDimensioning.custoEquipamento || 0) + 
@@ -600,15 +592,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           </p>
         </motion.div>
 
-        {/* Validation Panel */}
-        <div className="mb-8">
-          <ValidationPanel
-            formData={currentDimensioning}
-            onValidationChange={handleValidationChange}
-            autoValidate={false}
-            collapsed={true}
-          />
-        </div>
+
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-8">
