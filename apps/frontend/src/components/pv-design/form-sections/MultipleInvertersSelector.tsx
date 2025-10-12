@@ -7,18 +7,39 @@ import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Zap, Cpu, AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { SelectedInverter } from '@/contexts/DimensioningContext';
 import { useQuery } from '@tanstack/react-query';
 import { inverterService } from '@/services/InverterService';
-import { Inverter, ManufacturerType } from '@bess-pro/shared';
+import { 
+  Inverter, 
+  SelectedInverter as SharedSelectedInverter,
+  Manufacturer 
+} from '@bess-pro/shared';
 import { manufacturerService } from '@/services/ManufacturerService';
-import { useMultipleInverters } from '@/hooks/multiple-inverters-hooks';
+
 import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
 import { AddInverterModal } from '../modals/AddInverterModal';
 
+// Função auxiliar para mapear Inverter do shared para formato MPPT
+const mapInverterToMPPTFormat = (inverter: Inverter) => {
+  return {
+    id: inverter.id,
+    fabricante: inverter.manufacturer.name,
+    modelo: inverter.model,
+    potenciaSaidaCA: inverter.power.ratedACPower,
+    potenciaFvMax: inverter.power.maxPVPower,
+    tensaoCcMax: inverter.power.shortCircuitVoltageMax,
+    numeroMppt: inverter.mppt.numberOfMppts,
+    stringsPorMppt: inverter.mppt.stringsPerMppt,
+    correnteEntradaMax: inverter.power.maxInputCurrent,
+    faixaMpptMin: inverter.mppt.mpptRange ? parseInt(inverter.mppt.mpptRange.split('-')[0]) || 0 : 0,
+    faixaMpptMax: inverter.mppt.mpptRange ? parseInt(inverter.mppt.mpptRange.split('-')[1]) || 0 : 0,
+    tipoRede: inverter.electrical.gridType,
+  };
+};
+
 interface MultipleInvertersSelectorProps {
-  selectedInverters: SelectedInverter[];
-  onInvertersChange: (inverters: SelectedInverter[]) => void;
+  selectedInverters: SharedSelectedInverter[];
+  onInvertersChange: (inverters: SharedSelectedInverter[]) => void;
   onTotalPowerChange: (totalPower: number) => void;
   onTotalMpptChannelsChange: (totalChannels: number) => void;
   // Props opcionais para MPPT calculations
@@ -53,38 +74,49 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
     queryFn: () => inverterService.getInverters(),
     staleTime: 10 * 60 * 1000,
   });
-  const { data: manufacturersData, isLoading: loadingManufacturers } = useManufacturersList({});
-  const {
-    addInverter,
-    calculateTotalPower,
-    calculateTotalMpptChannels,
-    validateInverterSelection
-  } = useMultipleInverters();
+  const { data: manufacturersData, isLoading: loadingManufacturers } = useQuery({
+    queryKey: ['manufacturers'],
+    queryFn: () => manufacturerService.getManufacturers({}),
+    staleTime: 15 * 60 * 1000,
+  });
+  // Calcular totais diretamente
+  const calculateTotalPower = (inverters: SharedSelectedInverter[]) => {
+    return inverters.reduce((total, selected) => total + (selected.inverter.power.ratedACPower * selected.quantity), 0);
+  };
+
+  const calculateTotalMpptChannels = (inverters: SharedSelectedInverter[]) => {
+    return inverters.reduce((total, selected) => total + (selected.inverter.mppt.numberOfMppts * selected.quantity), 0);
+  };
+
+  const validateInverterSelection = (inverters: SharedSelectedInverter[]) => {
+    const errors: string[] = [];
+    
+    if (inverters.length === 0) {
+      errors.push('Selecione pelo menos um inversor');
+    }
+    
+    // Validar potência total máxima (ex: 100kW para residencial)
+    const totalPower = calculateTotalPower(inverters);
+    if (totalPower > 100000) {
+      errors.push('Potência total excede o limite máximo de 100kW');
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
 
   // Extrair arrays da resposta da API
   const invertersArray = invertersData?.inverters || [];
   const manufacturersArray = manufacturersData?.manufacturers || [];
   
-  // Debug temporário - logs iniciais
-  if (selectedManufacturerId && invertersArray.length > 0 && manufacturersArray.length > 0) {
 
-  }
 
   // Preparar dados para MPPT calculations
-  const invertersForMPPT = selectedInverters.map((inv: SelectedInverter) => ({
-    id: inv.id,
-    fabricante: inv.fabricante,
-    modelo: inv.modelo,
-    potenciaSaidaCA: inv.potenciaSaidaCA,
-    potenciaFvMax: inv.potenciaFvMax,
-    tensaoCcMax: inv.tensaoCcMax,
-    numeroMppt: inv.numeroMppt,
-    stringsPorMppt: inv.stringsPorMppt,
-    correnteEntradaMax: (inv as any).correnteEntradaMax || 0,
-    faixaMpptMin: (inv as any).faixaMpptMin || 0,
-    faixaMpptMax: (inv as any).faixaMpptMax || 0,
-    tipoRede: (inv as any).tipoRede || ''
-  }));
+  const invertersForMPPT = selectedInverters.map((inv: SharedSelectedInverter) => 
+    mapInverterToMPPTFormat(inv.inverter)
+  );
 
   const defaultModule = {
     potenciaNominal: 540,
@@ -123,10 +155,15 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   const handleAddInverter = () => {
     if (!selectedInverterId || !selectedManufacturerId) return;
 
-    const inverter = invertersArray.find((inv: any) => inv.id === selectedInverterId);
+    const inverter = invertersArray.find((inv: Inverter) => inv.id === selectedInverterId);
     if (!inverter) return;
 
-    const newSelectedInverter = addInverter(inverter, quantity);
+    const newSelectedInverter: SharedSelectedInverter = {
+      inverter,
+      quantity,
+      selectedAt: new Date(),
+    };
+    
     const updatedList = [...selectedInverters, newSelectedInverter];
     
     onInvertersChange(updatedList);
@@ -136,15 +173,15 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   };
 
   const handleRemoveInverter = (id: string) => {
-    const updatedList = selectedInverters.filter((inv: SelectedInverter) => inv.id !== id);
+    const updatedList = selectedInverters.filter((inv: SharedSelectedInverter) => inv.inverter.id !== id);
     onInvertersChange(updatedList);
   };
 
   const handleUpdateQuantity = (id: string, newQuantity: number) => {
     if (newQuantity <= 0) return;
     
-    const updatedList = selectedInverters.map((inv: SelectedInverter) => 
-      inv.id === id ? { ...inv, quantity: newQuantity } : inv
+    const updatedList = selectedInverters.map((inv: SharedSelectedInverter) => 
+      inv.inverter.id === id ? { ...inv, quantity: newQuantity } : inv
     );
     onInvertersChange(updatedList);
   };
@@ -154,8 +191,8 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   const totalMpptChannels = calculateTotalMpptChannels(selectedInverters);
 
   // Filtrar inversores por fabricante selecionado e inversores já selecionados
-  const availableInverters = invertersArray.filter((inverter: any) => {
-    const notAlreadySelected = !selectedInverters.some(selected => selected.inverterId === inverter.id);
+  const availableInverters = invertersArray.filter((inverter: Inverter) => {
+    const notAlreadySelected = !selectedInverters.some(selected => selected.inverter.id === inverter.id);
     
     // Se não há fabricante selecionado, mostrar todos os inversores disponíveis
     if (!selectedManufacturerId) {
@@ -163,35 +200,32 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
     }
     
     // Buscar o fabricante selecionado
-    const selectedManufacturer = manufacturersArray.find((m: any) => m.id === selectedManufacturerId);
+    const selectedManufacturer = manufacturersArray.find((m: Manufacturer) => m.id === selectedManufacturerId);
     if (!selectedManufacturer) {
       return false;
     }
     
-    // Filtrar por manufacturerId se disponível, senão por nome do fabricante
+    // Filtrar por manufacturerId ou por nome do fabricante
     const matchesManufacturer = 
-      inverter.manufacturerId === selectedManufacturerId ||
-      inverter.fabricante === selectedManufacturer.name;
+      inverter.manufacturer.id === selectedManufacturerId ||
+      inverter.manufacturer.name === selectedManufacturer.name;
     
     return notAlreadySelected && matchesManufacturer;
   });
 
-  // Debug do estado após availableInverters ser declarado
-  useEffect(() => {
 
-  }, [selectedManufacturerId, selectedInverterId, availableInverters.length, invertersArray.length]);
 
   // Reset seleção de inversor quando fabricante muda
   useEffect(() => {
     if (selectedManufacturerId && selectedInverterId && invertersArray.length > 0) {
-      const selectedInverter = invertersArray.find((inv: any) => inv.id === selectedInverterId);
-      const selectedManufacturer = manufacturersArray.find((m: any) => m.id === selectedManufacturerId);
+      const selectedInverter = invertersArray.find((inv: Inverter) => inv.id === selectedInverterId);
+      const selectedManufacturer = manufacturersArray.find((m: Manufacturer) => m.id === selectedManufacturerId);
       
       if (selectedInverter && selectedManufacturer) {
         // Verificar se o inversor pertence ao fabricante selecionado
         const belongsToManufacturer = 
-          selectedInverter.manufacturerId === selectedManufacturerId ||
-          selectedInverter.fabricante === selectedManufacturer.name;
+          selectedInverter.manufacturer.id === selectedManufacturerId ||
+          selectedInverter.manufacturer.name === selectedManufacturer.name;
           
         if (!belongsToManufacturer) {
           setSelectedInverterId('');
@@ -234,7 +268,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
                   {loadingManufacturers ? (
                     <SelectItem value="loading" disabled>Carregando...</SelectItem>
                   ) : (
-                    manufacturersArray.map((manufacturer: any) => (
+                    manufacturersArray.map((manufacturer: Manufacturer) => (
                       <SelectItem key={manufacturer.id} value={manufacturer.id}>
                         {manufacturer.name}
                       </SelectItem>
@@ -264,9 +298,9 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
                       {selectedManufacturerId ? "Nenhum inversor disponível" : "Selecione um fabricante"}
                     </SelectItem>
                   ) : (
-                    availableInverters.map((inverter: any) => (
+                    availableInverters.map((inverter: Inverter) => (
                       <SelectItem key={inverter.id} value={inverter.id}>
-                        {inverter.modelo} - {(inverter.potenciaSaidaCA / 1000).toFixed(1)}kW
+                        {inverter.model} - {(inverter.power.ratedACPower / 1000).toFixed(1)}kW
                       </SelectItem>
                     ))
                   )}
@@ -302,78 +336,81 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
           {selectedInverters.length > 0 && (
             <div className="space-y-3">
               <h4 className="font-medium text-sm text-gray-700">Inversores Selecionados</h4>
-              {selectedInverters.map((inverter) => (
-                <div key={inverter.id} className="flex items-center justify-between p-3 border rounded-lg bg-white">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <p className="font-medium text-sm">
-                          {inverter.fabricante} {inverter.modelo}
-                        </p>
-                        <div className="flex items-center gap-4 text-xs text-gray-600 mt-1">
-                          <span>{(inverter.potenciaSaidaCA / 1000).toFixed(1)}kW</span>
-                          <span className="flex items-center gap-1">
-                            <Cpu className="w-3 h-3" />
-                            {inverter.numeroMppt} MPPTs
-                          </span>
-                          <span>{inverter.stringsPorMppt} strings/MPPT</span>
-                          
-                          {/* Display MPPT Limits */}
-                          {showMPPTLimits && mpptLimits[inverter.id] && (
-                            <span className="flex items-center gap-1 text-blue-600 font-medium">
-                              {mpptLimits[inverter.id].isLoading ? (
-                                <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
-                              ) : mpptLimits[inverter.id].error ? (
-                                <span className="text-red-500">Erro MPPT</span>
-                              ) : (
-                                <span>Máx: {mpptLimits[inverter.id].modulosTotal} módulos</span>
-                              )}
+              {selectedInverters.map((selectedInverter) => {
+                const inverter = selectedInverter.inverter;
+                return (
+                  <div key={inverter.id} className="flex items-center justify-between p-3 border rounded-lg bg-white">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <p className="font-medium text-sm">
+                            {inverter.manufacturer.name} {inverter.model}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-gray-600 mt-1">
+                            <span>{(inverter.power.ratedACPower / 1000).toFixed(1)}kW</span>
+                            <span className="flex items-center gap-1">
+                              <Cpu className="w-3 h-3" />
+                              {inverter.mppt.numberOfMppts} MPPTs
                             </span>
-                          )}
+                            <span>{inverter.mppt.stringsPerMppt} strings/MPPT</span>
+                            
+                            {/* Display MPPT Limits */}
+                            {showMPPTLimits && mpptLimits[inverter.id] && (
+                              <span className="flex items-center gap-1 text-blue-600 font-medium">
+                                {mpptLimits[inverter.id].isLoading ? (
+                                  <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                ) : mpptLimits[inverter.id].error ? (
+                                  <span className="text-red-500">Erro MPPT</span>
+                                ) : (
+                                  <span>Máx: {mpptLimits[inverter.id].modulosTotal} módulos</span>
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">
+                            {((inverter.power.ratedACPower * selectedInverter.quantity) / 1000).toFixed(1)}kW total
+                          </Badge>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          {((inverter.potenciaSaidaCA * inverter.quantity) / 1000).toFixed(1)}kW total
-                        </Badge>
-                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-gray-500 font-medium">Qtd</span>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleUpdateQuantity(inverter.id, inverter.quantity - 1)}
-                          disabled={inverter.quantity <= 1}
-                        >
-                          -
-                        </Button>
-                        <span className="w-8 text-center text-sm font-medium">{inverter.quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleUpdateQuantity(inverter.id, inverter.quantity + 1)}
-                          disabled={inverter.quantity >= 10}
-                        >
-                          +
-                        </Button>
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs text-gray-500 font-medium">Qtd</span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUpdateQuantity(inverter.id, selectedInverter.quantity - 1)}
+                            disabled={selectedInverter.quantity <= 1}
+                          >
+                            -
+                          </Button>
+                          <span className="w-8 text-center text-sm font-medium">{selectedInverter.quantity}</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUpdateQuantity(inverter.id, selectedInverter.quantity + 1)}
+                            disabled={selectedInverter.quantity >= 10}
+                          >
+                            +
+                          </Button>
+                        </div>
                       </div>
+                      
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleRemoveInverter(inverter.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
-                    
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleRemoveInverter(inverter.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
