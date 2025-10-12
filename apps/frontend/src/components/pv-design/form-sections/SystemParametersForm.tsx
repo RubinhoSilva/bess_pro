@@ -13,14 +13,55 @@ import { manufacturerService } from '@/services/ManufacturerService';
 import { MultipleInvertersSelector } from './MultipleInvertersSelector';
 import { AddSolarModuleModal } from '../modals/AddSolarModuleModal';
 import { AddInverterModal } from '../modals/AddInverterModal';
+import { SolarModule, Manufacturer, SelectedInverter as SharedSelectedInverter } from '@bess-pro/shared';
 // MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
 // import MultipleRoofAreasForm from './MultipleRoofAreasForm';
 // import { AguaTelhado } from '@/contexts/DimensioningContext';
 
 interface SystemParametersFormProps {
-  formData: any;
+  formData: SystemFormData;
   onFormChange: (field: string, value: any) => void;
 }
+
+interface SystemFormData {
+  fabricanteModulo?: string;
+  moduloSelecionado?: string;
+  potenciaModulo?: number;
+  eficienciaModulo?: number;
+  tensaoModulo?: number;
+  correnteModulo?: number;
+  fabricanteModuloNome?: string;
+  modeloModulo?: string;
+  selectedInverters?: SharedSelectedInverter[];
+  potenciaInversorTotal?: number;
+  totalMpptChannels?: number;
+  perdaSombreamento?: number;
+  perdaMismatch?: number;
+  perdaCabeamento?: number;
+  perdaSujeira?: number;
+  perdaOutras?: number;
+  vidaUtil?: number;
+  degradacaoAnual?: number;
+  [key: string]: any;
+}
+
+// Função de mapeamento para compatibilidade com código legado
+const mapSolarModuleToLegacy = (module: SolarModule) => {
+  return {
+    id: module.id,
+    potenciaNominal: module.nominalPower,
+    eficiencia: module.specifications.efficiency || 0,
+    voc: module.specifications.voc,
+    impp: module.specifications.impp || 0,
+    fabricante: module.manufacturer.name,
+    modelo: module.model,
+    // Adicionar outras propriedades se necessário
+    isc: module.specifications.isc,
+    vmpp: module.specifications.vmpp || 0,
+    numeroCelulas: module.specifications.numberOfCells || 0,
+    tipoCelula: module.specifications.cellType,
+  };
+};
 
 
 
@@ -30,83 +71,46 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
   
   // Equipment data
   const { data: moduleManufacturers } = useQuery({
-    queryKey: ['manufacturers', { type: 'MODULE' }],
-    queryFn: () => manufacturerService.getManufacturers({ type: 'MODULE' }),
+    queryKey: ['manufacturers'],
+    queryFn: () => manufacturerService.getManufacturers({}),
     staleTime: 15 * 60 * 1000,
   });
   const { data: solarModulesData, refetch: refetchModules } = useQuery({
     queryKey: ['modules'],
-    queryFn: () => moduleService.getModules(),
+    queryFn: () => moduleService.getModules({}),
     staleTime: 10 * 60 * 1000,
   });
 
   const solarModules = solarModulesData?.modules || [];
   const moduleManufacturersList = moduleManufacturers?.manufacturers || [];
   
-  // Debug controlado para verificar os dados do formulário
-  useEffect(() => {
-    if (formData.fabricanteModulo || formData.moduloSelecionado) {
 
-      // Debug específico para o filtro quando há fabricante selecionado
-      if (formData.fabricanteModulo) {
-        const availableModules = getAvailableModules();
-        const debugInfo = {
-          fabricanteId: formData.fabricanteModulo,
-          quantidade: availableModules.length,
-          moduloSelecionadoExiste: availableModules.some((m: any) => m.id === formData.moduloSelecionado),
-          moduloSelecionado: formData.moduloSelecionado,
-          fabricantesDisponiveis: moduleManufacturersList.map((m: any) => ({ id: m.id, name: m.name })),
-          modulosDoFabricante: solarModules.filter((m: any) => {
-            const manufacturer = moduleManufacturersList.find(man => man.id === formData.fabricanteModulo);
-            return manufacturer && m.fabricante === manufacturer.name;
-          }).map((m: any) => ({ id: m.id, modelo: m.modelo, fabricante: m.fabricante }))
-        };
-      }
-    }
-  }, [formData.fabricanteModulo, formData.moduloSelecionado]);
 
   // Get available modules based on selected manufacturer
   const getAvailableModules = () => {
-    if (!formData.fabricanteModulo) return solarModules;
+    if (!formData.fabricanteModulo) return [];
     
-    // Debug detalhado do filtro
-    const selectedManufacturer = moduleManufacturersList.find((m: any) => m.id === formData.fabricanteModulo);
-    const debugFilterInfo = {
-      fabricanteModuloId: formData.fabricanteModulo,
-      selectedManufacturer: selectedManufacturer,
-      selectedManufacturerName: selectedManufacturer?.name,
-      totalModules: solarModules.length,
-      modulesByManufacturer: solarModules.filter((m: any) => m.fabricante === selectedManufacturer?.name).length
-    };
+    const selectedManufacturer = moduleManufacturersList.find((m: Manufacturer) => m.id === formData.fabricanteModulo);
     
-    const filtered = solarModules.filter((module: any) => {
-      const manufacturer = moduleManufacturersList.find((m: any) => m.id === formData.fabricanteModulo);
-      const matches = manufacturer && manufacturer.name === module.fabricante;
-      if (!matches && module.fabricante) {
-        // Module doesn't match selected manufacturer
-      }
-      return matches;
+    if (!selectedManufacturer) return [];
+    
+    return solarModules.filter((module: SolarModule) => {
+      return module.manufacturer.id === selectedManufacturer.id;
     });
-    
-    const debugFilteredInfo = {
-      totalFiltrados: filtered.length,
-      idsFiltrados: filtered.map((m: any) => ({ id: m.id, modelo: m.modelo, fabricante: m.fabricante }))
-    };
-    
-    return filtered;
   };
 
   // Update module data when selection changes
   const handleModuleChange = (moduleId: string) => {
-    const selectedModule = solarModules.find((m: any) => m.id === moduleId);
+    const selectedModule = solarModules.find((m: SolarModule) => m.id === moduleId);
     if (selectedModule) {
+      const legacyModule = mapSolarModuleToLegacy(selectedModule);
       onFormChange('moduloSelecionado', moduleId);
-      onFormChange('potenciaModulo', selectedModule.potenciaNominal);
-      onFormChange('eficienciaModulo', selectedModule.eficiencia);
-      onFormChange('tensaoModulo', selectedModule.voc);
-      onFormChange('correnteModulo', selectedModule.impp);
-      onFormChange('fabricanteModuloNome', selectedModule.fabricante);
-      onFormChange('modeloModulo', selectedModule.modelo);
+      onFormChange('potenciaModulo', legacyModule.potenciaNominal);
+      onFormChange('eficienciaModulo', legacyModule.eficiencia);
+      onFormChange('tensaoModulo', legacyModule.voc);
+      onFormChange('correnteModulo', legacyModule.impp);
+      onFormChange('fabricanteModuloNome', legacyModule.fabricante);
+      onFormChange('modeloModulo', legacyModule.modelo);
     }
   };
 
@@ -125,100 +129,49 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
   // Verificar se o módulo selecionado existe nos módulos disponíveis
   useEffect(() => {
     if (formData.moduloSelecionado && solarModules.length > 0) {
-      const selectedModule = solarModules.find((m: any) => m.id === formData.moduloSelecionado);
+      const selectedModule = solarModules.find((m: SolarModule) => m.id === formData.moduloSelecionado);
       if (!selectedModule) {
         // Módulo selecionado não encontrado na lista
-      } else {
-        // Módulo encontrado
       }
     }
     
     // Tentar encontrar o módulo pelo nome do modelo se não tiver ID
     if (!formData.moduloSelecionado && formData.modeloModulo && solarModules.length > 0) {
-      // Searching for module by model name
+      // Searching for module by model name using shared types
       
       // Primeiro tenta busca exata
-      let moduleByModel = solarModules.find((m: any) => 
-        m.modelo === formData.modeloModulo && 
-        m.fabricante === formData.fabricanteModuloNome
+      let moduleByModel = solarModules.find((m: SolarModule) => 
+        m.model === formData.modeloModulo && 
+        m.manufacturer.name === formData.fabricanteModuloNome
       );
       
       // Se não encontrar, tenta busca parcial pelo modelo
-      if (!moduleByModel) {
-        moduleByModel = solarModules.find((m: any) => 
-          m.modelo.includes(formData.modeloModulo) || 
-          formData.modeloModulo.includes(m.modelo)
+      if (!moduleByModel && formData.modeloModulo) {
+        moduleByModel = solarModules.find((m: SolarModule) => 
+          m.model.includes(formData.modeloModulo!) || 
+          formData.modeloModulo!.includes(m.model)
         );
       }
       
       // Se ainda não encontrar, pega o primeiro módulo do fabricante
       if (!moduleByModel && formData.fabricanteModuloNome) {
-        moduleByModel = solarModules.find((m: any) => m.fabricante === formData.fabricanteModuloNome);
+        moduleByModel = solarModules.find((m: SolarModule) => m.manufacturer.name === formData.fabricanteModuloNome);
       }
       
       if (moduleByModel) {
+        const legacyModule = mapSolarModuleToLegacy(moduleByModel);
         // Auto-preencher o ID do módulo
         onFormChange('moduloSelecionado', moduleByModel.id);
         // Também atualiza os dados do módulo
-        onFormChange('potenciaModulo', moduleByModel.potenciaNominal);
-        onFormChange('eficienciaModulo', moduleByModel.eficiencia);
-        onFormChange('tensaoModulo', moduleByModel.voc);
-        onFormChange('correnteModulo', moduleByModel.impp);
-      } else {
-        // Module not found
-      }
-    }
-
-    // Tentar encontrar o módulo pelo nome do modelo se não tiver ID
-    if (!formData.moduloSelecionado && formData.modeloModulo && solarModules.length > 0) {
-      // Searching for module by model name
-
-      // Primeiro tenta busca exata
-      let moduleByModel = solarModules.find((m: any) =>
-        m.modelo === formData.modeloModulo &&
-        m.fabricante === formData.fabricanteModuloNome
-      );
-
-      // Se não encontrar, tenta busca parcial pelo modelo
-      if (!moduleByModel) {
-        moduleByModel = solarModules.find((m: any) =>
-          m.modelo.includes(formData.modeloModulo) ||
-          formData.modeloModulo.includes(m.modelo)
-        );
-      }
-
-      // Se ainda não encontrar, pega o primeiro módulo do fabricante
-      if (!moduleByModel && formData.fabricanteModuloNome) {
-        moduleByModel = solarModules.find((m: any) => m.fabricante === formData.fabricanteModuloNome);
-      }
-
-      if (moduleByModel) {
-        // Auto-preencher o ID do módulo
-        onFormChange('moduloSelecionado', moduleByModel.id);
-        // Também atualiza os dados do módulo
-        onFormChange('potenciaModulo', moduleByModel.potenciaNominal);
-        onFormChange('eficienciaModulo', moduleByModel.eficiencia);
-        onFormChange('tensaoModulo', moduleByModel.voc);
-        onFormChange('correnteModulo', moduleByModel.impp);
-      } else {
-        // Module not found
+        onFormChange('potenciaModulo', legacyModule.potenciaNominal);
+        onFormChange('eficienciaModulo', legacyModule.eficiencia);
+        onFormChange('tensaoModulo', legacyModule.voc);
+        onFormChange('correnteModulo', legacyModule.impp);
       }
     }
   }, [formData.moduloSelecionado, formData.modeloModulo, formData.fabricanteModuloNome, solarModules]);
 
-  // Log inicial para verificar estrutura dos dados
-  useEffect(() => {
-    if (solarModules.length > 0) {
-      const debugModulesInfo = {
-        total: solarModules.length,
-        exemplo: solarModules[0],
-        fabricantes: Array.from(new Set(solarModules.map((m: any) => m.fabricante))).slice(0, 5)
-      };
-    }
-    if (moduleManufacturersList.length > 0) {
-      // Module manufacturers loaded
-    }
-  }, [solarModules, moduleManufacturersList]);
+
 
   return (
     <TooltipProvider>
@@ -269,43 +222,47 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o fabricante" />
                         </SelectTrigger>
-                        <SelectContent>
-                          {moduleManufacturersList.map((manufacturer: any): JSX.Element => (
-                            <SelectItem key={manufacturer.id} value={manufacturer.id}>
-                              {manufacturer.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="moduloSelecionado">Módulo Solar</Label>
-                      <Select 
-                        value={formData.moduloSelecionado || ''} 
-                        onValueChange={handleModuleChange}
-                        disabled={!formData.fabricanteModulo}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o módulo" />
-                        </SelectTrigger>
                          <SelectContent>
-                           {(() => {
-                             const availableModules = getAvailableModules();
-                             // Fallback: se não encontrar módulos pelo filtro normal, tenta busca direta pelo nome
-                             const fallbackModules = availableModules.length === 0 && formData.fabricanteModuloNome
-                                ? solarModules.filter((m: any) => m.fabricante === formData.fabricanteModuloNome)
-                               : availableModules;
-
-                             return fallbackModules.length > 0 ? fallbackModules : availableModules;
-                            })().map((module: any): JSX.Element => (
-                             <SelectItem key={module.id} value={module.id}>
-                               {module.modelo} - {module.potenciaNominal}W
+                           {moduleManufacturersList.map((manufacturer: Manufacturer): JSX.Element => (
+                             <SelectItem key={manufacturer.id} value={manufacturer.id}>
+                               {manufacturer.name}
                              </SelectItem>
                            ))}
                          </SelectContent>
                       </Select>
                     </div>
+                    
+                     <div className="space-y-2">
+                       <Label htmlFor="moduloSelecionado">Módulo Solar</Label>
+                       <Select 
+                         value={formData.moduloSelecionado || ''} 
+                         onValueChange={handleModuleChange}
+                         disabled={!formData.fabricanteModulo}
+                       >
+                         <SelectTrigger>
+                           <SelectValue placeholder="Selecione o módulo" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           {getAvailableModules().length > 0 ? (
+                             getAvailableModules().map((module: SolarModule): JSX.Element => {
+                               const legacyModule = mapSolarModuleToLegacy(module);
+                               return (
+                                 <SelectItem key={module.id} value={module.id}>
+                                   {module.model} - {legacyModule.potenciaNominal}W
+                                 </SelectItem>
+                               );
+                             })
+                           ) : (
+                             <div className="p-2 text-sm text-gray-500 text-center">
+                               {formData.fabricanteModulo 
+                                 ? 'Nenhum módulo encontrado para este fabricante' 
+                                 : 'Selecione um fabricante primeiro'
+                               }
+                             </div>
+                           )}
+                         </SelectContent>
+                       </Select>
+                     </div>
                   </div>
                 </div>
 
