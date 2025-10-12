@@ -2,12 +2,19 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+// Detect if running in Docker (shared mounted at /app/shared)
+// or locally (shared at ../../packages/shared)
+const isDocker = process.env.DOCKER_ENV === 'true'
+const sharedPath = isDocker
+  ? '/app/shared/dist'
+  : path.resolve(__dirname, '../../packages/shared/dist')
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@bess-pro/shared': path.resolve(__dirname, '../../packages/shared/dist')
+      '@bess-pro/shared': sharedPath
     }
   },
   server: {

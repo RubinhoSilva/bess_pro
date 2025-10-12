@@ -10,16 +10,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Building2, Plus, Edit, Trash2, MoreVertical, Globe, Shield, MapPin, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { manufacturerService } from '@/services/ManufacturerService';
 import { 
-  useManufacturers, 
-  useCreateManufacturer, 
-  useUpdateManufacturer, 
-  useDeleteManufacturer,
   ManufacturerType,
-  ManufacturerInput,
   Manufacturer,
-  ManufacturerFilters
-} from '@/hooks/legacy-equipment-hooks';
+  ManufacturerFilters,
+  CreateManufacturerRequest
+} from '@bess-pro/shared';
 import toast from 'react-hot-toast';
 
 interface ManufacturerFormData {
@@ -53,7 +51,12 @@ export function ManufacturerManager() {
   const [certificationsInput, setCertificationsInput] = useState('');
   
   // Estados para paginação e filtros
-  const [filters, setFilters] = useState<any>({
+  const [filters, setFilters] = useState<ManufacturerFilters & {
+    page: number;
+    limit: number;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+  }>({
     page: 1,
     limit: 10,
     sortBy: 'name',
@@ -61,10 +64,59 @@ export function ManufacturerManager() {
   });
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: manufacturersData, isLoading } = useManufacturers(filters);
-  const createMutation = useCreateManufacturer();
-  const updateMutation = useUpdateManufacturer();
-  const deleteMutation = useDeleteManufacturer();
+  const queryClient = useQueryClient();
+  
+  const { data: manufacturersData, isLoading } = useQuery({
+    queryKey: ['manufacturers', filters],
+    queryFn: () => manufacturerService.getManufacturers(filters),
+    staleTime: 15 * 60 * 1000,
+  });
+  
+  const createMutation = useMutation({
+    mutationFn: (data: CreateManufacturerRequest) => manufacturerService.createManufacturer(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manufacturers'] });
+      toast.success('Fabricante criado com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Erro ao criar fabricante');
+    },
+  });
+  
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreateManufacturerRequest> }) => 
+      manufacturerService.updateManufacturer(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manufacturers'] });
+      toast.success('Fabricante atualizado com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Erro ao atualizar fabricante');
+    },
+  });
+  
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => manufacturerService.deleteManufacturer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manufacturers'] });
+      toast.success('Fabricante excluído com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Erro ao excluir fabricante');
+    },
+  });
+  
+  const toggleStatusMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => 
+      manufacturerService.toggleManufacturerStatus(id, isActive),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manufacturers'] });
+      toast.success('Status do fabricante atualizado!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Erro ao atualizar status');
+    },
+  });
 
   const handleOpenDialog = (manufacturer?: Manufacturer) => {
     if (manufacturer) {
@@ -78,10 +130,10 @@ export function ManufacturerManager() {
         type: manufacturer.type as any,
         description: manufacturer.description || '',
         website: manufacturer.website || '',
-        country: manufacturer.country || '',
-        logoUrl: manufacturer.logoUrl || '',
-        supportEmail: manufacturer.supportEmail || '',
-        supportPhone: manufacturer.supportPhone || '',
+        country: manufacturer.contact.address?.country || '',
+        logoUrl: manufacturer.metadata.logoUrl || '',
+        supportEmail: manufacturer.contact.supportEmail || '',
+        supportPhone: manufacturer.contact.supportPhone || '',
         certifications: manufacturer.certifications || []
       });
       setCertificationsInput((manufacturer.certifications || []).join(', '));
@@ -133,7 +185,7 @@ export function ManufacturerManager() {
       };
 
       if (editingManufacturer) {
-        await updateMutation.mutateAsync({ id: editingManufacturer.id, ...submitData });
+        await updateMutation.mutateAsync({ id: editingManufacturer.id, data: submitData });
       } else {
         await createMutation.mutateAsync(submitData);
       }
@@ -153,6 +205,7 @@ export function ManufacturerManager() {
     if (confirm(`Tem certeza que deseja remover o fabricante "${manufacturer.name}"?`)) {
       try {
         await deleteMutation.mutateAsync(manufacturer.id);
+        toast.success('Fabricante removido com sucesso!');
       } catch (error) {
         // Error handling is done in the mutation hook
       }
@@ -170,9 +223,11 @@ export function ManufacturerManager() {
   };
 
   const handleTypeFilter = (type: ManufacturerType | 'ALL') => {
+    // Type filter não está disponível em ManufacturerFilters ainda
+    // TODO: Adicionar type filter ao shared types
+    console.log('Type filter temporarily disabled:', type);
     setFilters((prev: any) => ({
       ...prev,
-      type: type === 'ALL' ? undefined : type,
       page: 1
     }));
   };
@@ -383,7 +438,7 @@ export function ManufacturerManager() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Select value={filters.type || 'ALL'} onValueChange={handleTypeFilter}>
+            <Select value="ALL" onValueChange={() => {}} disabled>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filtrar por tipo" />
               </SelectTrigger>
@@ -445,49 +500,49 @@ export function ManufacturerManager() {
           <TableBody>
             {manufacturersData?.manufacturers?.map((manufacturer: any) => (
               <TableRow key={manufacturer.id}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {manufacturer.logoUrl && (
-                      <img 
-                        src={manufacturer.logoUrl} 
-                        alt={manufacturer.name}
-                        className="w-6 h-6 object-contain"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    )}
-                    <div>
-                      <div className="font-medium">{manufacturer.name}</div>
-                      {manufacturer.website && (
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Globe className="w-3 h-3" />
-                          <a 
-                            href={manufacturer.website} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="hover:underline"
-                          >
-                            {manufacturer.website.replace(/^https?:\/\//, '')}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </TableCell>
+                 <TableCell>
+                   <div className="flex items-center gap-2">
+                     {manufacturer.metadata.logoUrl && (
+                       <img 
+                         src={manufacturer.metadata.logoUrl} 
+                         alt={manufacturer.name}
+                         className="w-6 h-6 object-contain"
+                         onError={(e) => {
+                           (e.target as HTMLImageElement).style.display = 'none';
+                         }}
+                       />
+                     )}
+                     <div>
+                       <div className="font-medium">{manufacturer.name}</div>
+                       {manufacturer.website && (
+                         <div className="text-sm text-muted-foreground flex items-center gap-1">
+                           <Globe className="w-3 h-3" />
+                           <a 
+                             href={manufacturer.website} 
+                             target="_blank" 
+                             rel="noopener noreferrer"
+                             className="hover:underline"
+                           >
+                             {manufacturer.website.replace(/^https?:\/\//, '')}
+                           </a>
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 </TableCell>
                 <TableCell>
                   <Badge variant={getTypeBadgeVariant(manufacturer.type) as any}>
                     {getTypeLabel(manufacturer.type)}
                   </Badge>
                 </TableCell>
-                <TableCell>
-                  {manufacturer.country && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {manufacturer.country}
-                    </div>
-                  )}
-                </TableCell>
+                 <TableCell>
+                   {manufacturer.contact.address?.country && (
+                     <div className="flex items-center gap-1">
+                       <MapPin className="w-3 h-3" />
+                       {manufacturer.contact.address.country}
+                     </div>
+                   )}
+                 </TableCell>
                 <TableCell>
                   {manufacturer.isDefault && (
                     <Badge variant="secondary" className="flex items-center gap-1">

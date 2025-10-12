@@ -8,7 +8,10 @@ import { Trash2, Plus, Zap, Cpu, AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SelectedInverter } from '@/contexts/DimensioningContext';
-import { useInverters, useManufacturersList, Inverter, ManufacturerType } from '@/hooks/legacy-equipment-hooks';
+import { useQuery } from '@tanstack/react-query';
+import { inverterService } from '@/services/InverterService';
+import { Inverter, ManufacturerType } from '@bess-pro/shared';
+import { manufacturerService } from '@/services/ManufacturerService';
 import { useMultipleInverters } from '@/hooks/multiple-inverters-hooks';
 import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
 import { AddInverterModal } from '../modals/AddInverterModal';
@@ -45,8 +48,12 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
   const [quantity, setQuantity] = useState<number>(1);
   const [showInverterModal, setShowInverterModal] = useState(false);
   
-  const { data: invertersData, isLoading: loadingInverters } = useInverters({});
-  const { data: manufacturersData, isLoading: loadingManufacturers } = useManufacturersList({ type: ManufacturerType.INVERTER });
+  const { data: invertersData, isLoading: loadingInverters } = useQuery({
+    queryKey: ['inverters'],
+    queryFn: () => inverterService.getInverters(),
+    staleTime: 10 * 60 * 1000,
+  });
+  const { data: manufacturersData, isLoading: loadingManufacturers } = useManufacturersList({});
   const {
     addInverter,
     calculateTotalPower,

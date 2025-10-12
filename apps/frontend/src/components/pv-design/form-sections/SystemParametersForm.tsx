@@ -6,7 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Settings, Info, Plus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useSolarModules, useInverters, useManufacturersList, ManufacturerType } from '@/hooks/legacy-equipment-hooks';
+import { useQuery } from '@tanstack/react-query';
+import { moduleService } from '@/services/ModuleService';
+import { inverterService } from '@/services/InverterService';
+import { manufacturerService } from '@/services/ManufacturerService';
 import { MultipleInvertersSelector } from './MultipleInvertersSelector';
 import { AddSolarModuleModal } from '../modals/AddSolarModuleModal';
 import { AddInverterModal } from '../modals/AddInverterModal';
@@ -26,8 +29,16 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
   const [showInverterModal, setShowInverterModal] = useState(false);
   
   // Equipment data
-  const { data: moduleManufacturers } = useManufacturersList({ type: ManufacturerType.SOLAR_MODULE });
-  const { data: solarModulesData, refetch: refetchModules } = useSolarModules({ pageSize: 100 });
+  const { data: moduleManufacturers } = useQuery({
+    queryKey: ['manufacturers', { type: 'MODULE' }],
+    queryFn: () => manufacturerService.getManufacturers({ type: 'MODULE' }),
+    staleTime: 15 * 60 * 1000,
+  });
+  const { data: solarModulesData, refetch: refetchModules } = useQuery({
+    queryKey: ['modules'],
+    queryFn: () => moduleService.getModules(),
+    staleTime: 10 * 60 * 1000,
+  });
 
   const solarModules = solarModulesData?.modules || [];
   const moduleManufacturersList = moduleManufacturers?.manufacturers || [];

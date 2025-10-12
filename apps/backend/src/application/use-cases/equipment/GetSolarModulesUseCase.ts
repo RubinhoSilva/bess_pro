@@ -1,9 +1,15 @@
 import { IUseCase } from '../../common/IUseCase';
 import { Result } from '../../common/Result';
 import { ISolarModuleRepository } from '../../../domain/repositories/ISolarModuleRepository';
-import { GetSolarModulesQuery } from '../../dtos/input/equipment/GetSolarModulesQuery';
+import { ModuleFilters } from '@bess-pro/shared';
 import { SolarModuleListResponseDto } from '../../dtos/output/SolarModuleResponseDto';
 import { SolarModuleMapper } from '../../mappers/SolarModuleMapper';
+
+interface GetSolarModulesQuery extends ModuleFilters {
+  userId: string;
+  page?: number;
+  pageSize?: number;
+}
 
 export class GetSolarModulesUseCase implements IUseCase<GetSolarModulesQuery, Result<SolarModuleListResponseDto>> {
   
@@ -17,27 +23,20 @@ export class GetSolarModulesUseCase implements IUseCase<GetSolarModulesQuery, Re
         userId,
         page = 1, 
         pageSize = 20,
-        // Propriedades do ModuleFilters (shared)
         searchTerm,
-        manufacturer,
+        manufacturerId,
         cellType,
         minPower,
-        maxPower,
-        // Propriedades de compatibilidade
-        search = searchTerm, // Usa searchTerm ou search como fallback
-        fabricante = manufacturer, // Usa manufacturer ou fabricante como fallback
-        tipoCelula = cellType, // Usa cellType ou tipoCelula como fallback
-        potenciaMin = minPower, // Usa minPower ou potenciaMin como fallback
-        potenciaMax = maxPower // Usa maxPower ou potenciaMax como fallback
+        maxPower
       } = query;
 
       const { modules, total } = await this.solarModuleRepository.findByFilters({
         userId,
-        search,
-        fabricante,
-        tipoCelula,
-        potenciaMin,
-        potenciaMax,
+        search: searchTerm,
+        manufacturerId,
+        tipoCelula: cellType,
+        potenciaMin: minPower,
+        potenciaMax: maxPower,
         page,
         pageSize
       });

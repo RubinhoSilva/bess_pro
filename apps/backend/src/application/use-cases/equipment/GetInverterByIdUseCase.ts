@@ -4,7 +4,7 @@ import { IInverterRepository } from '../../../domain/repositories/IInverterRepos
 import { GetInverterByIdQuery } from '../../dtos/input/equipment/GetInverterByIdQuery';
 import { InverterResponseDto } from '../../dtos/output/InverterResponseDto';
 import { InverterMapper } from '../../mappers/InverterMapper';
-import { SystemUsers } from '@/domain/constants/SystemUsers';
+import { SystemUsers } from '../../../domain/constants/SystemUsers';
 
 export class GetInverterByIdUseCase implements IUseCase<GetInverterByIdQuery, Result<InverterResponseDto>> {
   

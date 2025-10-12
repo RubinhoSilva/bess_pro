@@ -6,21 +6,42 @@ import { GetInverterByIdUseCase } from '../../application/use-cases/equipment/Ge
 import { UpdateInverterUseCase } from '../../application/use-cases/equipment/UpdateInverterUseCase';
 import { DeleteInverterUseCase } from '../../application/use-cases/equipment/DeleteInverterUseCase';
 import { 
-  CreateInverterRequestBackend, 
-  CreateInverterCommand 
-} from '../../application/dtos/input/equipment/CreateInverterRequest';
-import { GetInvertersQuery } from '../../application/dtos/input/equipment/GetInvertersQuery';
-import { 
-  UpdateInverterRequestBackend,
-  UpdateInverterCommand 
-} from '../../application/dtos/input/equipment/UpdateInverterRequest';
-import { DeleteInverterCommand } from '../../application/dtos/input/equipment/DeleteInverterCommand';
-import { GetInverterByIdQuery } from '../../application/dtos/input/equipment/GetInverterByIdQuery';
+  CreateInverterRequest,
+  UpdateInverterRequest,
+  DeleteInverterRequest
+} from '@bess-pro/shared';
+
+// Interfaces temporárias para queries
+interface GetInvertersQuery {
+  userId: string;
+  manufacturer?: string;
+  model?: string;
+  minPower?: number;
+  maxPower?: number;
+  gridType?: 'on-grid' | 'off-grid' | 'hybrid';
+  minMppts?: number;
+  minEfficiency?: number;
+  manufacturerId?: string;
+  searchTerm?: string;
+  search?: string;
+  fabricante?: string;
+  tipoRede?: string;
+  potenciaMin?: number;
+  potenciaMax?: number;
+  moduleReferencePower?: number;
+  page?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+interface GetInverterByIdQuery {
+  id: string;
+  userId: string;
+}
 
 /**
- * Inverter Controller - Usando novos DTOs alinhados com @bess-pro/shared
- * 
- * Mantém compatibilidade com a API atual enquanto usa os novos DTOs internamente.
+ * Inverter Controller - Usando diretamente @bess-pro/shared
  */
 export class InverterController extends BaseController {
 
@@ -38,26 +59,12 @@ export class InverterController extends BaseController {
     try {
       const userId = this.extractUserId(req);
       
-      // Verificar se o request body está no formato novo (shared) ou antigo (command)
-      let request: CreateInverterRequestBackend;
+      const request: CreateInverterRequest & { userId: string } = {
+        ...req.body,
+        userId
+      };
       
-      if (this.isNewFormatRequest(req.body)) {
-        // Formato novo (alinhado com shared types)
-        request = {
-          ...req.body,
-          userId
-        };
-      } else {
-        // Formato antigo (command) - converter para novo formato
-        const command: CreateInverterCommand = {
-          ...req.body,
-          userId
-        };
-        request = this.convertCreateCommandToRequest(command);
-      }
-      
-      // Converter para o formato esperado pelo use case (se necessário)
-      const result = await this.createInverterUseCase.execute(request as any);
+      const result = await this.createInverterUseCase.execute(request);
       
       return this.handleResult(res, result);
       
@@ -77,7 +84,7 @@ export class InverterController extends BaseController {
         model: req.query.model as string,
         minPower: req.query.minPower ? parseFloat(req.query.minPower as string) : undefined,
         maxPower: req.query.maxPower ? parseFloat(req.query.maxPower as string) : undefined,
-        gridType: req.query.gridType as any,
+        gridType: this.mapTipoRedeToConnectionType(req.query.tipoRede as string) || req.query.gridType as 'on-grid' | 'off-grid' | 'hybrid',
         minMppts: req.query.minMppts ? parseInt(req.query.minMppts as string) : undefined,
         minEfficiency: req.query.minEfficiency ? parseFloat(req.query.minEfficiency as string) : undefined,
         manufacturerId: req.query.manufacturerId as string,
@@ -110,28 +117,13 @@ export class InverterController extends BaseController {
     try {
       const userId = this.extractUserId(req);
       
-      // Verificar se o request body está no formato novo (shared) ou antigo (command)
-      let request: UpdateInverterRequestBackend;
+      const request: UpdateInverterRequest & { userId: string } = {
+        id: req.params.id,
+        ...req.body,
+        userId
+      };
       
-      if (this.isNewFormatUpdateRequest(req.body)) {
-        // Formato novo (alinhado com shared types)
-        request = {
-          id: req.params.id,
-          ...req.body,
-          userId
-        };
-      } else {
-        // Formato antigo (command) - converter para novo formato
-        const command: UpdateInverterCommand = {
-          userId,
-          id: req.params.id,
-          ...req.body
-        };
-        request = this.convertUpdateCommandToRequest(command);
-      }
-      
-      // Converter para o formato esperado pelo use case (se necessário)
-      const result = await this.updateInverterUseCase.execute(request as any);
+      const result = await this.updateInverterUseCase.execute(request);
       
       return this.handleResult(res, result);
       
@@ -144,12 +136,13 @@ export class InverterController extends BaseController {
   async delete(req: Request, res: Response): Promise<Response> {
     try {
       const userId = this.extractUserId(req);
-      const command: DeleteInverterCommand = {
-        userId,
-        id: req.params.id
+      
+      const request: DeleteInverterRequest & { userId: string } = {
+        id: req.params.id,
+        userId
       };
       
-      const result = await this.deleteInverterUseCase.execute(command);
+      const result = await this.deleteInverterUseCase.execute(request);
       
       if (result.isSuccess) {
         return res.status(204).send();
@@ -161,143 +154,6 @@ export class InverterController extends BaseController {
       console.error('Error in InverterController.delete:', error);
       return this.internalServerError(res, 'Erro interno do servidor');
     }
-  }
-
-  // === Métodos Auxiliares ===
-
-  /**
-   * Verifica se o request está no formato novo (shared types)
-   */
-  private isNewFormatRequest(body: any): boolean {
-    return body.power && body.mppt && body.electrical;
-  }
-
-  /**
-   * Verifica se o request de update está no formato novo (shared types)
-   */
-  private isNewFormatUpdateRequest(body: any): boolean {
-    return body.power !== undefined || 
-           body.mppt !== undefined || 
-           body.electrical !== undefined;
-  }
-
-  /**
-   * Converte CreateCommand para CreateRequest (compatibilidade)
-   */
-  private convertCreateCommandToRequest(command: CreateInverterCommand): CreateInverterRequestBackend {
-    return {
-      userId: command.userId,
-      manufacturer: {
-        id: command.manufacturerId,
-        name: command.fabricante,
-        type: 'INVERTER' as any,
-        description: '',
-        contact: {
-          email: '',
-          phone: ''
-        },
-        business: {
-          foundedYear: undefined
-        },
-        certifications: [],
-        metadata: {
-          specialties: [],
-          markets: [],
-          qualityStandards: []
-        },
-        status: 'active',
-        isDefault: false,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      model: command.modelo,
-      power: {
-        ratedACPower: command.potenciaNominal,
-        maxPVPower: command.potenciaMaximaModulos,
-        ratedDCPower: command.potenciaNominal,
-        shortCircuitVoltageMax: command.tensaoCurtoCircuitoMaxima || command.tensaoEntradaMaxima,
-        maxInputCurrent: command.correnteCurtoCircuitoMaxima || command.correnteEntradaMaxima,
-        maxApparentPower: command.potenciaAparenteMaxima || command.potenciaSaidaCA
-      },
-      mppt: {
-        numberOfMppts: command.numeroMppts,
-        stringsPerMppt: command.stringsPorMppt
-      },
-      electrical: {
-        maxEfficiency: command.eficienciaMaxima,
-        gridType: this.mapTipoRedeToGridType(command.tipoRede),
-        ratedVoltage: command.tensaoNominalSaida?.toString(),
-        frequency: command.frequenciaSaida,
-        powerFactor: command.fatorPotencia
-      },
-      metadata: {
-        price: undefined,
-        currency: 'BRL',
-        productCode: '',
-        datasheetUrl: command.datasheetUrl,
-        imageUrl: '',
-        certifications: command.certificacoes || [],
-        warranty: command.garantiaAnos || 0,
-        connectionType: this.mapTipoRedeToConnectionType(command.tipoRede)
-      }
-    };
-  }
-
-  /**
-   * Converte UpdateCommand para UpdateRequest (compatibilidade)
-   */
-  private convertUpdateCommandToRequest(command: UpdateInverterCommand): UpdateInverterRequestBackend {
-    const request: UpdateInverterRequestBackend = {
-      id: command.id,
-      userId: command.userId
-    };
-
-    // Mapear campos do formato antigo para o novo
-    if (command.modelo !== undefined) request.model = command.modelo;
-    
-    if (command.potenciaNominal !== undefined || command.potenciaMaximaModulos !== undefined ||
-        command.tensaoCurtoCircuitoMaxima !== undefined || command.correnteCurtoCircuitoMaxima !== undefined ||
-        command.potenciaAparenteMaxima !== undefined || command.potenciaSaidaCA !== undefined) {
-      request.power = {
-        ratedACPower: command.potenciaNominal || 0,
-        maxPVPower: command.potenciaMaximaModulos || 0,
-        ratedDCPower: command.potenciaNominal || 0,
-        shortCircuitVoltageMax: command.tensaoCurtoCircuitoMaxima || 0,
-        maxInputCurrent: command.correnteCurtoCircuitoMaxima || 0,
-        maxApparentPower: command.potenciaAparenteMaxima || 0
-      };
-    }
-    
-    if (command.numeroMppts !== undefined || command.stringsPorMppt !== undefined) {
-      request.mppt = {
-        numberOfMppts: command.numeroMppts || 0,
-        stringsPerMppt: command.stringsPorMppt || 0
-      };
-    }
-    
-    if (command.eficienciaMaxima !== undefined || command.tipoRede !== undefined ||
-        command.tensaoNominalSaida !== undefined || command.frequenciaSaida !== undefined ||
-        command.fatorPotencia !== undefined) {
-      request.electrical = {
-        maxEfficiency: command.eficienciaMaxima || 0,
-        gridType: this.mapTipoRedeToGridType(command.tipoRede),
-        ratedVoltage: command.tensaoNominalSaida?.toString(),
-        frequency: command.frequenciaSaida,
-        powerFactor: command.fatorPotencia
-      };
-    }
-    
-    if (command.datasheetUrl !== undefined || command.certificacoes !== undefined ||
-        command.garantiaAnos !== undefined || command.pesoKg !== undefined) {
-      request.metadata = {
-        datasheetUrl: command.datasheetUrl,
-        certifications: command.certificacoes || [],
-        warranty: command.garantiaAnos || 0,
-        connectionType: this.mapTipoRedeToConnectionType(command.tipoRede)
-      };
-    }
-
-    return request;
   }
 
   async findById(req: Request, res: Response): Promise<Response> {
@@ -320,30 +176,6 @@ export class InverterController extends BaseController {
     }
   }
 
-  /**
-   * Mapeia tipoRede (legado) para gridType (shared)
-   */
-  private mapTipoRedeToGridType(tipoRede?: string): 'monofasico' | 'bifasico' | 'trifasico' {
-    switch (tipoRede?.toLowerCase()) {
-      case 'monofasico':
-      case 'monofásico':
-        return 'monofasico';
-      case 'bifasico':
-      case 'bifásico':
-        return 'bifasico';
-      case 'trifasico':
-      case 'trifásico':
-      case 'on-grid':
-        return 'trifasico';
-      case 'off-grid':
-        return 'trifasico'; // Default para off-grid
-      case 'hibrido':
-      case 'hybrid':
-        return 'trifasico'; // Default para hybrid
-      default:
-        return 'trifasico'; // Default geral
-    }
-  }
 
   /**
    * Mapeia tipoRede (legado) para connectionType (metadata)

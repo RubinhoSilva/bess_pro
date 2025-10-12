@@ -287,11 +287,10 @@ export class MongoEquipmentCatalogRepository implements IEquipmentCatalogReposit
 
   async findModulesByManufacturer(manufacturerId: string, userId: string): Promise<SolarModule[]> {
     const result = await this.moduleRepository.findByUserId(userId, {
-      fabricante: undefined // Buscar todos do fabricante específico
+      manufacturerId // Buscar todos do fabricante específico
     });
     
-    // Filtrar por manufacturerId
-    return result.modules.filter((m: any) => m.manufacturerId === manufacturerId);
+    return result.modules;
   }
 
   async findInverterById(id: string): Promise<Inverter | null> {

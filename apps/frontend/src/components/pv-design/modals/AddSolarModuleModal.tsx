@@ -12,7 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Plus } from 'lucide-react';
-import { useCreateSolarModule, type SolarModuleInput } from '@/hooks/legacy-equipment-hooks';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { moduleService } from '@/services/ModuleService';
+import { type SolarModuleInput } from '@bess-pro/shared';
 
 interface AddSolarModuleModalProps {
   open: boolean;
@@ -77,7 +79,18 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
   const [tempCoefVocStr, setTempCoefVocStr] = useState<string>('');
   const [tempCoefIscStr, setTempCoefIscStr] = useState<string>('');
 
-  const createModule = useCreateSolarModule();
+  const queryClient = useQueryClient();
+  
+  const createModule = useMutation({
+    mutationFn: (data: SolarModuleInput) => moduleService.createModule(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['modules'] });
+      toast({ title: 'Módulo criado com sucesso!' });
+    },
+    onError: (error: any) => {
+      toast({ title: error.message || 'Erro ao criar módulo', variant: 'destructive' });
+    },
+  });
 
   // Auto-populate iLRef when isc changes
   useEffect(() => {

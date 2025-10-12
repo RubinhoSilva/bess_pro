@@ -12,7 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Plus } from 'lucide-react';
-import { useCreateInverter, type InverterInput } from '@/hooks/legacy-equipment-hooks';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { inverterService } from '@/services/InverterService';
+import { type InverterInput } from '@bess-pro/shared';
 
 interface AddInverterModalProps {
   open: boolean;
@@ -59,7 +61,18 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
     potenciaAparenteMax: 0,
   });
 
-  const createInverter = useCreateInverter();
+  const queryClient = useQueryClient();
+  
+  const createInverter = useMutation({
+    mutationFn: (data: InverterInput) => inverterService.createInverter(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inverters'] });
+      toast({ title: 'Inversor criado com sucesso!' });
+    },
+    onError: (error: any) => {
+      toast({ title: error.message || 'Erro ao criar inversor', variant: 'destructive' });
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -9,7 +9,7 @@ export interface CreateInverterRequest {
   power: InverterPower;
   mppt: MPPTConfiguration;
   electrical: ElectricalSpecifications;
-  metadata: Omit<InverterMetadata, 'manufacturerId'>;
+  metadata: Omit<InverterMetadata, 'manufacturerId'> & { manufacturerId?: string };
 }
 
 export interface UpdateInverterRequest extends Partial<CreateInverterRequest> {

@@ -4,7 +4,11 @@
 
 import { BaseEntity, Status } from '../common';
 
-export type ManufacturerType = 'SOLAR_MODULE' | 'INVERTER' | 'BOTH';
+export enum ManufacturerType {
+  SOLAR_MODULE = 'SOLAR_MODULE',
+  INVERTER = 'INVERTER',
+  BOTH = 'BOTH'
+}
 
 export interface Manufacturer extends BaseEntity {
   readonly name: string;

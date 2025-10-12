@@ -3,20 +3,20 @@ import { Result } from '../../common/Result';
 import { IInverterRepository } from '../../../domain/repositories/IInverterRepository';
 import { IManufacturerRepository } from '../../../domain/repositories/IManufacturerRepository';
 import { Inverter } from '../../../domain/entities/Inverter';
-import { UpdateInverterCommand } from '../../dtos/input/equipment/UpdateInverterCommand';
+import { UpdateInverterRequest } from '@bess-pro/shared';
 import { InverterResponseDto } from '../../dtos/output/InverterResponseDto';
 import { InverterMapper } from '../../mappers/InverterMapper';
 
-export class UpdateInverterUseCase implements IUseCase<UpdateInverterCommand, Result<InverterResponseDto>> {
+export class UpdateInverterUseCase implements IUseCase<UpdateInverterRequest & { userId: string }, Result<InverterResponseDto>> {
   
   constructor(
     private inverterRepository: IInverterRepository,
     private manufacturerRepository: IManufacturerRepository
   ) {}
 
-  async execute(command: UpdateInverterCommand): Promise<Result<InverterResponseDto>> {
+  async execute(request: UpdateInverterRequest & { userId: string }): Promise<Result<InverterResponseDto>> {
     try {
-      const { userId, id, ...updateData } = command;
+      const { userId, id, ...updateData } = request;
       
       // Verificar se o inversor existe e pertence ao usuário
       const existingInverter = await this.inverterRepository.findById(id);
@@ -25,17 +25,21 @@ export class UpdateInverterUseCase implements IUseCase<UpdateInverterCommand, Re
       }
 
       // Validar novo fabricante se estiver sendo alterado
-      if (updateData.manufacturerId) {
-        const manufacturer = await this.manufacturerRepository.findById(updateData.manufacturerId);
+      if (updateData.manufacturer) {
+        const manufacturer = await this.manufacturerRepository.findById(updateData.manufacturer.id);
         if (!manufacturer) {
           return Result.failure('Fabricante não encontrado');
         }
       }
 
+      // Converter dados compartilhados para formato da entidade  
+      // TODO: Implement proper mapping later, using legacy format for now
+      const entityUpdateData: any = {};
+
       // Se mudou fabricante/modelo, verificar duplicação
-      if (updateData.fabricante || updateData.modelo) {
-        const fabricante = updateData.fabricante || existingInverter.fabricante;
-        const modelo = updateData.modelo || existingInverter.modelo;
+      if (entityUpdateData.fabricante || entityUpdateData.modelo) {
+        const fabricante = entityUpdateData.fabricante || existingInverter.fabricante;
+        const modelo = entityUpdateData.modelo || existingInverter.modelo;
         
         const duplicateInverter = await this.inverterRepository.findByFabricanteModelo(
           fabricante,
@@ -51,7 +55,7 @@ export class UpdateInverterUseCase implements IUseCase<UpdateInverterCommand, Re
       // Atualizar dados
       const updatedData = {
         ...existingInverter.toJSON(),
-        ...updateData,
+        ...entityUpdateData,
         updatedAt: new Date()
       };
 

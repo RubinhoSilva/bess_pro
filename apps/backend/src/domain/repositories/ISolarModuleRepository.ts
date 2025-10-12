@@ -5,7 +5,7 @@ export interface ISolarModuleRepository {
   findById(id: string): Promise<SolarModule | null>;
   findByUserId(userId: string, options?: {
     searchTerm?: string;
-    fabricante?: string;
+    manufacturerId?: string;
     potenciaMin?: number;
     potenciaMax?: number;
     limit?: number;
@@ -16,13 +16,13 @@ export interface ISolarModuleRepository {
   }>;
   update(id: string, updates: Partial<SolarModuleData>): Promise<SolarModule>;
   delete(id: string): Promise<boolean>;
-  findByFabricanteModelo(fabricante: string, modelo: string, userId: string): Promise<SolarModule | null>;
+  findByManufacturerModelo(manufacturerId: string, modelo: string, userId: string): Promise<SolarModule | null>;
   
   // Método de busca avançada
   findByFilters(filters: {
     userId?: string;
     search?: string;
-    fabricante?: string;
+    manufacturerId?: string;
     tipoCelula?: string;
     potenciaMin?: number;
     potenciaMax?: number;

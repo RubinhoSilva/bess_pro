@@ -6,7 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Package, Unplug, Plus, Trash2, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useSolarModules, useInverters, useManufacturersList, SolarModule, Inverter, Manufacturer, ManufacturerType } from '@/hooks/legacy-equipment-hooks';
+import { useQuery } from '@tanstack/react-query';
+import { moduleService } from '@/services/ModuleService';
+import { inverterService } from '@/services/InverterService';
+import { manufacturerService } from '@/services/ManufacturerService';
 
 interface EquipmentSelectionFormProps {
   formData: any;
@@ -28,10 +31,28 @@ interface SelectedInverter {
 }
 
 const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formData, onFormChange }) => {
-  const { data: solarModuleManufacturers } = useManufacturersList({ type: ManufacturerType.SOLAR_MODULE });
-  const { data: inverterManufacturers } = useManufacturersList({ type: ManufacturerType.INVERTER });
-  const { data: solarModulesData, isLoading: loadingModules } = useSolarModules({ pageSize: 100 });
-  const { data: invertersData, isLoading: loadingInverters } = useInverters({ pageSize: 100 });
+  const { data: solarModuleManufacturers } = useQuery({
+    queryKey: ['manufacturers', { type: 'MODULE' }],
+    queryFn: () => manufacturerService.getManufacturers({ type: 'MODULE' }),
+    staleTime: 15 * 60 * 1000,
+  });
+  
+  const { data: inverterManufacturers } = useQuery({
+    queryKey: ['manufacturers', { type: 'INVERTER' }],
+    queryFn: () => manufacturerService.getManufacturers({ type: 'INVERTER' }),
+    staleTime: 15 * 60 * 1000,
+  });
+  const { data: solarModulesData, isLoading: loadingModules } = useQuery({
+    queryKey: ['modules'],
+    queryFn: () => moduleService.getModules(),
+    staleTime: 10 * 60 * 1000,
+  });
+  
+  const { data: invertersData, isLoading: loadingInverters } = useQuery({
+    queryKey: ['inverters'],
+    queryFn: () => inverterService.getInverters(),
+    staleTime: 10 * 60 * 1000,
+  });
 
   const moduleManufacturers = solarModuleManufacturers?.manufacturers || [];
   const inverterManufacturersList = inverterManufacturers?.manufacturers || [];

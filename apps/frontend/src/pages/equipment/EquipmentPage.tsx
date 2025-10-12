@@ -6,15 +6,32 @@ import { ArrowLeft, Package, Unplug, Settings, Plus, Upload, Download, Building2
 import { useNavigate } from 'react-router-dom';
 import { EquipmentManager } from '@/components/equipment/EquipmentManager';
 import { ManufacturerManager } from '@/components/equipment/ManufacturerManager';
-import { useSolarModules, useInverters, useManufacturersList } from '@/hooks/legacy-equipment-hooks';
+import { useQuery } from '@tanstack/react-query';
+import { moduleService } from '@/services/ModuleService';
+import { inverterService } from '@/services/InverterService';
+import { manufacturerService } from '@/services/ManufacturerService';
 
 export default function EquipmentPage() {
   const navigate = useNavigate();
 
   // Get equipment statistics
-  const { data: solarModulesData, isLoading: loadingSolarModules } = useSolarModules({ pageSize: 1 });
-  const { data: invertersData, isLoading: loadingInverters } = useInverters({ pageSize: 1 });
-  const { data: manufacturersData, isLoading: loadingManufacturers } = useManufacturersList();
+  const { data: solarModulesData, isLoading: loadingSolarModules } = useQuery({
+    queryKey: ['modules'],
+    queryFn: () => moduleService.getModules(),
+    staleTime: 10 * 60 * 1000,
+  });
+  
+  const { data: invertersData, isLoading: loadingInverters } = useQuery({
+    queryKey: ['inverters'],
+    queryFn: () => inverterService.getInverters(),
+    staleTime: 10 * 60 * 1000,
+  });
+  
+  const { data: manufacturersData, isLoading: loadingManufacturers } = useQuery({
+    queryKey: ['manufacturers'],
+    queryFn: () => manufacturerService.getManufacturers(),
+    staleTime: 15 * 60 * 1000,
+  });
 
   const totalSolarModules = solarModulesData?.pagination?.total || 0;
   const totalInverters = invertersData?.pagination?.total || 0;

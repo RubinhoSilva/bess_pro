@@ -2,7 +2,7 @@ import api from '../lib/api';
 import { 
   Inverter, 
   PaginatedInverters 
-} from '../types/legacy-equipment';
+} from '@bess-pro/shared';
 import { 
   InverterFilters, 
   CreateInverterRequest, 

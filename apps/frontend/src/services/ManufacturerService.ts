@@ -2,7 +2,7 @@ import api from '../lib/api';
 import { 
   Manufacturer, 
   PaginatedManufacturers 
-} from '../types/legacy-equipment';
+} from '@bess-pro/shared';
 import { 
   ManufacturerFilters, 
   CreateManufacturerRequest, 

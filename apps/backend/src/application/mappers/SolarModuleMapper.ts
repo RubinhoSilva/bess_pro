@@ -1,5 +1,5 @@
 import { SolarModule } from '../../domain/entities/SolarModule';
-import { SolarModule as SharedSolarModule, ModuleSpecifications, ModuleParameters, ModuleDimensions, ModuleMetadata, Manufacturer } from '@bess-pro/shared';
+import { ManufacturerType, SolarModule as SharedSolarModule, ModuleSpecifications, ModuleParameters, ModuleDimensions, ModuleMetadata, Manufacturer } from '@bess-pro/shared';
 import { SolarModuleResponseDto, SolarModuleListResponseDto } from '../dtos/output/SolarModuleResponseDto';
 import { SystemUsers } from '../../domain/constants/SystemUsers';
 
@@ -10,9 +10,9 @@ export class SolarModuleMapper {
     
     // Criar um objeto manufacturer básico (em um sistema real, buscaríamos do repository)
     const manufacturer: Manufacturer = {
-      id: module.manufacturerId || '',
-      name: module.fabricante,
-      type: 'SOLAR_MODULE',
+      id: module.manufacturerId,
+      name: 'Fabricante', // Será preenchido posteriormente com busca ao repository
+      type: ManufacturerType.SOLAR_MODULE,
       contact: {
         email: undefined,
         phone: undefined,

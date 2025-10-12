@@ -1,10 +1,14 @@
 import { IUseCase } from '../../common/IUseCase';
 import { Result } from '../../common/Result';
 import { ISolarModuleRepository } from '../../../domain/repositories/ISolarModuleRepository';
-import { GetSolarModuleByIdQuery } from '../../dtos/input/equipment/GetSolarModuleByIdQuery';
 import { SolarModuleResponseDto } from '../../dtos/output/SolarModuleResponseDto';
 import { SolarModuleMapper } from '../../mappers/SolarModuleMapper';
-import { SystemUsers } from '@/domain/constants/SystemUsers';
+import { SystemUsers } from '../../../domain/constants/SystemUsers';
+
+interface GetSolarModuleByIdQuery {
+  id: string;
+  userId: string;
+}
 
 export class GetSolarModuleByIdUseCase implements IUseCase<GetSolarModuleByIdQuery, Result<SolarModuleResponseDto>> {
   

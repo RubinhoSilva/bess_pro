@@ -13,7 +13,8 @@ import { BackendCalculationService, shouldUseBackendCalculations } from '@/lib/b
 import { FrontendCalculationLogger } from '@/lib/calculationLogger';
 import { PVDimensioningService } from '@/lib/pvDimensioning';
 import { SystemCalculations } from '@/lib/systemCalculations';
-import { useSolarModules } from '@/hooks/legacy-equipment-hooks';
+import { useQuery } from '@tanstack/react-query';
+import { moduleService } from '@/services/ModuleService';
 
 // Import existing form components
 import CustomerDataForm from '../form-sections/CustomerDataForm';
@@ -97,7 +98,11 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   } = useDimensioning();
 
   // Buscar módulos solares para obter dados completos
-  const { data: solarModulesData } = useSolarModules();
+  const { data: solarModulesData } = useQuery({
+    queryKey: ['modules'],
+    queryFn: () => moduleService.getModules(),
+    staleTime: 10 * 60 * 1000,
+  });
   const solarModules = solarModulesData?.modules || [];
 
   // Buscar módulo completo selecionado pelo ID

@@ -2,7 +2,7 @@ import api from '../lib/api';
 import { 
   SolarModule, 
   PaginatedModules 
-} from '../types/legacy-equipment';
+} from '@bess-pro/shared';
 import { 
   ModuleFilters, 
   CreateModuleRequest, 

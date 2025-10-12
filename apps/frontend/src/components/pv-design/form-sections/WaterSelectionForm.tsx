@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AguaTelhado, SelectedInverter } from '@/contexts/DimensioningContext';
 import { SolarSystemService } from '@/lib/solarSystemService';
 import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
-import { SolarModule } from '@/hooks/legacy-equipment-hooks';
+import { SolarModule } from '@/types/legacy-equipment';
 
 interface WaterSelectionFormProps {
   aguasTelhado: AguaTelhado[];

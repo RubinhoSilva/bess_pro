@@ -3,7 +3,7 @@ import { ModuleSpecifications, ModuleParameters, ModuleDimensions, ModuleMetadat
 // ============= MODULE REQUEST TYPES =============
 
 export interface CreateModuleRequest {
-  manufacturer: string;
+  manufacturer: string; // Agora é o manufacturerId
   model: string;
   nominalPower: number;
   specifications: Omit<ModuleSpecifications, 'efficiency'> & { efficiency?: number };

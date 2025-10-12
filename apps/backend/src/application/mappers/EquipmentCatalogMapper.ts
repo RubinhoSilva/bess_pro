@@ -46,7 +46,6 @@ export class EquipmentCatalogMapper {
     return {
       userId,
       manufacturerId: request.manufacturer, // ID do manufacturer
-      fabricante: request.manufacturer, // Nome temporário
       modelo: request.model,
       potenciaNominal: request.nominalPower,
       

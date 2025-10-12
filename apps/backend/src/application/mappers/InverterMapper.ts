@@ -1,5 +1,5 @@
 import { Inverter } from '../../domain/entities/Inverter';
-import { Inverter as SharedInverter, InverterPower, MPPTConfiguration, ElectricalSpecifications, InverterDimensions, InverterMetadata, SandiaParameters, Manufacturer, GridType } from '@bess-pro/shared';
+import { Inverter as SharedInverter, InverterPower, MPPTConfiguration, ElectricalSpecifications, InverterDimensions, InverterMetadata, SandiaParameters, Manufacturer, GridType, ManufacturerType } from '@bess-pro/shared';
 import { InverterResponseDto, InverterListResponseDto } from '../dtos/output/InverterResponseDto';
 import { SystemUsers } from '../../domain/constants/SystemUsers';
 
@@ -10,7 +10,7 @@ export class InverterMapper {
     const manufacturer: Manufacturer = {
       id: inverter.manufacturerId || '',
       name: inverter.fabricante,
-      type: 'INVERTER',
+      type: ManufacturerType.INVERTER,
       contact: {
         email: undefined,
         phone: undefined,

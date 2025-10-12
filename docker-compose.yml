@@ -85,11 +85,13 @@ services:
       - "3003:3003"
     environment:
       VITE_API_URL: http://localhost:8010/api/v1
+      DOCKER_ENV: "true"
     volumes:
       - ./apps/frontend:/app
       - ./packages/shared:/app/shared
       - ./tsconfig.base.json:/app/tsconfig.base.json
       - node_modules_frontend:/app/node_modules
+      - /app/shared/node_modules
     networks:
       - bess-network
     depends_on:

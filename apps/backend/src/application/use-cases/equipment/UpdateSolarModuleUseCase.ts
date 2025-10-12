@@ -3,20 +3,21 @@ import { Result } from '../../common/Result';
 import { ISolarModuleRepository } from '../../../domain/repositories/ISolarModuleRepository';
 import { IManufacturerRepository } from '../../../domain/repositories/IManufacturerRepository';
 import { SolarModule } from '../../../domain/entities/SolarModule';
-import { UpdateSolarModuleCommand } from '../../dtos/input/equipment/UpdateSolarModuleCommand';
+import { UpdateModuleRequest } from '@bess-pro/shared';
 import { SolarModuleResponseDto } from '../../dtos/output/SolarModuleResponseDto';
 import { SolarModuleMapper } from '../../mappers/SolarModuleMapper';
+import { SharedToSolarModuleMapper } from '../../mappers/SharedToSolarModuleMapper';
 
-export class UpdateSolarModuleUseCase implements IUseCase<UpdateSolarModuleCommand, Result<SolarModuleResponseDto>> {
-  
+export class UpdateSolarModuleUseCase implements IUseCase<UpdateModuleRequest & { userId: string }, Result<SolarModuleResponseDto>> {
+   
   constructor(
     private solarModuleRepository: ISolarModuleRepository,
     private manufacturerRepository: IManufacturerRepository
   ) {}
 
-  async execute(command: UpdateSolarModuleCommand): Promise<Result<SolarModuleResponseDto>> {
+  async execute(request: UpdateModuleRequest & { userId: string }): Promise<Result<SolarModuleResponseDto>> {
     try {
-      const { userId, id, ...updateData } = command;
+      const { userId, id } = request;
       
       // Verificar se o módulo existe e pertence ao usuário
       const existingModule = await this.solarModuleRepository.findById(id);
@@ -25,28 +26,34 @@ export class UpdateSolarModuleUseCase implements IUseCase<UpdateSolarModuleComma
       }
 
       // Validar novo fabricante se estiver sendo alterado
-      if (updateData.manufacturerId) {
-        const manufacturer = await this.manufacturerRepository.findById(updateData.manufacturerId);
+      const manufacturerId = request.manufacturer;
+      if (manufacturerId) {
+        const manufacturer = await this.manufacturerRepository.findById(manufacturerId);
         if (!manufacturer) {
           return Result.failure('Fabricante não encontrado');
         }
       }
 
       // Se mudou fabricante/modelo, verificar duplicação
-      if (updateData.fabricante || updateData.modelo) {
-        const fabricante = updateData.fabricante || existingModule.fabricante;
-        const modelo = updateData.modelo || existingModule.modelo;
+      if (request.manufacturer || request.model) {
+        const manufacturerIdToCheck = request.manufacturer || existingModule.manufacturerId;
+        const modelo = request.model || existingModule.modelo;
         
-        const duplicateModule = await this.solarModuleRepository.findByFabricanteModelo(
-          fabricante,
+        const duplicateModule = await this.solarModuleRepository.findByManufacturerModelo(
+          manufacturerIdToCheck,
           modelo,
           userId
         );
         
         if (duplicateModule && duplicateModule.id !== id) {
-          return Result.failure(`Já existe um módulo ${fabricante} ${modelo} cadastrado.`);
+          const manufacturer = await this.manufacturerRepository.findById(manufacturerIdToCheck);
+          const manufacturerName = manufacturer?.name || 'Desconhecido';
+          return Result.failure(`Já existe um módulo ${manufacturerName} ${modelo} cadastrado.`);
         }
       }
+
+      // Converter request para o formato da entidade
+      const updateData = SharedToSolarModuleMapper.updateRequestToEntityData(request);
 
       // Atualizar dados
       const updatedData = {

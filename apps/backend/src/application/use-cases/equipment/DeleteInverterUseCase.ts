@@ -1,17 +1,17 @@
 import { IUseCase } from '../../common/IUseCase';
 import { Result } from '../../common/Result';
 import { IInverterRepository } from '../../../domain/repositories/IInverterRepository';
-import { DeleteInverterCommand } from '../../dtos/input/equipment/DeleteInverterCommand';
+import { DeleteInverterRequest } from '@bess-pro/shared';
 
-export class DeleteInverterUseCase implements IUseCase<DeleteInverterCommand, Result<void>> {
+export class DeleteInverterUseCase implements IUseCase<DeleteInverterRequest & { userId: string }, Result<void>> {
   
   constructor(
     private inverterRepository: IInverterRepository
   ) {}
 
-  async execute(command: DeleteInverterCommand): Promise<Result<void>> {
+  async execute(request: DeleteInverterRequest & { userId: string }): Promise<Result<void>> {
     try {
-      const { userId, id } = command;
+      const { userId, id } = request;
       
       // Verificar se o inversor existe e pertence ao usuário
       const existingInverter = await this.inverterRepository.findById(id);

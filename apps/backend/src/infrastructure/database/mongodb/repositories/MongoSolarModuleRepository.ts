@@ -9,7 +9,7 @@ import { SystemUsers } from '@/domain/constants/SystemUsers';
 export interface SolarModuleFilters {
   userId?: string;
   search?: string;
-  fabricante?: string;
+  manufacturerId?: string;
   tipoCelula?: string;
   potenciaMin?: number;
   potenciaMax?: number;
@@ -56,7 +56,7 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
     userId: string, 
     options?: {
       searchTerm?: string;
-      fabricante?: string;
+      manufacturerId?: string;
       potenciaMin?: number;
       potenciaMax?: number;
       limit?: number;
@@ -67,7 +67,7 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
     const filters: SolarModuleFilters = {
       userId,
       search: options?.searchTerm,
-      fabricante: options?.fabricante,
+      manufacturerId: options?.manufacturerId,
       potenciaMin: options?.potenciaMin,
       potenciaMax: options?.potenciaMax
     };
@@ -88,7 +88,7 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
   async findByFilters(filters: {
     userId: string;
     search?: string;
-    fabricante?: string;
+    manufacturerId?: string;
     tipoCelula?: string;
     potenciaMin?: number;
     potenciaMax?: number;
@@ -119,8 +119,8 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
 
   // === MÉTODOS LEGADOS (MANTIDOS POR COMPATIBILIDADE) ===
 
-  async findByFabricanteModelo(
-    fabricante: string, 
+  async findByManufacturerModelo(
+    manufacturerId: string, 
     modelo: string, 
     userId: string
   ): Promise<SolarModule | null> {
@@ -128,7 +128,7 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
     
     const query = {
       ...baseQuery,
-      fabricante: new RegExp(`^${fabricante}$`, 'i'),
+      manufacturerId,
       modelo: new RegExp(`^${modelo}$`, 'i')
     };
 
@@ -165,7 +165,7 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
 
   async searchModules(userId: string, searchTerm: string): Promise<SolarModule[]> {
     const baseQuery = this.buildPublicAccessFilter(userId);
-    const searchFilter = this.buildSearchFilter(searchTerm, ['fabricante', 'modelo', 'tipoCelula']);
+    const searchFilter = this.buildSearchFilter(searchTerm, ['modelo', 'tipoCelula']);
     
     const query = this.mergeQueries(baseQuery, searchFilter);
     
@@ -216,8 +216,8 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
     const publicAccessFilter = this.buildPublicAccessFilter(filters.userId);
     
     // Filtro de fabricante
-    if (filters.fabricante) {
-      customFilters.fabricante = new RegExp(filters.fabricante, 'i');
+    if (filters.manufacturerId) {
+      customFilters.manufacturerId = filters.manufacturerId;
     }
     
     // Filtro de tipo de célula
@@ -231,7 +231,7 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
     // Filtro de busca geral
     let searchFilter: any = {};
     if (filters.search) {
-      searchFilter = this.buildSearchFilter(filters.search, ['fabricante', 'modelo', 'tipoCelula']);
+      searchFilter = this.buildSearchFilter(filters.search, ['modelo', 'tipoCelula']);
     }
 
     // Combinar todos os filtros

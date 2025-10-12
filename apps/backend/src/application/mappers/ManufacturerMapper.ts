@@ -1,4 +1,4 @@
-import { Manufacturer, ManufacturerType } from '../../domain/entities/Manufacturer';
+import { Manufacturer } from '../../domain/entities/Manufacturer';
 import { Manufacturer as SharedManufacturer, ManufacturerContact, ManufacturerBusiness, ManufacturerMetadata, ManufacturerType as SharedManufacturerType } from '@bess-pro/shared';
 
 export class ManufacturerMapper {
@@ -6,7 +6,7 @@ export class ManufacturerMapper {
     return {
       id: manufacturer.getId(),
       name: manufacturer.name,
-      type: this.convertManufacturerType(manufacturer.type),
+      type: manufacturer.type as SharedManufacturerType,
       description: manufacturer.description,
       website: manufacturer.website,
       contact: {
@@ -44,18 +44,5 @@ export class ManufacturerMapper {
 
   static toResponseDtoList(manufacturers: Manufacturer[]): SharedManufacturer[] {
     return manufacturers.map(manufacturer => this.toResponseDto(manufacturer));
-  }
-
-  private static convertManufacturerType(type: ManufacturerType): SharedManufacturerType {
-    switch (type) {
-      case ManufacturerType.SOLAR_MODULE:
-        return 'SOLAR_MODULE';
-      case ManufacturerType.INVERTER:
-        return 'INVERTER';
-      case ManufacturerType.BOTH:
-        return 'BOTH';
-      default:
-        return 'BOTH';
-    }
   }
 }

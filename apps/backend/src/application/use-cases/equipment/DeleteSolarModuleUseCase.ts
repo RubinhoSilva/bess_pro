@@ -1,17 +1,17 @@
 import { IUseCase } from '../../common/IUseCase';
 import { Result } from '../../common/Result';
 import { ISolarModuleRepository } from '../../../domain/repositories/ISolarModuleRepository';
-import { DeleteSolarModuleCommand } from '../../dtos/input/equipment/DeleteSolarModuleCommand';
+import { DeleteModuleRequest } from '@bess-pro/shared';
 
-export class DeleteSolarModuleUseCase implements IUseCase<DeleteSolarModuleCommand, Result<void>> {
+export class DeleteSolarModuleUseCase implements IUseCase<DeleteModuleRequest & { userId: string }, Result<void>> {
   
   constructor(
     private solarModuleRepository: ISolarModuleRepository
   ) {}
 
-  async execute(command: DeleteSolarModuleCommand): Promise<Result<void>> {
+  async execute(request: DeleteModuleRequest & { userId: string }): Promise<Result<void>> {
     try {
-      const { userId, id } = command;
+      const { userId, id } = request;
       
       // Verificar se o módulo existe e pertence ao usuário
       const existingModule = await this.solarModuleRepository.findById(id);
