@@ -1,5 +1,6 @@
 export interface CreateSolarModuleCommand {
   userId: string;
+  manufacturerId: string;
   fabricante: string;
   modelo: string;
   potenciaNominal: number; // Watts

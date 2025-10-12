@@ -1,6 +1,7 @@
 import { IUseCase } from '../../common/IUseCase';
 import { Result } from '../../common/Result';
 import { ISolarModuleRepository } from '../../../domain/repositories/ISolarModuleRepository';
+import { IManufacturerRepository } from '../../../domain/repositories/IManufacturerRepository';
 import { SolarModule } from '../../../domain/entities/SolarModule';
 import { CreateSolarModuleCommand } from '../../dtos/input/equipment/CreateSolarModuleCommand';
 import { SolarModuleResponseDto } from '../../dtos/output/SolarModuleResponseDto';
@@ -9,11 +10,18 @@ import { SolarModuleMapper } from '../../mappers/SolarModuleMapper';
 export class CreateSolarModuleUseCase implements IUseCase<CreateSolarModuleCommand, Result<SolarModuleResponseDto>> {
   
   constructor(
-    private solarModuleRepository: ISolarModuleRepository
+    private solarModuleRepository: ISolarModuleRepository,
+    private manufacturerRepository: IManufacturerRepository
   ) {}
 
   async execute(command: CreateSolarModuleCommand): Promise<Result<SolarModuleResponseDto>> {
     try {
+      // Validar se o fabricante existe
+      const manufacturer = await this.manufacturerRepository.findById(command.manufacturerId);
+      if (!manufacturer) {
+        return Result.failure('Fabricante não encontrado');
+      }
+
       // Verificar se já existe um módulo com mesmo fabricante/modelo para o usuário
       const existingModule = await this.solarModuleRepository.findByFabricanteModelo(
         command.fabricante,

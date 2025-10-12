@@ -14,6 +14,8 @@ import { MongoAlertRepository } from '../database/mongodb/repositories/MongoAler
 import { MongoSolarModuleRepository } from '../database/mongodb/repositories/MongoSolarModuleRepository';
 import { MongoInverterRepository } from '../database/mongodb/repositories/MongoInverterRepository';
 import { MongoManufacturerRepository } from '../database/mongodb/repositories/MongoManufacturerRepository';
+import { MongoEquipmentCatalogRepository } from '../database/mongodb/repositories/MongoEquipmentCatalogRepository';
+import { DeleteManufacturerUseCaseV2 } from '../../application/use-cases/equipment/DeleteManufacturerUseCaseV2';
 import { MongoProposalTemplateRepository } from '../database/mongodb/repositories/MongoProposalTemplateRepository';
 import { MongoProposalSettingsRepository } from '../database/mongodb/repositories/MongoProposalSettingsRepository';
 import { MongoAdvancedProposalTemplateRepository } from '../database/mongodb/repositories/MongoAdvancedProposalTemplateRepository';
@@ -140,10 +142,12 @@ import { ReorderKanbanColumnsUseCase } from '../../application/use-cases/kanban/
 // Use Cases - Equipment
 import { CreateSolarModuleUseCase } from '../../application/use-cases/equipment/CreateSolarModuleUseCase';
 import { GetSolarModulesUseCase } from '../../application/use-cases/equipment/GetSolarModulesUseCase';
+import { GetSolarModuleByIdUseCase } from '../../application/use-cases/equipment/GetSolarModuleByIdUseCase';
 import { UpdateSolarModuleUseCase } from '../../application/use-cases/equipment/UpdateSolarModuleUseCase';
 import { DeleteSolarModuleUseCase } from '../../application/use-cases/equipment/DeleteSolarModuleUseCase';
 import { CreateInverterUseCase } from '../../application/use-cases/equipment/CreateInverterUseCase';
 import { GetInvertersUseCase } from '../../application/use-cases/equipment/GetInvertersUseCase';
+import { GetInverterByIdUseCase } from '../../application/use-cases/equipment/GetInverterByIdUseCase';
 import { UpdateInverterUseCase } from '../../application/use-cases/equipment/UpdateInverterUseCase';
 import { DeleteInverterUseCase } from '../../application/use-cases/equipment/DeleteInverterUseCase';
 
@@ -211,6 +215,16 @@ export class ContainerSetup {
     container.register(ServiceTokens.SolarModuleRepository, MongoSolarModuleRepository, true);
     container.register(ServiceTokens.InverterRepository, MongoInverterRepository, true);
     container.register(ServiceTokens.ManufacturerRepository, MongoManufacturerRepository, true);
+    
+    // Equipment Catalog Repository (DDD Aggregate)
+    container.registerFactory(ServiceTokens.EquipmentCatalogRepository, () => {
+      return new MongoEquipmentCatalogRepository(
+        container.resolve(ServiceTokens.ManufacturerRepository),
+        container.resolve(ServiceTokens.SolarModuleRepository),
+        container.resolve(ServiceTokens.InverterRepository)
+      );
+    });
+    
     container.register(ServiceTokens.ProposalTemplateRepository, MongoProposalTemplateRepository, true);
     container.register(ServiceTokens.ProposalSettingsRepository, MongoProposalSettingsRepository, true);
     container.register(ServiceTokens.AdvancedProposalTemplateRepository, MongoAdvancedProposalTemplateRepository, true);
@@ -404,7 +418,8 @@ export class ContainerSetup {
     // Use Cases - Equipment (Solar Modules)
     container.registerFactory(ServiceTokens.CreateSolarModuleUseCase, () => {
       return new CreateSolarModuleUseCase(
-        container.resolve(ServiceTokens.SolarModuleRepository)
+        container.resolve(ServiceTokens.SolarModuleRepository),
+        container.resolve(ServiceTokens.ManufacturerRepository)
       );
     });
 
@@ -414,9 +429,16 @@ export class ContainerSetup {
       );
     });
 
+    container.registerFactory(ServiceTokens.GetSolarModuleByIdUseCase, () => {
+      return new GetSolarModuleByIdUseCase(
+        container.resolve(ServiceTokens.SolarModuleRepository)
+      );
+    });
+
     container.registerFactory(ServiceTokens.UpdateSolarModuleUseCase, () => {
       return new UpdateSolarModuleUseCase(
-        container.resolve(ServiceTokens.SolarModuleRepository)
+        container.resolve(ServiceTokens.SolarModuleRepository),
+        container.resolve(ServiceTokens.ManufacturerRepository)
       );
     });
 
@@ -429,7 +451,8 @@ export class ContainerSetup {
     // Use Cases - Equipment (Inverters)
     container.registerFactory(ServiceTokens.CreateInverterUseCase, () => {
       return new CreateInverterUseCase(
-        container.resolve(ServiceTokens.InverterRepository)
+        container.resolve(ServiceTokens.InverterRepository),
+        container.resolve(ServiceTokens.ManufacturerRepository)
       );
     });
 
@@ -439,9 +462,16 @@ export class ContainerSetup {
       );
     });
 
+    container.registerFactory(ServiceTokens.GetInverterByIdUseCase, () => {
+      return new GetInverterByIdUseCase(
+        container.resolve(ServiceTokens.InverterRepository)
+      );
+    });
+
     container.registerFactory(ServiceTokens.UpdateInverterUseCase, () => {
       return new UpdateInverterUseCase(
-        container.resolve(ServiceTokens.InverterRepository)
+        container.resolve(ServiceTokens.InverterRepository),
+        container.resolve(ServiceTokens.ManufacturerRepository)
       );
     });
 
@@ -479,6 +509,13 @@ export class ContainerSetup {
     container.registerFactory(ServiceTokens.DeleteManufacturerUseCase, () => {
       return new DeleteManufacturerUseCase(
         container.resolve(ServiceTokens.ManufacturerRepository)
+      );
+    });
+
+    // Equipment Catalog Use Cases (DDD Aggregate)
+    container.registerFactory(ServiceTokens.DeleteManufacturerUseCaseV2, () => {
+      return new DeleteManufacturerUseCaseV2(
+        container.resolve(ServiceTokens.EquipmentCatalogRepository)
       );
     });
 
@@ -836,7 +873,8 @@ export class ContainerSetup {
         container.resolve(ServiceTokens.CreateSolarModuleUseCase),
         container.resolve(ServiceTokens.GetSolarModulesUseCase),
         container.resolve(ServiceTokens.UpdateSolarModuleUseCase),
-        container.resolve(ServiceTokens.DeleteSolarModuleUseCase)
+        container.resolve(ServiceTokens.DeleteSolarModuleUseCase),
+        container.resolve(ServiceTokens.GetSolarModuleByIdUseCase)
       );
     });
 
@@ -844,6 +882,7 @@ export class ContainerSetup {
       return new InverterController(
         container.resolve(ServiceTokens.CreateInverterUseCase),
         container.resolve(ServiceTokens.GetInvertersUseCase),
+        container.resolve(ServiceTokens.GetInverterByIdUseCase),
         container.resolve(ServiceTokens.UpdateInverterUseCase),
         container.resolve(ServiceTokens.DeleteInverterUseCase)
       );

@@ -1,5 +1,6 @@
 import { InverterModel } from '../mongodb/schemas/InverterSchema';
 import { ManufacturerSeeder } from './ManufacturerSeeder';
+import { SystemUsers } from '../../../domain/constants/SystemUsers';
 
 export class InverterSeeder {
   static async seed(): Promise<void> {
@@ -308,7 +309,7 @@ export class InverterSeeder {
         const existing = await InverterModel.findOne({
           modelo: inverterData.modelo,
           manufacturerId,
-          userId: 'public-equipment-system'
+          userId: SystemUsers.PUBLIC_EQUIPMENT
         });
 
         if (existing) {
@@ -319,7 +320,7 @@ export class InverterSeeder {
           const inverterToCreate = {
             ...inverterData,
             manufacturerId,
-            userId: 'public-equipment-system' // ID padrão para equipamentos públicos
+            userId: SystemUsers.PUBLIC_EQUIPMENT // ID padrão para equipamentos públicos
           };
 
           await InverterModel.create(inverterToCreate);

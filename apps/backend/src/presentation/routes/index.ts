@@ -57,9 +57,9 @@ export class ApiRoutes {
     router.use('/bess', new BessRoutes(container).getRouter());
     router.use('/irradiation', new IrradiationRoutes(container).getRouter());
     router.use('/alerts', AlertRoutes.create(container));
-    router.use('/solar-modules', new SolarModuleRoutes(container).router);
-    router.use('/inverters', new InverterRoutes(container).router);
-    router.use('/manufacturers', new ManufacturerRoutes(container).router);
+    router.use('/equipment/modules', new SolarModuleRoutes(container).router);
+    router.use('/equipment/inverters', new InverterRoutes(container).router);
+    router.use('/equipment/manufacturers', new ManufacturerRoutes(container).router);
     router.use('/proposal-templates', ProposalTemplateRoutes.create(container));
     router.use('/proposal-settings', ProposalSettingsRoutes.create(container));
     router.use('/project-backups', new ProjectBackupRoutes(container).getRouter());

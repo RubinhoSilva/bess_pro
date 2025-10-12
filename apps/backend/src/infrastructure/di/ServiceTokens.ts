@@ -95,10 +95,12 @@ export const ServiceTokens = {
   // Equipment Use Cases
   CreateSolarModuleUseCase: 'CreateSolarModuleUseCase',
   GetSolarModulesUseCase: 'GetSolarModulesUseCase',
+  GetSolarModuleByIdUseCase: 'GetSolarModuleByIdUseCase',
   UpdateSolarModuleUseCase: 'UpdateSolarModuleUseCase',
   DeleteSolarModuleUseCase: 'DeleteSolarModuleUseCase',
   CreateInverterUseCase: 'CreateInverterUseCase',
   GetInvertersUseCase: 'GetInvertersUseCase',
+  GetInverterByIdUseCase: 'GetInverterByIdUseCase',
   UpdateInverterUseCase: 'UpdateInverterUseCase',
   DeleteInverterUseCase: 'DeleteInverterUseCase',
 
@@ -139,6 +141,10 @@ export const ServiceTokens = {
   UpdateEnergyCompanyUseCase: 'UpdateEnergyCompanyUseCase',
   DeleteEnergyCompanyUseCase: 'DeleteEnergyCompanyUseCase',
   GetEnergyCompaniesByStateUseCase: 'GetEnergyCompaniesByStateUseCase',
+
+  // Equipment Catalog (DDD Aggregate)
+  EquipmentCatalogRepository: 'EquipmentCatalogRepository',
+  DeleteManufacturerUseCaseV2: 'DeleteManufacturerUseCaseV2',
 
   // Controllers
   TEAM_CONTROLLER: 'TeamController',

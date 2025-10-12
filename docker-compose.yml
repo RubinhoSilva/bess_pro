@@ -45,10 +45,10 @@ services:
     container_name: bess-pro-backend
     restart: unless-stopped
     ports:
-      - "8010:5000"
+      - "8010:8010"
     environment:
       NODE_ENV: development
-      PORT: 5000
+      PORT: 8010
       MONGODB_URI: mongodb://admin:bess123456@mongodb:27017/bess-pro?authSource=admin
       REDIS_URL: redis://:redis123456@redis:6379
       JWT_SECRET: dev-jwt-secret-super-secure-change-in-production
@@ -62,13 +62,12 @@ services:
       EMAIL_USER: ""
       EMAIL_PASS: ""
       EMAIL_FROM: noreply@besspro.dev
-      PUPPETEER_SKIP_CHROME_DOWNLOAD: "true"
-      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
     volumes:
       - ./apps/backend:/app/backend
       - ./packages/shared:/app/shared
       - ./tsconfig.base.json:/app/tsconfig.base.json
       - /app/backend/node_modules
+      - /app/shared/node_modules
     networks:
       - bess-network
     depends_on:

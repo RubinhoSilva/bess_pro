@@ -75,10 +75,6 @@ export class Inverter extends BaseEntity {
   }
 
   private validateRequired(): void {
-    // manufacturerId is optional for backward compatibility
-    // if (!this.data.manufacturerId?.trim()) {
-    //   throw new Error('ID do fabricante é obrigatório');
-    // }
     if (!this.data.fabricante?.trim()) {
       throw new Error('Fabricante é obrigatório');
     }
@@ -96,7 +92,7 @@ export class Inverter extends BaseEntity {
   // Getters
   get id(): string | undefined { return this.data.id; }
   get userId(): string { return this.data.userId; }
-  get manufacturerId(): string { return this.data.manufacturerId || ''; }
+  get manufacturerId(): string | undefined { return this.data.manufacturerId; }
   get fabricante(): string { return this.data.fabricante; }
   get modelo(): string { return this.data.modelo; }
   get potenciaSaidaCA(): number { return this.data.potenciaSaidaCA; }
@@ -111,6 +107,14 @@ export class Inverter extends BaseEntity {
   get correnteSaidaMax(): number | undefined { return this.data.correnteSaidaMax; }
   get eficienciaMax(): number | undefined { return this.data.eficienciaMax; }
   get eficienciaEuropeia(): number | undefined { return this.data.eficienciaEuropeia; }
+  get eficienciaMppt(): number | undefined { return this.data.eficienciaMppt; }
+  get tensaoSaidaNominal(): string | undefined { return this.data.tensaoSaidaNominal; }
+  get frequenciaNominal(): number | undefined { return this.data.frequenciaNominal; }
+  get dimensoes(): { larguraMm: number; alturaMm: number; profundidadeMm: number; } | undefined { return this.data.dimensoes; }
+  get pesoKg(): number | undefined { return this.data.pesoKg; }
+  get protecoes(): string[] | undefined { return this.data.protecoes; }
+  get grauProtecao(): string | undefined { return this.data.grauProtecao; }
+  get temperaturaOperacao(): string | undefined { return this.data.temperaturaOperacao; }
   get certificacoes(): string[] | undefined { return this.data.certificacoes; }
   get garantiaAnos(): number | undefined { return this.data.garantiaAnos; }
   get datasheetUrl(): string | undefined { return this.data.datasheetUrl; }

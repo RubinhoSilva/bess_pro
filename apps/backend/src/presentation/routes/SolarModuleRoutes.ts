@@ -17,8 +17,9 @@ export class SolarModuleRoutes {
   }
 
   private setupRoutes(): void {
-    // Semi-public route for equipment listing (optional auth to include user's modules)
+    // Semi-public routes for equipment listing (optional auth to include user's modules)
     this.router.get('/', this.authMiddleware.optional(), this.solarModuleController.findAll.bind(this.solarModuleController));
+    this.router.get('/:id', this.authMiddleware.optional(), this.solarModuleController.findById.bind(this.solarModuleController));
     
     // Apply authentication middleware for protected routes
     this.router.use(this.authMiddleware.authenticate());

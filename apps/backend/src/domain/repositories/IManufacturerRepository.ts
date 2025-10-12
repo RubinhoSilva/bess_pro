@@ -37,4 +37,5 @@ export interface IManufacturerRepository {
   update(id: string, manufacturer: Manufacturer): Promise<Manufacturer | null>;
   delete(id: string): Promise<boolean>;
   exists(name: string, excludeId?: string, teamId?: string): Promise<boolean>;
+  hasEquipment(manufacturerId: string): Promise<boolean>;
 }

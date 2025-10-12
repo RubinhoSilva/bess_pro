@@ -1,65 +1,121 @@
 import { SolarModule } from '../../domain/entities/SolarModule';
+import { SolarModule as SharedSolarModule, ModuleSpecifications, ModuleParameters, ModuleDimensions, ModuleMetadata, Manufacturer } from '@bess-pro/shared';
 import { SolarModuleResponseDto, SolarModuleListResponseDto } from '../dtos/output/SolarModuleResponseDto';
+import { SystemUsers } from '../../domain/constants/SystemUsers';
 
 export class SolarModuleMapper {
   
-  static toResponseDto(module: SolarModule): SolarModuleResponseDto {
+  static toSharedSolarModule(module: SolarModule): SharedSolarModule {
     const areaM2 = module.calculateArea();
-    const densidadePotencia = module.calculatePowerDensity();
     
+    // Criar um objeto manufacturer básico (em um sistema real, buscaríamos do repository)
+    const manufacturer: Manufacturer = {
+      id: module.manufacturerId || '',
+      name: module.fabricante,
+      type: 'SOLAR_MODULE',
+      contact: {
+        email: undefined,
+        phone: undefined,
+        supportEmail: undefined,
+        supportPhone: undefined,
+      },
+      business: {
+        foundedYear: undefined,
+        headquarters: undefined,
+        employeeCount: undefined,
+        revenue: undefined,
+        stockTicker: undefined,
+        parentCompany: undefined,
+        subsidiaries: undefined,
+      },
+      certifications: [],
+      metadata: {
+        specialties: [],
+        markets: [],
+        qualityStandards: [],
+      },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
     return {
       id: module.id!,
-      userId: module.userId,
-      fabricante: module.fabricante,
-      modelo: module.modelo,
-      potenciaNominal: module.potenciaNominal,
-      larguraMm: module.larguraMm,
-      alturaMm: module.alturaMm,
-      espessuraMm: module.espessuraMm,
-      vmpp: module.vmpp,
-      impp: module.impp,
-      voc: module.voc,
-      isc: module.isc,
-      tipoCelula: module.tipoCelula,
-      eficiencia: module.eficiencia,
-      numeroCelulas: module.numeroCelulas,
-      tempCoefPmax: module.tempCoefPmax,
-      tempCoefVoc: module.tempCoefVoc,
-      tempCoefIsc: module.tempCoefIsc,
-      pesoKg: module.pesoKg,
-      datasheetUrl: module.datasheetUrl,
-      certificacoes: module.certificacoes,
-      garantiaAnos: module.garantiaAnos,
-      tolerancia: module.tolerancia,
-      
-      // Parâmetros para modelo espectral
-      material: module.material,
-      technology: module.technology,
-      
-      // Parâmetros do modelo de diodo único
-      aRef: module.aRef,
-      iLRef: module.iLRef,
-      iORef: module.iORef,
-      rS: module.rS,
-      rShRef: module.rShRef,
-      
-      // Coeficientes de temperatura críticos
-      alphaSc: module.alphaSc,
-      betaOc: module.betaOc,
-      gammaR: module.gammaR,
-      
-      // Parâmetros SAPM térmicos
-      a0: module.a0, a1: module.a1, a2: module.a2, a3: module.a3, a4: module.a4,
-      b0: module.b0, b1: module.b1, b2: module.b2, b3: module.b3, b4: module.b4, b5: module.b5,
-      dtc: module.dtc,
-      
-      // Campos calculados
-      areaM2: areaM2 ? Math.round(areaM2 * 100) / 100 : undefined,
-      densidadePotencia: densidadePotencia ? Math.round(densidadePotencia * 100) / 100 : undefined,
-      
-      createdAt: module.createdAt?.toISOString() || new Date().toISOString(),
-      updatedAt: module.updatedAt?.toISOString() || new Date().toISOString(),
+      manufacturer,
+      model: module.modelo,
+      nominalPower: module.potenciaNominal,
+      specifications: {
+        vmpp: module.vmpp,
+        impp: module.impp,
+        voc: module.voc,
+        isc: module.isc,
+        efficiency: module.eficiencia,
+        cellType: module.tipoCelula as any,
+        numberOfCells: module.numeroCelulas,
+        technology: module.technology as any,
+      } as ModuleSpecifications,
+      parameters: {
+        temperature: {
+          tempCoeffPmax: module.tempCoefPmax,
+          tempCoeffVoc: module.tempCoefVoc,
+          tempCoeffIsc: module.tempCoefIsc,
+        },
+        diode: {
+          aRef: module.aRef,
+          iLRef: module.iLRef,
+          iORef: module.iORef,
+          rShRef: module.rShRef,
+          rS: module.rS,
+        },
+        sapm: {
+          a0: module.a0,
+          a1: module.a1,
+          a2: module.a2,
+          a3: module.a3,
+          a4: module.a4,
+          b0: module.b0,
+          b1: module.b1,
+          b2: module.b2,
+          b3: module.b3,
+          b4: module.b4,
+          b5: module.b5,
+          fd: module.dtc,
+        },
+        spectral: {
+          am: undefined,
+          spectralResponse: undefined,
+          material: module.material,
+          technology: module.technology,
+        },
+        advanced: {
+          alphaSc: module.alphaSc,
+          betaOc: module.betaOc,
+          gammaR: module.gammaR,
+        },
+      } as ModuleParameters,
+      dimensions: {
+        widthMm: module.larguraMm || 0,
+        heightMm: module.alturaMm || 0,
+        thicknessMm: module.espessuraMm || 0,
+        weightKg: module.pesoKg || 0,
+        areaM2: areaM2 ? Math.round(areaM2 * 100) / 100 : 0,
+      } as ModuleDimensions,
+      metadata: {
+        datasheetUrl: module.datasheetUrl,
+        certifications: module.certificacoes || [],
+        warranty: module.garantiaAnos || 0,
+        tolerance: module.tolerancia,
+        userId: module.userId,
+      } as ModuleMetadata,
+      status: 'active',
+      isPublic: module.userId === SystemUsers.PUBLIC_EQUIPMENT,
+      createdAt: module.createdAt || new Date(),
+      updatedAt: module.updatedAt || new Date(),
     };
+  }
+
+  static toResponseDto(module: SolarModule): SolarModuleResponseDto {
+    return this.toSharedSolarModule(module);
   }
 
   static toListResponseDto(

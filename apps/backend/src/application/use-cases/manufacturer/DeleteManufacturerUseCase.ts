@@ -25,6 +25,12 @@ export class DeleteManufacturerUseCase implements IUseCase<DeleteManufacturerCom
         return Result.failure('Fabricantes padrão não podem ser removidos');
       }
 
+      // Verificar se há equipamentos associados a este fabricante
+      const hasEquipment = await this.manufacturerRepository.hasEquipment(command.id);
+      if (hasEquipment) {
+        return Result.failure('Não é possível remover fabricante com equipamentos associados');
+      }
+
       // Verificar se não é deletável por outros motivos
       if (!existingManufacturer.isDeletable()) {
         return Result.failure('Este fabricante não pode ser removido');

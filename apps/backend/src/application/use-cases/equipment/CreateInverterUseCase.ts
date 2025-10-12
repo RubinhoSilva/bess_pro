@@ -1,6 +1,7 @@
 import { IUseCase } from '../../common/IUseCase';
 import { Result } from '../../common/Result';
 import { IInverterRepository } from '../../../domain/repositories/IInverterRepository';
+import { IManufacturerRepository } from '../../../domain/repositories/IManufacturerRepository';
 import { Inverter } from '../../../domain/entities/Inverter';
 import { CreateInverterCommand } from '../../dtos/input/equipment/CreateInverterCommand';
 import { InverterResponseDto } from '../../dtos/output/InverterResponseDto';
@@ -9,11 +10,18 @@ import { InverterMapper } from '../../mappers/InverterMapper';
 export class CreateInverterUseCase implements IUseCase<CreateInverterCommand, Result<InverterResponseDto>> {
   
   constructor(
-    private inverterRepository: IInverterRepository
+    private inverterRepository: IInverterRepository,
+    private manufacturerRepository: IManufacturerRepository
   ) {}
 
   async execute(command: CreateInverterCommand): Promise<Result<InverterResponseDto>> {
     try {
+      // Validar se o fabricante existe
+      const manufacturer = await this.manufacturerRepository.findById(command.manufacturerId);
+      if (!manufacturer) {
+        return Result.failure('Fabricante não encontrado');
+      }
+
       // Verificar se já existe um inversor com mesmo fabricante/modelo para o usuário
       const existingInverter = await this.inverterRepository.findByFabricanteModelo(
         command.fabricante,

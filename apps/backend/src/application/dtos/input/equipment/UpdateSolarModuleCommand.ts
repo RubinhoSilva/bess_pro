@@ -1,6 +1,7 @@
 export interface UpdateSolarModuleCommand {
   userId: string;
   id: string;
+  manufacturerId?: string;
   fabricante?: string;
   modelo?: string;
   potenciaNominal?: number; // Watts

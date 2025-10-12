@@ -35,6 +35,7 @@ export interface ModuleParameters {
   readonly diode: DiodeParameters;
   readonly sapm: SAPMParameters;
   readonly spectral: SpectralParameters;
+  readonly advanced: AdvancedModuleParameters;
 }
 
 export interface TemperatureCoefficients {
@@ -68,6 +69,15 @@ export interface SAPMParameters {
 export interface SpectralParameters {
   readonly am?: number; // Air mass
   readonly spectralResponse?: number[]; // Spectral response
+  readonly material?: string; // Material da célula (c-Si, a-Si, CdTe, etc.)
+  readonly technology?: string; // Tecnologia (mono-Si, mc-Si, a-Si, CdTe, etc.)
+}
+
+export interface AdvancedModuleParameters {
+  // Coeficientes de temperatura críticos
+  readonly alphaSc?: number; // Coef. temperatura corrente [A/°C]
+  readonly betaOc?: number; // Coef. temperatura tensão [V/°C]
+  readonly gammaR?: number; // Coef. temperatura potência [1/°C]
 }
 
 export interface ModuleDimensions {
@@ -89,4 +99,6 @@ export interface ModuleMetadata {
   readonly warranty: number; // Warranty in years
   readonly countryOfOrigin?: string; // Country of origin
   readonly assuranceYears?: number; // Performance assurance in years
+  readonly tolerance?: string; // ex: '+3/-0%'
+  readonly userId?: string; // User ID for ownership
 }

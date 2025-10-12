@@ -1,72 +1,113 @@
 import { Inverter } from '../../domain/entities/Inverter';
+import { Inverter as SharedInverter, InverterPower, MPPTConfiguration, ElectricalSpecifications, InverterDimensions, InverterMetadata, SandiaParameters, Manufacturer, GridType } from '@bess-pro/shared';
 import { InverterResponseDto, InverterListResponseDto } from '../dtos/output/InverterResponseDto';
+import { SystemUsers } from '../../domain/constants/SystemUsers';
 
 export class InverterMapper {
   
-  static toResponseDto(inverter: Inverter, moduleReferencePower?: number): InverterResponseDto {
-    const maxModulosSuportados = moduleReferencePower ? inverter.calculateMaxModules(moduleReferencePower) : undefined;
-    const maxStringsTotal = inverter.calculateMaxStrings();
-    const tipoFase = inverter.getPhaseType();
-    
+  static toSharedInverter(inverter: Inverter): SharedInverter {
+    // Criar um objeto manufacturer básico
+    const manufacturer: Manufacturer = {
+      id: inverter.manufacturerId || '',
+      name: inverter.fabricante,
+      type: 'INVERTER',
+      contact: {
+        email: undefined,
+        phone: undefined,
+        supportEmail: undefined,
+        supportPhone: undefined,
+      },
+      business: {
+        foundedYear: undefined,
+        headquarters: undefined,
+        employeeCount: undefined,
+        revenue: undefined,
+        stockTicker: undefined,
+        parentCompany: undefined,
+        subsidiaries: undefined,
+      },
+      certifications: [],
+      metadata: {
+        specialties: [],
+        markets: [],
+        qualityStandards: [],
+      },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    // Determinar grid type
+    let gridType: GridType = 'monofasico';
+    if (inverter.tipoRede?.toLowerCase().includes('trif')) {
+      gridType = 'trifasico';
+    } else if (inverter.tipoRede?.toLowerCase().includes('bif')) {
+      gridType = 'bifasico';
+    }
+
     return {
       id: inverter.id!,
-      userId: inverter.userId,
-      fabricante: inverter.fabricante,
-      modelo: inverter.modelo,
-      potenciaSaidaCA: inverter.potenciaSaidaCA,
-      tipoRede: inverter.tipoRede,
-      
-      // Dados de entrada (CC/FV)
-      potenciaFvMax: inverter.potenciaFvMax,
-      tensaoCcMax: inverter.tensaoCcMax,
-      numeroMppt: inverter.numeroMppt,
-      stringsPorMppt: inverter.stringsPorMppt,
-      faixaMppt: inverter.faixaMppt,
-      correnteEntradaMax: inverter.correnteEntradaMax,
-      
-      // Dados de saída (CA)
-      potenciaAparenteMax: inverter.potenciaAparenteMax,
-      correnteSaidaMax: inverter.correnteSaidaMax,
-      tensaoSaidaNominal: inverter.toJSON().tensaoSaidaNominal,
-      frequenciaNominal: inverter.toJSON().frequenciaNominal,
-      
-      // Eficiência
-      eficienciaMax: inverter.eficienciaMax,
-      eficienciaEuropeia: inverter.eficienciaEuropeia,
-      eficienciaMppt: inverter.toJSON().eficienciaMppt,
-      
-      // Proteções e certificações
-      protecoes: inverter.toJSON().protecoes,
-      certificacoes: inverter.certificacoes,
-      grauProtecao: inverter.toJSON().grauProtecao,
-      
-      // Características físicas
-      dimensoes: inverter.toJSON().dimensoes,
-      pesoKg: inverter.toJSON().pesoKg,
-      temperaturaOperacao: inverter.toJSON().temperaturaOperacao,
-      
-      // Dados comerciais
-      garantiaAnos: inverter.garantiaAnos,
-      datasheetUrl: inverter.datasheetUrl,
-      precoReferencia: inverter.toJSON().precoReferencia,
-      
-      // Parâmetros Sandia para simulação precisa
-      vdco: inverter.vdco,
-      pso: inverter.pso,
-      c0: inverter.c0,
-      c1: inverter.c1,
-      c2: inverter.c2,
-      c3: inverter.c3,
-      pnt: inverter.pnt,
-      
-      // Campos calculados
-      maxModulosSuportados,
-      maxStringsTotal,
-      tipoFase,
-      
-      createdAt: inverter.createdAt?.toISOString() || new Date().toISOString(),
-      updatedAt: inverter.updatedAt?.toISOString() || new Date().toISOString(),
+      manufacturer,
+      model: inverter.modelo,
+      power: {
+        ratedACPower: inverter.potenciaSaidaCA,
+        maxPVPower: inverter.potenciaFvMax || 0,
+        ratedDCPower: undefined,
+        shortCircuitVoltageMax: inverter.tensaoCcMax || 0,
+        maxInputCurrent: inverter.correnteEntradaMax || 0,
+        maxApparentPower: inverter.potenciaAparenteMax || 0,
+        maxDCVoltage: inverter.tensaoCcMax,
+        maxOutputCurrent: inverter.correnteSaidaMax,
+      } as InverterPower,
+      mppt: {
+        numberOfMppts: inverter.numeroMppt || 0,
+        stringsPerMppt: inverter.stringsPorMppt || 0,
+        mpptRange: inverter.faixaMppt,
+        maxInputCurrentPerMppt: inverter.correnteEntradaMax,
+      } as MPPTConfiguration,
+      electrical: {
+        maxEfficiency: inverter.eficienciaMax,
+        europeanEfficiency: inverter.eficienciaEuropeia,
+        mpptEfficiency: inverter.eficienciaMppt,
+        gridType,
+        ratedVoltage: inverter.tensaoSaidaNominal,
+        frequency: inverter.frequenciaNominal,
+        powerFactor: undefined,
+      } as ElectricalSpecifications,
+      dimensions: inverter.dimensoes ? {
+        widthMm: inverter.dimensoes.larguraMm,
+        heightMm: inverter.dimensoes.alturaMm,
+        depthMm: inverter.dimensoes.profundidadeMm,
+        weightKg: inverter.pesoKg || 0,
+      } as InverterDimensions : undefined,
+      metadata: {
+        datasheetUrl: inverter.datasheetUrl,
+        certifications: inverter.certificacoes || [],
+        warranty: inverter.garantiaAnos || 0,
+        connectionType: 'on-grid', // Default, poderia ser inferido
+        protections: inverter.protecoes,
+        protectionRating: inverter.grauProtecao,
+        operatingTemperature: inverter.temperaturaOperacao,
+        userId: inverter.userId,
+        sandiaParameters: {
+          vdco: inverter.vdco,
+          pso: inverter.pso,
+          c0: inverter.c0,
+          c1: inverter.c1,
+          c2: inverter.c2,
+          c3: inverter.c3,
+          pnt: inverter.pnt,
+        } as SandiaParameters,
+      } as InverterMetadata,
+      status: 'active',
+      isPublic: inverter.userId === SystemUsers.PUBLIC_EQUIPMENT,
+      createdAt: inverter.createdAt || new Date(),
+      updatedAt: inverter.updatedAt || new Date(),
     };
+  }
+
+  static toResponseDto(inverter: Inverter, moduleReferencePower?: number): InverterResponseDto {
+    return this.toSharedInverter(inverter);
   }
 
   static toListResponseDto(

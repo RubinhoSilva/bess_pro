@@ -1,6 +1,7 @@
 export interface UpdateInverterCommand {
   userId: string;
   id: string;
+  manufacturerId?: string;
   fabricante?: string;
   modelo?: string;
   potenciaSaidaCA?: number; // Potência nominal de saída CA (W)

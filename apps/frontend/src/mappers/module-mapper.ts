@@ -53,6 +53,11 @@ export const createModuleFromFormData = (
       spectral: {
         am: formData.am,
       },
+      advanced: {
+        alphaSc: formData.alphaSc || 0,
+        betaOc: formData.betaOc || 0,
+        gammaR: formData.gammaR || 0,
+      },
     },
     dimensions: {
       widthMm: formData.widthMm,

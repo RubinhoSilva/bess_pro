@@ -16,12 +16,19 @@ export class GetSolarModulesUseCase implements IUseCase<GetSolarModulesQuery, Re
       const { 
         userId,
         page = 1, 
-        pageSize = 20, 
-        search,
-        fabricante,
-        tipoCelula,
-        potenciaMin,
-        potenciaMax
+        pageSize = 20,
+        // Propriedades do ModuleFilters (shared)
+        searchTerm,
+        manufacturer,
+        cellType,
+        minPower,
+        maxPower,
+        // Propriedades de compatibilidade
+        search = searchTerm, // Usa searchTerm ou search como fallback
+        fabricante = manufacturer, // Usa manufacturer ou fabricante como fallback
+        tipoCelula = cellType, // Usa cellType ou tipoCelula como fallback
+        potenciaMin = minPower, // Usa minPower ou potenciaMin como fallback
+        potenciaMax = maxPower // Usa maxPower ou potenciaMax como fallback
       } = query;
 
       const { modules, total } = await this.solarModuleRepository.findByFilters({

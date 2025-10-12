@@ -20,6 +20,9 @@ export class InverterRoutes {
     // Semi-public route for equipment listing (optional auth to include user's inverters)
     this.router.get('/', this.authMiddleware.optional(), this.inverterController.findAll.bind(this.inverterController));
     
+    // Semi-public route for getting specific inverter (optional auth)
+    this.router.get('/:id', this.authMiddleware.optional(), this.inverterController.findById.bind(this.inverterController));
+    
     // Apply authentication middleware for protected routes
     this.router.use(this.authMiddleware.authenticate());
     

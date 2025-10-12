@@ -1,6 +1,7 @@
 import { IUseCase } from '../../common/IUseCase';
 import { Result } from '../../common/Result';
 import { ISolarModuleRepository } from '../../../domain/repositories/ISolarModuleRepository';
+import { IManufacturerRepository } from '../../../domain/repositories/IManufacturerRepository';
 import { SolarModule } from '../../../domain/entities/SolarModule';
 import { UpdateSolarModuleCommand } from '../../dtos/input/equipment/UpdateSolarModuleCommand';
 import { SolarModuleResponseDto } from '../../dtos/output/SolarModuleResponseDto';
@@ -9,7 +10,8 @@ import { SolarModuleMapper } from '../../mappers/SolarModuleMapper';
 export class UpdateSolarModuleUseCase implements IUseCase<UpdateSolarModuleCommand, Result<SolarModuleResponseDto>> {
   
   constructor(
-    private solarModuleRepository: ISolarModuleRepository
+    private solarModuleRepository: ISolarModuleRepository,
+    private manufacturerRepository: IManufacturerRepository
   ) {}
 
   async execute(command: UpdateSolarModuleCommand): Promise<Result<SolarModuleResponseDto>> {
@@ -20,6 +22,14 @@ export class UpdateSolarModuleUseCase implements IUseCase<UpdateSolarModuleComma
       const existingModule = await this.solarModuleRepository.findById(id);
       if (!existingModule || existingModule.userId !== userId) {
         return Result.failure('Módulo solar não encontrado');
+      }
+
+      // Validar novo fabricante se estiver sendo alterado
+      if (updateData.manufacturerId) {
+        const manufacturer = await this.manufacturerRepository.findById(updateData.manufacturerId);
+        if (!manufacturer) {
+          return Result.failure('Fabricante não encontrado');
+        }
       }
 
       // Se mudou fabricante/modelo, verificar duplicação

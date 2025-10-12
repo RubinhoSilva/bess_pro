@@ -4,8 +4,11 @@
 
 import { BaseEntity, Status } from '../common';
 
+export type ManufacturerType = 'SOLAR_MODULE' | 'INVERTER' | 'BOTH';
+
 export interface Manufacturer extends BaseEntity {
   readonly name: string;
+  readonly type: ManufacturerType;
   readonly description?: string;
   readonly website?: string;
   readonly contact: ManufacturerContact;
@@ -13,6 +16,8 @@ export interface Manufacturer extends BaseEntity {
   readonly certifications: string[];
   readonly metadata: ManufacturerMetadata;
   readonly status: Status;
+  readonly isDefault?: boolean;
+  readonly teamId?: string;
 }
 
 export interface ManufacturerContact {

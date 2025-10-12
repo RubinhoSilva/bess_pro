@@ -66,10 +66,6 @@ export class SolarModule extends BaseEntity {
   }
 
   private validateRequired(): void {
-    // manufacturerId is optional for backward compatibility
-    // if (!this.data.manufacturerId?.trim()) {
-    //   throw new Error('ID do fabricante é obrigatório');
-    // }
     if (!this.data.fabricante?.trim()) {
       throw new Error('Fabricante é obrigatório');
     }
@@ -87,7 +83,7 @@ export class SolarModule extends BaseEntity {
   // Getters
   get id(): string | undefined { return this.data.id; }
   get userId(): string { return this.data.userId; }
-  get manufacturerId(): string { return this.data.manufacturerId || ''; }
+  get manufacturerId(): string | undefined { return this.data.manufacturerId; }
   get fabricante(): string { return this.data.fabricante; }
   get modelo(): string { return this.data.modelo; }
   get potenciaNominal(): number { return this.data.potenciaNominal; }

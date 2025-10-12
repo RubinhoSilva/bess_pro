@@ -8,5 +8,6 @@ export * from './types/inverter';
 export * from './types/manufacturer';
 export * from './types/system';
 export * from './types/validation';
+export * from './validation';
 export * from './config/financial';
 // Export outros tipos conforme criados

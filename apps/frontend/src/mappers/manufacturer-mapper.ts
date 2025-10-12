@@ -11,6 +11,8 @@ export const createManufacturerFromFormData = (
 ): Omit<Manufacturer, 'id' | 'createdAt' | 'updatedAt'> => {
   return {
     name: formData.name,
+    type: (formData.type === 'solar_module' ? 'SOLAR_MODULE' : 
+            formData.type === 'inverter' ? 'INVERTER' : 'BOTH') as any,
     description: formData.description,
     website: formData.website,
     contact: {

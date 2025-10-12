@@ -1,6 +1,7 @@
 import { IUseCase } from '../../common/IUseCase';
 import { Result } from '../../common/Result';
 import { IInverterRepository } from '../../../domain/repositories/IInverterRepository';
+import { IManufacturerRepository } from '../../../domain/repositories/IManufacturerRepository';
 import { Inverter } from '../../../domain/entities/Inverter';
 import { UpdateInverterCommand } from '../../dtos/input/equipment/UpdateInverterCommand';
 import { InverterResponseDto } from '../../dtos/output/InverterResponseDto';
@@ -9,7 +10,8 @@ import { InverterMapper } from '../../mappers/InverterMapper';
 export class UpdateInverterUseCase implements IUseCase<UpdateInverterCommand, Result<InverterResponseDto>> {
   
   constructor(
-    private inverterRepository: IInverterRepository
+    private inverterRepository: IInverterRepository,
+    private manufacturerRepository: IManufacturerRepository
   ) {}
 
   async execute(command: UpdateInverterCommand): Promise<Result<InverterResponseDto>> {
@@ -20,6 +22,14 @@ export class UpdateInverterUseCase implements IUseCase<UpdateInverterCommand, Re
       const existingInverter = await this.inverterRepository.findById(id);
       if (!existingInverter || existingInverter.userId !== userId) {
         return Result.failure('Inversor não encontrado');
+      }
+
+      // Validar novo fabricante se estiver sendo alterado
+      if (updateData.manufacturerId) {
+        const manufacturer = await this.manufacturerRepository.findById(updateData.manufacturerId);
+        if (!manufacturer) {
+          return Result.failure('Fabricante não encontrado');
+        }
       }
 
       // Se mudou fabricante/modelo, verificar duplicação

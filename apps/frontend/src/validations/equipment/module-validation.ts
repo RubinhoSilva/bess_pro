@@ -57,6 +57,11 @@ export const moduleFormSchema = z.object({
   // Parâmetros espectrais (exatamente como no store)
   am: z.number().optional(),
   
+  // Parâmetros avançados
+  alphaSc: z.number().optional(),
+  betaOc: z.number().optional(),
+  gammaR: z.number().optional(),
+  
   // Dimensões (exatamente como no store)
   widthMm: z.number().positive('Largura deve ser positiva'),
   heightMm: z.number().positive('Altura deve ser positiva'),

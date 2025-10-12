@@ -1,5 +1,6 @@
 import { SolarModuleModel } from '../mongodb/schemas/SolarModuleSchema';
 import { ManufacturerSeeder } from './ManufacturerSeeder';
+import { SystemUsers } from '../../../domain/constants/SystemUsers';
 
 export class SolarModuleSeeder {
   static async seed(): Promise<void> {
@@ -209,7 +210,7 @@ export class SolarModuleSeeder {
         const existing = await SolarModuleModel.findOne({
           modelo: moduleData.modelo,
           manufacturerId,
-          userId: 'public-equipment-system'
+          userId: SystemUsers.PUBLIC_EQUIPMENT
         });
 
         if (existing) {
@@ -220,7 +221,7 @@ export class SolarModuleSeeder {
           const moduleToCreate = {
             ...moduleData,
             manufacturerId,
-            userId: 'public-equipment-system', // ID padrão para equipamentos públicos
+            userId: SystemUsers.PUBLIC_EQUIPMENT, // ID padrão para equipamentos públicos
             // Corrigir gammaR para estar dentro dos limites (-0.001 a 0)
             gammaR: Math.max(-0.001, moduleData.gammaR || -0.001)
           };

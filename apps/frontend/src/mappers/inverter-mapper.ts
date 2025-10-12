@@ -28,7 +28,7 @@ export const createInverterFromFormData = (
     electrical: {
       maxEfficiency: formData.maxEfficiency,
       gridType: formData.gridType,
-      ratedVoltage: formData.ratedVoltage,
+      ratedVoltage: formData.ratedVoltage?.toString(),
       frequency: formData.frequency,
       powerFactor: formData.powerFactor,
     },
