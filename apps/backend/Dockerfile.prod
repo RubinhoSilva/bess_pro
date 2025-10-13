@@ -21,7 +21,7 @@ COPY tsconfig.base.json ./packages/
 
 # Install shared package dependencies
 WORKDIR /app/packages/shared
-RUN npm ci
+RUN npm install
 
 # Copy shared source and build
 COPY packages/shared ./
@@ -29,7 +29,7 @@ RUN npm run build
 
 # Install backend dependencies (ALL, including devDependencies for build)
 WORKDIR /app/apps/backend
-RUN npm ci
+RUN npm install
 
 # Copy backend source code and config files
 COPY apps/backend/src ./src
