@@ -1,57 +1,42 @@
 # Multi-stage build for production ARM64
-FROM --platform=linux/arm64 node:20-alpine AS builder
+FROM --platform=linux/arm64 node:20-alpine AS builder-deps
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++ libc6-compat
+
+# Builder stage
+FROM builder-deps AS builder
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache python3 make g++
-
-# Copy TypeScript configuration FIRST
-COPY tsconfig.base.json ./
-
-# Copy package files
-COPY package*.json ./
-COPY apps/frontend/package*.json ./apps/frontend/
+# Copy package files first (better layer caching)
 COPY packages/shared/package*.json ./packages/shared/
+COPY apps/frontend/package*.json ./apps/frontend/
+COPY tsconfig.base.json ./
+COPY tsconfig.base.json ./packages/
 
-# Install all dependencies (including devDependencies for build)
+# Install shared package dependencies
+WORKDIR /app/packages/shared
+RUN npm ci
+
+# Copy shared source and build
+COPY packages/shared ./
+RUN npm run build
+
+# Install frontend dependencies (ALL, including devDependencies for build)
+WORKDIR /app/apps/frontend
 RUN npm ci && npm install @rollup/rollup-linux-arm64-musl --no-save
 
-# Copy source code
-COPY apps/frontend ./apps/frontend
-COPY packages/shared ./packages/shared
+# Copy frontend source code
+COPY apps/frontend ./
 
-# Verify TypeScript configuration and paths
-RUN echo "=== Verifying TypeScript configuration ===" && \
-    cd packages/shared && \
-    echo "=== Files in shared package ===" && \
-    ls -la && \
-    echo "=== TypeScript version ===" && \
-    npx tsc --version && \
-    echo "=== TypeScript config resolution ===" && \
-    npx tsc --showConfig && \
-    echo "=== TypeScript config check ===" && \
-    npx tsc --noEmit --skipLibCheck --listFiles || echo "TypeScript config check completed"
+# Fix shared package symlink
+RUN rm -rf ./node_modules/@bess-pro/shared && \
+    mkdir -p ./node_modules/@bess-pro && \
+    ln -s /app/packages/shared ./node_modules/@bess-pro/shared
 
-# Copy tsconfig.base.json for resolution (symlinks cause npm ENOTDIR errors)
-RUN cp /app/tsconfig.base.json /app/packages/tsconfig.base.json
-
-# Clean previous builds and build shared package with verbose output
-RUN echo "=== Building shared package ===" && \
-    cd packages/shared && \
-    npm run clean && \
-    npm run build && \
-    echo "=== Shared package build completed ===" && \
-    ls -la dist/ && \
-    echo "=== Verifying shared package output ===" && \
-    node -e "try { const pkg = require('./dist/index.js'); console.log('✓ Shared package builds successfully'); console.log('Available exports:', Object.keys(pkg).slice(0, 5), '...'); } catch(e) { console.error('✗ Shared package build failed:', e.message); process.exit(1); }"
-
-# Build the application with increased heap size and verbose output
-RUN echo "=== Building frontend application ===" && \
-    cd apps/frontend && \
-    NODE_OPTIONS="--max-old-space-size=2048" npm run build && \
-    echo "=== Frontend build completed ===" && \
-    ls -la dist/
+# Build the application with increased heap size
+RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
 # Production stage with Nginx ARM64
 FROM --platform=linux/arm64 nginx:alpine AS production
@@ -59,7 +44,7 @@ FROM --platform=linux/arm64 nginx:alpine AS production
 # Install curl for health check
 RUN apk add --no-cache curl
 
-# Copy custom nginx config  
+# Copy custom nginx config
 RUN echo 'server {' > /etc/nginx/conf.d/default.conf && \
     echo '    listen 80;' >> /etc/nginx/conf.d/default.conf && \
     echo '    server_name localhost;' >> /etc/nginx/conf.d/default.conf && \
