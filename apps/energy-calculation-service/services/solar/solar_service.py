@@ -297,7 +297,6 @@ class SolarCalculationService:
                 logger.info(f"    Energia DC MPPT: {dc_pre_clipping_mppt.sum() / 1000.0:.0f} kWh/ano")
 
             # Aplicar eficiência e clipping
-            efficiency_factor = efficiency_factor * 100
             dc_pre_clipping_with_eff = dc_inv_total_pure * efficiency_factor
             ac_inv_output = np.minimum(dc_pre_clipping_with_eff, paco_inv)
 
