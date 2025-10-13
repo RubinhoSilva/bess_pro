@@ -293,9 +293,6 @@ class SolarCalculationService:
 
                 dc_pre_clipping_mppt = mc.results.dc['p_mp'].fillna(0)
                 dc_inv_total_pure += dc_pre_clipping_mppt
-
-                logger.info(mc.results.ac['p_mp'].fillna(0).sum())
-                
                 dc_mppt_energy = dc_pre_clipping_mppt.sum() / 1000.0 / n_anos
                 logger.info(f"    Energia DC MPPT: {dc_pre_clipping_mppt.sum() / 1000.0:.0f} kWh/ano")
 
