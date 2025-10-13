@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,11 @@ import { Separator } from '@/components/ui/separator';
 import { Trash2, Plus, Home, Zap, AlertCircle, Compass, Triangle, Sun, Info, Settings } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AguaTelhado, SelectedInverter } from '@/contexts/DimensioningContext';
+import { AguaTelhado, SelectedInverter as LegacySelectedInverter } from '@/contexts/DimensioningContext';
+import { SelectedInverter } from '@bess-pro/shared';
 import { SolarSystemService } from '@/lib/solarSystemService';
 import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
-import { SolarModule } from '@/types/legacy-equipment';
+import { SolarModule } from '@bess-pro/shared';
 
 interface WaterSelectionFormProps {
   aguasTelhado: AguaTelhado[];
@@ -74,15 +75,30 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
       mpptNumero: number;
     }> = [];
 
+    // Verificar se há inversores selecionados
+    if (!selectedInverters?.length) {
+      console.log('🔍 [WaterSelectionForm] Nenhum inversor selecionado');
+      return channels;
+    }
+
+    console.log('🔍 [WaterSelectionForm] Processando inversores:', selectedInverters);
+
     selectedInverters.forEach(inverter => {
-      for (let unit = 1; unit <= inverter.quantity; unit++) {
-        for (let mppt = 1; mppt <= inverter.numeroMppt; mppt++) {
-          const uniqueInversorId = `${inverter.id}_unit${unit}`;
+      const quantity = inverter.quantity || 1;
+      const numberOfMppts = inverter.inverter.mppt.numberOfMppts || 1; // Acessar propriedade correta do tipo compartilhado
+      const manufacturerName = inverter.inverter.manufacturer.name || 'Desconhecido';
+      const modelName = inverter.inverter.model || 'Modelo';
+      
+      console.log(`🔍 [WaterSelectionForm] Inversor: ${manufacturerName} ${modelName}, Quantity: ${quantity}, MPPTs: ${numberOfMppts}`);
+      
+      for (let unit = 1; unit <= quantity; unit++) {
+        for (let mppt = 1; mppt <= numberOfMppts; mppt++) {
+          const uniqueInversorId = `${inverter.inverter.id}_unit${unit}`;
           const value = `${uniqueInversorId}_mppt${mppt}`;
           
           channels.push({
             value,
-            label: `${inverter.fabricante} ${inverter.modelo} #${unit} - MPPT ${mppt}`,
+            label: `${manufacturerName} ${modelName} #${unit} - MPPT ${mppt}`,
             inversorId: uniqueInversorId,
             mpptNumero: mppt
           });
@@ -90,6 +106,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
       }
     });
 
+    console.log('🔍 [WaterSelectionForm] Canais MPPT gerados:', channels);
     return channels;
   };
 
@@ -99,7 +116,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     const usedMppts = new Set<string>();
 
     // Verificar se há inversores selecionados
-    if (selectedInverters.length === 0) {
+    if (!selectedInverters?.length) {
       newErrors.push('Selecione pelo menos um inversor antes de configurar as orientações');
       setErrors(newErrors);
       return;
@@ -129,6 +146,12 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
   useEffect(() => {
     validateMpptAssignments();
   }, [aguasTelhado, selectedInverters]);
+
+  // Debug para verificar dados dos inversores
+  useEffect(() => {
+    console.log('🔍 [WaterSelectionForm] selectedInverters mudou:', selectedInverters);
+    console.log('🔍 [WaterSelectionForm] availableChannels:', getAvailableMpptChannels());
+  }, [selectedInverters]);
 
   // Recalcular geração quando perdas do sistema mudarem
   useEffect(() => {
@@ -245,19 +268,19 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
   };
 
   // Preparar dados para MPPT calculations
-  const invertersForMPPT = selectedInverters.map(inv => ({
-    id: inv.id || inv.inverterId,
-    fabricante: inv.fabricante,
-    modelo: inv.modelo,
-    potenciaSaidaCA: inv.potenciaSaidaCA,
-    potenciaFvMax: inv.potenciaFvMax,
-    tensaoCcMax: inv.tensaoCcMax,
-    numeroMppt: inv.numeroMppt,
-    stringsPorMppt: inv.stringsPorMppt,
-    correnteEntradaMax: inv.correnteEntradaMax,
-    faixaMpptMin: inv.faixaMpptMin,
-    faixaMpptMax: inv.faixaMpptMax,
-    tipoRede: inv.tipoRede
+  const invertersForMPPT = selectedInverters?.map(inv => ({
+    id: inv.inverter.id,
+    fabricante: inv.inverter.manufacturer.name || 'Desconhecido',
+    modelo: inv.inverter.model || 'Modelo',
+    potenciaSaidaCA: inv.inverter.power.ratedACPower || 0,
+    potenciaFvMax: inv.inverter.power.maxPVPower || 0,
+    tensaoCcMax: inv.inverter.power.maxDCVoltage || 0,
+    numeroMppt: inv.inverter.mppt.numberOfMppts || 1,
+    stringsPorMppt: inv.inverter.mppt.stringsPerMppt || 1,
+    correnteEntradaMax: inv.inverter.power.maxInputCurrent || 0,
+    faixaMpptMin: inv.inverter.mppt.mpptRange ? parseInt(inv.inverter.mppt.mpptRange.split('-')[0]) : 0,
+    faixaMpptMax: inv.inverter.mppt.mpptRange ? parseInt(inv.inverter.mppt.mpptRange.split('-')[1]) : 0,
+    tipoRede: inv.inverter.electrical.gridType || 'Desconhecido'
   })) || [];
 
   const defaultCoordinates = {
@@ -265,16 +288,38 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     longitude: longitude || -47.8822
   };
 
-  // Hook para calcular limites MPPT - agora usa selectedModule completo
-  const moduleToUse = selectedModule && selectedModule.voc && selectedModule.tempCoefVoc ? {
-    potenciaNominal: selectedModule.potenciaNominal,
-    vocStc: selectedModule.voc,
-    tempCoefVoc: selectedModule.tempCoefVoc
-  } : undefined;
+  // Hook para calcular limites MPPT - agora usa selectedModule completo com tipo compartilhado
+  const moduleToUse = useMemo(() => {
+    if (!selectedModule) {
+      console.log('❌ [WaterSelectionForm] Nenhum módulo selecionado para cálculo MPPT');
+      return undefined;
+    }
+
+    // Verificar se está usando tipo compartilhado com os caminhos corretos
+    const hasValidSharedType = 
+      selectedModule.specifications?.voc && 
+      selectedModule.parameters?.temperature?.tempCoeffVoc &&
+      selectedModule.nominalPower;
+
+    if (!hasValidSharedType) {
+      console.log('❌ [WaterSelectionForm] Módulo com dados incompletos ou tipo incorreto:', {
+        specifications: selectedModule.specifications,
+        parameters: selectedModule.parameters,
+        nominalPower: selectedModule.nominalPower
+      });
+      return undefined;
+    }
+
+    return {
+      potenciaNominal: selectedModule.nominalPower,
+      vocStc: selectedModule.specifications.voc,
+      tempCoefVoc: selectedModule.parameters.temperature.tempCoeffVoc
+    };
+  }, [selectedModule]);
     
   const mpptLimits = useMultipleMPPTCalculations(
     invertersForMPPT,
-    moduleToUse || { potenciaNominal: potenciaModulo, vocStc: 0, tempCoefVoc: 0 },
+    moduleToUse, // ❌ REMOVER fallback com zeros - só calcular com dados válidos
     defaultCoordinates,
     Boolean(moduleToUse && selectedInverters?.length)
   );
@@ -285,7 +330,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     
     let totalMaxModules = 0;
     selectedInverters.forEach(inverter => {
-      const inverterId = inverter.id || inverter.inverterId;
+      const inverterId = inverter.inverter.id;
       const limit = mpptLimits[inverterId];
       if (limit && !limit.isLoading && !limit.error) {
         totalMaxModules += limit.modulosTotal * (inverter.quantity || 1);
@@ -368,26 +413,26 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
 
       // Preparar dados do inversor para incluir em cada água
       const inverterData = selectedInverters.length > 0 ? {
-        fabricante: selectedInverters[0].fabricante,
-        modelo: selectedInverters[0].modelo,
-        potencia_saida_ca_w: selectedInverters[0].potenciaSaidaCA,
-        tipo_rede: selectedInverters[0].tipoRede,
-        potencia_fv_max_w: selectedInverters[0].potenciaFvMax,
-        tensao_cc_max_v: selectedInverters[0].tensaoCcMax,
-        numero_mppt: selectedInverters[0].numeroMppt,
-        strings_por_mppt: selectedInverters[0].stringsPorMppt,
-        eficiencia_max: selectedInverters[0].eficienciaMax,
-        efficiency_dc_ac: (selectedInverters[0].eficienciaMax ?? 0) / 100,
-        corrente_entrada_max_a: selectedInverters[0].correnteEntradaMax,
-        potencia_aparente_max_va: selectedInverters[0].potenciaAparenteMax,
-        // Parâmetros Sandia
-        vdco: selectedInverters[0].vdco,
-        pso: selectedInverters[0].pso,
-        c0: selectedInverters[0].c0,
-        c1: selectedInverters[0].c1,
-        c2: selectedInverters[0].c2,
-        c3: selectedInverters[0].c3,
-        pnt: selectedInverters[0].pnt
+        fabricante: selectedInverters[0].inverter.manufacturer.name || 'Desconhecido',
+        modelo: selectedInverters[0].inverter.model || 'Modelo',
+        potencia_saida_ca_w: selectedInverters[0].inverter.power.ratedACPower || 0,
+        tipo_rede: selectedInverters[0].inverter.electrical.gridType || 'Desconhecido',
+        potencia_fv_max_w: selectedInverters[0].inverter.power.maxPVPower || 0,
+        tensao_cc_max_v: selectedInverters[0].inverter.power.maxDCVoltage || 0,
+        numero_mppt: selectedInverters[0].inverter.mppt.numberOfMppts || 1,
+        strings_por_mppt: selectedInverters[0].inverter.mppt.stringsPerMppt || 1,
+        eficiencia_max: selectedInverters[0].inverter.electrical.maxEfficiency || 0,
+        efficiency_dc_ac: ((selectedInverters[0].inverter.electrical.maxEfficiency || 0) / 100),
+        corrente_entrada_max_a: selectedInverters[0].inverter.power.maxInputCurrent || 0,
+        potencia_aparente_max_va: selectedInverters[0].inverter.power.maxApparentPower || 0,
+        // Parâmetros Sandia (se disponíveis no tipo compartilhado)
+        vdco: undefined, // Não disponível no tipo compartilhado atualmente
+        pso: undefined,
+        c0: undefined,
+        c1: undefined,
+        c2: undefined,
+        c3: undefined,
+        pnt: undefined
       } : undefined;
 
       // Preparar dados para o cálculo usando TODAS as águas de telhado
@@ -408,48 +453,45 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
           // ✅ NOVO: Incluir dados do inversor dentro de cada água
           inversor: inverterData
         })),
-        potenciaModulo,
+        potenciaModulo: selectedModule ? selectedModule.nominalPower : potenciaModulo,
         energyBills: [{ 
           consumoMensal: [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500] // 6000 kWh/ano padrão
         }],
         selectedModules: selectedModule ? (() => {
           return [{
-            fabricante: selectedModule.fabricante,
-            modelo: selectedModule.modelo,
-            potencia_nominal_w: selectedModule.potenciaNominal,
-            largura_mm: selectedModule.larguraMm,
-            altura_mm: selectedModule.alturaMm,
-            peso_kg: selectedModule.pesoKg,
-            vmpp: selectedModule.vmpp,
-            impp: selectedModule.impp,
-            voc_stc: selectedModule.voc,
-            isc_stc: selectedModule.isc,
-            eficiencia: selectedModule.eficiencia,
-            temp_coef_pmax: selectedModule.tempCoefPmax,
-            alpha_sc: selectedModule.alphaSc || selectedModule.tempCoefPmax,
-            beta_oc: selectedModule.betaOc || selectedModule.tempCoefVoc,
-            gamma_r: selectedModule.gammaR || selectedModule.tempCoefIsc,
+            fabricante: selectedModule.manufacturer.name,
+            modelo: selectedModule.model,
+            potencia_nominal_w: selectedModule.nominalPower,
+            largura_mm: selectedModule.dimensions.widthMm,
+            altura_mm: selectedModule.dimensions.heightMm,
+            peso_kg: selectedModule.dimensions.weightKg,
+            vmpp: selectedModule.specifications.vmpp,
+            impp: selectedModule.specifications.impp,
+            voc_stc: selectedModule.specifications.voc,
+            isc_stc: selectedModule.specifications.isc,
+            eficiencia: selectedModule.specifications.efficiency,
+            temp_coef_pmax: selectedModule.parameters.temperature.tempCoeffPmax,
+            alpha_sc: selectedModule.parameters.temperature.tempCoeffPmax / 100,
+            beta_oc: selectedModule.parameters.temperature.tempCoeffVoc / 100,
+            gamma_r: selectedModule.parameters.temperature.tempCoeffIsc / 100,
             // Parâmetros do modelo de diodo único
-            cells_in_series: selectedModule.numeroCelulas,
-            a_ref: selectedModule.aRef,
-            il_ref: selectedModule.iLRef,
-            io_ref: selectedModule.iORef,
-            rs: selectedModule.rS,
-            rsh_ref: selectedModule.rShRef,
+            cells_in_series: selectedModule.specifications.numberOfCells,
+            a_ref: selectedModule.parameters.diode.aRef,
+            il_ref: selectedModule.parameters.diode.iLRef,
+            io_ref: selectedModule.parameters.diode.iORef,
+            rs: selectedModule.parameters.diode.rS,
+            rsh_ref: selectedModule.parameters.diode.rShRef,
             // Outros parâmetros
-            material: selectedModule.material,
-            technology: selectedModule.technology
+            material: selectedModule.parameters.spectral.material,
+            technology: selectedModule.specifications.technology
           }];
         })().map(m => {
           console.log('🔍 [WaterSelectionForm] selectedModule ENVIADO:', JSON.stringify({
             fabricante: m.fabricante,
             modelo: m.modelo,
-            alphaSc: selectedModule?.alphaSc,
-            betaOc: selectedModule?.betaOc,
-            gammaR: selectedModule?.gammaR,
-            tempCoefPmax: selectedModule?.tempCoefPmax,
-            tempCoefVoc: selectedModule?.tempCoefVoc,
-            tempCoefIsc: selectedModule?.tempCoefIsc,
+            tempCoeffPmax: selectedModule?.parameters?.temperature?.tempCoeffPmax,
+            tempCoeffVoc: selectedModule?.parameters?.temperature?.tempCoeffVoc,
+            tempCoeffIsc: selectedModule?.parameters?.temperature?.tempCoeffIsc,
             alpha_sc: m.alpha_sc,
             beta_oc: m.beta_oc,
             gamma_r: m.gamma_r,
@@ -568,6 +610,16 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
               O número máximo de orientações é limitado pelo total de canais MPPT dos inversores selecionados.
             </p>
           </div>
+        )}
+
+        {/* Alerta quando não há módulo selecionado */}
+{!selectedModule && selectedInverters.length > 0 && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Selecione um módulo solar para calcular o limite máximo de módulos por string e otimizar a configuração do sistema.
+            </AlertDescription>
+          </Alert>
         )}
 
         {/* Lista de orientações */}
@@ -744,118 +796,118 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                             <Settings className="w-4 h-4" />
                             Módulos por String
                           </Label>
-                          {hasValidMppt && (() => {
-                            // Obter limite específico do MPPT selecionado
-                            const inverterData = selectedInverters.find(inv => 
-                              (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
-                            );
-                            if (!inverterData) return null;
-                            
-                            const inverterId = inverterData.id || inverterData.inverterId;
-                            const limit = mpptLimits[inverterId];
-                            
-                            if (limit && !limit.isLoading && !limit.error) {
-                              return (
-                                <span className="text-xs text-muted-foreground">
-                                  Máx: {limit.modulosPorString} módulos/string
-                                </span>
-                              );
-                            }
-                            return null;
-                          })()}
+                           {hasValidMppt && (() => {
+                             // Obter limite específico do MPPT selecionado
+                             const inverterData = selectedInverters.find(inv => 
+                               inv.inverter.id === agua.inversorId?.split('_unit')[0]
+                             );
+                             if (!inverterData) return null;
+                             
+                             const inverterId = inverterData.inverter.id;
+                             const limit = mpptLimits[inverterId];
+                             
+                             if (limit && !limit.isLoading && !limit.error) {
+                               return (
+                                 <span className="text-xs text-muted-foreground">
+                                   Máx: {limit.modulosPorString} módulos/string
+                                 </span>
+                               );
+                             }
+                             return null;
+                           })()}
                         </div>
                         <Input
                           type="number"
                           min="0"
-                          max={hasValidMppt ? (() => {
-                            const inverterData = selectedInverters.find(inv => 
-                              (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
-                            );
-                            if (!inverterData) return 100;
-                            
-                            const inverterId = inverterData.id || inverterData.inverterId;
-                            const limit = mpptLimits[inverterId];
+                           max={hasValidMppt ? (() => {
+                             const inverterData = selectedInverters.find(inv => 
+                               inv.inverter.id === agua.inversorId?.split('_unit')[0]
+                             );
+                             if (!inverterData) return 100;
+                             
+                             const inverterId = inverterData.inverter.id;
+                             const limit = mpptLimits[inverterId];
 
-                            return limit && !limit.isLoading && !limit.error ? limit.modulosPorString : 100;
-                          })() : 100}
+                             return limit && !limit.isLoading && !limit.error ? limit.modulosPorString : 100;
+                           })() : 100}
                           value={agua.numeroModulos}
                           onChange={(e) => {
                             const value = parseInt(e.target.value) || 0;
 
                             let maxLimit = 100; // Fallback
 
-                            if (hasValidMppt) {
-                              const inverterData = selectedInverters.find(inv =>
-                                (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
-                              );
-                              if (inverterData) {
-                                const inverterId = inverterData.id || inverterData.inverterId;
-                                const limit = mpptLimits[inverterId];
-                                if (limit && !limit.isLoading && !limit.error) {
-                                  maxLimit = limit.modulosPorString;
-                                }
-                              }
-                            }
+                             if (hasValidMppt) {
+                               const inverterData = selectedInverters.find(inv =>
+                                 inv.inverter.id === agua.inversorId?.split('_unit')[0]
+                               );
+                               if (inverterData) {
+                                 const inverterId = inverterData.inverter.id;
+                                 const limit = mpptLimits[inverterId];
+                                 if (limit && !limit.isLoading && !limit.error) {
+                                   maxLimit = limit.modulosPorString;
+                                 }
+                               }
+                             }
 
                             const finalValue = Math.min(value, maxLimit);
 
                             handleUpdateAgua(agua.id, { numeroModulos: finalValue });
                           }}
                           placeholder="0"
-                          className={hasValidMppt ? (() => {
-                            const inverterData = selectedInverters.find(inv => 
-                              (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
-                            );
-                            if (!inverterData) return '';
-                            
-                            const inverterId = inverterData.id || inverterData.inverterId;
-                            const limit = mpptLimits[inverterId];
+                           className={hasValidMppt ? (() => {
+                             const inverterData = selectedInverters.find(inv => 
+                               inv.inverter.id === agua.inversorId?.split('_unit')[0]
+                             );
+                             if (!inverterData) return '';
+                             
+                             const inverterId = inverterData.inverter.id;
+                             const limit = mpptLimits[inverterId];
 
-                            if (limit && !limit.isLoading && !limit.error) {
-                              return agua.numeroModulos > limit.modulosPorString ? 'border-red-500' : '';
-                            }
-                            return '';
-                          })() : ''}
+                             if (limit && !limit.isLoading && !limit.error) {
+                               return agua.numeroModulos > limit.modulosPorString ? 'border-red-500' : '';
+                             }
+                             return '';
+                           })() : ''}
                         />
-                        {hasValidMppt && (() => {
-                          const inverterData = selectedInverters.find(inv => 
-                            (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
-                          );
-                          if (!inverterData) return null;
-                          
-                          const inverterId = inverterData.id || inverterData.inverterId;
-                          const limit = mpptLimits[inverterId];
+                         {hasValidMppt && (() => {
+                           const inverterData = selectedInverters.find(inv => 
+                             inv.inverter.id === agua.inversorId?.split('_unit')[0]
+                           );
+                           if (!inverterData) return null;
+                           
+                           const inverterId = inverterData.inverter.id;
+                           const limit = mpptLimits[inverterId];
 
-                          if (limit && !limit.isLoading && !limit.error && agua.numeroModulos > limit.modulosPorString) {
-                            return (
-                              <p className="text-xs text-red-500 flex items-center gap-1">
-                                <AlertCircle className="w-3 h-3" />
-                                Excede limite máximo ({limit.modulosPorString} módulos por string)
-                              </p>
-                            );
-                          }
-                          return null;
-                        })()}
+                           if (limit && !limit.isLoading && !limit.error && agua.numeroModulos > limit.modulosPorString) {
+                             return (
+                               <p className="text-xs text-red-500 flex items-center gap-1">
+                                 <AlertCircle className="w-3 h-3" />
+                                 Excede limite máximo ({limit.modulosPorString} módulos por string)
+                               </p>
+                             );
+                           }
+                           return null;
+                         })()}
                         
-                        {/* Distribuição por strings */}
-                        {hasValidMppt && agua.numeroModulos > 0 && (() => {
-                          const inverterData = selectedInverters.find(inv =>
-                            (inv.id || inv.inverterId) === agua.inversorId?.split('_unit')[0]
-                          );
-                          if (!inverterData) return null;
+                         {/* Distribuição por strings */}
+                         {hasValidMppt && agua.numeroModulos > 0 && (() => {
+                           const inverterData = selectedInverters.find(inv =>
+                             inv.inverter.id === agua.inversorId?.split('_unit')[0]
+                           );
+                           if (!inverterData) return null;
 
-                          const stringsPorMppt = inverterData.stringsPorMppt || 1;
-                          const totalModulosNoMppt = agua.numeroModulos * stringsPorMppt;
+                           const stringsPorMppt = inverterData.inverter.mppt.stringsPerMppt || 1;
+                           const totalModulosNoMppt = agua.numeroModulos * stringsPorMppt;
 
-                          return (
-                            <div className="mt-1">
-                              <p className="text-xs text-blue-600 flex items-center gap-1">
-                                <Settings className="w-3 h-3" />
-                                {agua.numeroModulos} módulos/string × {stringsPorMppt} strings = {totalModulosNoMppt} módulos no MPPT
-                              </p>
-                            </div>
-                          );
-                        })()}
+                           return (
+                             <div className="mt-1">
+                               <p className="text-xs text-blue-600 flex items-center gap-1">
+                                 <Settings className="w-3 h-3" />
+                                 {agua.numeroModulos} módulos/string × {stringsPorMppt} strings = {totalModulosNoMppt} módulos no MPPT
+                               </p>
+                             </div>
+                           );
+                         })()}
                       </div>
                     </div>
                   </div>
@@ -981,7 +1033,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                     {aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) > maxModules && ' (Excede!)'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {((aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) * potenciaModulo) / 1000).toFixed(1)} kWp
+                    {((aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) * (selectedModule ? selectedModule.nominalPower : potenciaModulo)) / 1000).toFixed(1)} kWp
                   </p>
                 </div>
                 
