@@ -1,8 +1,9 @@
 import { Schema, model, Document } from 'mongoose';
 
 export interface ISolarModuleDocument extends Document {
-  userId: string;
+  teamId: string;
   manufacturerId: string;
+  isDefault?: boolean;
   modelo: string;
   potenciaNominal: number;
   larguraMm?: number;
@@ -50,9 +51,15 @@ export interface ISolarModuleDocument extends Document {
 }
 
 const SolarModuleSchema = new Schema<ISolarModuleDocument>({
-  userId: {
+  teamId: {
     type: String,
     required: true,
+    index: true
+  },
+  isDefault: {
+    type: Boolean,
+    required: false,
+    default: false,
     index: true
   },
   manufacturerId: {
@@ -220,8 +227,8 @@ const SolarModuleSchema = new Schema<ISolarModuleDocument>({
 });
 
 // Indexes
-SolarModuleSchema.index({ userId: 1, manufacturerId: 1, modelo: 1 }, { unique: true });
-SolarModuleSchema.index({ userId: 1, potenciaNominal: 1 });
+SolarModuleSchema.index({ teamId: 1, manufacturerId: 1, modelo: 1 }, { unique: true });
+SolarModuleSchema.index({ teamId: 1, potenciaNominal: 1 });
 SolarModuleSchema.index({ 
   modelo: 'text', 
   tipoCelula: 'text' 

@@ -107,7 +107,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
     metadata: {
       warranty: 25,
       certifications: [],
-    }
+    },
+    teamId: '', // Will be set by service
   });
 
   // Temp string values for temperature coefficients (to allow free typing)
@@ -240,7 +241,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
         metadata: {
           warranty: 25,
           certifications: [],
-        }
+        },
+        teamId: '', // Will be set by service
       });
       setTempCoefPmaxStr('');
       setTempCoefVocStr('');

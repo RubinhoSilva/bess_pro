@@ -210,18 +210,18 @@ export class SolarModuleSeeder {
         const existing = await SolarModuleModel.findOne({
           modelo: moduleData.modelo,
           manufacturerId,
-          userId: SystemUsers.PUBLIC_EQUIPMENT
+          teamId: SystemUsers.PUBLIC_EQUIPMENT
         });
 
         if (existing) {
           existingCount++;
           console.log(`⏭️  Módulo já existe: ${moduleData.fabricante} ${moduleData.modelo}`);
         } else {
-          // Criar o módulo com o manufacturerId e userId padrão
+          // Criar o módulo com o manufacturerId e teamId padrão
           const moduleToCreate = {
             ...moduleData,
             manufacturerId,
-            userId: SystemUsers.PUBLIC_EQUIPMENT, // ID padrão para equipamentos públicos
+            teamId: SystemUsers.PUBLIC_EQUIPMENT, // ID padrão para equipamentos públicos
             // Corrigir gammaR para estar dentro dos limites (-0.001 a 0)
             gammaR: Math.max(-0.001, moduleData.gammaR || -0.001)
           };

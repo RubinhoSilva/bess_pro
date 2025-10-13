@@ -9,6 +9,7 @@ import {
   UpdateModuleRequest
 } from '@bess-pro/shared';
 import { ErrorHandler } from '../errors/ErrorHandler';
+import { useAuthStore } from '../store/auth-store';
 
 export class ModuleService {
   private static instance: ModuleService;
@@ -31,7 +32,16 @@ export class ModuleService {
   // CRUD operations
   async getModules(filters?: ModuleFilters): Promise<PaginatedModules> {
     try {
-      const response = await api.get('/equipment/modules', { params: { filters } });
+      // Obter teamId do usuário autenticado
+      const { user } = useAuthStore.getState();
+      
+      // Adicionar teamId aos filtros
+      const requestFilters = {
+        ...filters,
+        teamId: user?.teamId
+      };
+      
+      const response = await api.get('/equipment/modules', { params: { filters: requestFilters } });
       return response.data.data;
     } catch (error) {
       this.handleError(error, 'getModules');
@@ -49,7 +59,20 @@ export class ModuleService {
 
   async createModule(moduleData: CreateModuleRequest): Promise<SolarModule> {
     try {
-      const response = await api.post('/equipment/modules', moduleData);
+      // Obter teamId do usuário autenticado
+      const { user } = useAuthStore.getState();
+      
+      if (!user?.teamId) {
+        throw new Error('Usuário não possui teamId. Não é possível criar módulo.');
+      }
+      
+      // Adicionar teamId aos dados
+      const dataWithTeam = {
+        ...moduleData,
+        teamId: user.teamId
+      };
+      
+      const response = await api.post('/equipment/modules', dataWithTeam);
       return response.data.data;
     } catch (error) {
       this.handleError(error, 'createModule');
@@ -121,8 +144,12 @@ export class ModuleService {
   // Search and filter helpers
   async searchModules(query: string, limit: number = 10): Promise<SolarModule[]> {
     try {
+      // Obter teamId do usuário autenticado
+      const { user } = useAuthStore.getState();
+      
       const filters: ModuleFilters = {
         searchTerm: query,
+        teamId: user?.teamId,
       };
 
       const response = await api.get('/equipment/modules', { 
@@ -140,8 +167,12 @@ export class ModuleService {
 
   async getModulesByManufacturer(manufacturerId: string): Promise<SolarModule[]> {
     try {
+      // Obter teamId do usuário autenticado
+      const { user } = useAuthStore.getState();
+      
       const filters: ModuleFilters = {
         manufacturerId,
+        teamId: user?.teamId,
       };
 
       const response = await api.get('/equipment/modules', { 

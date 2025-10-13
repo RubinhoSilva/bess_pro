@@ -3,9 +3,10 @@ import { CreateModuleRequest, UpdateModuleRequest } from '@bess-pro/shared';
 
 export class SharedToSolarModuleMapper {
   
-  static createRequestToEntityData(request: CreateModuleRequest & { userId: string }): SolarModuleData {
+  static createRequestToEntityData(request: CreateModuleRequest): SolarModuleData {
     return {
-      userId: request.userId,
+      teamId: request.teamId,
+      isDefault: false, // Módulos criados por usuários não são padrão
       manufacturerId: request.manufacturer,
       modelo: request.model,
       potenciaNominal: request.nominalPower,
@@ -67,10 +68,8 @@ export class SharedToSolarModuleMapper {
     };
   }
   
-  static updateRequestToEntityData(request: UpdateModuleRequest & { userId: string }): Partial<SolarModuleData> {
-    const data: Partial<SolarModuleData> = {
-      userId: request.userId
-    };
+  static updateRequestToEntityData(request: UpdateModuleRequest): Partial<SolarModuleData> {
+    const data: Partial<SolarModuleData> = {};
     
     if (request.manufacturer !== undefined) data.manufacturerId = request.manufacturer;
     if (request.model !== undefined) data.modelo = request.model;

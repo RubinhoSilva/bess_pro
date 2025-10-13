@@ -15,7 +15,8 @@
     "clean": "rm -rf dist",
     "seed:equipment": "ts-node -r tsconfig-paths/register src/infrastructure/cli/seedEquipment.ts",
     "seed:manufacturers": "ts-node -r tsconfig-paths/register src/infrastructure/cli/seedManufacturers.ts",
-    "fix:project-index": "ts-node -r tsconfig-paths/register src/scripts/fix-project-name-index.ts"
+    "fix:project-index": "ts-node -r tsconfig-paths/register src/scripts/fix-project-name-index.ts",
+    "migrate": "ts-node -r tsconfig-paths/register src/infrastructure/database/migrations/runMigrations.ts"
   },
   "dependencies": {
     "@bess-pro/shared": "file:../../packages/shared",

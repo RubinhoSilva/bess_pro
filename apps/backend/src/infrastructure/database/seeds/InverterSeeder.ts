@@ -309,18 +309,18 @@ export class InverterSeeder {
         const existing = await InverterModel.findOne({
           modelo: inverterData.modelo,
           manufacturerId,
-          userId: SystemUsers.PUBLIC_EQUIPMENT
+          teamId: SystemUsers.PUBLIC_EQUIPMENT
         });
 
         if (existing) {
           existingCount++;
           console.log(`⏭️  Inversor já existe: ${inverterData.fabricante} ${inverterData.modelo}`);
         } else {
-          // Criar o inversor com o manufacturerId e userId padrão
+          // Criar o inversor com o manufacturerId e teamId padrão
           const inverterToCreate = {
             ...inverterData,
             manufacturerId,
-            userId: SystemUsers.PUBLIC_EQUIPMENT // ID padrão para equipamentos públicos
+            teamId: SystemUsers.PUBLIC_EQUIPMENT // ID padrão para equipamentos públicos
           };
 
           await InverterModel.create(inverterToCreate);

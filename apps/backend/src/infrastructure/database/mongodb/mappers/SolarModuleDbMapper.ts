@@ -6,11 +6,12 @@ export class SolarModuleDbMapper implements RepositoryMapper<SolarModule, ISolar
   
   toDomain(doc: ISolarModuleDocument): SolarModule {
     const obj = doc.toObject();
-    return new SolarModule({
+    const module = new SolarModule({
       ...obj,
       id: doc._id?.toString(),
       manufacturerId: obj.manufacturerId
     });
+    return module;
   }
 
   toPersistence(entity: SolarModule): Partial<ISolarModuleDocument> {
@@ -21,7 +22,7 @@ export class SolarModuleDbMapper implements RepositoryMapper<SolarModule, ISolar
     const data = entity.toJSON();
     
     // Remover campos que não devem ser atualizados
-    const { id, createdAt, userId, ...updateData } = data;
+    const { id, createdAt, teamId, ...updateData } = data;
     
     return {
       ...updateData,

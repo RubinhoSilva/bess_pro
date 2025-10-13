@@ -105,10 +105,9 @@ export class SolarModuleMapper {
         certifications: module.certificacoes || [],
         warranty: module.garantiaAnos || 0,
         tolerance: module.tolerancia,
-        userId: module.userId,
       } as ModuleMetadata,
       status: 'active',
-      isPublic: module.userId === SystemUsers.PUBLIC_EQUIPMENT,
+      isPublic: module.isDefault || false,
       createdAt: module.createdAt || new Date(),
       updatedAt: module.updatedAt || new Date(),
     };

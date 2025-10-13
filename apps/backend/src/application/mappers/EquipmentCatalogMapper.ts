@@ -220,6 +220,7 @@ export class EquipmentCatalogMapper {
       manufacturer: command.manufacturerId,
       model: command.modelo,
       nominalPower: command.potenciaNominal,
+      teamId: command.teamId || '',
       specifications: {
         vmpp: command.vmpp,
         impp: command.impp,

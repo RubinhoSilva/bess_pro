@@ -8,15 +8,20 @@ import { SolarModuleResponseDto } from '../../dtos/output/SolarModuleResponseDto
 import { SolarModuleMapper } from '../../mappers/SolarModuleMapper';
 import { SharedToSolarModuleMapper } from '../../mappers/SharedToSolarModuleMapper';
 
-export class CreateSolarModuleUseCase implements IUseCase<CreateModuleRequest & { userId: string }, Result<SolarModuleResponseDto>> {
+export class CreateSolarModuleUseCase implements IUseCase<CreateModuleRequest, Result<SolarModuleResponseDto>> {
    
   constructor(
     private solarModuleRepository: ISolarModuleRepository,
     private manufacturerRepository: IManufacturerRepository
   ) {}
 
-  async execute(request: CreateModuleRequest & { userId: string }): Promise<Result<SolarModuleResponseDto>> {
+  async execute(request: CreateModuleRequest): Promise<Result<SolarModuleResponseDto>> {
     try {
+      // Validar teamId
+      if (!request.teamId) {
+        return Result.failure('ID do time é obrigatório');
+      }
+
       // Validar se o fabricante existe
       const manufacturerId = request.manufacturer;
       if (!manufacturerId) {
@@ -28,11 +33,11 @@ export class CreateSolarModuleUseCase implements IUseCase<CreateModuleRequest & 
         return Result.failure('Fabricante não encontrado');
       }
 
-      // Verificar se já existe um módulo com mesmo fabricante/modelo para o usuário
+      // Verificar se já existe um módulo com mesmo fabricante/modelo para o time
       const existingModule = await this.solarModuleRepository.findByManufacturerModelo(
         manufacturerId,
         request.model,
-        request.userId
+        request.teamId
       );
 
       if (existingModule) {

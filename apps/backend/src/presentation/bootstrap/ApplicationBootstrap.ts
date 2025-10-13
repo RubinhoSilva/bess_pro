@@ -3,7 +3,7 @@ import { Container } from '../../infrastructure/di/Container';
 import { ContainerSetup } from '../../infrastructure/di/ContainerSetup';
 import { AppConfig, loadConfig } from '../../infrastructure/config/AppConfig';
 import { ExpressServer } from '../server/ExpressServer';
-import { runMigrations } from '../../infrastructure/database/migrations';
+
 import { EquipmentSeed } from '../../infrastructure/database/seeds/EquipmentSeed';
 
 export class ApplicationBootstrap {
@@ -25,13 +25,7 @@ export class ApplicationBootstrap {
       await DatabaseConnection.initialize(this.config.database);
       console.log('✅ Database connected');
 
-      // Run database migrations and seeders
-      try {
-        await runMigrations();
-        console.log('✅ Migrations completed');
-      } catch (error) {
-        console.warn('⚠️ Migrations failed (non-critical):', error);
-      }
+
 
       // Seed equipment data in development or when explicitly requested
       if (process.env.SEED_EQUIPMENT === 'true' || process.env.NODE_ENV === 'development') {

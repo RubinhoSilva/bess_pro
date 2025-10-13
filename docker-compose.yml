@@ -49,7 +49,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 8010
-      MONGODB_URI: mongodb://admin:bess123456@mongodb:27017/bess-pro?authSource=admin
+      MONGODB_URI: mongodb://admin:bess123456@mongodb:27017/bess_pro?authSource=admin
       REDIS_URL: redis://:redis123456@redis:6379
       JWT_SECRET: dev-jwt-secret-super-secure-change-in-production
       JWT_REFRESH_SECRET: dev-refresh-secret-super-secure-change-in-production

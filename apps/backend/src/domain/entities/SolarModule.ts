@@ -3,8 +3,9 @@ import { SoftDeleteProps } from "./base/ISoftDeletable";
 
 export interface SolarModuleData extends SoftDeleteProps {
   id?: string;
-  userId: string;
+  teamId: string;
   manufacturerId: string;
+  isDefault?: boolean;
   modelo: string;
   potenciaNominal: number; // Watts
   larguraMm?: number;
@@ -71,14 +72,15 @@ export class SolarModule extends BaseEntity {
     if (!this.data.potenciaNominal || this.data.potenciaNominal <= 0) {
       throw new Error('Potência nominal deve ser maior que zero');
     }
-    if (!this.data.userId?.trim()) {
-      throw new Error('ID do usuário é obrigatório');
+    if (!this.data.teamId?.trim()) {
+      throw new Error('ID do time é obrigatório');
     }
   }
 
   // Getters
   get id(): string | undefined { return this.data.id; }
-  get userId(): string { return this.data.userId; }
+  get teamId(): string { return this.data.teamId; }
+  get isDefault(): boolean { return this.data.isDefault || false; }
   get manufacturerId(): string { return this.data.manufacturerId; }
   get modelo(): string { return this.data.modelo; }
   get potenciaNominal(): number { return this.data.potenciaNominal; }

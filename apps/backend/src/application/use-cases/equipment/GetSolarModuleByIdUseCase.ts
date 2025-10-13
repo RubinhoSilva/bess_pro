@@ -7,7 +7,7 @@ import { SystemUsers } from '../../../domain/constants/SystemUsers';
 
 interface GetSolarModuleByIdQuery {
   id: string;
-  userId: string;
+  teamId: string;
 }
 
 export class GetSolarModuleByIdUseCase implements IUseCase<GetSolarModuleByIdQuery, Result<SolarModuleResponseDto>> {
@@ -18,7 +18,7 @@ export class GetSolarModuleByIdUseCase implements IUseCase<GetSolarModuleByIdQue
 
   async execute(query: GetSolarModuleByIdQuery): Promise<Result<SolarModuleResponseDto>> {
     try {
-      const { id, userId } = query;
+      const { id, teamId } = query;
       
       const solarModule = await this.solarModuleRepository.findById(id);
       
@@ -26,8 +26,8 @@ export class GetSolarModuleByIdUseCase implements IUseCase<GetSolarModuleByIdQue
         return Result.failure('Módulo solar não encontrado');
       }
 
-      // Verificar se o módulo é público ou pertence ao usuário
-      if (solarModule.userId !== userId && solarModule.userId !== SystemUsers.PUBLIC_EQUIPMENT) {
+      // Verificar se o módulo é público ou pertence ao time
+      if (solarModule.teamId !== teamId && !solarModule.isDefault) {
         return Result.failure('Módulo solar não encontrado');
       }
       

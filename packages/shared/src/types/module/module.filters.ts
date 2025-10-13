@@ -15,4 +15,5 @@ export interface ModuleFilters {
   manufacturerId?: string;
   status?: Status;
   searchTerm?: string;
+  teamId?: string;
 }

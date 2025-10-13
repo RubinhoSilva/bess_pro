@@ -3,19 +3,20 @@ import { Result } from '../../common/Result';
 import { ISolarModuleRepository } from '../../../domain/repositories/ISolarModuleRepository';
 import { DeleteModuleRequest } from '@bess-pro/shared';
 
-export class DeleteSolarModuleUseCase implements IUseCase<DeleteModuleRequest & { userId: string }, Result<void>> {
-  
+export class DeleteSolarModuleUseCase implements IUseCase<DeleteModuleRequest, Result<void>> {
+   
   constructor(
     private solarModuleRepository: ISolarModuleRepository
   ) {}
 
-  async execute(request: DeleteModuleRequest & { userId: string }): Promise<Result<void>> {
+  async execute(request: DeleteModuleRequest ): Promise<Result<void>> {
     try {
-      const { userId, id } = request;
-      
-      // Verificar se o módulo existe e pertence ao usuário
+      const {  id } = request;
+
+      // Verificar se o módulo existe
       const existingModule = await this.solarModuleRepository.findById(id);
-      if (!existingModule || existingModule.userId !== userId) {
+
+      if (!existingModule) {
         return Result.failure('Módulo solar não encontrado');
       }
 

@@ -3,7 +3,7 @@ import { SolarModule, SolarModuleData } from '../entities/SolarModule';
 export interface ISolarModuleRepository {
   create(moduleData: SolarModuleData): Promise<SolarModule>;
   findById(id: string): Promise<SolarModule | null>;
-  findByUserId(userId: string, options?: {
+  findByUserId(teamId: string, options?: {
     searchTerm?: string;
     manufacturerId?: string;
     potenciaMin?: number;
@@ -16,11 +16,11 @@ export interface ISolarModuleRepository {
   }>;
   update(id: string, updates: Partial<SolarModuleData>): Promise<SolarModule>;
   delete(id: string): Promise<boolean>;
-  findByManufacturerModelo(manufacturerId: string, modelo: string, userId: string): Promise<SolarModule | null>;
+  findByManufacturerModelo(manufacturerId: string, modelo: string, teamId: string): Promise<SolarModule | null>;
   
   // Método de busca avançada
   findByFilters(filters: {
-    userId?: string;
+    teamId?: string;
     search?: string;
     manufacturerId?: string;
     tipoCelula?: string;
@@ -34,7 +34,7 @@ export interface ISolarModuleRepository {
   }>;
   
   // Métodos para análise e estatísticas
-  getMostUsedModules(userId: string, limit?: number): Promise<SolarModule[]>;
-  getModulesByPowerRange(userId: string, minPower: number, maxPower: number): Promise<SolarModule[]>;
-  searchModules(userId: string, searchTerm: string): Promise<SolarModule[]>;
+  getMostUsedModules(teamId: string, limit?: number): Promise<SolarModule[]>;
+  getModulesByPowerRange(teamId: string, minPower: number, maxPower: number): Promise<SolarModule[]>;
+  searchModules(teamId: string, searchTerm: string): Promise<SolarModule[]>;
 }

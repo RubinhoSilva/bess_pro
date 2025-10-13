@@ -7,7 +7,7 @@ import { SystemUsers } from '@/domain/constants/SystemUsers';
 
 // Interfaces para filtros específicos
 export interface SolarModuleFilters {
-  userId?: string;
+  teamId?: string;
   search?: string;
   manufacturerId?: string;
   tipoCelula?: string;
@@ -53,7 +53,7 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
   }
 
   async findByUserId(
-    userId: string, 
+    teamId: string, 
     options?: {
       searchTerm?: string;
       manufacturerId?: string;
@@ -65,7 +65,7 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
   ): Promise<{ modules: SolarModule[]; total: number }> {
     
     const filters: SolarModuleFilters = {
-      userId,
+      teamId,
       search: options?.searchTerm,
       manufacturerId: options?.manufacturerId,
       potenciaMin: options?.potenciaMin,
@@ -86,7 +86,7 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
   }
 
   async findByFilters(filters: {
-    userId: string;
+    teamId?: string;
     search?: string;
     manufacturerId?: string;
     tipoCelula?: string;
@@ -122,12 +122,16 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
   async findByManufacturerModelo(
     manufacturerId: string, 
     modelo: string, 
-    userId: string
+    teamId: string
   ): Promise<SolarModule | null> {
-    const baseQuery = this.buildPublicAccessFilter(userId);
+    const baseQuery = this.buildPublicAccessFilter(''); // Remove userId filter, use team logic
     
     const query = {
       ...baseQuery,
+      $or: [
+        { isDefault: true },
+        { teamId }
+      ],
       manufacturerId,
       modelo: new RegExp(`^${modelo}$`, 'i')
     };
@@ -136,10 +140,10 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
     return doc ? this.baseRepository['config'].mapper.toDomain(doc) : null;
   }
 
-  async getMostUsedModules(userId: string, limit: number = 10): Promise<SolarModule[]> {
+  async getMostUsedModules(teamId: string, limit: number = 10): Promise<SolarModule[]> {
     // Por enquanto, retorna os mais recentes
     const docs = await SolarModuleModel
-      .find({ userId })
+      .find({ teamId })
       .sort({ createdAt: -1 })
       .limit(limit);
 
@@ -147,11 +151,11 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
   }
 
   async getModulesByPowerRange(
-    userId: string, 
+    teamId: string, 
     minPower: number, 
     maxPower: number
   ): Promise<SolarModule[]> {
-    const baseQuery = this.buildPublicAccessFilter(userId);
+    const baseQuery = this.buildPublicAccessFilter(teamId);
     const powerFilter = this.buildRangeFilter('potenciaNominal', minPower, maxPower);
     
     const query = this.mergeQueries(baseQuery, powerFilter);
@@ -163,8 +167,8 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
     return docs.map(doc => this.baseRepository['config'].mapper.toDomain(doc));
   }
 
-  async searchModules(userId: string, searchTerm: string): Promise<SolarModule[]> {
-    const baseQuery = this.buildPublicAccessFilter(userId);
+  async searchModules(teamId: string, searchTerm: string): Promise<SolarModule[]> {
+    const baseQuery = this.buildPublicAccessFilter(teamId);
     const searchFilter = this.buildSearchFilter(searchTerm, ['modelo', 'tipoCelula']);
     
     const query = this.mergeQueries(baseQuery, searchFilter);
@@ -183,7 +187,7 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
     return this.createFromData(moduleData);
   }
 
-  async findById(id: string): Promise<SolarModule | null> {
+  async findById(id: string) {
     return this.baseRepository.findById(id);
   }
 
@@ -192,16 +196,16 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    return this.baseRepository.delete(id);
+    return await SolarModuleModel.findByIdAndDelete(id) !== null;
   }
 
-  async findDefaults(userId: string): Promise<SolarModule[]> {
+  async findDefaults(teamId: string): Promise<SolarModule[]> {
     // Retorna módulos públicos padrão
-    return this.findByUserId(userId, { limit: 10 }).then(result => result.modules);
+    return this.findByUserId(teamId, { limit: 10 }).then(result => result.modules);
   }
 
-  async hasEquipment(userId: string): Promise<boolean> {
-    const count = await this.baseRepository.count({ userId } as SolarModuleFilters);
+  async hasEquipment(teamId: string): Promise<boolean> {
+    const count = await this.baseRepository.count({ teamId } as SolarModuleFilters);
     return count > 0;
   }
 
@@ -212,8 +216,20 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
   private buildCustomFilters(filters: SolarModuleFilters): any {
     const customFilters: any = {};
 
-    // Filtro de acesso público + usuário
-    const publicAccessFilter = this.buildPublicAccessFilter(filters.userId);
+    // Filtro de acesso público + time (teamId é opcional)
+    let accessFilter: any;
+    if (filters.teamId) {
+      // Se tem teamId, busca públicos + do time
+      accessFilter = {
+        $or: [
+          { isDefault: true },
+          { teamId: filters.teamId }
+        ]
+      };
+    } else {
+      // Se não tem teamId, busca apenas públicos
+      accessFilter = { isDefault: true };
+    }
     
     // Filtro de fabricante
     if (filters.manufacturerId) {
@@ -236,15 +252,15 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
 
     // Combinar todos os filtros
     return this.mergeQueries(
-      publicAccessFilter,
+      accessFilter,
       this.mergeQueries(customFilters, this.mergeQueries(powerFilter, searchFilter))
     );
   }
 
   // === MÉTODOS AUXILIARES (HERDADOS DO BASE REPOSITORY) ===
 
-  private buildPublicAccessFilter(userId?: string): any {
-    return this.baseRepository['buildPublicAccessFilter'](userId);
+  private buildPublicAccessFilter(teamId?: string): any {
+    return this.baseRepository['buildPublicAccessFilter'](teamId);
   }
 
   private buildSearchFilter(searchTerm: string, searchFields: string[]): any {

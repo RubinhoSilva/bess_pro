@@ -10,6 +10,7 @@ export interface CreateModuleRequest {
   parameters: ModuleParameters;
   dimensions: Omit<ModuleDimensions, 'areaM2'>;
   metadata: Omit<ModuleMetadata, 'manufacturerId'>;
+  teamId: string; // Team ID for ownership
 }
 
 export interface UpdateModuleRequest extends Partial<CreateModuleRequest> {

@@ -121,7 +121,8 @@ const transformModuleFormToRequest = (form: ModuleFormData): CreateModuleRequest
     warranty: form.warranty,
     certifications: [],
     userId: undefined
-  }
+  },
+  teamId: '' // Will be set by service
 });
 
 const transformInverterFormToRequest = (form: InverterFormData): CreateInverterRequest => ({

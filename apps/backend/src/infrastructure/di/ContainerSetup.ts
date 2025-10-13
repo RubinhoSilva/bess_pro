@@ -872,9 +872,9 @@ export class ContainerSetup {
       return new SolarModuleController(
         container.resolve(ServiceTokens.CreateSolarModuleUseCase),
         container.resolve(ServiceTokens.GetSolarModulesUseCase),
+        container.resolve(ServiceTokens.GetSolarModuleByIdUseCase),
         container.resolve(ServiceTokens.UpdateSolarModuleUseCase),
-        container.resolve(ServiceTokens.DeleteSolarModuleUseCase),
-        container.resolve(ServiceTokens.GetSolarModuleByIdUseCase)
+        container.resolve(ServiceTokens.DeleteSolarModuleUseCase)
       );
     });
 

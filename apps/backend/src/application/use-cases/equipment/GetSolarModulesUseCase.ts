@@ -5,14 +5,14 @@ import { ModuleFilters } from '@bess-pro/shared';
 import { SolarModuleListResponseDto } from '../../dtos/output/SolarModuleResponseDto';
 import { SolarModuleMapper } from '../../mappers/SolarModuleMapper';
 
-interface GetSolarModulesQuery extends ModuleFilters {
-  userId: string;
+interface GetSolarModulesQuery {
+  filters?: ModuleFilters;
   page?: number;
   pageSize?: number;
 }
 
 export class GetSolarModulesUseCase implements IUseCase<GetSolarModulesQuery, Result<SolarModuleListResponseDto>> {
-  
+   
   constructor(
     private solarModuleRepository: ISolarModuleRepository
   ) {}
@@ -20,18 +20,22 @@ export class GetSolarModulesUseCase implements IUseCase<GetSolarModulesQuery, Re
   async execute(query: GetSolarModulesQuery): Promise<Result<SolarModuleListResponseDto>> {
     try {
       const { 
-        userId,
+        filters = {},
         page = 1, 
-        pageSize = 20,
+        pageSize = 20
+      } = query;
+
+      const {
         searchTerm,
         manufacturerId,
         cellType,
         minPower,
-        maxPower
-      } = query;
+        maxPower,
+        teamId
+      } = filters;
 
       const { modules, total } = await this.solarModuleRepository.findByFilters({
-        userId,
+        teamId,
         search: searchTerm,
         manufacturerId,
         tipoCelula: cellType,

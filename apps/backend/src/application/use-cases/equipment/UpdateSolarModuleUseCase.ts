@@ -8,20 +8,20 @@ import { SolarModuleResponseDto } from '../../dtos/output/SolarModuleResponseDto
 import { SolarModuleMapper } from '../../mappers/SolarModuleMapper';
 import { SharedToSolarModuleMapper } from '../../mappers/SharedToSolarModuleMapper';
 
-export class UpdateSolarModuleUseCase implements IUseCase<UpdateModuleRequest & { userId: string }, Result<SolarModuleResponseDto>> {
+export class UpdateSolarModuleUseCase implements IUseCase<UpdateModuleRequest & { teamId: string }, Result<SolarModuleResponseDto>> {
    
   constructor(
     private solarModuleRepository: ISolarModuleRepository,
     private manufacturerRepository: IManufacturerRepository
   ) {}
 
-  async execute(request: UpdateModuleRequest & { userId: string }): Promise<Result<SolarModuleResponseDto>> {
+  async execute(request: UpdateModuleRequest): Promise<Result<SolarModuleResponseDto>> {
     try {
-      const { userId, id } = request;
-      
-      // Verificar se o módulo existe e pertence ao usuário
+      const { id } = request;
+
+      // Verificar se o módulo existe
       const existingModule = await this.solarModuleRepository.findById(id);
-      if (!existingModule || existingModule.userId !== userId) {
+      if (!existingModule) {
         return Result.failure('Módulo solar não encontrado');
       }
 
@@ -42,8 +42,7 @@ export class UpdateSolarModuleUseCase implements IUseCase<UpdateModuleRequest & 
         const duplicateModule = await this.solarModuleRepository.findByManufacturerModelo(
           manufacturerIdToCheck,
           modelo,
-          userId
-        );
+          existingModule.teamId);
         
         if (duplicateModule && duplicateModule.id !== id) {
           const manufacturer = await this.manufacturerRepository.findById(manufacturerIdToCheck);

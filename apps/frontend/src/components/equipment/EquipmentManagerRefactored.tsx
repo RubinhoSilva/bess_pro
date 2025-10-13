@@ -46,6 +46,17 @@ export const EquipmentManagerRefactored: React.FC<EquipmentManagerProps> = ({ on
   const { toast } = useToast();
   const { executeWithErrorHandling } = useErrorHandler();
   
+  console.log('🔥 Toast disponível:', typeof toast, toast);
+  
+  // Teste do toast
+  React.useEffect(() => {
+    console.log('🧪 Testando toast...');
+    toast({
+      title: 'Teste Toast',
+      description: 'Se você está vendo isso, o toast está funcionando!'
+    });
+  }, [toast]);
+  
   // Store data
   const modules = useModuleData();
   const inverters = useInverterData();
@@ -64,12 +75,17 @@ export const EquipmentManagerRefactored: React.FC<EquipmentManagerProps> = ({ on
   const moduleFormOptions: UseModuleFormOptions = {
     mode: currentModule ? 'edit' : 'create',
     onSuccess: (data) => {
-      toast({ title: currentModule ? 'Módulo atualizado com sucesso!' : 'Módulo criado com sucesso!' });
+      console.log('🎉 EquipmentManagerRefactored onSuccess chamado', { data, currentModule });
+      toast({ 
+        title: currentModule ? 'Módulo atualizado com sucesso!' : 'Módulo criado com sucesso!',
+        description: 'Operação realizada com sucesso!'
+      });
       setIsModuleDialogOpen(false);
       setCurrentModule(null);
       onUpdate?.();
     },
     onError: (error) => {
+      console.log('💥 EquipmentManagerRefactored onError chamado', { error: error.message, stack: error.stack });
       toast({
         variant: 'destructive',
         title: 'Erro ao salvar módulo',
