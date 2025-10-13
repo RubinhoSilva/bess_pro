@@ -847,25 +847,25 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="potenciaNominal">Potência Nominal (W) *</Label>
+                  <Label htmlFor="nominalPower">Potência Nominal (W) *</Label>
                   <Input
-                    id="potenciaNominal"
+                    id="nominalPower"
                     type="number"
                     value={moduleForm.nominalPower || ''}
-                    onChange={(e) => setModuleForm(prev => ({ ...prev, potenciaNominal: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, nominalPower: parseFloat(e.target.value) || 0 }))}
                     placeholder="550 (ex: 550Wp)"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="eficiencia">Eficiência (%)</Label>
+                  <Label htmlFor="efficiency">Eficiência (%)</Label>
                   <Input
-                    id="eficiencia"
+                    id="efficiency"
                     type="number"
                     step="0.1"
                     value={moduleForm.efficiency || ''}
-                    onChange={(e) => setModuleForm(prev => ({ ...prev, eficiencia: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) => setModuleForm(prev => ({ ...prev, efficiency: parseFloat(e.target.value) || 0 }))}
                     placeholder="21.2 (ex: 21.2%)"
                   />
                 </div>
@@ -1186,7 +1186,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                 <Label>Modelo *</Label>
                 <Input 
                   value={inverterForm.model || ''} 
-                  onChange={e => setInverterForm(prev => ({ ...prev, modelo: e.target.value }))} 
+                  onChange={e => setInverterForm(prev => ({ ...prev, model: e.target.value }))} 
                   className="bg-background border-border" 
                   placeholder="Ex: Primo 8.2-1"
                 />
