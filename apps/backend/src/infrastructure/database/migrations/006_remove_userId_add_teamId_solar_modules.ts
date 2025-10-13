@@ -1,10 +1,12 @@
-import { MongoConnectionPool } from '../MongoConnectionPool';
+import mongoose from 'mongoose';
 import { Db } from 'mongodb';
 
 export class Migration006RemoveUserIdAddTeamIdSolarModules {
   static async up(): Promise<void> {
-    const connection = MongoConnectionPool.getInstance();
-    const db: Db = connection.getDb();
+    const db = mongoose.connection.db;
+    if (!db) {
+      throw new Error('Database not connected');
+    }
     const collection = db.collection('solar_modules');
 
     console.log('Running migration 006: Remove userId from solar_modules and make teamId required');
@@ -63,8 +65,10 @@ export class Migration006RemoveUserIdAddTeamIdSolarModules {
   }
 
   static async down(): Promise<void> {
-    const connection = MongoConnectionPool.getInstance();
-    const db: Db = connection.getDb();
+    const db = mongoose.connection.db;
+    if (!db) {
+      throw new Error('Database not connected');
+    }
     const collection = db.collection('solar_modules');
 
     console.log('Rolling back migration 006: Add userId back to solar_modules');

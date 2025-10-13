@@ -35,7 +35,7 @@ export class MongoInverterRepository implements IInverterRepository {
       model: InverterModel,
       mapper: new InverterDbMapper(),
       features: {
-        softDelete: true,
+        softDelete: false,
         timestamps: true,
         pagination: true,
         customFilters: (filters: InverterFilters) => this.buildCustomFilters(filters)

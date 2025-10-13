@@ -41,10 +41,10 @@ export class EquipmentCatalogMapper {
    */
   static createModuleRequestToModuleData(
     request: CreateSolarModuleRequest,
-    userId: string
+    teamId: string
   ): SolarModuleData {
     return {
-      userId,
+      teamId,
       manufacturerId: request.manufacturer, // ID do manufacturer
       modelo: request.model,
       potenciaNominal: request.nominalPower,
