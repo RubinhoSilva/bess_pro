@@ -32,12 +32,16 @@ export class GetManufacturersUseCase implements IUseCase<GetManufacturersCommand
         teamId: command.teamId
       };
 
+      console.log('GetManufacturersUseCase filters:', filters);
+
       const pagination: ManufacturerPaginationOptions = {
         page: command.page || 1,
         limit: command.limit || 20,
         sortBy: command.sortBy || 'name',
         sortOrder: command.sortOrder || 'asc'
       };
+
+      console.log('GetManufacturersUseCase pagination:', pagination);
 
       const result = await this.manufacturerRepository.findPaginated(filters, pagination);
 

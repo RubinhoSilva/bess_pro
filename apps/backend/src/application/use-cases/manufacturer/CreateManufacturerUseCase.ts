@@ -1,23 +1,28 @@
 import { IUseCase } from "@/application/common/IUseCase";
 import { Result } from "@/application/common/Result";
-import { CreateManufacturerCommand } from "@/application/dtos/input/manufacturer/CreateManufacturerCommand";
+import { CreateManufacturerRequestBackend } from "@/application/dtos/input/manufacturer/CreateManufacturerRequest";
 import { ManufacturerResponseDto } from "@/application/dtos/output/ManufacturerResponseDto";
 import { ManufacturerMapper } from "@/application/mappers/ManufacturerMapper";
 import { Manufacturer } from "@/domain/entities/Manufacturer";
 import { IManufacturerRepository } from "@/domain/repositories/IManufacturerRepository";
 
-export class CreateManufacturerUseCase implements IUseCase<CreateManufacturerCommand, Result<ManufacturerResponseDto>> {
+export class CreateManufacturerUseCase implements IUseCase<CreateManufacturerRequestBackend, Result<ManufacturerResponseDto>> {
   constructor(
     private manufacturerRepository: IManufacturerRepository
   ) {}
 
-  async execute(command: CreateManufacturerCommand): Promise<Result<ManufacturerResponseDto>> {
+  async execute(request: CreateManufacturerRequestBackend): Promise<Result<ManufacturerResponseDto>> {
     try {
+      // Validar teamId obrigatório
+      if (!request.teamId) {
+        return Result.failure('TeamId é obrigatório');
+      }
+
       // Verificar se nome já existe
       const nameExists = await this.manufacturerRepository.exists(
-        command.name,
+        request.name,
         undefined,
-        command.teamId
+        request.teamId
       );
 
       if (nameExists) {
@@ -26,17 +31,17 @@ export class CreateManufacturerUseCase implements IUseCase<CreateManufacturerCom
 
       // Criar fabricante
       const manufacturer = new Manufacturer({
-        name: command.name,
-        type: command.type,
-        teamId: command.teamId,
+        name: request.name,
+        type: request.type,
+        teamId: request.teamId,
         isDefault: false, // Fabricantes criados por usuários nunca são padrão
-        description: command.description,
-        website: command.website,
-        country: command.country,
-        logoUrl: command.logoUrl,
-        supportEmail: command.supportEmail,
-        supportPhone: command.supportPhone,
-        certifications: command.certifications,
+        description: request.description,
+        website: request.website,
+        country: request.address?.country,
+        logoUrl: request.logoUrl,
+        supportEmail: request.supportEmail,
+        supportPhone: request.supportPhone,
+        certifications: request.certifications,
         createdAt: new Date(),
         updatedAt: new Date()
       });

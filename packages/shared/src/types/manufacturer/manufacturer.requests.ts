@@ -2,8 +2,11 @@
  * Manufacturer request/response types for API operations
  */
 
+import { ManufacturerType } from './manufacturer.types';
+
 export interface CreateManufacturerRequest {
   readonly name: string;
+  readonly type: ManufacturerType;
   readonly description?: string;
   readonly website?: string;
   readonly email?: string;
@@ -28,6 +31,7 @@ export interface CreateManufacturerRequest {
 
 export interface UpdateManufacturerRequest {
   readonly name?: string;
+  readonly type?: ManufacturerType;
   readonly description?: string;
   readonly website?: string;
   readonly email?: string;

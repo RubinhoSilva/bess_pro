@@ -4,6 +4,7 @@ import { IManufacturerRepository } from "@/domain/repositories/IManufacturerRepo
 
 export interface DeleteManufacturerCommand {
   id: string;
+  teamId?: string;
 }
 
 export class DeleteManufacturerUseCase implements IUseCase<DeleteManufacturerCommand, Result<boolean>> {
@@ -17,6 +18,11 @@ export class DeleteManufacturerUseCase implements IUseCase<DeleteManufacturerCom
       const existingManufacturer = await this.manufacturerRepository.findById(command.id);
 
       if (!existingManufacturer) {
+        return Result.failure('Fabricante não encontrado');
+      }
+
+      // Verificar se o fabricante é acessível pelo time
+      if (!existingManufacturer.isAccessibleByTeam(command.teamId)) {
         return Result.failure('Fabricante não encontrado');
       }
 

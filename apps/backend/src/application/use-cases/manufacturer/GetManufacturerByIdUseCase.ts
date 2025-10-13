@@ -6,6 +6,7 @@ import { IManufacturerRepository } from "@/domain/repositories/IManufacturerRepo
 
 export interface GetManufacturerByIdCommand {
   id: string;
+  teamId?: string;
 }
 
 export class GetManufacturerByIdUseCase implements IUseCase<GetManufacturerByIdCommand, Result<ManufacturerResponseDto>> {
@@ -18,6 +19,11 @@ export class GetManufacturerByIdUseCase implements IUseCase<GetManufacturerByIdC
       const manufacturer = await this.manufacturerRepository.findById(command.id);
 
       if (!manufacturer) {
+        return Result.failure('Fabricante não encontrado');
+      }
+
+      // Verificar se o fabricante é acessível pelo time
+      if (!manufacturer.isAccessibleByTeam(command.teamId)) {
         return Result.failure('Fabricante não encontrado');
       }
 

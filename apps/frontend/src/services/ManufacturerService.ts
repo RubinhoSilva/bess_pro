@@ -9,6 +9,7 @@ import {
   UpdateManufacturerRequest
 } from '@bess-pro/shared';
 import { ErrorHandler } from '../errors/ErrorHandler';
+import { useAuthStore } from '../store/auth-store';
 
 export class ManufacturerService {
   private static instance: ManufacturerService;
@@ -31,7 +32,20 @@ export class ManufacturerService {
   // CRUD operations
   async getManufacturers(filters?: ManufacturerFilters): Promise<PaginatedManufacturers> {
     try {
-      const response = await api.get('/equipment/manufacturers', { params: { filters } });
+      // Obter teamId do usuário autenticado
+      const { user } = useAuthStore.getState();
+      
+      if (!user?.teamId) {
+        throw new Error('Usuário não possui teamId. Não é possível listar fabricantes.');
+      }
+      
+      // Adicionar teamId aos filtros
+      const requestFilters = {
+        ...filters,
+        teamId: user.teamId
+      };
+      
+      const response = await api.get('/equipment/manufacturers', { params: { filters: requestFilters } });
       return response.data.data;
     } catch (error) {
       this.handleError(error, 'getManufacturers');
@@ -49,7 +63,20 @@ export class ManufacturerService {
 
   async createManufacturer(manufacturerData: CreateManufacturerRequest): Promise<Manufacturer> {
     try {
-      const response = await api.post('/equipment/manufacturers', manufacturerData);
+      // Obter teamId do usuário autenticado
+      const { user } = useAuthStore.getState();
+      
+      if (!user?.teamId) {
+        throw new Error('Usuário não possui teamId. Não é possível criar fabricante.');
+      }
+      
+      // Adicionar teamId aos dados da requisição
+      const requestData = {
+        ...manufacturerData,
+        teamId: user.teamId
+      };
+      
+      const response = await api.post('/equipment/manufacturers', requestData);
       return response.data.data;
     } catch (error) {
       this.handleError(error, 'createManufacturer');

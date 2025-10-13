@@ -149,6 +149,7 @@ export class MongoBaseRepository<TDomain, TFilters = {}, TDocument extends Docum
     filters: TFilters = {} as TFilters,
     options: PaginationOptions = {}
   ): Promise<PaginatedResult<TDomain>> {
+    console.log('MongoBaseRepository.findWithPagination called with filters:', filters, 'and options:', options);
     const { page = 1, pageSize = 20, sortBy = 'createdAt', sortOrder = 'desc' } = options;
     const skip = (page - 1) * pageSize;
 

@@ -55,8 +55,33 @@ export class MongoManufacturerRepository implements IManufacturerRepository {
     return this.baseRepository.update(manufacturer);
   }
 
-  async exists(id: string): Promise<boolean> {
-    return this.baseRepository.exists(id);
+  async exists(name: string, excludeId?: string, teamId?: string): Promise<boolean> {
+    const filter: any = {
+      name: new RegExp(`^${name}$`, 'i')
+    };
+
+    // Se teamId for fornecido, buscar apenas fabricantes padrão ou do time específico
+    if (teamId) {
+      filter.$or = [
+        { isDefault: true },
+        { teamId: teamId }
+      ];
+    } else {
+      // Se não há teamId, buscar apenas fabricantes padrão
+      filter.isDefault = true;
+    }
+
+    // Excluir ID específico da busca (para atualizações)
+    if (excludeId) {
+      filter._id = { $ne: excludeId };
+    }
+
+    const doc = await ManufacturerModel.findOne({
+      ...filter,
+      ...this.baseRepository['getSoftDeleteQuery']()
+    });
+    
+    return !!doc;
   }
 
   async findByName(name: string, teamId?: string): Promise<Manufacturer | null> {
@@ -145,6 +170,8 @@ export class MongoManufacturerRepository implements IManufacturerRepository {
       type: filters.type,
       teamId: filters.teamId
     };
+
+    console.log('MongoManufacturerRepository.findPaginated called with filters:', repositoryFilters, 'and options:', options);
 
     const result = await this.baseRepository.findWithPagination(repositoryFilters, {
       page: options.page,

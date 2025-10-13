@@ -1,19 +1,21 @@
 import { IUseCase } from "@/application/common/IUseCase";
 import { Result } from "@/application/common/Result";
-import { UpdateManufacturerCommand } from "@/application/dtos/input/manufacturer/UpdateManufacturerCommand";
+import { UpdateManufacturerRequestBackend } from "@/application/dtos/input/manufacturer/UpdateManufacturerRequest";
 import { ManufacturerResponseDto } from "@/application/dtos/output/ManufacturerResponseDto";
 import { ManufacturerMapper } from "@/application/mappers/ManufacturerMapper";
 import { IManufacturerRepository } from "@/domain/repositories/IManufacturerRepository";
 
-export class UpdateManufacturerUseCase implements IUseCase<UpdateManufacturerCommand, Result<ManufacturerResponseDto>> {
+export class UpdateManufacturerUseCase implements IUseCase<{id: string, data: UpdateManufacturerRequestBackend}, Result<ManufacturerResponseDto>> {
   constructor(
     private manufacturerRepository: IManufacturerRepository
   ) {}
 
-  async execute(command: UpdateManufacturerCommand): Promise<Result<ManufacturerResponseDto>> {
+  async execute(data: UpdateManufacturerRequestBackend): Promise<Result<ManufacturerResponseDto>> {
     try {
+      const { id, ...request } = data;
+
       // Buscar fabricante existente
-      const existingManufacturer = await this.manufacturerRepository.findById(command.id);
+      const existingManufacturer = await this.manufacturerRepository.findById(id);
 
       if (!existingManufacturer) {
         return Result.failure('Fabricante não encontrado');
@@ -25,10 +27,10 @@ export class UpdateManufacturerUseCase implements IUseCase<UpdateManufacturerCom
       }
 
       // Verificar se novo nome já existe (se nome foi alterado)
-      if (command.name && command.name !== existingManufacturer.name) {
+      if (request.name && request.name !== existingManufacturer.name) {
         const nameExists = await this.manufacturerRepository.exists(
-          command.name,
-          command.id,
+          request.name,
+          id,
           existingManufacturer.teamId
         );
 
@@ -37,21 +39,22 @@ export class UpdateManufacturerUseCase implements IUseCase<UpdateManufacturerCom
         }
       }
 
-      // Atualizar fabricante
+      // Atualizar fabricante (preservando teamId original)
       const updatedManufacturer = existingManufacturer.update({
-        name: command.name,
-        type: command.type,
-        description: command.description,
-        website: command.website,
-        country: command.country,
-        logoUrl: command.logoUrl,
-        supportEmail: command.supportEmail,
-        supportPhone: command.supportPhone,
-        certifications: command.certifications
+        name: request.name,
+        type: request.type,
+        description: request.description,
+        website: request.website,
+        country: request.address?.country,
+        logoUrl: request.logoUrl,
+        supportEmail: request.supportEmail,
+        supportPhone: request.supportPhone,
+        certifications: request.certifications,
+        teamId: existingManufacturer.teamId // Preservar teamId
       });
 
       // Salvar
-      const savedManufacturer = await this.manufacturerRepository.update(command.id, updatedManufacturer);
+      const savedManufacturer = await this.manufacturerRepository.update(id, updatedManufacturer);
 
       if (!savedManufacturer) {
         return Result.failure('Erro ao atualizar fabricante');
