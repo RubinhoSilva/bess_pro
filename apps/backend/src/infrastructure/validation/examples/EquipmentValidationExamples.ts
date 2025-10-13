@@ -5,18 +5,106 @@
  * em controladores, middlewares e casos de uso.
  */
 
-import { Request, Response } from 'express';
-import { validationMiddleware, schemaValidationMiddleware } from '../middleware/ValidationMiddleware';
+import { Response } from 'express';
+import { AuthenticatedRequest, validationMiddleware, schemaValidationMiddleware, validateMultiple } from '../middleware/ValidationMiddleware';
 import { ModuleValidator } from '../schemas/equipment/ModuleValidator';
 import { InverterValidator } from '../schemas/equipment/InverterValidator';
 import { ManufacturerValidator } from '../schemas/equipment/ManufacturerValidator';
+import type { CreateSolarModuleCommand } from '../../../application/dtos/input/equipment/CreateSolarModuleCommand';
+import type { UpdateSolarModuleCommand } from '../../../application/dtos/input/equipment/UpdateSolarModuleCommand';
+import { ExtendedValidationResult } from '../../../shared/validation/types/ValidationTypes';
+
+// DTOs de exemplo (compatíveis com estrutura existente)
+class GetModulesQueryDTO {
+  // Propriedades existentes com decorators class-validator...
+}
+
+// Class versions of the interfaces for use with class-validator
+class CreateSolarModuleCommandClass implements CreateSolarModuleCommand {
+  userId!: string;
+  manufacturerId!: string;
+  fabricante!: string;
+  modelo!: string;
+  potenciaNominal!: number;
+  larguraMm?: number;
+  alturaMm?: number;
+  espessuraMm?: number;
+  vmpp?: number;
+  impp?: number;
+  voc?: number;
+  isc?: number;
+  tipoCelula?: string;
+  eficiencia?: number;
+  numeroCelulas?: number;
+  tempCoefPmax?: number;
+  tempCoefVoc?: number;
+  tempCoefIsc?: number;
+  pesoKg?: number;
+  datasheetUrl?: string;
+  certificacoes?: string[];
+  garantiaAnos?: number;
+  tolerancia?: string;
+  material?: string;
+  technology?: string;
+  aRef?: number;
+  iLRef?: number;
+  iORef?: number;
+  rS?: number;
+  rShRef?: number;
+  alphaSc?: number;
+  betaOc?: number;
+  gammaR?: number;
+  a0?: number; a1?: number; a2?: number; a3?: number; a4?: number;
+  b0?: number; b1?: number; b2?: number; b3?: number; b4?: number; b5?: number;
+  dtc?: number;
+}
+
+class UpdateSolarModuleCommandClass implements UpdateSolarModuleCommand {
+  userId!: string;
+  id!: string;
+  manufacturerId?: string;
+  fabricante?: string;
+  modelo?: string;
+  potenciaNominal?: number;
+  larguraMm?: number;
+  alturaMm?: number;
+  espessuraMm?: number;
+  vmpp?: number;
+  impp?: number;
+  voc?: number;
+  isc?: number;
+  tipoCelula?: string;
+  eficiencia?: number;
+  numeroCelulas?: number;
+  tempCoefPmax?: number;
+  tempCoefVoc?: number;
+  tempCoefIsc?: number;
+  pesoKg?: number;
+  datasheetUrl?: string;
+  certificacoes?: string[];
+  garantiaAnos?: number;
+  tolerancia?: string;
+  material?: string;
+  technology?: string;
+  aRef?: number;
+  iLRef?: number;
+  iORef?: number;
+  rS?: number;
+  rShRef?: number;
+  alphaSc?: number;
+  betaOc?: number;
+  gammaR?: number;
+  a0?: number; a1?: number; a2?: number; a3?: number; a4?: number;
+  b0?: number; b1?: number; b2?: number; b3?: number; b4?: number; b5?: number;
+  dtc?: number;
+}
 
 // Exemplo 1: Controller com validação DTO + Business Rules
 export class SolarModuleControllerV3 {
   private moduleValidator: ModuleValidator;
 
   constructor() {
-    this.moduleValidator = new ModuleValidator();
+    this.moduleValidator = new ModuleValidator() as any;
   }
 
   /**
@@ -27,26 +115,26 @@ export class SolarModuleControllerV3 {
    * 2. Business rules customizadas
    * 3. Schema validation (regras técnicas)
    */
-  async createModule(req: Request, res: Response) {
+  async createModule(req: AuthenticatedRequest, res: Response) {
     try {
-      // Validação DTO + Business Rules
-      const { dto, result } = await this.moduleValidator.transformAndValidate(
-        req.body,
-        CreateSolarModuleCommand, // DTO existente
-        {
-          userRole: req.user?.role,
-          equipment: req.body
-        }
-      );
+       // Validação DTO + Business Rules
+       const { dto, result } = await (this.moduleValidator as any).transformAndValidate(
+         req.body,
+         CreateSolarModuleCommandClass, // DTO existente
+         {
+           userRole: req.user?.role,
+           equipment: req.body
+         }
+       );
 
-      if (!result.isValid) {
-        return res.status(400).json({
-          success: false,
-          message: result.message,
-          errors: result.errors,
-          warnings: (result as any).warnings
-        });
-      }
+       if (!result.isValid) {
+         return res.status(400).json({
+           success: false,
+           message: result.message,
+           errors: result.errors,
+           warnings: result.warnings
+         });
+       }
 
       // Schema validation adicional
       const schemaResult = await this.moduleValidator.validateSchema(dto, 'solar_module');
@@ -80,7 +168,7 @@ export class SolarModuleControllerV3 {
   /**
    * Atualizar módulo existente com validação condicional
    */
-  async updateModule(req: Request, res: Response) {
+  async updateModule(req: AuthenticatedRequest, res: Response) {
     try {
       const { id } = req.params;
       
@@ -93,24 +181,24 @@ export class SolarModuleControllerV3 {
         });
       }
 
-      // Validação com contexto do módulo existente
-      const { dto, result } = await this.moduleValidator.transformAndValidate(
-        { ...existingModule, ...req.body },
-        UpdateSolarModuleCommand,
-        {
-          userRole: req.user?.role,
-          equipment: existingModule
-        }
-      );
+       // Validação com contexto do módulo existente
+       const { dto, result } = await (this.moduleValidator as any).transformAndValidate(
+         { ...existingModule, ...req.body },
+         UpdateSolarModuleCommandClass,
+         {
+           userRole: req.user?.role,
+           equipment: existingModule
+         }
+       );
 
-      if (!result.isValid) {
-        return res.status(400).json({
-          success: false,
-          message: result.message,
-          errors: result.errors,
-          warnings: (result as any).warnings
-        });
-      }
+       if (!result.isValid) {
+         return res.status(400).json({
+           success: false,
+           message: result.message,
+           errors: result.errors,
+           warnings: result.warnings
+         });
+       }
 
       // Atualizar módulo...
       const updatedModule = await this.updateModuleInDatabase(id, dto);
@@ -150,8 +238,8 @@ export class SolarModuleControllerV3 {
 export const moduleRoutes = {
   // Usando middleware de validação tradicional (apenas DTO)
   'POST /modules': [
-    validationMiddleware(CreateSolarModuleCommand, 'body'),
-    (req: Request, res: Response) => {
+    validationMiddleware(CreateSolarModuleCommandClass, 'body'),
+    (req: AuthenticatedRequest, res: Response) => {
       // Controller logic here...
     }
   ],
@@ -159,11 +247,11 @@ export const moduleRoutes = {
   // Usando middleware com validação customizada
   'POST /modules-with-custom-validation': [
     validationMiddleware(
-      CreateSolarModuleCommand, 
+      CreateSolarModuleCommandClass, 
       'body', 
       new ModuleValidator()
     ),
-    (req: Request, res: Response) => {
+    (req: AuthenticatedRequest, res: Response) => {
       // Controller logic here...
     }
   ],
@@ -171,7 +259,7 @@ export const moduleRoutes = {
   // Usando schema validation middleware
   'POST /modules-schema-validation': [
     schemaValidationMiddleware(new ModuleValidator(), 'solar_module'),
-    (req: Request, res: Response) => {
+    (req: AuthenticatedRequest, res: Response) => {
       // Controller logic here...
     }
   ],
@@ -184,7 +272,7 @@ export const moduleRoutes = {
       undefined, // sem body validator
       new ModuleValidator() // query validator
     ),
-    (req: Request, res: Response) => {
+    (req: AuthenticatedRequest, res: Response) => {
       // Controller logic here...
     }
   ]
@@ -195,31 +283,31 @@ export class CreateSolarModuleUseCase {
   private moduleValidator: ModuleValidator;
 
   constructor() {
-    this.moduleValidator = new ModuleValidator();
+    this.moduleValidator = new ModuleValidator() as any;
   }
 
-  async execute(command: CreateSolarModuleCommand, context?: any) {
+  async execute(command: CreateSolarModuleCommandClass, context?: any) {
     // Validação completa no use case
-    const validationResult = await this.moduleValidator.validateDTO(command, {
+    const validationResult = await (this.moduleValidator as any).validateDTO(command, {
       userRole: context?.userRole,
       equipment: context?.equipment
     });
 
     if (!validationResult.isValid) {
-      throw new ValidationError(validationResult.message, validationResult.errors);
+      throw new ValidationError(validationResult.message, validationResult.errors || []);
     }
 
     // Schema validation
-    const schemaResult = await this.moduleValidator.validateSchema(command, 'solar_module');
+    const schemaResult = await (this.moduleValidator as any).validateSchema(command, 'solar_module');
     if (!schemaResult.isValid) {
-      throw new ValidationError(schemaResult.message, schemaResult.errors);
+      throw new ValidationError(schemaResult.message, schemaResult.errors || []);
     }
 
     // Lógica de negócio...
     return await this.createModule(command);
   }
 
-  private async createModule(command: CreateSolarModuleCommand) {
+  private async createModule(command: CreateSolarModuleCommandClass) {
     // Implementação...
   }
 }
@@ -231,9 +319,9 @@ export class BatchEquipmentValidator {
   private manufacturerValidator: ManufacturerValidator;
 
   constructor() {
-    this.moduleValidator = new ModuleValidator();
-    this.inverterValidator = new InverterValidator();
-    this.manufacturerValidator = new ManufacturerValidator();
+    this.moduleValidator = new ModuleValidator() as any;
+    this.inverterValidator = new InverterValidator() as any;
+    this.manufacturerValidator = new ManufacturerValidator() as any;
   }
 
   async validateBatch(equipmentList: any[]) {
@@ -262,7 +350,7 @@ export class BatchEquipmentValidator {
             continue;
         }
 
-        const result = await validator.validateDTO(equipment);
+         const result = await (validator as any).validateDTO(equipment);
         results.push({
           equipment: equipment,
           validation: result
@@ -271,7 +359,7 @@ export class BatchEquipmentValidator {
       } catch (error) {
         errors.push({
           equipment: equipment,
-          error: error.message
+          error: (error as Error).message
         });
       }
     }
@@ -289,10 +377,10 @@ export class BatchEquipmentValidator {
 // Exemplo 5: Validação com regras customizadas
 export class CustomValidationRules {
   static createModuleValidatorWithCustomRules() {
-    const validator = new ModuleValidator();
+    const validator = new ModuleValidator() as any;
     
     // Adicionar regra customizada
-    validator.validationEngine.registerRules('solar_module', [
+    (validator as any).validationEngine.registerRules('solar_module', [
       {
         id: 'custom_efficiency_threshold',
         name: 'Custom Efficiency Threshold',
@@ -342,17 +430,4 @@ export class ValidationError extends Error {
       warnings: this.warnings
     };
   }
-}
-
-// DTOs de exemplo (compatíveis com estrutura existente)
-class CreateSolarModuleCommand {
-  // Propriedades existentes com decorators class-validator...
-}
-
-class UpdateSolarModuleCommand {
-  // Propriedades existentes com decorators class-validator...
-}
-
-class GetModulesQueryDTO {
-  // Propriedades existentes com decorators class-validator...
 }

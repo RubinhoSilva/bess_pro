@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Plus } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { moduleService } from '@/services/ModuleService';
-import { type SolarModuleInput } from '@bess-pro/shared';
+import { type CreateModuleRequest, CellType, CellTechnology } from '@bess-pro/shared';
+import { toast } from 'react-hot-toast';
 
 interface AddSolarModuleModalProps {
   open: boolean;
@@ -47,31 +48,66 @@ const MANUFACTURERS = [
 ];
 
 export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModuleSelected }: AddSolarModuleModalProps) {
-  const [formData, setFormData] = useState<SolarModuleInput>({
-    manufacturerId: '',
-    fabricante: '',
-    modelo: '',
-    potenciaNominal: 0,
-    eficiencia: 0,
-    vmpp: 0,
-    impp: 0,
-    voc: 0,
-    isc: 0,
-    tipoCelula: '',
-    numeroCelulas: 0,
-    tempCoefPmax: 0,
-    tempCoefVoc: 0,
-    tempCoefIsc: 0,
-    aRef: 1.8,
-    iLRef: 0,
-    iORef: 2.5e-12,
-    rS: 0,
-    rShRef: 0,
-    garantiaAnos: 25,
-    larguraMm: 0,
-    alturaMm: 0,
-    espessuraMm: 0,
-    pesoKg: 0,
+  const [formData, setFormData] = useState<CreateModuleRequest>({
+    manufacturer: '',
+    model: '',
+    nominalPower: 0,
+    specifications: {
+      voc: 0,
+      isc: 0,
+      vmpp: 0,
+      impp: 0,
+      efficiency: 0,
+      cellType: 'monocrystalline',
+      numberOfCells: 0,
+      technology: 'perc',
+    },
+    parameters: {
+      temperature: {
+        tempCoeffPmax: 0,
+        tempCoeffVoc: 0,
+        tempCoeffIsc: 0,
+      },
+      diode: {
+        aRef: 1.8,
+        iLRef: 0,
+        iORef: 2.5e-12,
+        rS: 0,
+        rShRef: 0,
+      },
+      sapm: {
+        a0: 0,
+        a1: 0,
+        a2: 0,
+        a3: 0,
+        a4: 0,
+        b0: 0,
+        b1: 0,
+        b2: 0,
+        b3: 0,
+        b4: 0,
+      },
+      spectral: {
+        am: 1.5,
+        material: '',
+        technology: '',
+      },
+      advanced: {
+        alphaSc: 0,
+        betaOc: 0,
+        gammaR: 0,
+      },
+    },
+    dimensions: {
+      widthMm: 0,
+      heightMm: 0,
+      thicknessMm: 0,
+      weightKg: 0,
+    },
+    metadata: {
+      warranty: 25,
+      certifications: [],
+    }
   });
 
   // Temp string values for temperature coefficients (to allow free typing)
@@ -82,36 +118,55 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
   const queryClient = useQueryClient();
   
   const createModule = useMutation({
-    mutationFn: (data: SolarModuleInput) => moduleService.createModule(data),
+    mutationFn: (data: CreateModuleRequest) => moduleService.createModule(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['modules'] });
-      toast({ title: 'Módulo criado com sucesso!' });
+      toast.success('Módulo criado com sucesso!');
     },
     onError: (error: any) => {
-      toast({ title: error.message || 'Erro ao criar módulo', variant: 'destructive' });
+      toast.error(error.message || 'Erro ao criar módulo');
     },
   });
 
   // Auto-populate iLRef when isc changes
   useEffect(() => {
-    if (formData.isc && formData.isc > 0 && (!formData.iLRef || formData.iLRef === 0)) {
-      setFormData(prev => ({ ...prev, iLRef: prev.isc }));
+    if (formData.specifications.isc && formData.specifications.isc > 0 && (!formData.parameters.diode.iLRef || formData.parameters.diode.iLRef === 0)) {
+      setFormData(prev => ({ 
+        ...prev, 
+        parameters: {
+          ...prev.parameters,
+          diode: {
+            ...prev.parameters.diode,
+            iLRef: prev.specifications.isc
+          }
+        }
+      }));
     }
-  }, [formData.isc]);
+  }, [formData.specifications.isc]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.fabricante || !formData.modelo || !formData.potenciaNominal) {
+    if (!formData.manufacturer || !formData.model || !formData.nominalPower) {
       return;
     }
 
     // Convert temperature coefficient strings to numbers
-    const dataToSave = {
+    const dataToSave: CreateModuleRequest = {
       ...formData,
-      tempCoefPmax: tempCoefPmaxStr ? parseFloat(tempCoefPmaxStr) || 0 : 0,
-      tempCoefVoc: tempCoefVocStr ? parseFloat(tempCoefVocStr) || 0 : 0,
-      tempCoefIsc: tempCoefIscStr ? parseFloat(tempCoefIscStr) || 0 : 0,
+      parameters: {
+        ...formData.parameters,
+        temperature: {
+          tempCoeffPmax: tempCoefPmaxStr ? parseFloat(tempCoefPmaxStr) / 100 || 0 : 0,
+          tempCoeffVoc: tempCoefVocStr ? parseFloat(tempCoefVocStr) / 100 || 0 : 0,
+          tempCoeffIsc: tempCoefIscStr ? parseFloat(tempCoefIscStr) / 100 || 0 : 0,
+        },
+        advanced: {
+          alphaSc: tempCoefPmaxStr ? parseFloat(tempCoefPmaxStr) / 100 || 0 : 0,
+          betaOc: tempCoefVocStr ? parseFloat(tempCoefVocStr) / 100 || 0 : 0,
+          gammaR: tempCoefIscStr ? parseFloat(tempCoefIscStr) / 100 || 0 : 0,
+        }
+      }
     };
 
     try {
@@ -127,30 +182,65 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
 
       // Reset form
       setFormData({
-        manufacturerId: '',
-        fabricante: '',
-        modelo: '',
-        potenciaNominal: 0,
-        eficiencia: 0,
-        vmpp: 0,
-        impp: 0,
-        voc: 0,
-        isc: 0,
-        tipoCelula: '',
-        numeroCelulas: 0,
-        tempCoefPmax: 0,
-        tempCoefVoc: 0,
-        tempCoefIsc: 0,
-        aRef: 1.8,
-        iLRef: 0,
-        iORef: 2.5e-12,
-        rS: 0,
-        rShRef: 0,
-        garantiaAnos: 25,
-        larguraMm: 0,
-        alturaMm: 0,
-        espessuraMm: 0,
-        pesoKg: 0,
+        manufacturer: '',
+        model: '',
+        nominalPower: 0,
+        specifications: {
+          voc: 0,
+          isc: 0,
+          vmpp: 0,
+          impp: 0,
+          efficiency: 0,
+          cellType: 'monocrystalline',
+          numberOfCells: 0,
+          technology: 'perc',
+        },
+        parameters: {
+          temperature: {
+            tempCoeffPmax: 0,
+            tempCoeffVoc: 0,
+            tempCoeffIsc: 0,
+          },
+          diode: {
+            aRef: 1.8,
+            iLRef: 0,
+            iORef: 2.5e-12,
+            rS: 0,
+            rShRef: 0,
+          },
+          sapm: {
+            a0: 0,
+            a1: 0,
+            a2: 0,
+            a3: 0,
+            a4: 0,
+            b0: 0,
+            b1: 0,
+            b2: 0,
+            b3: 0,
+            b4: 0,
+          },
+          spectral: {
+            am: 1.5,
+            material: '',
+            technology: '',
+          },
+          advanced: {
+            alphaSc: 0,
+            betaOc: 0,
+            gammaR: 0,
+          },
+        },
+        dimensions: {
+          widthMm: 0,
+          heightMm: 0,
+          thicknessMm: 0,
+          weightKg: 0,
+        },
+        metadata: {
+          warranty: 25,
+          certifications: [],
+        }
       });
       setTempCoefPmaxStr('');
       setTempCoefVocStr('');
@@ -159,8 +249,47 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
     }
   };
 
-  const updateFormData = (field: keyof SolarModuleInput, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const updateFormData = (section: string, field: string, value: any) => {
+    setFormData(prev => {
+      if (section === 'parameters') {
+        // Handle nested parameters structure
+        if (['aRef', 'iLRef', 'iORef', 'rS', 'rShRef'].includes(field)) {
+          return {
+            ...prev,
+            parameters: {
+              ...prev.parameters,
+              diode: {
+                ...prev.parameters.diode,
+                [field]: value
+              }
+            }
+          };
+        } else if (['tempCoeffPmax', 'tempCoeffVoc', 'tempCoeffIsc'].includes(field)) {
+          return {
+            ...prev,
+            parameters: {
+              ...prev.parameters,
+              temperature: {
+                ...prev.parameters.temperature,
+                [field]: value
+              }
+            }
+          };
+        }
+      } else if (section && section !== '') {
+        const sectionData = prev[section as keyof CreateModuleRequest];
+        if (sectionData && typeof sectionData === 'object') {
+          return {
+            ...prev,
+            [section]: {
+              ...sectionData,
+              [field]: value
+            }
+          };
+        }
+      }
+      return { ...prev, [field]: value };
+    });
   };
 
   return (
@@ -184,7 +313,7 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fabricante">Fabricante *</Label>
-                <Select onValueChange={(value) => updateFormData('fabricante', value)}>
+                <Select onValueChange={(value) => updateFormData('', 'manufacturer', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o fabricante" />
                   </SelectTrigger>
@@ -202,8 +331,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                 <Label htmlFor="modelo">Modelo *</Label>
                 <Input
                   id="modelo"
-                  value={formData.modelo}
-                  onChange={(e) => updateFormData('modelo', e.target.value)}
+                  value={formData.model}
+                  onChange={(e) => updateFormData('', 'model', e.target.value)}
                   placeholder="ex: Tiger Pro 72HC 550W"
                   required
                 />
@@ -216,8 +345,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                 <Input
                   id="potenciaNominal"
                   type="number"
-                  value={formData.potenciaNominal || ''}
-                  onChange={(e) => updateFormData('potenciaNominal', parseFloat(e.target.value) || 0)}
+                  value={formData.nominalPower || ''}
+                  onChange={(e) => updateFormData('', 'nominalPower', parseFloat(e.target.value) || 0)}
                   placeholder="550"
                   required
                 />
@@ -229,8 +358,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                   id="eficiencia"
                   type="number"
                   step="0.1"
-                  value={formData.eficiencia || ''}
-                  onChange={(e) => updateFormData('eficiencia', parseFloat(e.target.value) || 0)}
+                  value={formData.specifications.efficiency || ''}
+                  onChange={(e) => updateFormData('specifications', 'efficiency', parseFloat(e.target.value) || 0)}
                   placeholder="21.0"
                 />
               </div>
@@ -239,7 +368,7 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="tipoCelula">Tipo de Célula</Label>
-                <Select onValueChange={(value) => updateFormData('tipoCelula', value)}>
+                <Select onValueChange={(value) => updateFormData('specifications', 'cellType', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo de célula" />
                   </SelectTrigger>
@@ -258,8 +387,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                 <Input
                   id="numeroCelulas"
                   type="number"
-                  value={formData.numeroCelulas || ''}
-                  onChange={(e) => updateFormData('numeroCelulas', parseInt(e.target.value) || 0)}
+                  value={formData.specifications.numberOfCells || ''}
+                  onChange={(e) => updateFormData('specifications', 'numberOfCells', parseInt(e.target.value) || 0)}
                   placeholder="144"
                 />
               </div>
@@ -277,8 +406,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                   id="vmpp"
                   type="number"
                   step="0.1"
-                  value={formData.vmpp || ''}
-                  onChange={(e) => updateFormData('vmpp', parseFloat(e.target.value) || 0)}
+                  value={formData.specifications.vmpp || ''}
+                  onChange={(e) => updateFormData('specifications', 'vmpp', parseFloat(e.target.value) || 0)}
                   placeholder="41.8"
                 />
               </div>
@@ -289,8 +418,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                   id="impp"
                   type="number"
                   step="0.1"
-                  value={formData.impp || ''}
-                  onChange={(e) => updateFormData('impp', parseFloat(e.target.value) || 0)}
+                  value={formData.specifications.impp || ''}
+                  onChange={(e) => updateFormData('specifications', 'impp', parseFloat(e.target.value) || 0)}
                   placeholder="13.16"
                 />
               </div>
@@ -303,8 +432,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                   id="voc"
                   type="number"
                   step="0.1"
-                  value={formData.voc || ''}
-                  onChange={(e) => updateFormData('voc', parseFloat(e.target.value) || 0)}
+                  value={formData.specifications.voc || ''}
+                  onChange={(e) => updateFormData('specifications', 'voc', parseFloat(e.target.value) || 0)}
                   placeholder="49.8"
                 />
               </div>
@@ -315,8 +444,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                   id="isc"
                   type="number"
                   step="0.1"
-                  value={formData.isc || ''}
-                  onChange={(e) => updateFormData('isc', parseFloat(e.target.value) || 0)}
+                  value={formData.specifications.isc || ''}
+                  onChange={(e) => updateFormData('specifications', 'isc', parseFloat(e.target.value) || 0)}
                   placeholder="13.90"
                 />
               </div>
@@ -379,8 +508,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                   id="aRef"
                   type="number"
                   step="0.1"
-                  value={formData.aRef || ''}
-                  onChange={(e) => updateFormData('aRef', parseFloat(e.target.value) || 0)}
+                  value={formData.parameters.diode.aRef || ''}
+                  onChange={(e) => updateFormData('parameters', 'aRef', parseFloat(e.target.value) || 0)}
                   placeholder="1.8"
                 />
               </div>
@@ -391,8 +520,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                   id="iLRef"
                   type="number"
                   step="0.1"
-                  value={formData.iLRef || ''}
-                  onChange={(e) => updateFormData('iLRef', parseFloat(e.target.value) || 0)}
+                  value={formData.parameters.diode.iLRef || ''}
+                  onChange={(e) => updateFormData('parameters', 'iLRef', parseFloat(e.target.value) || 0)}
                   placeholder="13.90"
                 />
               </div>
@@ -405,8 +534,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                   id="iORef"
                   type="number"
                   step="1e-15"
-                  value={formData.iORef || ''}
-                  onChange={(e) => updateFormData('iORef', parseFloat(e.target.value) || 0)}
+                  value={formData.parameters.diode.iORef || ''}
+                  onChange={(e) => updateFormData('parameters', 'iORef', parseFloat(e.target.value) || 0)}
                   placeholder="2.5e-12"
                 />
               </div>
@@ -417,8 +546,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                   id="rS"
                   type="number"
                   step="0.01"
-                  value={formData.rS || ''}
-                  onChange={(e) => updateFormData('rS', parseFloat(e.target.value) || 0)}
+                  value={formData.parameters.diode.rS || ''}
+                  onChange={(e) => updateFormData('parameters', 'rS', parseFloat(e.target.value) || 0)}
                   placeholder="0.5"
                 />
               </div>
@@ -429,8 +558,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                   id="rShRef"
                   type="number"
                   step="1"
-                  value={formData.rShRef || ''}
-                  onChange={(e) => updateFormData('rShRef', parseFloat(e.target.value) || 0)}
+                  value={formData.parameters.diode.rShRef || ''}
+                  onChange={(e) => updateFormData('parameters', 'rShRef', parseFloat(e.target.value) || 0)}
                   placeholder="500"
                 />
               </div>
@@ -447,8 +576,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                 <Input
                   id="larguraMm"
                   type="number"
-                  value={formData.larguraMm || ''}
-                  onChange={(e) => updateFormData('larguraMm', parseInt(e.target.value) || 0)}
+                  value={formData.dimensions.widthMm || ''}
+                  onChange={(e) => updateFormData('dimensions', 'widthMm', parseInt(e.target.value) || 0)}
                   placeholder="1134"
                 />
               </div>
@@ -458,8 +587,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                 <Input
                   id="alturaMm"
                   type="number"
-                  value={formData.alturaMm || ''}
-                  onChange={(e) => updateFormData('alturaMm', parseInt(e.target.value) || 0)}
+                  value={formData.dimensions.heightMm || ''}
+                  onChange={(e) => updateFormData('dimensions', 'heightMm', parseInt(e.target.value) || 0)}
                   placeholder="2274"
                 />
               </div>
@@ -469,8 +598,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                 <Input
                   id="espessuraMm"
                   type="number"
-                  value={formData.espessuraMm || ''}
-                  onChange={(e) => updateFormData('espessuraMm', parseInt(e.target.value) || 0)}
+                  value={formData.dimensions.thicknessMm || ''}
+                  onChange={(e) => updateFormData('dimensions', 'thicknessMm', parseInt(e.target.value) || 0)}
                   placeholder="35"
                 />
               </div>
@@ -483,8 +612,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                   id="pesoKg"
                   type="number"
                   step="0.1"
-                  value={formData.pesoKg || ''}
-                  onChange={(e) => updateFormData('pesoKg', parseFloat(e.target.value) || 0)}
+                  value={formData.dimensions.weightKg || ''}
+                  onChange={(e) => updateFormData('dimensions', 'weightKg', parseFloat(e.target.value) || 0)}
                   placeholder="27.5"
                 />
               </div>
@@ -494,8 +623,8 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
                 <Input
                   id="garantiaAnos"
                   type="number"
-                  value={formData.garantiaAnos || 25}
-                  onChange={(e) => updateFormData('garantiaAnos', parseInt(e.target.value) || 25)}
+                  value={formData.metadata.warranty || 25}
+                  onChange={(e) => updateFormData('metadata', 'warranty', parseInt(e.target.value) || 25)}
                   placeholder="25"
                 />
               </div>
@@ -513,7 +642,7 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
             </Button>
             <Button
               type="submit"
-              disabled={createModule.isPending || !formData.fabricante || !formData.modelo || !formData.potenciaNominal}
+              disabled={createModule.isPending || !formData.manufacturer || !formData.model || !formData.nominalPower}
             >
               {createModule.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Adicionar Módulo

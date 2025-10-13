@@ -1,6 +1,6 @@
 import { validate, ValidationError } from 'class-validator';
 import { plainToClass, ClassConstructor } from 'class-transformer';
-import { ValidationResult, ValidationContext } from '../../../shared/validation/types/ValidationTypes';
+import { ValidationResult, ValidationContext, ExtendedValidationResult } from '../../../shared/validation/types/ValidationTypes';
 import { ValidationEngine } from './ValidationEngine';
 
 export abstract class BaseValidator<T = any> {
@@ -21,7 +21,7 @@ export abstract class BaseValidator<T = any> {
   /**
    * Validate DTO using class-validator
    */
-  async validateDTO(dto: T, context?: ValidationContext): Promise<ValidationResult> {
+  async validateDTO(dto: T, context?: ValidationContext): Promise<ExtendedValidationResult> {
     try {
       const errors = await validate(dto as object);
       
@@ -37,7 +37,7 @@ export abstract class BaseValidator<T = any> {
       // Apply custom business rules
       const businessValidation = await this.validateBusinessRules(dto, context);
       if (!businessValidation.isValid) {
-        return businessValidation;
+        return businessValidation as ExtendedValidationResult;
       }
 
       return {
@@ -48,7 +48,7 @@ export abstract class BaseValidator<T = any> {
       return {
         isValid: false,
         message: `Validation error for ${this.entityName}`,
-        errors: [{ message: (error as Error).message }],
+        errors: [{ field: 'general', message: (error as Error).message }],
         code: 'VALIDATION_EXCEPTION'
       };
     }
@@ -57,20 +57,20 @@ export abstract class BaseValidator<T = any> {
   /**
    * Validate business rules specific to the entity
    */
-  protected abstract validateBusinessRules(data: T, context?: ValidationContext): Promise<ValidationResult>;
+  protected abstract validateBusinessRules(data: T, context?: ValidationContext): Promise<ExtendedValidationResult>;
 
   /**
    * Validate using schema-based validation
    */
-  async validateSchema(data: any, schema: any): Promise<ValidationResult> {
+  async validateSchema(data: any, schema: any): Promise<ExtendedValidationResult> {
     try {
       const result = await this.validationEngine.validate(data, schema);
-      return result;
+      return result as ExtendedValidationResult;
     } catch (error) {
       return {
         isValid: false,
         message: `Schema validation failed for ${this.entityName}`,
-        errors: [{ message: (error as Error).message }],
+        errors: [{ field: 'general', message: (error as Error).message }],
         code: 'SCHEMA_VALIDATION_ERROR'
       };
     }
@@ -135,7 +135,7 @@ export abstract class BaseValidator<T = any> {
     data: any, 
     DTOClass: ClassConstructor<T>,
     context?: ValidationContext
-  ): Promise<{ dto: T; result: ValidationResult }> {
+  ): Promise<{ dto: T; result: ExtendedValidationResult }> {
     const dto = plainToClass(DTOClass, data);
     const result = await this.validateDTO(dto, context);
     

@@ -6,6 +6,11 @@ export interface ValidationRule {
   readonly type: 'required' | 'range' | 'pattern' | 'custom';
   readonly severity: 'error' | 'warning' | 'info';
   readonly category: 'technical' | 'safety' | 'performance' | 'financial';
+  readonly field?: string;
+  readonly min?: number;
+  readonly max?: number;
+  readonly pattern?: string;
+  readonly validate?: (value: any, context?: ValidationContext) => boolean | Promise<boolean>;
 }
 
 export interface ValidationResult {
@@ -13,6 +18,17 @@ export interface ValidationResult {
   readonly message: string;
   readonly code?: string;
   readonly suggestions?: string[];
+  readonly errors?: Array<{
+    field: string;
+    message: string;
+    value?: any;
+    code?: string;
+  }>;
+  readonly warnings?: Array<{
+    field: string;
+    message: string;
+    suggestion?: string;
+  }>;
 }
 
 export interface ValidationContext {
@@ -63,4 +79,3 @@ export interface ValidatorMetadata {
   readonly validationTypes: ('dto' | 'business' | 'schema')[];
 }
 
-export type { ValidationRule, ValidationResult, ValidationContext };

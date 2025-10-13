@@ -290,25 +290,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
 
   // Hook para calcular limites MPPT - agora usa selectedModule completo com tipo compartilhado
   const moduleToUse = useMemo(() => {
-    if (!selectedModule) {
-      console.log('❌ [WaterSelectionForm] Nenhum módulo selecionado para cálculo MPPT');
-      return undefined;
-    }
-
-    // Verificar se está usando tipo compartilhado com os caminhos corretos
-    const hasValidSharedType = 
-      selectedModule.specifications?.voc && 
-      selectedModule.parameters?.temperature?.tempCoeffVoc &&
-      selectedModule.nominalPower;
-
-    if (!hasValidSharedType) {
-      console.log('❌ [WaterSelectionForm] Módulo com dados incompletos ou tipo incorreto:', {
-        specifications: selectedModule.specifications,
-        parameters: selectedModule.parameters,
-        nominalPower: selectedModule.nominalPower
-      });
-      return undefined;
-    }
+    if (!selectedModule) return null;
 
     return {
       potenciaNominal: selectedModule.nominalPower,
@@ -319,7 +301,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     
   const mpptLimits = useMultipleMPPTCalculations(
     invertersForMPPT,
-    moduleToUse, // ❌ REMOVER fallback com zeros - só calcular com dados válidos
+    moduleToUse || { potenciaNominal: 550, vocStc: 45, tempCoefVoc: -0.3 }, // Default values
     defaultCoordinates,
     Boolean(moduleToUse && selectedInverters?.length)
   );

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { calculateSystemEfficiency, SystemLosses } from '@/lib/pvDimensioning';
+import { SelectedInverter as SharedSelectedInverter } from '@bess-pro/shared';
 
 export interface AguaTelhado {
   id: string;
@@ -42,6 +43,65 @@ const convertToSystemLosses = (data: DimensioningData): SystemLosses => ({
   perdaOutras: data.perdaOutras
 });
 
+// Função para converter SelectedInverter legado para SharedSelectedInverter
+const convertToSharedSelectedInverter = (legacy: SelectedInverter): SharedSelectedInverter => ({
+  inverter: {
+    id: legacy.inverterId,
+    manufacturer: {
+      id: legacy.inverterId,
+      name: legacy.fabricante,
+      type: 'INVERTER' as any,
+      description: '',
+      website: '',
+      contact: {
+        email: '',
+        phone: '',
+      },
+      business: {
+        foundedYear: new Date().getFullYear(),
+      },
+      certifications: [],
+      metadata: {
+        specialties: [],
+        markets: [],
+        qualityStandards: [],
+      },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    model: legacy.modelo,
+    power: {
+      ratedACPower: legacy.potenciaSaidaCA,
+      maxPVPower: legacy.potenciaFvMax || legacy.potenciaSaidaCA * 1.2,
+      shortCircuitVoltageMax: legacy.tensaoCcMax,
+      maxInputCurrent: legacy.correnteEntradaMax || 0,
+      maxApparentPower: legacy.potenciaAparenteMax || legacy.potenciaSaidaCA,
+    },
+    mppt: {
+      numberOfMppts: legacy.numeroMppt,
+      stringsPerMppt: legacy.stringsPorMppt,
+    },
+    electrical: {
+      maxEfficiency: legacy.eficienciaMax || 95,
+      gridType: legacy.tipoRede as 'monofasico' | 'bifasico' | 'trifasico',
+    },
+    metadata: {
+      manufacturerId: legacy.inverterId,
+      warranty: 5,
+      certifications: [],
+      connectionType: 'on-grid',
+    },
+    status: 'active',
+    isPublic: false,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  quantity: legacy.quantity,
+  selectedAt: new Date(),
+  observations: undefined
+});
+
 export interface Customer {
   id: string;
   name: string;
@@ -63,6 +123,7 @@ export interface EnergyBill {
   consumoMensal: number[];
 }
 
+// Legacy SelectedInverter for backward compatibility
 export interface SelectedInverter {
   id: string; // ID único para esta seleção
   inverterId: string; // ID do inversor do equipamento
@@ -162,7 +223,7 @@ interface DimensioningData {
   longitude?: number;
   
   // Inversores - Sistema Multi-Inversor
-  selectedInverters: SelectedInverter[];
+  selectedInverters: SharedSelectedInverter[];
   totalInverterPower: number;
   totalMpptChannels: number; // Total de canais MPPT disponíveis
   

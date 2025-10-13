@@ -24,9 +24,7 @@ export const inverterFormSchema = z.object({
   
   // Especificações elétricas (exatamente como no store)
   maxEfficiency: z.number().min(0).max(100, 'Eficiência máxima deve estar entre 0 e 100'),
-  gridType: z.enum(['monofasico', 'bifasico', 'trifasico'], {
-    errorMap: () => ({ message: 'Tipo de rede inválido' })
-  }),
+  gridType: z.enum(['monofasico', 'bifasico', 'trifasico']),
   ratedVoltage: z.number().positive('Tensão nominal deve ser positiva').optional(),
   frequency: z.number().positive('Frequência deve ser positiva').optional(),
   powerFactor: z.number().min(0).max(1, 'Fator de potência deve estar entre 0 e 1').optional(),
@@ -39,9 +37,7 @@ export const inverterFormSchema = z.object({
   imageUrl: z.string().url('URL da imagem inválida').optional(),
   certifications: z.array(z.string()).default([]),
   warranty: z.number().int().min(0, 'Garantia deve ser positiva').default(0),
-  connectionType: z.enum(['on-grid', 'off-grid', 'hybrid'], {
-    errorMap: () => ({ message: 'Tipo de conexão inválido' })
-  }),
+  connectionType: z.enum(['on-grid', 'off-grid', 'hybrid']),
   countryOfOrigin: z.string().min(2, 'País de origem inválido').optional(),
   
   // Status

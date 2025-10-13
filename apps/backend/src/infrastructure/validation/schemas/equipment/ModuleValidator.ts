@@ -1,5 +1,5 @@
 import { BaseValidator } from '../../core/BaseValidator';
-import { ValidationResult, ValidationContext, ValidationRule } from '../../../shared/validation/types/ValidationTypes';
+import { ValidationResult, ValidationContext, ValidationRule } from '../../../../shared/validation/types/ValidationTypes';
 
 // Define SolarModule interface locally to avoid import issues
 interface SolarModule {
@@ -52,14 +52,7 @@ export class ModuleValidator extends BaseValidator<SolarModule> {
         category: 'technical',
         field: 'nominalPower',
         validate: (data: any) => {
-          if (!data.nominalPower || data.nominalPower <= 0) {
-            return {
-              isValid: false,
-              message: 'Nominal power is required and must be greater than 0',
-              code: 'MODULE_POWER_REQUIRED'
-            };
-          }
-          return { isValid: true, message: 'Module power valid' };
+          return !!(data.nominalPower && data.nominalPower > 0);
         }
       },
       {
@@ -74,15 +67,7 @@ export class ModuleValidator extends BaseValidator<SolarModule> {
         max: 1000,
         validate: (data: any) => {
           const power = data.nominalPower;
-          if (power < 10 || power > 1000) {
-            return {
-              isValid: false,
-              message: 'Module power must be between 10W and 1000W',
-              code: 'MODULE_POWER_OUT_OF_RANGE',
-              suggestions: ['Check the module datasheet for correct power rating']
-            };
-          }
-          return { isValid: true, message: 'Module power within range' };
+          return power >= 10 && power <= 1000;
         }
       },
       {
@@ -94,14 +79,7 @@ export class ModuleValidator extends BaseValidator<SolarModule> {
         category: 'technical',
         field: 'specifications.efficiency',
         validate: (data: any) => {
-          if (!data.specifications?.efficiency || data.specifications.efficiency <= 0) {
-            return {
-              isValid: false,
-              message: 'Efficiency is required and must be greater than 0',
-              code: 'EFFICIENCY_REQUIRED'
-            };
-          }
-          return { isValid: true, message: 'Efficiency valid' };
+          return !!(data.specifications?.efficiency && data.specifications.efficiency > 0);
         }
       },
       {
@@ -116,15 +94,7 @@ export class ModuleValidator extends BaseValidator<SolarModule> {
         max: 30,
         validate: (data: any) => {
           const efficiency = data.specifications?.efficiency;
-          if (efficiency < 10 || efficiency > 30) {
-            return {
-              isValid: false,
-              message: 'Module efficiency should be between 10% and 30%',
-              code: 'EFFICIENCY_OUT_OF_RANGE',
-              suggestions: ['Verify efficiency value from module datasheet']
-            };
-          }
-          return { isValid: true, message: 'Efficiency within range' };
+          return efficiency >= 10 && efficiency <= 30;
         }
       },
       {
@@ -138,31 +108,18 @@ export class ModuleValidator extends BaseValidator<SolarModule> {
           const { voc, vmpp } = data.specifications || {};
           
           if (!voc || voc <= 0) {
-            return {
-              isValid: false,
-              message: 'Open circuit voltage (Voc) is required and must be greater than 0',
-              code: 'VOC_REQUIRED'
-            };
+            return false;
           }
 
           if (voc < 10 || voc > 50) {
-            return {
-              isValid: false,
-              message: 'Voc should be between 10V and 50V for typical modules',
-              code: 'VOC_OUT_OF_RANGE',
-              suggestions: ['Check if this is a module or string voltage']
-            };
+            return false;
           }
 
           if (vmpp && vmpp >= voc) {
-            return {
-              isValid: false,
-              message: 'Vmpp must be less than Voc',
-              code: 'VMPP_GREATER_THAN_VOC'
-            };
+            return false;
           }
 
-          return { isValid: true, message: 'Voltage validation passed' };
+          return true;
         }
       },
       {
@@ -176,31 +133,18 @@ export class ModuleValidator extends BaseValidator<SolarModule> {
           const { isc, impp } = data.specifications || {};
           
           if (!isc || isc <= 0) {
-            return {
-              isValid: false,
-              message: 'Short circuit current (Isc) is required and must be greater than 0',
-              code: 'ISC_REQUIRED'
-            };
+            return false;
           }
 
           if (isc < 1 || isc > 15) {
-            return {
-              isValid: false,
-              message: 'Isc should be between 1A and 15A for typical modules',
-              code: 'ISC_OUT_OF_RANGE',
-              suggestions: ['Check if this is a module or string current']
-            };
+            return false;
           }
 
           if (impp && impp > isc) {
-            return {
-              isValid: false,
-              message: 'Impp must be less than or equal to Isc',
-              code: 'IMPP_GREATER_THAN_ISC'
-            };
+            return false;
           }
 
-          return { isValid: true, message: 'Current validation passed' };
+          return true;
         }
       },
       {
@@ -214,37 +158,24 @@ export class ModuleValidator extends BaseValidator<SolarModule> {
           const tempCoeff = data.parameters?.temperature;
           
           if (!tempCoeff) {
-            return {
-              isValid: true,
-              message: 'Temperature coefficients not provided (optional)',
-              code: 'TEMP_COEFF_MISSING'
-            };
+            return true;
           }
 
           const { tempCoeffPmax, tempCoeffVoc, tempCoeffIsc } = tempCoeff;
 
           if (tempCoeffPmax !== undefined) {
             if (tempCoeffPmax > 0 || tempCoeffPmax < -1) {
-              return {
-                isValid: false,
-                message: 'Power temperature coefficient should be between -1%/°C and 0%/°C',
-                code: 'TEMP_COEFF_PMAX_INVALID',
-                suggestions: ['Typical values range from -0.3 to -0.5 %/°C']
-              };
+              return false;
             }
           }
 
           if (tempCoeffVoc !== undefined) {
             if (tempCoeffVoc > 0 || tempCoeffVoc < -1) {
-              return {
-                isValid: false,
-                message: 'Voc temperature coefficient should be between -1%/°C and 0%/°C',
-                code: 'TEMP_COEFF_VOC_INVALID'
-              };
+              return false;
             }
           }
 
-          return { isValid: true, message: 'Temperature coefficients valid' };
+          return true;
         }
       },
       {
@@ -258,61 +189,36 @@ export class ModuleValidator extends BaseValidator<SolarModule> {
           const dimensions = data.dimensions;
           
           if (!dimensions) {
-            return {
-              isValid: true,
-              message: 'Dimensions not provided (optional)',
-              code: 'DIMENSIONS_MISSING'
-            };
+            return true;
           }
 
           const { widthMm, heightMm, thicknessMm, weightKg } = dimensions;
 
           if (widthMm && (widthMm < 500 || widthMm > 2500)) {
-            return {
-              isValid: false,
-              message: 'Module width should be between 500mm and 2500mm',
-              code: 'WIDTH_OUT_OF_RANGE'
-            };
+            return false;
           }
 
           if (heightMm && (heightMm < 500 || heightMm > 2500)) {
-            return {
-              isValid: false,
-              message: 'Module height should be between 500mm and 2500mm',
-              code: 'HEIGHT_OUT_OF_RANGE'
-            };
+            return false;
           }
 
           if (thicknessMm && (thicknessMm < 20 || thicknessMm > 100)) {
-            return {
-              isValid: false,
-              message: 'Module thickness should be between 20mm and 100mm',
-              code: 'THICKNESS_OUT_OF_RANGE'
-            };
+            return false;
           }
 
           if (weightKg && (weightKg < 5 || weightKg > 50)) {
-            return {
-              isValid: false,
-              message: 'Module weight should be between 5kg and 50kg',
-              code: 'WEIGHT_OUT_OF_RANGE'
-            };
+            return false;
           }
 
           // Calculate area if both dimensions are present
           if (widthMm && heightMm) {
             const calculatedArea = (widthMm * heightMm) / 1000000; // Convert to m²
             if (dimensions.areaM2 && Math.abs(calculatedArea - dimensions.areaM2) > 0.1) {
-              return {
-                isValid: false,
-                message: 'Calculated area does not match provided area',
-                code: 'AREA_MISMATCH',
-                suggestions: [`Calculated: ${calculatedArea.toFixed(2)}m², Provided: ${dimensions.areaM2}m²`]
-              };
+              return false;
             }
           }
 
-          return { isValid: true, message: 'Dimensions validation passed' };
+          return true;
         }
       }
     ]);

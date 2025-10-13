@@ -197,7 +197,14 @@ export class ValidationEngine {
     const fieldRule = rule as any;
     
     if (typeof fieldRule.validate === 'function') {
-      return fieldRule.validate(data, context);
+      const result = fieldRule.validate(data, context);
+      const isValid = typeof result === 'boolean' ? result : false;
+      
+      return {
+        isValid,
+        message: isValid ? 'Custom validation passed' : `Custom validation failed for ${fieldRule.field}`,
+        code: isValid ? undefined : 'CUSTOM_VALIDATION_FAILED'
+      };
     }
 
     return {

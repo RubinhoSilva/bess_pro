@@ -2,7 +2,15 @@ import { Request, Response, NextFunction } from 'express';
 import { validate, ValidationError } from 'class-validator';
 import { plainToClass, ClassConstructor } from 'class-transformer';
 import { BaseValidator } from '../core/BaseValidator';
-import { ExtendedValidationResult } from '../../shared/validation/types/ValidationTypes';
+import { ExtendedValidationResult } from '../../../shared/validation/types/ValidationTypes';
+
+export interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    role: 'admin' | 'engineer' | 'sales' | 'customer';
+    [key: string]: any;
+  };
+}
 
 export interface ValidationErrorResponse {
   success: false;
@@ -25,7 +33,7 @@ export function validationMiddleware<T extends object>(
   source: 'body' | 'query' | 'params' = 'body',
   customValidator?: BaseValidator
 ) {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       const dto = plainToClass(type, req[source]);
       const errors = await validate(dto as object);
@@ -87,7 +95,7 @@ export function schemaValidationMiddleware(
   validator: BaseValidator,
   entityType: string
 ) {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       const validationResult = await validator.validateSchema(req.body, entityType);
 
@@ -128,7 +136,7 @@ export function validateMultiple<T extends object, U extends object>(
   bodyValidator?: BaseValidator,
   queryValidator?: BaseValidator
 ) {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       const errors: ValidationError[] = [];
       const allWarnings: Array<{ field: string; message: string; suggestion?: string }> = [];
@@ -148,13 +156,13 @@ export function validateMultiple<T extends object, U extends object>(
 
           if (!bodyValidationResult.isValid) {
             const extendedResult = bodyValidationResult as ExtendedValidationResult;
-            errors.push(...(extendedResult.errors || []).map(err => ({
+            errors.push(...(extendedResult.errors || []).map((err: any) => ({
               property: `body.${err.field}`,
               constraints: { [err.code || 'CUSTOM']: err.message }
             })));
 
             if (extendedResult.warnings) {
-              allWarnings.push(...extendedResult.warnings.map(w => ({
+              allWarnings.push(...extendedResult.warnings.map((w: any) => ({
                 field: `body.${w.field}`,
                 message: w.message,
                 suggestion: w.suggestion
@@ -181,13 +189,13 @@ export function validateMultiple<T extends object, U extends object>(
 
           if (!queryValidationResult.isValid) {
             const extendedResult = queryValidationResult as ExtendedValidationResult;
-            errors.push(...(extendedResult.errors || []).map(err => ({
+            errors.push(...(extendedResult.errors || []).map((err: any) => ({
               property: `query.${err.field}`,
               constraints: { [err.code || 'CUSTOM']: err.message }
             })));
 
             if (extendedResult.warnings) {
-              allWarnings.push(...extendedResult.warnings.map(w => ({
+              allWarnings.push(...extendedResult.warnings.map((w: any) => ({
                 field: `query.${w.field}`,
                 message: w.message,
                 suggestion: w.suggestion

@@ -1,5 +1,5 @@
 import { BaseValidator } from '../../core/BaseValidator';
-import { ValidationResult, ValidationContext, ValidationRule } from '../../../shared/validation/types/ValidationTypes';
+import { ExtendedValidationResult, ValidationContext, ValidationRule, ValidationResult } from '../../../../shared/validation/types/ValidationTypes';
 
 // Define Inverter interface locally to avoid import issues
 interface Inverter {
@@ -75,14 +75,7 @@ export class InverterValidator extends BaseValidator<Inverter> {
         category: 'technical',
         field: 'nominalPower',
         validate: (data: any) => {
-          if (!data.nominalPower || data.nominalPower <= 0) {
-            return {
-              isValid: false,
-              message: 'Nominal power is required and must be greater than 0',
-              code: 'INVERTER_POWER_REQUIRED'
-            };
-          }
-          return { isValid: true, message: 'Inverter power valid' };
+          return !!(data.nominalPower && data.nominalPower > 0);
         }
       },
       {
@@ -97,15 +90,7 @@ export class InverterValidator extends BaseValidator<Inverter> {
         max: 150000,
         validate: (data: any) => {
           const power = data.nominalPower;
-          if (power < 500 || power > 150000) {
-            return {
-              isValid: false,
-              message: 'Inverter power must be between 500W and 150kW',
-              code: 'INVERTER_POWER_OUT_OF_RANGE',
-              suggestions: ['Check the inverter datasheet for correct power rating']
-            };
-          }
-          return { isValid: true, message: 'Inverter power within range' };
+          return power >= 500 && power <= 150000;
         }
       },
       {
@@ -119,41 +104,20 @@ export class InverterValidator extends BaseValidator<Inverter> {
           const { maxDcInput, maxDcVoltage, maxDcCurrent } = data.specifications || {};
           
           if (!maxDcInput || maxDcInput <= 0) {
-            return {
-              isValid: false,
-              message: 'Maximum DC input power is required and must be greater than 0',
-              code: 'MAX_DC_INPUT_REQUIRED'
-            };
+            return false;
           }
 
           if (!maxDcVoltage || maxDcVoltage <= 0) {
-            return {
-              isValid: false,
-              message: 'Maximum DC voltage is required and must be greater than 0',
-              code: 'MAX_DC_VOLTAGE_REQUIRED'
-            };
+            return false;
           }
 
           if (!maxDcCurrent || maxDcCurrent <= 0) {
-            return {
-              isValid: false,
-              message: 'Maximum DC current is required and must be greater than 0',
-              code: 'MAX_DC_CURRENT_REQUIRED'
-            };
+            return false;
           }
 
           // Check if DC input power is consistent with voltage and current
           const calculatedPower = maxDcVoltage * maxDcCurrent;
-          if (Math.abs(calculatedPower - maxDcInput) > (maxDcInput * 0.1)) {
-            return {
-              isValid: false,
-              message: 'DC input power is not consistent with voltage and current',
-              code: 'DC_INPUT_INCONSISTENT',
-              suggestions: [`Calculated power: ${calculatedPower}W, Specified: ${maxDcInput}W`]
-            };
-          }
-
-          return { isValid: true, message: 'DC input validation passed' };
+          return Math.abs(calculatedPower - maxDcInput) <= (maxDcInput * 0.1);
         }
       },
       {
@@ -167,50 +131,25 @@ export class InverterValidator extends BaseValidator<Inverter> {
           const { nominalAcOutput, maxAcOutput, acVoltage } = data.specifications || {};
           
           if (!nominalAcOutput || nominalAcOutput <= 0) {
-            return {
-              isValid: false,
-              message: 'Nominal AC output is required and must be greater than 0',
-              code: 'NOMINAL_AC_OUTPUT_REQUIRED'
-            };
+            return false;
           }
 
           if (!maxAcOutput || maxAcOutput <= 0) {
-            return {
-              isValid: false,
-              message: 'Maximum AC output is required and must be greater than 0',
-              code: 'MAX_AC_OUTPUT_REQUIRED'
-            };
+            return false;
           }
 
           if (!acVoltage || acVoltage <= 0) {
-            return {
-              isValid: false,
-              message: 'AC voltage is required and must be greater than 0',
-              code: 'AC_VOLTAGE_REQUIRED'
-            };
+            return false;
           }
 
           // Max AC output should be greater than or equal to nominal
           if (maxAcOutput < nominalAcOutput) {
-            return {
-              isValid: false,
-              message: 'Maximum AC output must be greater than or equal to nominal AC output',
-              code: 'AC_OUTPUT_INCONSISTENT'
-            };
+            return false;
           }
 
           // Validate AC voltage (common values: 120, 208, 220, 230, 240, 277, 380, 400, 480)
           const commonVoltages = [120, 208, 220, 230, 240, 277, 380, 400, 480];
-          if (!commonVoltages.includes(acVoltage)) {
-            return {
-              isValid: false,
-              message: 'AC voltage should be a standard value',
-              code: 'AC_VOLTAGE_NON_STANDARD',
-              suggestions: [`Common values: ${commonVoltages.join(', ')}V`]
-            };
-          }
-
-          return { isValid: true, message: 'AC output validation passed' };
+          return commonVoltages.includes(acVoltage);
         }
       },
       {
@@ -224,23 +163,10 @@ export class InverterValidator extends BaseValidator<Inverter> {
           const { efficiency } = data.specifications || {};
           
           if (!efficiency || efficiency <= 0) {
-            return {
-              isValid: false,
-              message: 'Efficiency is required and must be greater than 0',
-              code: 'EFFICIENCY_REQUIRED'
-            };
+            return false;
           }
 
-          if (efficiency < 90 || efficiency > 99) {
-            return {
-              isValid: false,
-              message: 'Inverter efficiency should be between 90% and 99%',
-              code: 'EFFICIENCY_OUT_OF_RANGE',
-              suggestions: ['Typical modern inverters have 95-98% efficiency']
-            };
-          }
-
-          return { isValid: true, message: 'Efficiency validation passed' };
+          return efficiency >= 90 && efficiency <= 99;
         }
       },
       {
@@ -254,40 +180,18 @@ export class InverterValidator extends BaseValidator<Inverter> {
           const { mpptCount, stringsPerMppt } = data.specifications || {};
           
           if (!mpptCount || mpptCount <= 0) {
-            return {
-              isValid: false,
-              message: 'MPPT count is required and must be greater than 0',
-              code: 'MPPT_COUNT_REQUIRED'
-            };
+            return false;
           }
 
           if (!stringsPerMppt || stringsPerMppt <= 0) {
-            return {
-              isValid: false,
-              message: 'Strings per MPPT is required and must be greater than 0',
-              code: 'STRINGS_PER_MPPT_REQUIRED'
-            };
+            return false;
           }
 
           if (mpptCount > 20) {
-            return {
-              isValid: false,
-              message: 'MPPT count seems unusually high',
-              code: 'MPPT_COUNT_HIGH',
-              suggestions: ['Typical residential inverters have 1-4 MPPTs']
-            };
+            return false;
           }
 
-          if (stringsPerMppt > 20) {
-            return {
-              isValid: false,
-              message: 'Strings per MPPT seems unusually high',
-              code: 'STRINGS_PER_MPPT_HIGH',
-              suggestions: ['Typical values range from 1-10 strings per MPPT']
-            };
-          }
-
-          return { isValid: true, message: 'MPPT configuration valid' };
+          return stringsPerMppt <= 20;
         }
       },
       {
@@ -302,32 +206,19 @@ export class InverterValidator extends BaseValidator<Inverter> {
           
           const validTypes = ['string', 'micro', 'hybrid', 'battery'];
           if (!validTypes.includes(type)) {
-            return {
-              isValid: false,
-              message: `Inverter type must be one of: ${validTypes.join(', ')}`,
-              code: 'INVALID_INVERTER_TYPE'
-            };
+            return false;
           }
 
           // Type-specific validations
           if (type === 'micro' && mpptCount > 1) {
-            return {
-              isValid: false,
-              message: 'Microinverters typically have 1 MPPT',
-              code: 'MICROINVERTER_MPPT_COUNT',
-              suggestions: ['Microinverters usually have one MPPT per unit']
-            };
+            return false;
           }
 
           if (type === 'string' && mpptCount < 1) {
-            return {
-              isValid: false,
-              message: 'String inverters must have at least 1 MPPT',
-              code: 'STRING_INVERTER_MPPT_COUNT'
-            };
+            return false;
           }
 
-          return { isValid: true, message: 'Inverter type validation passed' };
+          return true;
         }
       },
       {
@@ -342,32 +233,18 @@ export class InverterValidator extends BaseValidator<Inverter> {
           const nominalPower = data.nominalPower;
           
           if (!maxDcInput || !nominalAcOutput || !nominalPower) {
-            return { isValid: true, message: 'Power matching skipped (missing data)' };
+            return true;
           }
 
           // DC input should be slightly higher than AC output (oversizing)
           const dcAcRatio = maxDcInput / nominalAcOutput;
           if (dcAcRatio < 1.0 || dcAcRatio > 2.0) {
-            return {
-              isValid: false,
-              message: 'DC/AC ratio should be between 1.0 and 2.0',
-              code: 'DC_AC_RATIO_OUT_OF_RANGE',
-              suggestions: [`Current ratio: ${dcAcRatio.toFixed(2)}, Typical range: 1.1-1.5`]
-            };
+            return false;
           }
 
           // Nominal power should be close to AC output
           const acNominalRatio = nominalAcOutput / nominalPower;
-          if (acNominalRatio < 0.8 || acNominalRatio > 1.2) {
-            return {
-              isValid: false,
-              message: 'AC output should be close to nominal power',
-              code: 'AC_NOMINAL_MISMATCH',
-              suggestions: [`Current ratio: ${acNominalRatio.toFixed(2)}, Expected: ~1.0`]
-            };
-          }
-
-          return { isValid: true, message: 'Power matching validation passed' };
+          return acNominalRatio >= 0.8 && acNominalRatio <= 1.2;
         }
       },
       {
@@ -381,11 +258,7 @@ export class InverterValidator extends BaseValidator<Inverter> {
           const protection = data.parameters?.protection;
           
           if (!protection) {
-            return {
-              isValid: true,
-              message: 'Protection features not specified (optional)',
-              code: 'PROTECTION_MISSING'
-            };
+            return true;
           }
 
           const essentialProtections = [
@@ -400,22 +273,13 @@ export class InverterValidator extends BaseValidator<Inverter> {
             protectionName => !protection[protectionName]
           );
 
-          if (missingProtections.length > 0) {
-            return {
-              isValid: false,
-              message: `Missing essential protection features: ${missingProtections.join(', ')}`,
-              code: 'MISSING_PROTECTION_FEATURES',
-              suggestions: ['Ensure all essential protection features are enabled']
-            };
-          }
-
-          return { isValid: true, message: 'Protection features validation passed' };
+          return missingProtections.length === 0;
         }
       }
     ]);
   }
 
-  protected async validateBusinessRules(data: Inverter, context?: ValidationContext): Promise<ValidationResult> {
+  protected async validateBusinessRules(data: Inverter, context?: ValidationContext): Promise<ExtendedValidationResult> {
     // Check for duplicate model within manufacturer
     if (context?.equipment && context.userRole !== 'admin') {
       if (!data.model || data.model.trim().length === 0) {

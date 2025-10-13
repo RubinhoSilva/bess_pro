@@ -51,9 +51,7 @@ export const manufacturerFormSchema = z.object({
   certifications: z.array(z.string()).default([]),
   
   // Campos adicionais para compatibilidade
-  type: z.enum(['solar_module', 'inverter', 'both'], {
-    errorMap: () => ({ message: 'Tipo de fabricante inválido' })
-  }),
+  type: z.enum(['solar_module', 'inverter', 'both']),
   isActive: z.boolean().default(true),
   isPublic: z.boolean().default(false),
   userId: z.string().optional(),

@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { moduleService } from '@/services/ModuleService';
 import { inverterService } from '@/services/InverterService';
 import { manufacturerService } from '@/services/ManufacturerService';
+import { SolarModule, Inverter } from '@bess-pro/shared';
 
 interface EquipmentSelectionFormProps {
   formData: any;
@@ -32,14 +33,14 @@ interface SelectedInverter {
 
 const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formData, onFormChange }) => {
   const { data: solarModuleManufacturers } = useQuery({
-    queryKey: ['manufacturers', { type: 'MODULE' }],
-    queryFn: () => manufacturerService.getManufacturers({ type: 'MODULE' }),
+    queryKey: ['manufacturers', 'SOLAR_MODULE'],
+    queryFn: () => manufacturerService.getManufacturers(),
     staleTime: 15 * 60 * 1000,
   });
   
   const { data: inverterManufacturers } = useQuery({
-    queryKey: ['manufacturers', { type: 'INVERTER' }],
-    queryFn: () => manufacturerService.getManufacturers({ type: 'INVERTER' }),
+    queryKey: ['manufacturers', 'INVERTER'],
+    queryFn: () => manufacturerService.getManufacturers(),
     staleTime: 15 * 60 * 1000,
   });
   const { data: solarModulesData, isLoading: loadingModules } = useQuery({
@@ -95,10 +96,10 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
       const selectedModule = solarModules.find((m: any) => m.id === value);
       if (selectedModule && selectedModules.length === 1) {
         // Update main form fields if only one module type
-        onFormChange('potenciaModulo', selectedModule.potenciaNominal);
-        onFormChange('eficienciaModulo', selectedModule.eficiencia);
-        onFormChange('tensaoModulo', selectedModule.voc);
-        onFormChange('correnteModulo', selectedModule.impp);
+        onFormChange('potenciaModulo', selectedModule.nominalPower);
+        onFormChange('eficienciaModulo', selectedModule.specifications.efficiency);
+        onFormChange('tensaoModulo', selectedModule.specifications.voc);
+        onFormChange('correnteModulo', selectedModule.specifications.impp);
       }
     }
   };
@@ -136,9 +137,9 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
       const selectedInverter = inverters.find((i: any) => i.id === value);
       if (selectedInverter && selectedInverters.length === 1) {
         // Update main form fields if only one inverter type
-        onFormChange('potenciaInversor', selectedInverter.potenciaSaidaCA);
-        onFormChange('eficienciaInversor', selectedInverter.eficienciaMax);
-        onFormChange('canaisMppt', selectedInverter.numeroMppt);
+        onFormChange('potenciaInversor', selectedInverter.power.ratedACPower);
+        onFormChange('eficienciaInversor', selectedInverter.electrical.maxEfficiency);
+        onFormChange('canaisMppt', selectedInverter.mppt.numberOfMppts);
       }
     }
   };
@@ -146,14 +147,14 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
   const getTotalSystemPower = () => {
     return selectedModules.reduce((total, module) => {
       const moduleData = solarModules.find((m: any) => m.id === module.moduleId);
-      return total + (moduleData ? moduleData.potenciaNominal * module.quantity : 0);
+      return total + (moduleData ? moduleData.nominalPower * module.quantity : 0);
     }, 0) / 1000; // Convert to kW
   };
 
   const getTotalInverterCapacity = () => {
     return selectedInverters.reduce((total, inverter) => {
       const inverterData = inverters.find((i: any) => i.id === inverter.inverterId);
-      return total + (inverterData ? inverterData.potenciaSaidaCA * inverter.quantity : 0);
+      return total + (inverterData ? inverterData.power.ratedACPower * inverter.quantity : 0);
     }, 0) / 1000; // Convert to kW
   };
 
@@ -277,13 +278,13 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
                   {moduleData && (
                     <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        <div><strong>Eficiência:</strong> {moduleData.eficiencia}%</div>
-                        <div><strong>VmP:</strong> {moduleData.vmpp}V</div>
-                        <div><strong>ImP:</strong> {moduleData.impp}A</div>
-                        <div><strong>Células:</strong> {moduleData.numeroCelulas}</div>
-                      </div>
-                      <div className="mt-2">
-                        <strong>Potência Total:</strong> {(moduleData.potenciaNominal * module.quantity).toLocaleString()}W
+                         <div><strong>Eficiência:</strong> {moduleData.specifications.efficiency}%</div>
+                         <div><strong>VmP:</strong> {moduleData.specifications.vmpp}V</div>
+                         <div><strong>ImP:</strong> {moduleData.specifications.impp}A</div>
+                         <div><strong>Células:</strong> {moduleData.specifications.numberOfCells}</div>
+                       </div>
+                       <div className="mt-2">
+                         <strong>Potência Total:</strong> {(moduleData.nominalPower * module.quantity).toLocaleString()}W
                       </div>
                     </div>
                   )}
@@ -386,13 +387,13 @@ const EquipmentSelectionForm: React.FC<EquipmentSelectionFormProps> = ({ formDat
                   {inverterData && (
                     <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        <div><strong>Eficiência:</strong> {inverterData.eficienciaMax}%</div>
-                        <div><strong>MPPTs:</strong> {inverterData.numeroMppt}</div>
-                        <div><strong>Tipo:</strong> {inverterData.tipoRede}</div>
-                        <div><strong>Faixa MPPT:</strong> {inverterData.faixaMppt}</div>
-                      </div>
-                      <div className="mt-2">
-                        <strong>Capacidade Total:</strong> {((inverterData.potenciaSaidaCA * inverter.quantity) / 1000).toFixed(1)}kW
+                         <div><strong>Eficiência:</strong> {inverterData.electrical.maxEfficiency}%</div>
+                         <div><strong>MPPTs:</strong> {inverterData.mppt.numberOfMppts}</div>
+                         <div><strong>Tipo:</strong> {inverterData.electrical.gridType}</div>
+                         <div><strong>Faixa MPPT:</strong> {inverterData.mppt.mpptRange}</div>
+                       </div>
+                       <div className="mt-2">
+                         <strong>Capacidade Total:</strong> {((inverterData.power.ratedACPower * inverter.quantity) / 1000).toFixed(1)}kW
                       </div>
                     </div>
                   )}

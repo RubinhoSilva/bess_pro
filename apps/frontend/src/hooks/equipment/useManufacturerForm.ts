@@ -120,7 +120,7 @@ export const useManufacturerForm = (options: UseManufacturerFormOptions = {}): U
       return true;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        error.errors.forEach(err => {
+        error.issues.forEach(err => {
           form.setError(err.path.join('.') as any, {
             type: 'manual',
             message: err.message

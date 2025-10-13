@@ -21,12 +21,8 @@ export const moduleFormSchema = z.object({
   isc: z.number().positive('Corrente de curto-circuito deve ser positiva'),
   
   // Configuração das células (exatamente como no store)
-  cellType: z.enum(['monocrystalline', 'polycrystalline', 'thin-film', 'bifacial', 'heterojunction', 'perovskite', 'cdte', 'cis', 'cigs'], {
-    errorMap: () => ({ message: 'Tipo de célula inválido' })
-  }),
-  technology: z.enum(['perc', 'hjt', 'topcon', 'ibc', 'shj', 'half-cut', 'multi-busbar', 'tandem'], {
-    errorMap: () => ({ message: 'Tecnologia da célula inválida' })
-  }),
+  cellType: z.enum(['monocrystalline', 'polycrystalline', 'thin-film', 'bifacial', 'heterojunction', 'perovskite', 'cdte', 'cis', 'cigs']),
+  technology: z.enum(['perc', 'hjt', 'topcon', 'ibc', 'shj', 'half-cut', 'multi-busbar', 'tandem']),
   numberOfCells: z.number().int().min(1, 'Número de células deve ser positivo').optional(),
   
   // Coeficientes de temperatura (exatamente como no store)

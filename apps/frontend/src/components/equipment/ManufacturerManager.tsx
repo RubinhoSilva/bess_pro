@@ -13,11 +13,17 @@ import { Building2, Plus, Edit, Trash2, MoreVertical, Globe, Shield, MapPin, Sea
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { manufacturerService } from '@/services/ManufacturerService';
 import { 
-  ManufacturerType,
   Manufacturer,
   ManufacturerFilters,
   CreateManufacturerRequest
 } from '@bess-pro/shared';
+
+// Local definition to avoid export issues
+enum ManufacturerType {
+  SOLAR_MODULE = 'SOLAR_MODULE',
+  INVERTER = 'INVERTER',
+  BOTH = 'BOTH'
+}
 import toast from 'react-hot-toast';
 
 interface ManufacturerFormData {

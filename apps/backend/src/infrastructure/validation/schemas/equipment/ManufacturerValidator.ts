@@ -1,5 +1,5 @@
 import { BaseValidator } from '../../core/BaseValidator';
-import { ValidationResult, ValidationContext } from '../../../shared/validation/types/ValidationTypes';
+import { ValidationResult, ValidationContext } from '../../../../shared/validation/types/ValidationTypes';
 
 // Define Manufacturer interface locally to avoid import issues
 interface Manufacturer {
@@ -31,14 +31,7 @@ export class ManufacturerValidator extends BaseValidator<Manufacturer> {
         category: 'technical',
         field: 'name',
         validate: (data: any) => {
-          if (!data.name || data.name.trim().length === 0) {
-            return {
-              isValid: false,
-              message: 'Manufacturer name is required',
-              code: 'MANUFACTURER_NAME_REQUIRED'
-            };
-          }
-          return { isValid: true, message: 'Manufacturer name valid' };
+          return !!(data.name && data.name.trim().length > 0);
         }
       },
       {
@@ -50,25 +43,9 @@ export class ManufacturerValidator extends BaseValidator<Manufacturer> {
         category: 'technical',
         validate: (data: any) => {
           const name = data.name?.trim();
-          if (!name) return { isValid: true, message: 'Name validation skipped' };
+          if (!name) return true;
           
-          if (name.length < 2) {
-            return {
-              isValid: false,
-              message: 'Manufacturer name must be at least 2 characters long',
-              code: 'MANUFACTURER_NAME_TOO_SHORT'
-            };
-          }
-
-          if (name.length > 100) {
-            return {
-              isValid: false,
-              message: 'Manufacturer name must be less than 100 characters',
-              code: 'MANUFACTURER_NAME_TOO_LONG'
-            };
-          }
-
-          return { isValid: true, message: 'Manufacturer name length valid' };
+          return name.length >= 2 && name.length <= 100;
         }
       },
       {
@@ -81,14 +58,7 @@ export class ManufacturerValidator extends BaseValidator<Manufacturer> {
         field: 'type',
         validate: (data: any) => {
           const validTypes = ['SOLAR_MODULE', 'INVERTER', 'BOTH'];
-          if (!data.type || !validTypes.includes(data.type)) {
-            return {
-              isValid: false,
-              message: `Manufacturer type must be one of: ${validTypes.join(', ')}`,
-              code: 'MANUFACTURER_TYPE_INVALID'
-            };
-          }
-          return { isValid: true, message: 'Manufacturer type valid' };
+          return !!(data.type && validTypes.includes(data.type));
         }
       },
       {
@@ -101,26 +71,14 @@ export class ManufacturerValidator extends BaseValidator<Manufacturer> {
         validate: (data: any) => {
           const website = data.website?.trim();
           if (!website) {
-            return { isValid: true, message: 'Website not provided (optional)' };
+            return true;
           }
 
           try {
             const url = new URL(website);
-            if (!['http:', 'https:'].includes(url.protocol)) {
-              return {
-                isValid: false,
-                message: 'Website must use HTTP or HTTPS protocol',
-                code: 'WEBSITE_PROTOCOL_INVALID'
-              };
-            }
-            return { isValid: true, message: 'Website format valid' };
+            return ['http:', 'https:'].includes(url.protocol);
           } catch {
-            return {
-              isValid: false,
-              message: 'Website URL format is invalid',
-              code: 'WEBSITE_FORMAT_INVALID',
-              suggestions: ['Use format: https://example.com']
-            };
+            return false;
           }
         }
       },
@@ -134,20 +92,11 @@ export class ManufacturerValidator extends BaseValidator<Manufacturer> {
         validate: (data: any) => {
           const email = data.email?.trim();
           if (!email) {
-            return { isValid: true, message: 'Email not provided (optional)' };
+            return true;
           }
 
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailRegex.test(email)) {
-            return {
-              isValid: false,
-              message: 'Email format is invalid',
-              code: 'EMAIL_FORMAT_INVALID',
-              suggestions: ['Use format: contact@example.com']
-            };
-          }
-
-          return { isValid: true, message: 'Email format valid' };
+          return emailRegex.test(email);
         }
       },
       {
@@ -160,20 +109,11 @@ export class ManufacturerValidator extends BaseValidator<Manufacturer> {
         validate: (data: any) => {
           const foundedYear = data.foundedYear;
           if (!foundedYear) {
-            return { isValid: true, message: 'Founded year not provided (optional)' };
+            return true;
           }
 
           const currentYear = new Date().getFullYear();
-          if (foundedYear < 1800 || foundedYear > currentYear) {
-            return {
-              isValid: false,
-              message: `Founded year must be between 1800 and ${currentYear}`,
-              code: 'FOUNDED_YEAR_OUT_OF_RANGE',
-              suggestions: [`Current year: ${currentYear}`]
-            };
-          }
-
-          return { isValid: true, message: 'Founded year valid' };
+          return foundedYear >= 1800 && foundedYear <= currentYear;
         }
       },
       {
@@ -186,19 +126,11 @@ export class ManufacturerValidator extends BaseValidator<Manufacturer> {
         validate: (data: any) => {
           const country = data.country?.trim();
           if (!country) {
-            return { isValid: true, message: 'Country not provided (optional)' };
+            return true;
           }
 
           // Simple validation - check if country name is reasonable
-          if (country.length < 2 || country.length > 50) {
-            return {
-              isValid: false,
-              message: 'Country name must be between 2 and 50 characters',
-              code: 'COUNTRY_NAME_INVALID'
-            };
-          }
-
-          return { isValid: true, message: 'Country validation passed' };
+          return country.length >= 2 && country.length <= 50;
         }
       }
     ]);

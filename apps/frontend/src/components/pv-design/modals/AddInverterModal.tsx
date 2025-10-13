@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Plus } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { inverterService } from '@/services/InverterService';
-import { type InverterInput } from '@bess-pro/shared';
+import { type CreateInverterRequest, ManufacturerType, Manufacturer } from '@bess-pro/shared';
+import { toast } from 'react-hot-toast';
 
 interface AddInverterModalProps {
   open: boolean;
@@ -46,38 +47,70 @@ const MANUFACTURERS = [
 ];
 
 export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInverterSelected }: AddInverterModalProps) {
-  const [formData, setFormData] = useState<InverterInput>({
-    manufacturerId: '',
-    fabricante: '',
-    modelo: '',
-    potenciaSaidaCA: 0,
-    tipoRede: '',
-    potenciaFvMax: 0,
-    tensaoCcMax: 0,
-    numeroMppt: 0,
-    stringsPorMppt: 0,
-    eficienciaMax: 0,
-    correnteEntradaMax: 0,
-    potenciaAparenteMax: 0,
+  const [formData, setFormData] = useState<CreateInverterRequest>({
+    manufacturer: {
+      id: '',
+      name: '',
+      type: 'INVERTER' as any,
+      description: '',
+      website: '',
+      contact: {
+        email: '',
+        phone: '',
+      },
+      business: {
+        foundedYear: new Date().getFullYear(),
+      },
+      certifications: [],
+      metadata: {
+        specialties: [],
+        markets: [],
+        qualityStandards: [],
+      },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    model: '',
+    power: {
+      ratedACPower: 0,
+      maxPVPower: 0,
+      shortCircuitVoltageMax: 0,
+      maxInputCurrent: 0,
+      maxApparentPower: 0,
+    },
+    mppt: {
+      numberOfMppts: 0,
+      stringsPerMppt: 0,
+    },
+    electrical: {
+      maxEfficiency: 0,
+      gridType: 'monofasico',
+    },
+    metadata: {
+      warranty: 5,
+      certifications: [],
+      connectionType: 'on-grid',
+    }
   });
 
   const queryClient = useQueryClient();
   
   const createInverter = useMutation({
-    mutationFn: (data: InverterInput) => inverterService.createInverter(data),
+    mutationFn: (data: CreateInverterRequest) => inverterService.createInverter(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inverters'] });
-      toast({ title: 'Inversor criado com sucesso!' });
+      toast.success('Inversor criado com sucesso!');
     },
     onError: (error: any) => {
-      toast({ title: error.message || 'Erro ao criar inversor', variant: 'destructive' });
+      toast.error(error.message || 'Erro ao criar inversor');
     },
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.fabricante || !formData.modelo || !formData.potenciaSaidaCA) {
+    if (!formData.manufacturer.name || !formData.model || !formData.power.ratedACPower) {
       return;
     }
 
@@ -94,29 +127,71 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
       
       // Reset form
       setFormData({
-        manufacturerId: '',
-        fabricante: '',
-        modelo: '',
-        potenciaSaidaCA: 0,
-        tipoRede: '',
-        potenciaFvMax: 0,
-        tensaoCcMax: 0,
-        numeroMppt: 0,
-        stringsPorMppt: 0,
-        eficienciaMax: 0,
-        correnteEntradaMax: 0,
-        potenciaAparenteMax: 0,
+        manufacturer: {
+          id: '',
+          name: '',
+          type: 'INVERTER' as any,
+          description: '',
+          website: '',
+          contact: {
+            email: '',
+            phone: '',
+          },
+          business: {
+            foundedYear: new Date().getFullYear(),
+          },
+          certifications: [],
+          metadata: {
+            specialties: [],
+            markets: [],
+            qualityStandards: [],
+          },
+          status: 'active',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        model: '',
+        power: {
+          ratedACPower: 0,
+          maxPVPower: 0,
+          shortCircuitVoltageMax: 0,
+          maxInputCurrent: 0,
+          maxApparentPower: 0,
+        },
+        mppt: {
+          numberOfMppts: 0,
+          stringsPerMppt: 0,
+        },
+        electrical: {
+          maxEfficiency: 0,
+          gridType: 'monofasico',
+        },
+        metadata: {
+          warranty: 5,
+          certifications: [],
+          connectionType: 'on-grid',
+        }
       });
     } catch (error) {
     }
   };
 
-  const updateFormData = (field: keyof InverterInput, value: any) => {
-    if (field === 'dimensoes') {
-      setFormData((prev: any) => ({ ...prev, dimensoes: { ...prev.dimensoes, ...value } }));
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
-    }
+  const updateFormData = (section: string, field: string, value: any) => {
+    setFormData(prev => {
+      if (section) {
+        const sectionData = prev[section as keyof CreateInverterRequest];
+        if (sectionData && typeof sectionData === 'object') {
+          return {
+            ...prev,
+            [section]: {
+              ...sectionData,
+              [field]: value
+            }
+          };
+        }
+      }
+      return { ...prev, [field]: value };
+    });
   };
 
   return (
@@ -137,8 +212,8 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
             <div className="space-y-2">
               <Label>Fabricante *</Label>
               <Input 
-                value={formData.fabricante || ''} 
-                onChange={e => updateFormData('fabricante', e.target.value)} 
+                value={formData.manufacturer.name || ''} 
+                onChange={e => updateFormData('manufacturer', 'name', e.target.value)} 
                 className="bg-background border-border" 
                 placeholder="Ex: Fronius"
               />
@@ -146,8 +221,8 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
             <div className="space-y-2">
               <Label>Modelo *</Label>
               <Input 
-                value={formData.modelo || ''} 
-                onChange={e => updateFormData('modelo', e.target.value)} 
+                value={formData.model || ''} 
+                onChange={e => updateFormData('', 'model', e.target.value)} 
                 className="bg-background border-border" 
                 placeholder="Ex: Primo 8.2-1"
               />
@@ -163,8 +238,8 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
                 <Label>Potência Nominal CA (W) *</Label>
                 <Input 
                   type="number" 
-                  value={formData.potenciaSaidaCA || ''} 
-                  onChange={e => updateFormData('potenciaSaidaCA', parseFloat(e.target.value) || 0)} 
+                  value={formData.power.ratedACPower || ''} 
+                  onChange={e => updateFormData('power', 'ratedACPower', parseFloat(e.target.value) || 0)} 
                   className="bg-background border-border" 
                   placeholder="8200"
                 />
@@ -172,8 +247,8 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
               <div className="space-y-2">
                 <Label>Tipo de Rede *</Label>
                 <Select
-                  value={formData.tipoRede || ''}
-                  onValueChange={value => updateFormData('tipoRede', value)}
+                  value={formData.electrical.gridType || ''}
+                  onValueChange={value => updateFormData('electrical', 'gridType', value)}
                 >
                   <SelectTrigger className="bg-background border-border">
                     <SelectValue placeholder="Selecione o tipo de rede" />
@@ -191,8 +266,8 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
                 <Label>Potência FV Máx (W)</Label>
                 <Input 
                   type="number" 
-                  value={formData.potenciaFvMax || ''} 
-                  onChange={e => updateFormData('potenciaFvMax', parseFloat(e.target.value) || 0)} 
+                  value={formData.power.maxPVPower || ''} 
+                  onChange={e => updateFormData('power', 'maxPVPower', parseFloat(e.target.value) || 0)} 
                   className="bg-background border-border" 
                   placeholder="12300"
                 />
@@ -201,8 +276,8 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
                 <Label>Tensão CC Máx (V)</Label>
                 <Input 
                   type="number" 
-                  value={formData.tensaoCcMax || ''} 
-                  onChange={e => updateFormData('tensaoCcMax', parseFloat(e.target.value) || 0)} 
+                  value={formData.power.shortCircuitVoltageMax || ''} 
+                  onChange={e => updateFormData('power', 'shortCircuitVoltageMax', parseFloat(e.target.value) || 0)} 
                   className="bg-background border-border" 
                   placeholder="1000"
                 />
@@ -211,8 +286,8 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
                 <Label>Número de MPPTs</Label>
                 <Input 
                   type="number" 
-                  value={formData.numeroMppt || ''} 
-                  onChange={e => updateFormData('numeroMppt', parseFloat(e.target.value) || 0)} 
+                  value={formData.mppt.numberOfMppts || ''} 
+                  onChange={e => updateFormData('mppt', 'numberOfMppts', parseFloat(e.target.value) || 0)} 
                   className="bg-background border-border" 
                   placeholder="2"
                 />
@@ -221,8 +296,8 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
                 <Label>Quantidade de strings por MPPT</Label>
                 <Input 
                   type="number" 
-                  value={formData.stringsPorMppt || ''} 
-                  onChange={e => updateFormData('stringsPorMppt', parseInt(e.target.value) || 0)} 
+                  value={formData.mppt.stringsPerMppt || ''} 
+                  onChange={e => updateFormData('mppt', 'stringsPerMppt', parseInt(e.target.value) || 0)} 
                   className="bg-background border-border" 
                   placeholder="3"
                 />
@@ -232,8 +307,8 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
                 <Input 
                   type="number" 
                   step="0.1"
-                  value={formData.eficienciaMax || ''} 
-                  onChange={e => updateFormData('eficienciaMax', parseFloat(e.target.value) || 0)} 
+                  value={formData.electrical.maxEfficiency || ''} 
+                  onChange={e => updateFormData('electrical', 'maxEfficiency', parseFloat(e.target.value) || 0)} 
                   className="bg-background border-border" 
                   placeholder="97.1"
                 />
@@ -243,8 +318,8 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
                 <Input 
                   type="number" 
                   step="0.1"
-                  value={formData.correnteEntradaMax || ''} 
-                  onChange={e => updateFormData('correnteEntradaMax', parseFloat(e.target.value) || 0)} 
+                  value={formData.power.maxInputCurrent || ''} 
+                  onChange={e => updateFormData('power', 'maxInputCurrent', parseFloat(e.target.value) || 0)} 
                   className="bg-background border-border" 
                   placeholder="18.5"
                 />
@@ -253,8 +328,8 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
                 <Label>Potência Aparente Máx (VA)</Label>
                 <Input 
                   type="number" 
-                  value={formData.potenciaAparenteMax || ''} 
-                  onChange={e => updateFormData('potenciaAparenteMax', parseFloat(e.target.value) || 0)} 
+                  value={formData.power.maxApparentPower || ''} 
+                  onChange={e => updateFormData('power', 'maxApparentPower', parseFloat(e.target.value) || 0)} 
                   className="bg-background border-border" 
                   placeholder="8200"
                 />
@@ -273,7 +348,7 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
             </Button>
             <Button
               type="submit"
-              disabled={createInverter.isPending || !formData.fabricante || !formData.modelo || !formData.potenciaSaidaCA}
+              disabled={createInverter.isPending || !formData.manufacturer.name || !formData.model || !formData.power.ratedACPower}
             >
               {createInverter.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Adicionar Inversor
