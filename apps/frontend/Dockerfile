@@ -11,7 +11,7 @@ WORKDIR /app
 COPY apps/frontend/package*.json ./
 
 # Install dependencies (as root, no chown needed)
-RUN npm ci
+RUN npm install
 
 # Copy entrypoint script and make executable
 COPY apps/frontend/docker-entrypoint-dev.sh /docker-entrypoint-dev.sh

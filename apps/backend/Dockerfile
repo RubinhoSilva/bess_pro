@@ -23,11 +23,11 @@ COPY tsconfig.base.json /tsconfig.base.json
 
 # Install shared dependencies
 WORKDIR /app/shared
-RUN npm ci
+RUN npm install
 
 # Install backend dependencies (ALL deps for dev)
 WORKDIR /app/backend
-RUN npm ci
+RUN npm install
 
 # Copy entrypoint script
 COPY apps/backend/docker-entrypoint-dev.sh /docker-entrypoint-dev.sh

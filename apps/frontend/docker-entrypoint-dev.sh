@@ -23,10 +23,10 @@ if [ -d "/app/shared" ]; then
 
   if [ ! -d "dist" ]; then
     echo "   └─ dist/ not found, building from scratch..."
-    npm run build
+    npm run build:dev
   else
     echo "   └─ dist/ exists, rebuilding..."
-    npm run build
+    npm run build:dev
   fi
 
   echo "✅ @bess-pro/shared built successfully"

@@ -52,6 +52,8 @@ services:
     container_name: bess-pro-mongodb
     platform: linux/arm64
     restart: unless-stopped
+    ports:
+      - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-your-secure-password}
