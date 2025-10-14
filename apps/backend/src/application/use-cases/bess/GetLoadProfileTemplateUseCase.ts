@@ -1,5 +1,6 @@
 import { Result } from '@/application/common/Result';
 import { IUseCase } from '@/application/common/IUseCase';
+import { CalculationConstants } from '@/domain/constants/CalculationConstants';
 
 interface GetLoadProfileTemplateRequest {
   userId: string;
@@ -33,9 +34,9 @@ export class GetLoadProfileTemplateUseCase implements IUseCase<GetLoadProfileTem
             0.5, 0.4, 0.3, 0.3, 0.4, 0.8, 1.2, 1.5, 1.8, 2.0, 2.2, 2.5,
             2.8, 2.6, 2.4, 2.8, 3.2, 3.8, 4.2, 3.8, 3.2, 2.4, 1.6, 0.8
           ],
-          daily_consumption: 48.5,
-          peak_power: 4.5,
-          essential_loads: 2.0,
+          daily_consumption: CalculationConstants.CONSUMPTION_DEFAULTS.RESIDENTIAL_DAILY_CONSUMPTION_KWH,
+          peak_power: CalculationConstants.CONSUMPTION_DEFAULTS.RESIDENTIAL_PEAK_POWER_KW,
+          essential_loads: CalculationConstants.CONSUMPTION_DEFAULTS.RESIDENTIAL_ESSENTIAL_LOADS_KW,
           backup_duration: 8
         },
         commercial: {
@@ -45,9 +46,9 @@ export class GetLoadProfileTemplateUseCase implements IUseCase<GetLoadProfileTem
             1.0, 0.8, 0.6, 0.5, 0.8, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0,
             15.0, 14.0, 13.0, 12.0, 11.0, 10.0, 8.0, 6.0, 4.0, 3.0, 2.0, 1.5
           ],
-          daily_consumption: 156.2,
-          peak_power: 16.0,
-          essential_loads: 5.0,
+          daily_consumption: CalculationConstants.CONSUMPTION_DEFAULTS.COMMERCIAL_DAILY_CONSUMPTION_KWH,
+          peak_power: CalculationConstants.CONSUMPTION_DEFAULTS.COMMERCIAL_PEAK_POWER_KW,
+          essential_loads: CalculationConstants.CONSUMPTION_DEFAULTS.COMMERCIAL_ESSENTIAL_LOADS_KW,
           backup_duration: 4
         },
         industrial: {
@@ -57,9 +58,9 @@ export class GetLoadProfileTemplateUseCase implements IUseCase<GetLoadProfileTem
             15, 12, 10, 8, 12, 25, 45, 60, 75, 85, 90, 95,
             100, 95, 90, 88, 85, 80, 70, 55, 45, 35, 25, 20
           ],
-          daily_consumption: 1285,
-          peak_power: 120,
-          essential_loads: 30,
+          daily_consumption: CalculationConstants.CONSUMPTION_DEFAULTS.INDUSTRIAL_DAILY_CONSUMPTION_KWH,
+          peak_power: CalculationConstants.CONSUMPTION_DEFAULTS.INDUSTRIAL_PEAK_POWER_KW,
+          essential_loads: CalculationConstants.CONSUMPTION_DEFAULTS.INDUSTRIAL_ESSENTIAL_LOADS_KW,
           backup_duration: 2
         }
       };

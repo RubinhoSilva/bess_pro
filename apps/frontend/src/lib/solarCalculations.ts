@@ -1,5 +1,6 @@
 // Cálculos avançados para sistemas fotovoltaicos
 import { SolarSystemService } from '@/lib/solarSystemService';
+import { CalculationConstants } from '@/constants/CalculationConstants';
 
 export interface LocationData {
   latitude: number;
@@ -210,8 +211,8 @@ export class AdvancedSolarCalculator {
             },
             surface_tilt: tilt,
             surface_azimuth: azimuth,
-            module_power: 550, // Assumindo módulos de 550W
-            num_modules: Math.round((potenciaKw * 1000) / 550),
+            module_power: CalculationConstants.SOLAR.DEFAULT_MODULE_POWER_W, // Assumindo módulos padrão
+            num_modules: Math.round((potenciaKw * 1000) / CalculationConstants.SOLAR.DEFAULT_MODULE_POWER_W),
             inverter_efficiency: 0.96,
             system_losses: 0.14 // 14% perdas do sistema
           }),

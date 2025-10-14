@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { BaseController } from './BaseController';
 import { AnalyzeSolarPotentialUseCase } from '../../application/use-cases/solar/AnalyzeSolarPotentialUseCase';
 import { LossesCalculationService, SystemLosses } from '../../application/services/LossesCalculationService';
+import { CalculationConstants } from '../../domain/constants/CalculationConstants';
 import axios from 'axios';
 
 export class SolarAnalysisController extends BaseController {
@@ -53,7 +54,7 @@ export class SolarAnalysisController extends BaseController {
         `${pythonServiceUrl}/api/v1/modules/calculate`,
         params,
         {
-          timeout: 10000, // 10 segundos
+          timeout: CalculationConstants.API_TIMEOUTS.API_TIMEOUT_MS, // 10 segundos
           headers: {
             'Content-Type': 'application/json'
           }
@@ -103,7 +104,7 @@ export class SolarAnalysisController extends BaseController {
         `${pythonServiceUrl}/api/v1/irradiation/monthly`,
         params,
         {
-          timeout: 10000, // 10 segundos
+          timeout: CalculationConstants.API_TIMEOUTS.API_TIMEOUT_MS, // 10 segundos
           headers: {
             'Content-Type': 'application/json'
           }
@@ -151,7 +152,7 @@ export class SolarAnalysisController extends BaseController {
         `${pythonServiceUrl}/api/v1/modules/calculate`,
         params,
         {
-          timeout: 10000, // 10 segundos
+          timeout: CalculationConstants.API_TIMEOUTS.API_TIMEOUT_MS, // 10 segundos
           headers: {
             'Content-Type': 'application/json'
           }
@@ -437,7 +438,7 @@ export class SolarAnalysisController extends BaseController {
         `${pythonServiceUrl}/api/v1/solar/calculate`,
         pythonParams,
         {
-          timeout: 180000, // 3 minutos para ModelChain + PVGIS
+          timeout: CalculationConstants.API_TIMEOUTS.CALCULATION_TIMEOUT_MS, // 3 minutos para ModelChain + PVGIS
           headers: {
             'Content-Type': 'application/json'
           }
@@ -478,7 +479,7 @@ export class SolarAnalysisController extends BaseController {
       );
 
       // Calcular número de módulos a partir da potência total
-      const modulePowerKw = (params.modulo?.potencia_nominal_w || 550) / 1000;
+      const modulePowerKw = (params.modulo?.potencia_nominal_w || CalculationConstants.SOLAR.DEFAULT_MODULE_POWER_W) / 1000;
       const num_modulos = Math.round(pythonData.potencia_total_kwp / modulePowerKw);
 
       // Padronizar resposta para o frontend
@@ -631,7 +632,7 @@ export class SolarAnalysisController extends BaseController {
         `${pythonServiceUrl}/api/v1/irradiation/monthly`,
         pythonParams,
         {
-          timeout: 120000, // 2 minutos para dados PVGIS (demora mesmo)
+          timeout: CalculationConstants.API_TIMEOUTS.IRRADIATION_TIMEOUT_MS, // 2 minutos para dados PVGIS (demora mesmo)
           headers: {
             'Content-Type': 'application/json'
           }
@@ -709,7 +710,7 @@ export class SolarAnalysisController extends BaseController {
           modelo_decomposicao: 'erbs',
           data_source: (req.query.data_source as string) || 'pvgis'  // NOVO
         },
-        { timeout: 30000 }
+        { timeout: CalculationConstants.API_TIMEOUTS.MPPT_TIMEOUT_MS }
       );
 
       return this.ok(res, {
@@ -801,7 +802,7 @@ export class SolarAnalysisController extends BaseController {
         `${pythonServiceUrl}/api/v1/financial/calculate-advanced`,
         financialInput,
         {
-          timeout: 60000, // 1 minuto para cálculos financeiros
+          timeout: CalculationConstants.API_TIMEOUTS.FINANCIAL_TIMEOUT_MS, // 1 minuto para cálculos financeiros
           headers: {
             'Content-Type': 'application/json'
           }
@@ -918,7 +919,7 @@ export class SolarAnalysisController extends BaseController {
         `${pythonServiceUrl}/api/v1/mppt/calculate-modules-per-mppt`,
         params,
         {
-          timeout: 30000, // 30 segundos para cálculos MPPT
+          timeout: CalculationConstants.API_TIMEOUTS.MPPT_TIMEOUT_MS, // 30 segundos para cálculos MPPT
           headers: {
             'Content-Type': 'application/json'
           }
@@ -1035,7 +1036,7 @@ export class SolarAnalysisController extends BaseController {
         `${pythonServiceUrl}/api/v1/solar/calculate`,
         params,
         {
-          timeout: 180000, // 3 minutos para PVGIS + ModelChain completo
+          timeout: CalculationConstants.API_TIMEOUTS.CALCULATION_TIMEOUT_MS, // 3 minutos para PVGIS + ModelChain completo
           headers: {
             'Content-Type': 'application/json'
           }

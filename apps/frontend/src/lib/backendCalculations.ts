@@ -1,6 +1,7 @@
 import { apiClient } from './api';
 import { FrontendCalculationLogger } from './calculationLogger';
 import { calculateSystemEfficiency, SystemLosses } from './pvDimensioning';
+import { CalculationConstants } from '@/constants/CalculationConstants';
 
 export interface BackendCalculationParams {
   systemParams: {
@@ -60,13 +61,13 @@ export class BackendCalculationService {
       const response = await apiClient.calculations.solarSystemStandalone({
         coordinates: params.coordinates,
         consumption: {
-          monthly: params.financialParams?.consumoMensal || [400, 350, 450, 380, 420, 460, 410, 390, 430, 440, 400, 420]
+          monthly: params.financialParams?.consumoMensal || Array(12).fill(CalculationConstants.CONSUMPTION_DEFAULTS.DEFAULT_MONTHLY_CONSUMPTION_KWH)
         },
         systemParameters: {
           moduleType: "monocristalino",
           installationType: "telhado_inclinado", 
           orientation: params.systemParams.orientacao ? "sul" : "norte",
-          tilt: params.systemParams.inclinacao || 23,
+          tilt: params.systemParams.inclinacao || CalculationConstants.FINANCIAL_DEFAULTS.DEFAULT_TILT_DEGREES,
           shadings: params.systemParams.perdas || 0
         },
         economicParameters: {
@@ -154,7 +155,7 @@ const handleCalculate = async () => {
           perdaTemperatura: currentDimensioning.perdaTemperatura
         }, currentDimensioning.eficienciaSistema || 85),
         perdas: 5,
-        inclinacao: 23,
+        inclinacao: CalculationConstants.FINANCIAL_DEFAULTS.DEFAULT_TILT_DEGREES,
         orientacao: 180
       },
       irradiationData: {

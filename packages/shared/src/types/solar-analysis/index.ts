@@ -57,5 +57,13 @@ export type {
   SolarAnalysisResult,
   SolarAnalysisValidation,
   SystemCompatibility,
-  CalculationMetadata
+  CalculationMetadata,
+  AdvancedModulesResult,
+  MonthlyIrradiationResult,
+  FinancialAnalysisResult,
+  MPPTLimitsResult,
+  CompleteSystemResult,
+  SolarAnalysisError,
+  ValidationError,
+  ValidationResult
 } from './response.types';

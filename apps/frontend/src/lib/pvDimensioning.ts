@@ -1,5 +1,6 @@
 import { SolarModule, Inverter } from '../types/legacy-equipment';
 import { FrontendCalculationLogger } from './calculationLogger';
+import { CalculationConstants } from '@/constants/CalculationConstants';
 
 // Função utilitária para calcular eficiência do sistema a partir das perdas específicas
 export function calculateSystemEfficiency(losses: SystemLosses | undefined, fallbackEfficiency: number = 85): number {
@@ -119,7 +120,7 @@ export class PVDimensioningService {
     }, 'Cálculo completo do resumo do sistema incluindo potência pico, número de módulos, área necessária e geração anual estimada.');
 
     // 1. Potência Pico Real (considerando múltiplos de módulos)
-    const potenciaModulo = 550; // W padrão para módulos modernos
+    const potenciaModulo = CalculationConstants.SOLAR.DEFAULT_MODULE_POWER_W; // W padrão para módulos modernos
     const numeroModulos = Math.ceil((potenciaDesejadaKwp * 1000) / potenciaModulo);
     const potenciaPicoReal = (numeroModulos * potenciaModulo) / 1000;
 
@@ -154,7 +155,7 @@ export class PVDimensioningService {
     );
 
     // 2. Área Necessária
-    const areaModulo = 2.79; // m² para módulo de 550W típico (dimensões padrão da indústria)
+    const areaModulo = CalculationConstants.SOLAR.DEFAULT_MODULE_AREA_M2; // m² para módulo padrão (dimensões padrão da indústria)
     const areaNecessaria = numeroModulos * areaModulo;
 
     logger?.formula('Area', 'Área Total Necessária',
@@ -165,7 +166,7 @@ export class PVDimensioningService {
       },
       areaNecessaria,
       {
-        description: 'Área total necessária para instalação dos módulos fotovoltaicos. Baseada na área individual de cada módulo (considerando módulos de 550W com dimensões típicas de 2,3m × 1,13m).',
+        description: `Área total necessária para instalação dos módulos fotovoltaicos. Baseada na área individual de cada módulo (considerando módulos de ${CalculationConstants.SOLAR.DEFAULT_MODULE_POWER_W}W com área de ${CalculationConstants.SOLAR.DEFAULT_MODULE_AREA_M2}m²).`,
         units: 'm²',
         references: ['Manual de Engenharia FV - CRESESB', 'Dimensões típicas da indústria solar']
       }

@@ -1,7 +1,7 @@
 import { Result } from '@/application/common/Result';
 import { IUseCase } from '@/application/common/IUseCase';
-import { CalculationLogger } from '@/domain/services/CalculationLogger';
 import { SolarCalculationService, AreaCalculationService } from '@/domain/services';
+import { CalculationLogger } from '@/domain/services/CalculationLogger';
 import { CalculationConstants } from '@/domain/constants/CalculationConstants';
 import { Coordinates } from '@/domain/value-objects/Coordinates';
 import axios from 'axios';
@@ -94,7 +94,7 @@ export class CalculateStandaloneSolarSystemUseCase implements IUseCase<Calculate
       const systemSummary = SolarCalculationService.calculateSystemSummary(
         request.systemParams, 
         annualGeneration, 
-        6000, // consumo anual padrão (mantido hardcoded por ser específico do contexto)
+        CalculationConstants.CONSUMPTION_DEFAULTS.DEFAULT_ANNUAL_CONSUMPTION_KWH, // consumo anual padrão
         logger
       );
 

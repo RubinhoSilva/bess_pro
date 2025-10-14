@@ -32,6 +32,7 @@ import {
   type GridType
 } from '@bess-pro/shared';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { CalculationConstants } from '@/constants/CalculationConstants';
 
 interface EquipmentManagerProps {
   onUpdate?: () => void;
@@ -188,53 +189,53 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   const [currentInverter, setCurrentInverter] = useState<Inverter | null>(null);
 
   // Temp string values for temperature coefficients (to allow free typing)
-  const [tempCoefPmaxStr, setTempCoefPmaxStr] = useState<string>('-0.40');
-  const [tempCoefVocStr, setTempCoefVocStr] = useState<string>('-0.27');
-  const [tempCoefIscStr, setTempCoefIscStr] = useState<string>('0.048');
+  const [tempCoefPmaxStr, setTempCoefPmaxStr] = useState<string>(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX.toString());
+  const [tempCoefVocStr, setTempCoefVocStr] = useState<string>(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC.toString());
+  const [tempCoefIscStr, setTempCoefIscStr] = useState<string>(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC.toString());
 
   // Form states
   const [moduleForm, setModuleForm] = useState<ModuleFormData>({
     manufacturerId: '',
     manufacturer: '',
     model: '',
-    nominalPower: 550,
-    efficiency: 21.5,
-    vmpp: 41.8,
-    impp: 13.16,
-    voc: 49.8,
-    isc: 13.90,
+    nominalPower: CalculationConstants.SOLAR.DEFAULT_MODULE_POWER_W,
+    efficiency: CalculationConstants.SOLAR.DEFAULT_MODULE_EFFICIENCY,
+    vmpp: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_VMPP_V,
+    impp: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IMPP_A,
+    voc: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_VOC_V,
+    isc: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_ISC_A,
     cellType: 'monosi',
-    numberOfCells: 144,
-    tempCoefPmax: -0.40,
-    tempCoefVoc: -0.27,
-    tempCoefIsc: 0.048,
-    aRef: 1.8,
-    iLRef: 13.5,
-    iORef: 2.5e-12,
-    rS: 0.3,
-    rShRef: 500,
-    warranty: 25,
-    widthMm: 2279,
-    heightMm: 1134,
-    thicknessMm: 35,
-    weightKg: 21.2,
+    numberOfCells: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_CELLS,
+    tempCoefPmax: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX,
+    tempCoefVoc: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC,
+    tempCoefIsc: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC,
+    aRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_A_REF,
+    iLRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IL_REF_A,
+    iORef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IO_REF_A,
+    rS: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_RS_OHM,
+    rShRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_RSH_REF_OHM,
+    warranty: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_WARRANTY_YEARS,
+    widthMm: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_WIDTH_MM,
+    heightMm: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_HEIGHT_MM,
+    thicknessMm: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_THICKNESS_MM,
+    weightKg: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_WEIGHT_KG,
   });
   
   const [inverterForm, setInverterForm] = useState<InverterFormData>({
     manufacturerId: '',
     manufacturer: '',
     model: '', 
-    ratedACPower: 8000, 
+    ratedACPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_POWER_W, 
     gridType: 'trifasico',
-    maxPVPower: 12000,
-    maxDCVoltage: 1000,
-    numberOfMppts: 2,
-    stringsPerMppt: 3,
-    maxEfficiency: 97.5,
-    maxInputCurrent: 18.5,
-    maxApparentPower: 8200,
-    shortCircuitVoltageMax: 1000,
-    warranty: 5,
+    maxPVPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_PV_MAX_W,
+    maxDCVoltage: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_DC_MAX_V,
+    numberOfMppts: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_MPPT_COUNT,
+    stringsPerMppt: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_STRINGS_PER_MPPT,
+    maxEfficiency: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_EFFICIENCY,
+    maxInputCurrent: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_INPUT_MAX_A,
+    maxApparentPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_APPARENT_POWER_VA,
+    shortCircuitVoltageMax: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_DC_MAX_V,
+    warranty: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_WARRANTY_YEARS,
     connectionType: 'on-grid',
   });
   
@@ -379,31 +380,31 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
          manufacturerId: '',
          manufacturer: '',
          model: '',
-         nominalPower: 550,
-         efficiency: 21.5,
-         vmpp: 41.8,
-         impp: 13.16,
-         voc: 49.8,
-         isc: 13.90,
+         nominalPower: CalculationConstants.SOLAR.DEFAULT_MODULE_POWER_W,
+         efficiency: CalculationConstants.SOLAR.DEFAULT_MODULE_EFFICIENCY,
+         vmpp: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_VMPP_V,
+         impp: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IMPP_A,
+         voc: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_VOC_V,
+         isc: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_ISC_A,
          cellType: 'monosi',
-         numberOfCells: 144,
-         tempCoefPmax: -0.40,
-         tempCoefVoc: -0.27,
-         tempCoefIsc: 0.048,
-         aRef: 1.8,
-         iLRef: 13.5,
-         iORef: 2.5e-12,
-         rS: 0.3,
-         rShRef: 500,
-         widthMm: 2279,
-         heightMm: 1134,
-         thicknessMm: 35,
-         weightKg: 21.2,
-         warranty: 25
-       });
-      setTempCoefPmaxStr('-0.40');
-      setTempCoefVocStr('-0.27');
-      setTempCoefIscStr('0.048');
+         numberOfCells: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_CELLS,
+         tempCoefPmax: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX,
+         tempCoefVoc: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC,
+         tempCoefIsc: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC,
+         aRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_A_REF,
+         iLRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IL_REF_A,
+         iORef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IO_REF_A,
+         rS: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_RS_OHM,
+         rShRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_RSH_REF_OHM,
+         widthMm: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_WIDTH_MM,
+         heightMm: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_HEIGHT_MM,
+         thicknessMm: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_THICKNESS_MM,
+         weightKg: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_WEIGHT_KG,
+         warranty: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_WARRANTY_YEARS
+        });
+      setTempCoefPmaxStr(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX.toString());
+      setTempCoefVocStr(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC.toString());
+      setTempCoefIscStr(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC.toString());
       onUpdate?.();
     }, {
       operation: 'save-module',
@@ -435,23 +436,23 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       
       setIsInverterDialogOpen(false);
       setCurrentInverter(null);
-setInverterForm({ 
+ setInverterForm({ 
          manufacturerId: '',
          manufacturer: '',
          model: '', 
-         ratedACPower: 8000, 
+         ratedACPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_POWER_W, 
          gridType: 'trifasico',
-          maxPVPower: 12000,
-          maxDCVoltage: 1000,
-          numberOfMppts: 2,
-          stringsPerMppt: 3,
-          maxEfficiency: 97.5,
-          maxInputCurrent: 18.5,
-          maxApparentPower: 8200,
-          shortCircuitVoltageMax: 1000,
-          warranty: 5,
-          connectionType: 'on-grid',
-        });
+           maxPVPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_PV_MAX_W,
+           maxDCVoltage: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_DC_MAX_V,
+           numberOfMppts: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_MPPT_COUNT,
+           stringsPerMppt: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_STRINGS_PER_MPPT,
+           maxEfficiency: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_EFFICIENCY,
+           maxInputCurrent: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_INPUT_MAX_A,
+           maxApparentPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_APPARENT_POWER_VA,
+           shortCircuitVoltageMax: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_DC_MAX_V,
+           warranty: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_WARRANTY_YEARS,
+           connectionType: 'on-grid',
+         });
       onUpdate?.();
     }, {
       operation: 'save-inverter',
@@ -596,52 +597,52 @@ setInverterForm({
       manufacturerId: '',
       manufacturer: '',
       model: '',
-      nominalPower: 550,
-      efficiency: 21.2,
-      vmpp: 41.8,
-      impp: 13.16,
-      voc: 49.8,
-      isc: 13.90,
+      nominalPower: CalculationConstants.SOLAR.DEFAULT_MODULE_POWER_W,
+      efficiency: CalculationConstants.SOLAR.DEFAULT_MODULE_EFFICIENCY,
+      vmpp: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_VMPP_V,
+      impp: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IMPP_A,
+      voc: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_VOC_V,
+      isc: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_ISC_A,
       cellType: 'Monocristalino',
-      numberOfCells: 144,
-      tempCoefPmax: -0.40,
-      tempCoefVoc: -0.27,
-      tempCoefIsc: 0.048,
-      aRef: 1.8,
-      iLRef: 13.90,
-      iORef: 2.5e-12,
-      rS: 0.5,
-      rShRef: 500,
-      widthMm: 1134,
-      heightMm: 2274,
-      thicknessMm: 35,
-      weightKg: 27.5,
-      warranty: 25
+      numberOfCells: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_CELLS,
+      tempCoefPmax: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX,
+      tempCoefVoc: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC,
+      tempCoefIsc: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC,
+      aRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_A_REF,
+      iLRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IL_REF_A,
+      iORef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IO_REF_A,
+      rS: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_RS_OHM,
+      rShRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_RSH_REF_OHM,
+      widthMm: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_HEIGHT_MM,
+      heightMm: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_WIDTH_MM,
+      thicknessMm: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_THICKNESS_MM,
+      weightKg: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_WEIGHT_KG,
+      warranty: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_WARRANTY_YEARS
     };
     setModuleForm(defaultModuleForm);
-    setTempCoefPmaxStr('-0.40');
-    setTempCoefVocStr('-0.27');
-    setTempCoefIscStr('0.048');
+    setTempCoefPmaxStr(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX.toString());
+    setTempCoefVocStr(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC.toString());
+    setTempCoefIscStr(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC.toString());
     setIsModuleDialogOpen(true);
   };
 
   const handleNewInverter = () => {
     setCurrentInverter(null);
-const defaultInverterForm: InverterFormData = {
+ const defaultInverterForm: InverterFormData = {
       manufacturerId: '',
       manufacturer: '',
       model: '', 
-      ratedACPower: 8000, 
+      ratedACPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_POWER_W, 
       gridType: 'trifasico',
-      maxPVPower: 12000,
-      maxDCVoltage: 1000,
-      numberOfMppts: 2,
-      stringsPerMppt: 3,
-      maxEfficiency: 97.5,
-      maxInputCurrent: 18.5,
-      maxApparentPower: 8200,
-      shortCircuitVoltageMax: 1000,
-      warranty: 5,
+      maxPVPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_PV_MAX_W,
+      maxDCVoltage: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_DC_MAX_V,
+      numberOfMppts: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_MPPT_COUNT,
+      stringsPerMppt: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_STRINGS_PER_MPPT,
+      maxEfficiency: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_EFFICIENCY,
+      maxInputCurrent: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_INPUT_MAX_A,
+      maxApparentPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_APPARENT_POWER_VA,
+      shortCircuitVoltageMax: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_DC_MAX_V,
+      warranty: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_WARRANTY_YEARS,
       connectionType: 'on-grid',
     };
     setInverterForm(defaultInverterForm);

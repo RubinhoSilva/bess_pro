@@ -1,4 +1,5 @@
 import { api } from './api';
+import { CalculationConstants } from '@/constants/CalculationConstants';
 
 export interface SolarSystemCalculationParams {
   consumoAnual?: number;
@@ -923,12 +924,12 @@ export class SolarSystemService {
         return bill.consumoMensal;
       }
       return acc;
-    }, Array(12).fill(400)) || Array(12).fill(400);
+    }, Array(12).fill(CalculationConstants.CONSUMPTION_DEFAULTS.DEFAULT_MONTHLY_CONSUMPTION_KWH)) || Array(12).fill(CalculationConstants.CONSUMPTION_DEFAULTS.DEFAULT_MONTHLY_CONSUMPTION_KWH);
 
     // Ensure we have exactly 12 values
     const consumoMensalKwh = consumoMensal.length === 12
       ? consumoMensal
-      : Array(12).fill(400);
+      : Array(12).fill(CalculationConstants.CONSUMPTION_DEFAULTS.DEFAULT_MONTHLY_CONSUMPTION_KWH);
 
     // Get module data
     const moduloSelecionado = dimensioningData.selectedModules?.[0];

@@ -33,9 +33,9 @@ export function pythonToFrontend(
     success: true,
     data: {
       num_modulos: pythonResponse.num_modulos,
-      potencia_total_kw: pythonResponse.potencia_total_kwp,
-      energia_por_modulo_kwh: pythonResponse.energia_por_modulo,
-      energia_total_anual_kwh: pythonResponse.energia_anual_kwh,
+      potencia_total_kwp: pythonResponse.potencia_total_kwp,
+      energia_por_modulo: pythonResponse.energia_por_modulo,
+      energia_anual_kwh: pythonResponse.energia_anual_kwh,
       energia_dc_anual_kwh: pythonResponse.energia_dc_anual_kwh,
       perda_clipping_kwh: pythonResponse.perda_clipping_kwh,
       perda_clipping_pct: pythonResponse.perda_clipping_pct,
@@ -63,9 +63,7 @@ export function pythonToFrontend(
       dados_processados: pythonResponse.dados_processados,
       anos_analisados: pythonResponse.anos_analisados,
       periodo_dados: pythonResponse.periodo_dados,
-      inversores: pythonResponse.inversores,
-      // Mantém compatibilidade com formato atual do frontend
-      aguas_telhado: originalRequest.aguasTelhado
+      inversores: pythonResponse.inversores
     },
     timestamp: new Date().toISOString(),
     message: 'Cálculo avançado de módulos realizado com sucesso'
@@ -81,19 +79,18 @@ export function irradiationToFrontend(
   return {
     success: true,
     data: {
-      irradiacaoMensal: pythonResponse.irradiacao_mensal,
-      mediaAnual: pythonResponse.media_anual,
+      irradiacao_mensal: pythonResponse.irradiacao_mensal,
+      media_anual: pythonResponse.media_anual,
       maximo: pythonResponse.maximo,
       minimo: pythonResponse.minimo,
-      variacaoSazonal: pythonResponse.variacao_sazonal,
+      variacao_sazonal: pythonResponse.variacao_sazonal,
       configuracao: pythonResponse.configuracao,
       coordenadas: pythonResponse.coordenadas,
-      periodoAnalise: pythonResponse.periodo_analise,
-      registrosProcessados: pythonResponse.registros_processados,
-      fonteDados: pythonResponse.configuracao.fonte_dados,
-      message: `Dados de irradiação obtidos com sucesso de ${pythonResponse.configuracao.fonte_dados} para ${pythonResponse.coordenadas.lat.toFixed(4)}, ${pythonResponse.coordenadas.lon.toFixed(4)}`
+      periodo_analise: pythonResponse.periodo_analise,
+      registros_processados: pythonResponse.registros_processados
     },
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    message: `Dados de irradiação obtidos com sucesso de ${pythonResponse.configuracao.fonte_dados} para ${pythonResponse.coordenadas.lat.toFixed(4)}, ${pythonResponse.coordenadas.lon.toFixed(4)}`
   };
 }
 
@@ -106,7 +103,6 @@ export function financialToFrontend(
   return {
     success: true,
     data: {
-      investimento_inicial: pythonResponse.vpl, // Ajustar conforme necessário
       vpl: pythonResponse.vpl,
       tir: pythonResponse.tir,
       payback_simples: pythonResponse.payback_simples,

@@ -7,6 +7,8 @@
  * Documentação: https://joint-research-centre.ec.europa.eu/pvgis-photovoltaic-geographical-information-system_en
  */
 
+import { CalculationConstants } from '@/constants/CalculationConstants';
+
 interface Location {
   latitude: number;
   longitude: number;
@@ -205,8 +207,8 @@ export class PVGISAPI {
       location,
       peakpower,
       loss = 14,
-      angle = 35,
-      aspect = 180,
+      angle = CalculationConstants.FINANCIAL_DEFAULTS.DEFAULT_TILT_DEGREES,
+      aspect = 180, // Sul para hemisfério norte (padrão PVGIS)
       mountingplace = 'free',
       trackingtype = 0,
       pvtechchoice = 'crystSi',
@@ -299,7 +301,7 @@ export class PVGISAPI {
       end,
       database = 'PVGIS-SARAH2',
       angle = 0,
-      aspect = 180,
+      aspect = 180, // Sul para hemisfério norte (padrão PVGIS)
       components = 1,
       hourlyoptimal = 1
     } = request;
@@ -346,8 +348,8 @@ export class PVGISAPI {
     monthlyYields: number[];
   }> {
     // Testar diferentes inclinações para encontrar a ótima
-    const testAngles = [0, 10, 20, 25, 30, 35, 40, 45, 50, 60];
-    let bestAngle = 30;
+    const testAngles = [0, 10, 20, 25, CalculationConstants.GEOMETRY.SHADING_REFERENCE_ANGLE_DEGREES, 35, 40, 45, 50, 60];
+    let bestAngle = CalculationConstants.GEOMETRY.SHADING_REFERENCE_ANGLE_DEGREES;
     let bestYield = 0;
     let bestMonthlyYields: number[] = [];
 
@@ -476,7 +478,7 @@ export class PVGISAPI {
   /**
    * Estima perdas por sombreamento baseado no perfil de horizonte
    */
-  calculateShadingLosses(horizonData: PVGISHorizonResponse, panelTilt: number = 30): number {
+  calculateShadingLosses(horizonData: PVGISHorizonResponse, panelTilt: number = CalculationConstants.GEOMETRY.SHADING_REFERENCE_ANGLE_DEGREES): number {
     const horizonProfile = horizonData.outputs.horizon_profile;
     
     // Calcular perdas por sombreamento baseado no perfil de horizonte
@@ -485,10 +487,10 @@ export class PVGISAPI {
     let validPoints = 0;
 
     for (const point of horizonProfile) {
-      // Considerar apenas azimutes relevantes para painéis solares (90° - 270°)
-      if (point.A >= 90 && point.A <= 270) {
+      // Considerar apenas azimutes relevantes para painéis solares
+      if (point.A >= CalculationConstants.GEOMETRY.MIN_AZIMUTH_DEGREES && point.A <= CalculationConstants.GEOMETRY.MAX_AZIMUTH_DEGREES) {
         // Calcular fator de sombreamento baseado na elevação do horizonte
-        const shadingFactor = Math.max(0, Math.min(1, point.H_hor / 30)); // 30° como referência
+        const shadingFactor = Math.max(0, Math.min(1, point.H_hor / CalculationConstants.GEOMETRY.SHADING_REFERENCE_ANGLE_DEGREES)); // Ângulo de referência
         totalShadingFactor += shadingFactor;
         validPoints++;
       }
@@ -499,7 +501,7 @@ export class PVGISAPI {
     const averageShadingFactor = totalShadingFactor / validPoints;
     
     // Converter fator de sombreamento em porcentagem de perda
-    return Math.round(averageShadingFactor * 100 * 0.1); // Máximo 10% de perdas por sombreamento
+    return Math.round(averageShadingFactor * 100 * CalculationConstants.GEOMETRY.SHADING_LOSS_FACTOR); // Máximo 10% de perdas por sombreamento
   }
 }
 
