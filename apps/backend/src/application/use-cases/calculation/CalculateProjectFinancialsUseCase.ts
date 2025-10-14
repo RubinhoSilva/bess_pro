@@ -8,6 +8,7 @@ import { AppError } from '../../../shared/errors/AppError';
 import { ProjectId } from '@/domain/value-objects/ProjectId';
 import { UserId } from '@/domain/value-objects/UserId';
 import { UserPermissionService } from '@/domain/services/UserPermissionService';
+import { CalculationConstants } from '@/domain/constants/CalculationConstants';
 // Tipos temporários até shared package estar disponível
 interface FinancialInput {
   investimento_inicial: number;

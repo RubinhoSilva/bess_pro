@@ -9,7 +9,7 @@ export class InverterMapper {
     // Criar um objeto manufacturer básico
     const manufacturer: Manufacturer = {
       id: inverter.manufacturerId || '',
-      name: inverter.fabricante,
+      name: inverter.fabricante || '',
       type: ManufacturerType.INVERTER,
       contact: {
         email: undefined,

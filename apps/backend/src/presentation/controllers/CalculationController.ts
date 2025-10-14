@@ -6,6 +6,7 @@ import { CalculateSolarSystemUseCase, AnalyzeFinancialUseCase } from '@/applicat
 import { ServiceTokens } from '@/infrastructure';
 import { CalculationLogger } from '@/domain/services/CalculationLogger';
 import { SolarCalculationService } from '@/domain/services/SolarCalculationService';
+import { CalculationConstants } from '@/domain/constants/CalculationConstants';
 
 import { IrradiationAnalysisService } from '@/domain/services/IrradiationAnalysisService';
 import { Coordinates } from '@/domain/value-objects/Coordinates';
@@ -38,7 +39,7 @@ export class CalculationController extends BaseController {
           area: systemParams?.area || 50
         },
         irradiationData: {
-          monthly: irradiationData?.monthly || [5.2, 5.8, 6.1, 5.9, 5.4, 4.8, 5.1, 5.7, 6.0, 6.2, 5.9, 5.4],
+          monthly: irradiationData?.monthly || CalculationConstants.IRRADIATION.DEFAULT_MONTHLY_KWH_M2,
           annual: irradiationData?.annual || 67.5
         },
         coordinates: coordinates || { latitude: -23.5505, longitude: -46.6333 },
@@ -87,13 +88,13 @@ export class CalculationController extends BaseController {
 
       const optimalModuleCount = SolarCalculationService.calculateOptimalModuleCount(
         data.systemParams.potenciaNominal,
-        450, // Potência padrão do módulo
+        CalculationConstants.SOLAR.DEFAULT_MODULE_POWER_W,
         data.systemParams.area,
-        2.1 // Área padrão do módulo
+        CalculationConstants.SOLAR.DEFAULT_MODULE_AREA_M2
       );
 
       // Cálculo inline simples de economia de CO2
-      const co2Savings = annualGeneration * 0.074; // 0.074 kg CO2/kWh (média Brasil)
+      const co2Savings = annualGeneration * CalculationConstants.CO2.KG_PER_KWH_BRAZIL;
 
       const orientationLoss = AreaCalculationService.calculateOrientationLosses(
         data.systemParams.inclinacao,
@@ -105,7 +106,7 @@ export class CalculationController extends BaseController {
       const systemSummary = SolarCalculationService.calculateSystemSummary(
         data.systemParams, 
         annualGeneration, 
-        6000, // consumo anual padrão 
+        6000, // consumo anual padrão (mantido hardcoded por ser específico do contexto)
         logger
       );
 
@@ -116,11 +117,11 @@ export class CalculationController extends BaseController {
           totalInvestment: data.financialParams.totalInvestment,
           geracaoEstimadaMensal: data.financialParams.geracaoEstimadaMensal || monthlyGeneration,
           consumoMensal: data.financialParams.consumoMensal || new Array(12).fill(0),
-          tarifaEnergiaB: data.financialParams.tarifaEnergiaB || 0.8,
-          custoFioB: data.financialParams.custoFioB || 0.3,
-          vidaUtil: data.financialParams.vidaUtil || 25,
-          inflacaoEnergia: data.financialParams.inflacaoEnergia || 4.5,
-          taxaDesconto: data.financialParams.taxaDesconto || 8.0,
+          tarifaEnergiaB: data.financialParams.tarifaEnergiaB || CalculationConstants.FINANCIAL.DEFAULT_TARIFA_ENERGIA,
+          custoFioB: data.financialParams.custoFioB || CalculationConstants.FINANCIAL.DEFAULT_CUSTO_FIO_B,
+          vidaUtil: data.financialParams.vidaUtil || CalculationConstants.FINANCIAL.DEFAULT_VIDA_UTIL_ANOS,
+          inflacaoEnergia: data.financialParams.inflacaoEnergia || CalculationConstants.FINANCIAL.DEFAULT_INFLACAO_ENERGIA,
+          taxaDesconto: data.financialParams.taxaDesconto || CalculationConstants.FINANCIAL.DEFAULT_TAXA_DESCONTO,
         };
 
         try {
@@ -134,9 +135,9 @@ export class CalculationController extends BaseController {
             vida_util: financialData.vidaUtil,
             taxa_desconto: financialData.taxaDesconto,
             inflacao_energia: financialData.inflacaoEnergia,
-            degradacao_modulos: 0.5,
-            custo_om: financialData.totalInvestment * 0.01,
-            inflacao_om: 4.0,
+            degradacao_modulos: CalculationConstants.ADVANCED_FINANCIAL.MODULE_DEGRADATION_RATE,
+            custo_om: financialData.totalInvestment * (CalculationConstants.FINANCIAL.DEFAULT_O_E_M_PERCENT / 100),
+            inflacao_om: CalculationConstants.ADVANCED_FINANCIAL.O_M_INFLATION_RATE,
             modalidade_tarifaria: 'convencional'
           };
 
@@ -168,7 +169,7 @@ export class CalculationController extends BaseController {
             pythonApiInput,
             {
               headers: { 'Content-Type': 'application/json' },
-              timeout: 30000
+            timeout: CalculationConstants.VALIDATION.API_TIMEOUT_MS
             }
           );
           
@@ -277,18 +278,18 @@ export class CalculationController extends BaseController {
           longitude: -46.6333
         },
         irradiationData = {
-          monthly: [4.5, 4.8, 4.2, 3.9, 3.2, 2.8, 3.1, 3.6, 4.1, 4.7, 5.2, 4.9], // kWh/m²/dia
+          monthly: [4.5, 4.8, 4.2, 3.9, 3.2, 2.8, 3.1, 3.6, 4.1, 4.7, 5.2, 4.9], // kWh/m²/dia (valores específicos para demonstração)
           annual: 4.35
         },
         financialParams = {
-          investimentoInicial: 32000, // R$
+          investimentoInicial: 32000, // R$ (valor específico para demonstração)
           geracaoAnual: 7800, // kWh/ano (será recalculado)
-          tarifaEnergia: 0.85, // R$/kWh
-          inflacaoEnergia: 5.5, // % ao ano
-          taxaDesconto: 10.0, // % ao ano
-          vidaUtil: 25, // anos
-          custoOperacional: 200, // R$/ano
-          valorResidual: 3200 // R$ (10% do investimento)
+          tarifaEnergia: CalculationConstants.FINANCIAL.DEFAULT_TARIFA_ENERGIA,
+          inflacaoEnergia: CalculationConstants.FINANCIAL.DEFAULT_INFLACAO_ENERGIA,
+          taxaDesconto: CalculationConstants.FINANCIAL.DEFAULT_TAXA_DESCONTO,
+          vidaUtil: CalculationConstants.FINANCIAL.DEFAULT_VIDA_UTIL_ANOS,
+          custoOperacional: 200, // R$/ano (valor específico para demonstração)
+          valorResidual: 3200 // R$ (10% do investimento - valor específico para demonstração)
         }
       } = req.body;
 
@@ -320,7 +321,7 @@ export class CalculationController extends BaseController {
       const systemSummary = SolarCalculationService.calculateSystemSummary(
         systemParams, 
         annualGeneration, 
-        6000, // consumo anual padrão 
+        6000, // consumo anual padrão (mantido hardcoded por ser específico do contexto)
         logger
       );
 
@@ -333,13 +334,13 @@ export class CalculationController extends BaseController {
           geracao_mensal: Array(12).fill(annualGeneration / 12),
           consumo_mensal: Array(12).fill(annualGeneration * 0.8), // Estimativa de 80% de autoconsumo
           tarifa_energia: financialParams.tarifaEnergia,
-          custo_fio_b: 0.3, // Valor padrão
+          custo_fio_b: CalculationConstants.FINANCIAL.DEFAULT_CUSTO_FIO_B,
           vida_util: financialParams.vidaUtil,
           taxa_desconto: financialParams.taxaDesconto,
           inflacao_energia: financialParams.inflacaoEnergia,
-          degradacao_modulos: 0.5,
+          degradacao_modulos: CalculationConstants.ADVANCED_FINANCIAL.MODULE_DEGRADATION_RATE,
           custo_om: financialParams.custoOperacional,
-          inflacao_om: 4.0,
+          inflacao_om: CalculationConstants.ADVANCED_FINANCIAL.O_M_INFLATION_RATE,
           modalidade_tarifaria: 'convencional'
         };
 
@@ -368,7 +369,7 @@ export class CalculationController extends BaseController {
           pythonApiInput,
           {
             headers: { 'Content-Type': 'application/json' },
-            timeout: 30000
+            timeout: CalculationConstants.VALIDATION.API_TIMEOUT_MS
           }
         );
         
@@ -467,7 +468,7 @@ export class CalculationController extends BaseController {
     }, 'Cálculo do resumo completo do sistema incluindo potência, módulos, área necessária, inversor e cobertura do consumo.');
 
     // Cálculo do número de módulos
-    const potenciaModulo = 540; // W padrão
+    const potenciaModulo = CalculationConstants.SOLAR.DEFAULT_MODULE_POWER_W;
     const numeroModulos = Math.ceil((systemParams.potenciaNominal * 1000) / potenciaModulo);
     const potenciaPicoReal = (numeroModulos * potenciaModulo) / 1000;
 
@@ -487,7 +488,7 @@ export class CalculationController extends BaseController {
     );
 
     // Cálculo da área necessária
-    const areaModulo = 2.1; // m² padrão
+    const areaModulo = CalculationConstants.SOLAR.DEFAULT_MODULE_AREA_M2;
     const areaNecessaria = numeroModulos * areaModulo;
 
     logger?.formula('Sistema', 'Área Necessária para Instalação',
@@ -520,7 +521,7 @@ export class CalculationController extends BaseController {
     );
 
     // Potência do inversor recomendada
-    const fatorSeguranca = 1.2;
+    const fatorSeguranca = CalculationConstants.SOLAR.INVERTER_SAFETY_FACTOR;
     const potenciaInversor = potenciaPicoReal * fatorSeguranca;
 
     logger?.formula('Sistema', 'Potência do Inversor Recomendada',

@@ -1,3 +1,5 @@
+import { CalculationConstants } from "../constants/CalculationConstants";
+
 export interface BatterySpecifications {
   capacity: number; // kWh
   voltage: number; // V
@@ -206,7 +208,7 @@ export class BessCalculationService {
     const peakAdjustedPower = basePower * systemParams.peak_power_factor;
     
     // Ajustar para eficiência do inversor (assumindo 95%)
-    const inverterEfficiency = 0.95;
+    const inverterEfficiency = CalculationConstants.BESS.DEFAULT_SYSTEM_EFFICIENCY / 100;
     const finalPower = peakAdjustedPower / inverterEfficiency;
 
     return Math.ceil(finalPower);
@@ -234,17 +236,17 @@ export class BessCalculationService {
       const quantity = Math.max(quantityByCapacity, quantityByPower);
       
       // Verificar se é uma configuração válida
-      if (quantity <= 20) { // Limite máximo de baterias
+      if (quantity <= CalculationConstants.BESS.MAX_BATTERIES) {
         const config: BessConfiguration = {
           battery_specs: battery,
           quantity,
           total_capacity: battery.capacity * quantity,
           total_power: maxContinuousPower * quantity,
           inverter_power: requiredPower,
-          system_cost: (battery.cost * quantity) + (requiredPower * 2000), // R$ 2000/kW para inversor
+          system_cost: (battery.cost * quantity) + (requiredPower * CalculationConstants.ADVANCED_FINANCIAL.INVERTER_COST_PER_KW),
           backup_time: (battery.capacity * quantity * (battery.depth_of_discharge / 100)) / requiredPower,
-          cycles_per_year: 365 * 1.5, // Assumindo 1.5 ciclos por dia
-          system_lifetime: Math.min(battery.cycles / (365 * 1.5), 15), // anos
+          cycles_per_year: 365 * CalculationConstants.SIMULATION.DAILY_CYCLES,
+          system_lifetime: Math.min(battery.cycles / (365 * CalculationConstants.SIMULATION.DAILY_CYCLES), CalculationConstants.SIMULATION.MAX_SYSTEM_LIFETIME_YEARS),
           efficiency_losses: 100 - battery.efficiency
         };
         
@@ -265,13 +267,13 @@ export class BessCalculationService {
   ): BessConfiguration {
     // Verificar se atende aos requisitos mínimos
     const meetsCapacityRequirement = config.total_capacity >= 
-      (loadProfile.essential_loads * systemParams.autonomy_hours * 1.2);
+      (loadProfile.essential_loads * systemParams.autonomy_hours * CalculationConstants.VALIDATION.CAPACITY_REDUNDANCY_FACTOR);
     
     const meetsPowerRequirement = config.total_power >= loadProfile.peak_power;
     
     // Ajustar custo se não atender completamente aos requisitos
     if (!meetsCapacityRequirement || !meetsPowerRequirement) {
-      config.system_cost *= 1.1; // Penalidade de 10%
+      config.system_cost *= CalculationConstants.ADVANCED_FINANCIAL.CONFIGURATION_PENALTY_FACTOR;
     }
     
     return config;
@@ -287,7 +289,7 @@ export class BessCalculationService {
     const scoredConfigs = configurations.map(config => {
       // Score baseado na relação custo/benefício
       const capacityScore = config.total_capacity / 100; // Normalizado
-      const lifetimeScore = config.system_lifetime / 15; // Normalizado
+      const lifetimeScore = config.system_lifetime / CalculationConstants.SIMULATION.MAX_SYSTEM_LIFETIME_YEARS; // Normalizado
       const efficiencyScore = (100 - config.efficiency_losses) / 100;
       const costScore = 1 / (config.system_cost / 100000); // Inverso do custo normalizado
       
@@ -312,7 +314,7 @@ export class BessCalculationService {
     loadProfile: LoadProfile
   ) {
     // Economia anual estimada (peak shaving + backup)
-    const peakShavingSavings = loadProfile.peak_power * 0.5 * 365 * 0.8; // R$/ano
+    const peakShavingSavings = loadProfile.peak_power * CalculationConstants.LOAD_OPTIMIZATION.PEAK_SHAVING_THRESHOLD * 365 * CalculationConstants.LOAD_OPTIMIZATION.PEAK_TARIFF;
     const backupValue = loadProfile.daily_consumption * 365 * 0.1; // R$/ano
     const operationalSavings = peakShavingSavings + backupValue;
     
@@ -323,8 +325,8 @@ export class BessCalculationService {
     const totalSavings = operationalSavings * config.system_lifetime;
     const roi = ((totalSavings - config.system_cost) / config.system_cost) * 100;
     
-    // VPL com taxa de desconto de 10%
-    const discountRate = 0.1;
+    // VPL com taxa de desconto padrão
+    const discountRate = CalculationConstants.FINANCIAL.DEFAULT_TAXA_DESCONTO / 100;
     let npv = -config.system_cost;
     for (let year = 1; year <= config.system_lifetime; year++) {
       npv += operationalSavings / Math.pow(1 + discountRate, year);
@@ -386,22 +388,22 @@ export class BessCalculationService {
     for (let hour = 0; hour < 24; hour++) {
       const hourlyLoad = loadProfile.hourly_consumption[hour];
       
-      // Peak shaving durante horários de pico (18h-21h)
-      if (hour >= 18 && hour <= 21 && hourlyLoad > bessConfig.total_power * 0.5) {
+      // Peak shaving durante horários de pico
+      if (hour >= CalculationConstants.LOAD_OPTIMIZATION.PEAK_HOUR_START && hour <= CalculationConstants.LOAD_OPTIMIZATION.PEAK_HOUR_END && hourlyLoad > bessConfig.total_power * CalculationConstants.LOAD_OPTIMIZATION.PEAK_SHAVING_THRESHOLD) {
         const reduction = Math.min(
-          hourlyLoad - (bessConfig.total_power * 0.5),
-          bessConfig.total_power * 0.3
+          hourlyLoad - (bessConfig.total_power * CalculationConstants.LOAD_OPTIMIZATION.PEAK_SHAVING_THRESHOLD),
+          bessConfig.total_power * CalculationConstants.LOAD_OPTIMIZATION.MAX_PEAK_SHAVING_REDUCTION
         );
         
         optimizedProfile[hour] -= reduction;
-        totalSavings += reduction * 0.8; // R$/kWh no horário de pico
+        totalSavings += reduction * CalculationConstants.LOAD_OPTIMIZATION.PEAK_TARIFF;
       }
       
-      // Carregamento durante horários de tarifa baixa (00h-06h)
-      if (hour >= 0 && hour <= 6) {
+      // Carregamento durante horários de tarifa baixa
+      if (hour >= CalculationConstants.LOAD_OPTIMIZATION.OFF_PEAK_START && hour <= CalculationConstants.LOAD_OPTIMIZATION.OFF_PEAK_END) {
         const chargingPower = Math.min(
-          bessConfig.total_power * 0.7,
-          bessConfig.total_capacity * 0.2
+          bessConfig.total_power * CalculationConstants.LOAD_OPTIMIZATION.OFF_PEAK_CHARGE_FACTOR,
+          bessConfig.total_capacity * CalculationConstants.LOAD_OPTIMIZATION.DAILY_CHARGE_CAPACITY
         );
         
         optimizedProfile[hour] += chargingPower;
@@ -420,10 +422,10 @@ export class BessCalculationService {
   static simulateBessOperation(
     config: BessConfiguration,
     loadProfile: LoadProfile,
-    days: number = 30
+    days: number = CalculationConstants.SIMULATION.DEFAULT_SIMULATION_DAYS
   ) {
     const simulation = [];
-    let batterySOC = 0.5; // State of Charge inicial (50%)
+    let batterySOC:number = CalculationConstants.SIMULATION.INITIAL_SOC;
     
     for (let day = 0; day < days; day++) {
       const dailyData = {
@@ -436,21 +438,21 @@ export class BessCalculationService {
 
       for (let hour = 0; hour < 24; hour++) {
         const load = loadProfile.hourly_consumption[hour];
-        const maxChargePower = config.total_power * 0.8;
-        const maxDischargePower = config.total_power * 0.8;
+        const maxChargePower = config.total_power * CalculationConstants.SIMULATION.CHARGE_POWER_FACTOR;
+        const maxDischargePower = config.total_power * CalculationConstants.SIMULATION.DISCHARGE_POWER_FACTOR;
         
         // Lógica de carregamento/descarregamento
-        if (hour >= 0 && hour <= 6 && batterySOC < 0.9) {
+        if (hour >= CalculationConstants.LOAD_OPTIMIZATION.OFF_PEAK_START && hour <= CalculationConstants.LOAD_OPTIMIZATION.OFF_PEAK_END && batterySOC < CalculationConstants.SIMULATION.MAX_SOC_CHARGE) {
           // Carregamento noturno
           const chargeAmount = Math.min(
             maxChargePower,
-            (0.9 - batterySOC) * config.total_capacity
+            (CalculationConstants.SIMULATION.MAX_SOC_CHARGE - batterySOC) * config.total_capacity
           );
           batterySOC += chargeAmount / config.total_capacity;
           dailyData.energy_charged += chargeAmount;
-        } else if (hour >= 18 && hour <= 21 && load > config.total_power * 0.5) {
+        } else if (hour >= CalculationConstants.LOAD_OPTIMIZATION.PEAK_HOUR_START && hour <= CalculationConstants.LOAD_OPTIMIZATION.PEAK_HOUR_END && load > config.total_power * CalculationConstants.LOAD_OPTIMIZATION.PEAK_SHAVING_THRESHOLD) {
           // Descarregamento no pico
-          const dischargeNeeded = load - (config.total_power * 0.5);
+          const dischargeNeeded = load - (config.total_power * CalculationConstants.LOAD_OPTIMIZATION.PEAK_SHAVING_THRESHOLD);
           const dischargeAmount = Math.min(
             maxDischargePower,
             dischargeNeeded,
@@ -465,7 +467,9 @@ export class BessCalculationService {
         }
         
         // Manter SOC entre limites seguros
-        batterySOC = Math.max(0.1, Math.min(0.95, batterySOC));
+        const minSOC = CalculationConstants.SIMULATION.MIN_SOC_DISCHARGE as number;
+        const maxSOC = CalculationConstants.SIMULATION.MAX_SOC_ABSOLUTE as number;
+        batterySOC = Math.max(minSOC, Math.min(maxSOC, batterySOC));
         dailyData.soc_profile.push(batterySOC);
       }
       

@@ -6,6 +6,7 @@ import { SolarCalculationResponseDto } from "@/application/dtos/output/SolarCalc
 import { IProjectRepository, IUserRepository } from "@/domain/repositories";
 import { UserPermissionService, SolarCalculationService, AreaCalculationService } from "@/domain/services";
 import { CalculationLogger } from "@/domain/services/CalculationLogger";
+import { CalculationConstants } from "@/domain/constants/CalculationConstants";
 import { ProjectId } from "@/domain/value-objects/ProjectId";
 import { UserId } from "@/domain/value-objects/UserId";
 
@@ -56,13 +57,13 @@ export class CalculateSolarSystemUseCase implements IUseCase<CalculateSolarSyste
 
       const optimalModuleCount = SolarCalculationService.calculateOptimalModuleCount(
         command.systemParams.potenciaNominal,
-        450, // Potência padrão do módulo
+        CalculationConstants.SOLAR.DEFAULT_MODULE_POWER_W,
         command.systemParams.area,
-        2.1 // Área padrão do módulo
+        CalculationConstants.SOLAR.DEFAULT_MODULE_AREA_M2
       );
 
       // Cálculo inline simples de economia de CO2
-      const co2Savings = annualGeneration * 0.074; // 0.074 kg CO2/kWh (média Brasil)
+      const co2Savings = annualGeneration * CalculationConstants.CO2.KG_PER_KWH_BRAZIL;
 
       const orientationLoss = AreaCalculationService.calculateOrientationLosses(
         command.systemParams.inclinacao,
@@ -74,7 +75,7 @@ export class CalculateSolarSystemUseCase implements IUseCase<CalculateSolarSyste
       const systemSummary = SolarCalculationService.calculateSystemSummary(
         command.systemParams, 
         annualGeneration, 
-        6000, // consumo anual padrão 
+        6000, // consumo anual padrão (mantido hardcoded por ser específico do contexto)
         logger
       );
 
@@ -85,11 +86,11 @@ export class CalculateSolarSystemUseCase implements IUseCase<CalculateSolarSyste
           totalInvestment: command.financialParams.totalInvestment,
           geracaoEstimadaMensal: command.financialParams.geracaoEstimadaMensal || monthlyGeneration,
           consumoMensal: command.financialParams.consumoMensal || new Array(12).fill(0),
-          tarifaEnergiaB: command.financialParams.tarifaEnergiaB || 0.7,
-          custoFioB: command.financialParams.custoFioB || 0.2,
-          vidaUtil: command.financialParams.vidaUtil || 25,
-          inflacaoEnergia: command.financialParams.inflacaoEnergia || 8,
-          taxaDesconto: command.financialParams.taxaDesconto || 10,
+          tarifaEnergiaB: command.financialParams.tarifaEnergiaB || CalculationConstants.FINANCIAL.DEFAULT_TARIFA_ENERGIA,
+          custoFioB: command.financialParams.custoFioB || CalculationConstants.FINANCIAL.DEFAULT_CUSTO_FIO_B,
+          vidaUtil: command.financialParams.vidaUtil || CalculationConstants.FINANCIAL.DEFAULT_VIDA_UTIL_ANOS,
+          inflacaoEnergia: command.financialParams.inflacaoEnergia || CalculationConstants.FINANCIAL.DEFAULT_INFLACAO_ENERGIA,
+          taxaDesconto: command.financialParams.taxaDesconto || CalculationConstants.FINANCIAL.DEFAULT_TAXA_DESCONTO,
         };
 
         try {
@@ -103,9 +104,9 @@ export class CalculateSolarSystemUseCase implements IUseCase<CalculateSolarSyste
             vida_util: financialData.vidaUtil,
             taxa_desconto: financialData.taxaDesconto,
             inflacao_energia: financialData.inflacaoEnergia,
-            degradacao_modulos: 0.5,
-            custo_om: financialData.totalInvestment * 0.01,
-            inflacao_om: 4.0,
+            degradacao_modulos: CalculationConstants.ADVANCED_FINANCIAL.MODULE_DEGRADATION_RATE,
+            custo_om: financialData.totalInvestment * (CalculationConstants.FINANCIAL.DEFAULT_O_E_M_PERCENT / 100),
+            inflacao_om: CalculationConstants.ADVANCED_FINANCIAL.O_M_INFLATION_RATE,
             modalidade_tarifaria: 'convencional'
           };
 
@@ -137,7 +138,7 @@ export class CalculateSolarSystemUseCase implements IUseCase<CalculateSolarSyste
             pythonApiInput,
             {
               headers: { 'Content-Type': 'application/json' },
-              timeout: 30000
+              timeout: CalculationConstants.VALIDATION.API_TIMEOUT_MS
             }
           );
           

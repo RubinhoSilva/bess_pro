@@ -1,5 +1,6 @@
 import { Coordinates } from "../value-objects/Coordinates";
 import { CalculationLogger } from "./CalculationLogger";
+import { CalculationConstants } from "../constants/CalculationConstants";
 
 export interface IrradiationData {
   monthly: number[];
@@ -180,10 +181,10 @@ export class SolarCalculationService {
       const orientationFactor = this.getOrientationFactor(obstacle.azimuth);
       const loss = (shadingAngle / 90) * orientationFactor * 100;
       
-      totalLoss += Math.min(loss, 50); // Máximo 50% de perda por obstáculo
+      totalLoss += Math.min(loss, CalculationConstants.VALIDATION.MAX_SHADING_LOSS_PER_OBSTACLE);
     });
 
-    return Math.min(totalLoss, 80); // Máximo 80% de perda total
+    return Math.min(totalLoss, CalculationConstants.VALIDATION.MAX_TOTAL_SHADING_LOSS);
   }
 
   private static getLatitudeFactor(latitude: number): number {
@@ -217,7 +218,7 @@ export class SolarCalculationService {
     }, 'Cálculo do resumo completo do sistema incluindo potência, módulos, área necessária, inversor e cobertura do consumo.');
 
     // Cálculo do número de módulos
-    const potenciaModulo = 540; // W padrão
+    const potenciaModulo = CalculationConstants.SOLAR.DEFAULT_MODULE_POWER_W;
     const numeroModulos = Math.ceil((systemParams.potenciaNominal * 1000) / potenciaModulo);
     const potenciaPicoReal = (numeroModulos * potenciaModulo) / 1000;
 
@@ -237,7 +238,7 @@ export class SolarCalculationService {
     );
 
     // Cálculo da área necessária
-    const areaModulo = 2.1; // m² padrão
+    const areaModulo = CalculationConstants.SOLAR.DEFAULT_MODULE_AREA_M2;
     const areaNecessaria = numeroModulos * areaModulo;
 
     logger?.formula('Sistema', 'Área Necessária para Instalação',
@@ -270,7 +271,7 @@ export class SolarCalculationService {
     );
 
     // Potência do inversor recomendada
-    const fatorSeguranca = 1.2;
+    const fatorSeguranca = CalculationConstants.SOLAR.INVERTER_SAFETY_FACTOR;
     const potenciaInversor = potenciaPicoReal * fatorSeguranca;
 
     logger?.formula('Sistema', 'Potência do Inversor Recomendada',
