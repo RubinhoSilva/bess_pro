@@ -13,6 +13,22 @@ export type {
 } from './types/system';
 export * from './types/validation';
 export * from './config/financial';
+// Calculation Results
+export type {
+  SolarCalculationResult,
+  BessCalculationResult,
+  FinancialAnalysisResult,
+  EnvironmentalImpactResult,
+  EnergyProductionResult,
+  SystemConfigurationResult,
+  InvestmentAnalysisResult,
+  FinancialMetricsResult,
+  CashFlowAnalysisResult,
+  SensitivityAnalysisResult,
+  FinancialRiskResult,
+  FinancialBenchmarksResult,
+  EconomicSummaryResult
+} from './types/calculation/calculation.results';
 // Solar Analysis Types (explicit exports to avoid conflicts)
 export type { 
   SolarAnalysisRequest,

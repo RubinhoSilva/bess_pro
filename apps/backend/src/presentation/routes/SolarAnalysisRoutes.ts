@@ -24,8 +24,7 @@ export const createSolarAnalysisRoutes = (container: Container): Router => {
   // Irradiation correction endpoint
   router.post('/calculate-irradiation-correction', solarAnalysisController.calculateIrradiationCorrection.bind(solarAnalysisController));
   
-  // Module count calculation endpoint
-  router.post('/calculate-module-count', solarAnalysisController.calculateModuleCount.bind(solarAnalysisController));
+
   
   // Monthly irradiation analysis endpoint
   router.post('/analyze-monthly-irradiation', solarAnalysisController.analyzeMonthlyIrradiation.bind(solarAnalysisController));

@@ -1,135 +1,13 @@
 import { SolarCalculationResponseDto } from '../dtos/output/SolarCalculationResponseDto';
 import { 
-  SystemCalculations,
-  SystemConfiguration
+  SystemSystemCalculations,
+  SystemSystemConfiguration,
+  SolarCalculationResult,
+  EnvironmentalImpactResult,
+  EnergyProductionResult,
+  EconomicSummaryResult,
+  SystemConfigurationResult
 } from '@bess-pro/shared';
-
-// Local interfaces for types not yet properly exported
-interface SolarCalculationResult {
-  readonly systemSize: number;
-  readonly moduleCount: number;
-  readonly inverterCount: number;
-  readonly totalArea: number;
-  readonly energyProduction: EnergyProductionResult;
-  readonly performanceMetrics: SolarPerformanceMetrics;
-  readonly systemConfiguration: SystemConfiguration;
-  readonly environmentalImpact: EnvironmentalImpactResult;
-  readonly economicSummary: EconomicSummaryResult;
-  readonly calculatedAt: Date;
-  readonly calculationVersion: string;
-  readonly metadata?: any;
-}
-
-interface SystemSummaryLocal {
-  readonly projectId: string;
-  readonly systemType: string;
-  readonly totalCapacity: number;
-  readonly solarCapacity?: number;
-  readonly bessCapacity?: number;
-  readonly annualGeneration?: number;
-  readonly annualSavings?: number;
-  readonly paybackPeriod?: number;
-  readonly npv?: number;
-  readonly irr?: number;
-  readonly roi?: number;
-  readonly environmentalImpact: EnvironmentalImpactResult;
-  readonly performanceRating: 'excellent' | 'good' | 'fair' | 'poor';
-  readonly lastUpdated: Date;
-}
-
-interface EnvironmentalImpactResult {
-  readonly co2SavingsKg: number;
-  readonly co2SavingsTons: number;
-  readonly treesEquivalent: number;
-  readonly carsEquivalent: number;
-  readonly coalReductionKg: number;
-  readonly oilBarrelsSaved: number;
-  readonly equivalentHomesPowered: number;
-  readonly waterSavingsLiters?: number;
-  readonly landUseHectares?: number;
-}
-
-interface EnergyProductionResult {
-  readonly annualProduction: number;
-  readonly monthlyProduction: number[];
-  readonly dailyProduction: number[];
-  readonly hourlyProduction?: number[];
-  readonly specificProduction: number;
-  readonly capacityFactor: number;
-  readonly worstMonthProduction: number;
-  readonly bestMonthProduction: number;
-  readonly averageDailyProduction: number;
-  readonly productionVariability: number;
-  readonly seasonalVariation: {
-    readonly summer: number;
-    readonly winter: number;
-    readonly spring: number;
-    readonly autumn: number;
-  };
-}
-
-interface SolarPerformanceMetrics {
-  readonly performanceRatio: number;
-  readonly systemEfficiency: number;
-  readonly temperatureCorrectedPR: number;
-  readonly availability: number;
-  readonly energyYield: number;
-  readonly specificYield: number;
-  readonly degradationRate: number;
-  readonly lossesBreakdown: {
-    readonly temperatureLosses: number;
-    readonly soilingLosses: number;
-    readonly mismatchLosses: number;
-    readonly wiringLosses: number;
-    readonly inverterLosses: number;
-    readonly shadingLosses: number;
-    readonly availabilityLosses: number;
-    readonly totalLosses: number;
-  };
-}
-
-interface EconomicSummaryResult {
-  readonly totalInvestment: number;
-  readonly annualSavings: number;
-  readonly lifetimeSavings: number;
-  readonly paybackPeriod: number;
-  readonly netPresentValue: number;
-  readonly returnOnInvestment: number;
-  readonly levelizedCost: number;
-  readonly costPerKwh: number;
-  readonly savingsPerKwh: number;
-  readonly valuePerDollar: number;
-}
-
-interface SystemConfigurationResult {
-  readonly tiltAngle: number;
-  readonly azimuthAngle: number;
-  readonly mountingType: string;
-  readonly trackingSystem?: {
-    readonly type: string;
-    readonly trackingGain: number;
-    readonly backtracking: boolean;
-  };
-  readonly shadingAnalysis?: {
-    readonly shadingLosses: number;
-    readonly shadingProfile: number[];
-    readonly horizonProfile: number[];
-  };
-  readonly stringConfiguration: Array<{
-    readonly stringId: string;
-    readonly moduleCount: number;
-    readonly mpptId: number;
-    readonly estimatedVoltage: number;
-    readonly estimatedCurrent: number;
-  }>;
-  readonly layoutOptimization: {
-    readonly rows: number;
-    readonly columns: number;
-    readonly spacing: number;
-    readonly totalArea: number;
-    readonly utilizationRate: number;
-  };
-}
 
 /**
  * Mapper for solar system calculations
@@ -219,7 +97,7 @@ export class SolarCalculationMapper {
    * @param data - Raw calculation data or system calculations
    * @returns System summary with key metrics
    */
-  static toSystemSummary(data: any): SystemSummaryLocal {
+  static toSystemSummary(data: any): any {
     const annualGeneration = data.annualProduction || data.annualGeneration || 0;
     const systemSize = data.systemSize || data.potenciaNominal || 0;
     const performanceRatio = data.performanceRatio || data.performanceRatio || 0;
@@ -275,7 +153,7 @@ export class SolarCalculationMapper {
    * @param domain - Domain calculation object
    * @returns Shared types SystemCalculations
    */
-  static toSharedCalculation(domain: any): SystemCalculations {
+  static toSharedCalculation(domain: any): SystemSystemCalculations {
     return {
       energy: {
         monthlyGeneration: domain.energy?.monthlyGeneration || domain.monthlyGeneration || [],
@@ -427,7 +305,7 @@ export class SolarCalculationMapper {
   /**
    * Maps performance metrics
    */
-  private static mapPerformanceMetrics(calculation: any): SolarPerformanceMetrics {
+  private static mapPerformanceMetrics(calculation: any): any {
     const performanceRatio = calculation.performanceRatio || calculation.energy?.performanceRatio || 0;
     
     return {
@@ -595,32 +473,3 @@ export class SolarCalculationMapper {
   }
 }
 
-// ============= SUPPORTING INTERFACES =============
-
-/**
- * System summary interface
- */
-export interface SystemSummary {
-  systemSize: number;
-  annualGeneration: number;
-  specificProduction: number;
-  performanceRatio: number;
-  co2Savings: number;
-  estimatedSavings: number;
-  paybackPeriod: number;
-  status: 'optimal' | 'acceptable' | 'needs_improvement';
-  lastCalculated: Date;
-  calculationVersion: string;
-}
-
-/**
- * Environmental impact interface
- */
-export interface EnvironmentalImpact {
-  co2SavingsKg: number;
-  co2SavingsTons: number;
-  treesEquivalent: number;
-  carsEquivalent: number;
-  coalReductionKg: number;
-  oilBarrelsSaved: number;
-}

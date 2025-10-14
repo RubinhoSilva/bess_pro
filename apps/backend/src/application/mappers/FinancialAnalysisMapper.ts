@@ -1,171 +1,21 @@
 import { 
   AdvancedFinancialResults,
   CashFlowDetails,
-  SensitivityAnalysis
+  SensitivityAnalysis,
+  FinancialAnalysisResult,
+  CashFlowAnalysisResult,
+  InvestmentAnalysisResult,
+  FinancialMetricsResult,
+  SensitivityAnalysisResult,
+  FinancialRiskResult,
+  FinancialBenchmarksResult
 } from '@bess-pro/shared';
 
-// Local interfaces for all financial types
-interface FinancialAnalysisResult {
-  readonly investmentAnalysis: InvestmentAnalysisResult;
-  readonly financialMetrics: FinancialMetricsResult;
-  readonly cashFlowAnalysis: CashFlowAnalysisResult;
-  readonly sensitivityAnalysis: SensitivityAnalysisResult;
-  readonly riskAssessment: FinancialRiskResult;
-  readonly benchmarks: FinancialBenchmarksResult;
-  readonly calculatedAt: Date;
-  readonly calculationVersion: string;
-  readonly metadata?: any;
-}
-
-interface CashFlowAnalysisResult {
-  readonly yearlyCashFlows: Array<{
-    readonly year: number;
-    readonly revenue: number;
-    readonly costs: number;
-    readonly netCashFlow: number;
-    readonly cumulativeCashFlow: number;
-    readonly discountedCashFlow: number;
-    readonly savings: number;
-    readonly roi: number;
-  }>;
-  readonly cashFlowSummary: {
-    readonly totalRevenue: number;
-    readonly totalCosts: number;
-    readonly totalNetCashFlow: number;
-    readonly averageAnnualCashFlow: number;
-    readonly cashFlowStability: number;
-    readonly positiveCashFlowYear: number;
-  };
-  readonly cashFlowProjections: {
-    readonly fiveYearTotal: number;
-    readonly tenYearTotal: number;
-    readonly twentyFiveYearTotal: number;
-  };
-}
-
-interface InvestmentAnalysisResult {
-  readonly totalInvestment: number;
-  readonly costBreakdown: {
-    readonly equipmentCost: number;
-    readonly installationCost: number;
-    readonly engineeringCost: number;
-    readonly permitCost: number;
-    readonly interconnectionCost: number;
-    readonly contingencyCost: number;
-    readonly softCosts: number;
-  };
-  readonly costPerWatt: number;
-  readonly financingStructure?: {
-    readonly financingType: string;
-    readonly downPayment: number;
-    readonly loanAmount: number;
-    readonly interestRate: number;
-    readonly loanTerm: number;
-    readonly monthlyPayment: number;
-  };
-  readonly incentives: Array<{
-    readonly type: string;
-    readonly amount: number;
-    readonly percentage: number;
-    readonly source: string;
-    readonly expiration?: Date;
-  }>;
-}
-
-interface FinancialMetricsResult {
-  readonly netPresentValue: number;
-  readonly internalRateOfReturn: number;
-  readonly modifiedInternalRateOfReturn?: number;
-  readonly paybackPeriod: number;
-  readonly discountedPaybackPeriod: number;
-  readonly returnOnInvestment: number;
-  readonly benefitCostRatio: number;
-  readonly profitabilityIndex: number;
-  readonly levelizedCostOfEnergy: number;
-  readonly levelizedCostOfStorage?: number;
-  readonly equivalentAnnualAnnuity: number;
-  readonly savingsOverLifetime: number;
-  readonly cumulativeSavings: Array<{
-    readonly year: number;
-    readonly savings: number;
-    readonly cumulative: number;
-  }>;
-}
-
-interface SensitivityAnalysisResult {
-  readonly parameters: Array<{
-    readonly name: string;
-    readonly baseValue: number;
-    readonly scenarios: Array<{
-      readonly variation: number;
-      readonly npv: number;
-      readonly irr: number;
-      readonly paybackPeriod: number;
-    }>;
-    readonly sensitivity: number;
-  }>;
-  readonly tornadoChart: Array<{
-    readonly parameter: string;
-    readonly lowImpact: number;
-    readonly highImpact: number;
-    readonly range: number;
-  }>;
-  readonly monteCarloSimulation?: {
-    readonly meanNPV: number;
-    readonly standardDeviation: number;
-    readonly confidenceIntervals: {
-      readonly p90: number;
-      readonly p75: number;
-      readonly p50: number;
-      readonly p25: number;
-      readonly p10: number;
-    };
-    readonly probabilityOfPositiveNPV: number;
-  };
-}
-
-interface FinancialRiskResult {
-  readonly overallRiskLevel: 'low' | 'medium' | 'high' | 'very_high';
-  readonly riskFactors: Array<{
-    readonly category: string;
-    readonly level: 'low' | 'medium' | 'high' | 'very_high';
-    readonly description: string;
-    readonly impact: number;
-    readonly probability: number;
-    readonly mitigation: string;
-  }>;
-  readonly riskMitigationStrategies: string[];
-  readonly contingencyRecommendations: {
-    readonly costContingency: number;
-    readonly scheduleContingency: number;
-    readonly performanceContingency: number;
-  };
-  readonly insuranceRequirements: string[];
-}
-
-interface FinancialBenchmarksResult {
-  readonly industryComparisons: {
-    readonly averagePaybackPeriod: number;
-    readonly averageROI: number;
-    readonly averageNPV: number;
-    readonly marketPenetration: number;
-  };
-  readonly regionalComparisons: {
-    readonly stateAverage: number;
-    readonly nationalAverage: number;
-    readonly globalAverage: number;
-  };
-  readonly technologyComparisons: {
-    readonly solarOnly: number;
-    readonly solarWithStorage: number;
-    readonly storageOnly: number;
-  };
-  readonly performanceRating: 'excellent' | 'above_average' | 'average' | 'below_average' | 'poor';
-  readonly competitiveAdvantage: string[];
-}
-
-// Local interfaces for types not yet in shared package
-interface PaybackAnalysis {
+/**
+ * Payback analysis interface for detailed payback period calculations
+ * Note: This interface is local as it's not yet available in shared types
+ */
+export interface PaybackAnalysis {
   simplePaybackPeriod: number;
   discountedPaybackPeriod: number;
   paybackConfidence: number;
@@ -181,7 +31,11 @@ interface PaybackAnalysis {
   }>;
 }
 
-interface NPVAnalysis {
+/**
+ * NPV analysis interface for net present value calculations
+ * Note: This interface is local as it's not yet available in shared types
+ */
+export interface NPVAnalysis {
   netPresentValue: number;
   internalRateOfReturn: number;
   modifiedInternalRateOfReturn?: number;
@@ -199,7 +53,11 @@ interface NPVAnalysis {
   };
 }
 
-interface CashFlowAnalysis {
+/**
+ * Cash flow analysis interface for detailed cash flow projections
+ * Note: This interface is local as it's not yet available in shared types
+ */
+export interface CashFlowAnalysis {
   yearlyCashFlows: Array<{
     year: number;
     revenue: number;

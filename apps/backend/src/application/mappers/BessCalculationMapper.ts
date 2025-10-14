@@ -1,5 +1,128 @@
 
 
+import { BessCalculationResult } from '@bess-pro/shared';
+
+/**
+ * Battery specifications interface for detailed battery configuration
+ * Note: This interface is local as it's not yet available in shared types
+ */
+export interface BatterySpecifications {
+  capacity?: number;
+  power?: number;
+  voltage?: number;
+  chemistry?: string;
+  formFactor?: string;
+  dimensions?: {
+    width: number;
+    height: number;
+    depth: number;
+    weight: number;
+  };
+  temperatureRange?: {
+    min: number;
+    max: number;
+  };
+  humidityRange?: {
+    min: number;
+    max: number;
+  };
+  altitudeRange?: {
+    min: number;
+    max: number;
+  };
+  maxChargeCurrent?: number;
+  maxDischargeCurrent?: number;
+  roundTripEfficiency?: number;
+  depthOfDischarge?: number;
+  selfDischargeRate?: number;
+  warranty?: {
+    years: number;
+    cycles: number;
+    throughput: number;
+    remainingCapacity: number;
+  };
+  certifications?: string[];
+  communicationProtocol?: string;
+}
+
+/**
+ * Battery configuration interface for system design
+ * Note: This interface is local as it's not yet available in shared types
+ */
+export interface BatteryConfig {
+  capacity: number;
+  power: number;
+  voltage: number;
+  chemistry: string;
+  formFactor: string;
+  dimensions: {
+    width: number;
+    height: number;
+    depth: number;
+    weight: number;
+  };
+  operatingConditions: {
+    temperatureRange: any;
+    humidityRange: any;
+    altitudeRange: any;
+  };
+  electricalCharacteristics: {
+    maxChargeCurrent: number;
+    maxDischargeCurrent: number;
+    roundTripEfficiency: number;
+    depthOfDischarge: number;
+    selfDischargeRate: number;
+  };
+  warranty: any;
+  certifications: string[];
+  communicationProtocol: string;
+}
+
+/**
+ * BESS system analysis interface for comprehensive system evaluation
+ * Note: This interface is local as it's not yet available in shared types
+ */
+export interface BessSystemAnalysis {
+  systemOverview: {
+    totalCapacity: number;
+    totalPower: number;
+    batteryCount: number;
+    systemType: string;
+    configurationComplexity: 'simple' | 'moderate' | 'complex';
+  };
+  performanceAnalysis: {
+    expectedEfficiency: number;
+    cycleLifeExpectancy: number;
+    throughputExpectancy: number;
+    degradationProfile: any;
+    availability: number;
+  };
+  economicAnalysis: {
+    totalAnnualBenefit: number;
+    benefitBreakdown: {
+      arbitrage: number;
+      peakShaving: number;
+      gridServices: number;
+      backupValue: number;
+    };
+    paybackPeriod: number;
+    netPresentValue: number;
+    internalRateOfReturn: number;
+  };
+  operationalAnalysis: {
+    recommendedStrategy: string;
+    operatingConstraints: string[];
+    maintenanceRequirements: any;
+    monitoringNeeds: string[];
+  };
+  riskAssessment: {
+    technicalRisks: any[];
+    economicRisks: any[];
+    regulatoryRisks: any[];
+    mitigationStrategies: string[];
+  };
+}
+
 /**
  * Mapper for Battery Energy Storage System (BESS) calculations
  * 
@@ -127,7 +250,7 @@ export class BessCalculationMapper {
    * @param calculations - Array of BESS calculations
    * @returns Array of response DTOs
    */
-  static toResponseDtoList(calculations: any[]): BessCalculationResult[] {
+  static toResponseDtoList(calculations: any[]): any[] {
     return calculations.map(calc => this.toResponseDto(calc));
   }
 
@@ -535,44 +658,7 @@ export class BessCalculationMapper {
   }
 }
 
-// ============= SUPPORTING INTERFACES =============
 
-/**
- * BESS calculation result interface
- */
-export interface BessCalculationResult {
-  batteryCapacity: number;
-  batteryPower: number;
-  batteryCount: number;
-  batteryType: string;
-  depthOfDischarge: number;
-  roundTripEfficiency: number;
-  cycleLife: number;
-  energyManagement: {
-    strategy: string;
-    peakShaving?: any;
-    loadShifting?: any;
-    backupPower?: any;
-    gridServices?: any;
-  };
-  economicBenefits: {
-    arbitrageRevenue: number;
-    peakShavingSavings: number;
-    gridServiceRevenue: number;
-    backupValue: number;
-    totalAnnualBenefit: number;
-  };
-  technicalSpecifications: {
-    nominalVoltage: number;
-    maxChargeCurrent: number;
-    maxDischargeCurrent: number;
-    operatingTemperature: any;
-    selfDischargeRate: number;
-    warranty: any;
-  };
-  calculatedAt: Date;
-  calculationVersion: string;
-}
 
 /**
  * Battery specifications interface
