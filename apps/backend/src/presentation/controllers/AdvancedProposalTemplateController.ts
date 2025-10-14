@@ -5,6 +5,7 @@ import { GetAdvancedTemplatesUseCase } from '../../application/use-cases/advance
 import { UpdateAdvancedTemplateUseCase } from '../../application/use-cases/advanced-template/UpdateAdvancedTemplateUseCase';
 import { DeleteAdvancedTemplateUseCase } from '../../application/use-cases/advanced-template/DeleteAdvancedTemplateUseCase';
 import { GenerateProposalFromTemplateUseCase } from '../../application/use-cases/advanced-template/GenerateProposalFromTemplateUseCase';
+import { CloneAdvancedTemplateUseCase } from '../../application/use-cases/advanced-template/CloneAdvancedTemplateUseCase';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -20,7 +21,8 @@ export class AdvancedProposalTemplateController extends BaseController {
     private getAdvancedTemplatesUseCase: GetAdvancedTemplatesUseCase,
     private updateAdvancedTemplateUseCase: UpdateAdvancedTemplateUseCase,
     private deleteAdvancedTemplateUseCase: DeleteAdvancedTemplateUseCase,
-    private generateProposalFromTemplateUseCase: GenerateProposalFromTemplateUseCase
+    private generateProposalFromTemplateUseCase: GenerateProposalFromTemplateUseCase,
+    private cloneAdvancedTemplateUseCase: CloneAdvancedTemplateUseCase
   ) {
     super();
   }
@@ -328,58 +330,33 @@ export class AdvancedProposalTemplateController extends BaseController {
       }
 
       const templateId = req.params.id;
-      if (!templateId) {
-        this.badRequest(res, 'ID do template é obrigatório');
-        return;
-      }
-
       const { name } = req.body;
-      if (!name || typeof name !== 'string') {
-        this.badRequest(res, 'Nome para o template clonado é obrigatório');
-        return;
-      }
 
-      // First get the template to clone
-      const getResult = await this.getAdvancedTemplatesUseCase.execute({
+      // Execute use case
+      const result = await this.cloneAdvancedTemplateUseCase.execute({
+        templateId,
+        userId: req.user.id,
         teamId: req.user.teamId,
-        page: 1,
-        limit: 1
+        newName: name
       });
 
-      if (!getResult.isSuccess) {
-        this.badRequest(res, getResult.error!);
+      if (!result.isSuccess) {
+        this.badRequest(res, result.error!);
         return;
       }
 
-      const originalTemplate = getResult.value!.templates.find(t => t.id === templateId);
-      if (!originalTemplate) {
-        this.notFound(res, 'Template original não encontrado');
-        return;
-      }
-
-      // Create the cloned template
-      const cloneResult = await this.createAdvancedTemplateUseCase.execute({
-        name,
-        description: `Cópia de ${originalTemplate.name}`,
-        category: originalTemplate.category,
-        sections: originalTemplate.sections,
-        variables: originalTemplate.variables,
-        style: originalTemplate.style,
-        pdfSettings: originalTemplate.pdfSettings,
-        features: originalTemplate.features,
-        isDefault: false,
-        createdBy: req.user.id,
-        teamId: req.user.teamId
-      });
-
-      if (!cloneResult.isSuccess) {
-        this.badRequest(res, cloneResult.error!);
+      // Ensure we have the cloned template
+      if (!result.value?.clonedTemplate) {
+        this.internalServerError(res, 'Erro ao criar template clonado');
         return;
       }
 
       res.status(201).json({
         success: true,
-        data: cloneResult.value,
+        data: {
+          clonedTemplate: result.value.clonedTemplate,
+          originalTemplate: result.value.originalTemplate
+        },
         message: 'Template clonado com sucesso'
       });
 

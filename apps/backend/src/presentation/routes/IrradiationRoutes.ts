@@ -45,23 +45,10 @@ export class IrradiationRoutes {
       this.irradiationController.getSolarIrradiation.bind(this.irradiationController)
     );
 
+    // Rotas adicionais podem ser implementadas futuramente
     // GET /irradiation/sources - Listar fontes de dados disponíveis
-    this.router.get(
-      '/sources',
-      this.irradiationController.getAvailableSources.bind(this.irradiationController)
-    );
-
-    // POST /irradiation/compare - Comparar diferentes fontes de dados
-    this.router.post(
-      '/compare',
-      this.irradiationController.compareIrradiationSources.bind(this.irradiationController)
-    );
-
+    // POST /irradiation/compare - Comparar diferentes fontes de dados  
     // POST /irradiation/bulk - Obter dados para múltiplas localizações
-    this.router.post(
-      '/bulk',
-      this.irradiationController.getBulkIrradiation.bind(this.irradiationController)
-    );
   }
 
   getRouter(): Router {

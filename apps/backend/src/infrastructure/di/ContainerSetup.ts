@@ -98,6 +98,17 @@ import { GenerateFinancialReportUseCase } from '../../application/use-cases/repo
 
 // Use Cases - BESS
 import { CalculateBessSystemUseCase } from '../../application/use-cases/bess/CalculateBessSystemUseCase';
+
+// Use Cases - Advanced Template
+import { CloneAdvancedTemplateUseCase } from '../../application/use-cases/advanced-template/CloneAdvancedTemplateUseCase';
+
+// Use Cases - Irradiation
+import { GetPVGISIrradiationUseCase } from '../../application/use-cases/irradiation/GetPVGISIrradiationUseCase';
+import { GetPVGISMRDataUseCase } from '../../application/use-cases/irradiation/GetPVGISMRDataUseCase';
+import { GetPVGISMonthlyComponentsUseCase } from '../../application/use-cases/irradiation/GetPVGISMonthlyComponentsUseCase';
+
+// Use Cases - Hybrid
+import { CalculateHybridSystemUseCase } from '../../application/use-cases/hybrid/CalculateHybridSystemUseCase';
 import { CalculateMultiSystemUseCase } from '../../application/use-cases/bess/CalculateMultiSystemUseCase';
 import { GetBatteryDatabaseUseCase } from '../../application/use-cases/bess/GetBatteryDatabaseUseCase';
 import { GetLoadProfileTemplateUseCase } from '../../application/use-cases/bess/GetLoadProfileTemplateUseCase';
@@ -305,6 +316,20 @@ export class ContainerSetup {
     container.register('Model3DValidationService', Model3DValidationService, true);
     container.register('AreaCalculationService', AreaCalculationService, true);
     container.register(ServiceTokens.KANBAN_COLUMN_SEEDER_SERVICE, KanbanColumnSeederService, true);
+
+    // Cache and Logger Services for Docker compatibility
+    container.registerFactory(ServiceTokens.CACHE_SERVICE, () => {
+      const { CacheService } = require('../cache/CacheService');
+      return new CacheService({
+        redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+        ttl: 1800 // 30 minutes default
+      });
+    }, true);
+
+    container.registerFactory('CalculationLogger', () => {
+      const { CalculationLogger } = require('../../domain/services/CalculationLogger');
+      return new CalculationLogger('Container');
+    }, true);
 
     // Application Services (Singletons)
     container.register('NotificationService', NotificationService, true);
@@ -851,7 +876,10 @@ export class ContainerSetup {
 
     container.registerFactory('IrradiationController', () => {
       return new IrradiationController(
-        container.resolve(ServiceTokens.GetSolarIrradiationUseCase)
+        container.resolve(ServiceTokens.GetSolarIrradiationUseCase),
+        container.resolve('GetPVGISIrradiationUseCase'),
+        container.resolve('GetPVGISMRDataUseCase'),
+        container.resolve('GetPVGISMonthlyComponentsUseCase')
       );
     });
 
@@ -942,7 +970,8 @@ export class ContainerSetup {
     // Controllers - BESS Analysis
     container.registerFactory(ServiceTokens.BessAnalysisController, () => {
       return new BessAnalysisController(
-        container.resolve(ServiceTokens.BESS_CALCULATION_CLIENT)
+        container.resolve(ServiceTokens.BESS_CALCULATION_CLIENT),
+        container.resolve('CalculateHybridSystemUseCase')
       );
     });
 
@@ -971,9 +1000,44 @@ export class ContainerSetup {
       );
     });
 
+    container.registerFactory('CloneAdvancedTemplateUseCase', () => {
+      return new CloneAdvancedTemplateUseCase(
+        container.resolve(ServiceTokens.GetAdvancedTemplatesUseCase),
+        container.resolve(ServiceTokens.CreateAdvancedTemplateUseCase)
+      );
+    });
+
     container.registerFactory(ServiceTokens.GenerateProposalFromTemplateUseCase, () => {
       return new GenerateProposalFromTemplateUseCase(
         container.resolve(ServiceTokens.AdvancedProposalTemplateRepository)
+      );
+    });
+
+    // Use Cases - Irradiation (PVGIS)
+    container.registerFactory('GetPVGISIrradiationUseCase', () => {
+      return new GetPVGISIrradiationUseCase(
+        container.resolve(ServiceTokens.PVGIS_API_SERVICE)
+      );
+    });
+
+    container.registerFactory('GetPVGISMRDataUseCase', () => {
+      return new GetPVGISMRDataUseCase(
+        container.resolve(ServiceTokens.PVGIS_API_SERVICE),
+        container.resolve('CalculationLogger')
+      );
+    });
+
+    container.registerFactory('GetPVGISMonthlyComponentsUseCase', () => {
+      return new GetPVGISMonthlyComponentsUseCase(
+        container.resolve(ServiceTokens.PVGIS_API_SERVICE),
+        container.resolve('CalculationLogger')
+      );
+    });
+
+    // Use Cases - Hybrid System
+    container.registerFactory('CalculateHybridSystemUseCase', () => {
+      return new CalculateHybridSystemUseCase(
+        container.resolve('CalculationLogger')
       );
     });
 
@@ -994,7 +1058,8 @@ export class ContainerSetup {
         container.resolve(ServiceTokens.GetAdvancedTemplatesUseCase),
         container.resolve(ServiceTokens.UpdateAdvancedTemplateUseCase),
         container.resolve(ServiceTokens.DeleteAdvancedTemplateUseCase),
-        container.resolve(ServiceTokens.GenerateProposalFromTemplateUseCase)
+        container.resolve(ServiceTokens.GenerateProposalFromTemplateUseCase),
+        container.resolve('CloneAdvancedTemplateUseCase')
       );
     });
 

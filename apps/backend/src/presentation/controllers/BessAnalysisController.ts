@@ -14,13 +14,17 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { BessCalculationClient, HybridDimensioningRequest } from '@/infrastructure/external-services/BessCalculationClient';
+import { CalculateHybridSystemUseCase } from '@/application/use-cases/hybrid/CalculateHybridSystemUseCase';
 import { BaseController } from './BaseController';
 
 /**
  * Controller para análise de sistemas BESS
  */
 export class BessAnalysisController extends BaseController {
-  constructor(private bessClient: BessCalculationClient) {
+  constructor(
+    private bessClient: BessCalculationClient,
+    private calculateHybridSystemUseCase: CalculateHybridSystemUseCase
+  ) {
     super();
   }
   /**
@@ -80,10 +84,8 @@ export class BessAnalysisController extends BaseController {
     const startTime = Date.now();
 
     try {
-      
-
       // =====================================================================
-      // ETAPA 1: VALIDAR PARÂMETROS DE ENTRADA
+      // ETAPA 1: VALIDAR E MAPEAR PARÂMETROS DE ENTRADA
       // =====================================================================
 
       const requestBody = req.body as HybridDimensioningRequest;
@@ -104,30 +106,74 @@ export class BessAnalysisController extends BaseController {
         return this.badRequest(res, 'Estrutura tarifária é obrigatória');
       }
 
-      
+      // Mapear request para o formato do use case
+      const hybridSystemRequest = {
+        location: {
+          latitude: requestBody.sistema_solar.lat || 0,
+          longitude: requestBody.sistema_solar.lon || 0
+        },
+        pvSystem: {
+          peakPower: requestBody.sistema_solar.inversores?.[0]?.orientacoes?.[0]?.modulos_por_string || 0,
+          tilt: requestBody.sistema_solar.inversores?.[0]?.orientacoes?.[0]?.inclinacao || 0,
+          azimuth: requestBody.sistema_solar.inversores?.[0]?.orientacoes?.[0]?.orientacao || 0,
+          systemLoss: 14, // Valor padrão
+          performanceRatio: 0.75 // Valor padrão
+        },
+        bessSystem: {
+          capacity: requestBody.capacidade_kwh,
+          maxChargePower: requestBody.potencia_kw,
+          maxDischargePower: requestBody.potencia_kw,
+          efficiency: requestBody.eficiencia_roundtrip || 90,
+          depthOfDischarge: (requestBody.profundidade_descarga_max || 0.8) * 100,
+          initialSOC: (requestBody.soc_inicial || 0.5) * 100
+        },
+        loadProfile: {
+          dailyConsumption: requestBody.sistema_solar.consumo_mensal_kwh?.[0] || 0,
+          peakDemand: 0, // Valor padrão
+          loadProfile: Array(24).fill(0) // Valor padrão
+        },
+        economicParameters: {
+          electricityPrice: requestBody.tarifa?.tarifa_ponta_kwh || 0,
+          feedInTariff: requestBody.tarifa?.tarifa_fora_ponta_kwh || 0,
+          discountRate: (requestBody.taxa_desconto || 12) / 100,
+          projectLifespan: 25
+        }
+      };
 
-const startTime = Date.now();
-      const result = await this.bessClient.calculateHybridSystem(requestBody);
+      // =====================================================================
+      // ETAPA 2: EXECUTAR USE CASE DE CÁLCULO HÍBRIDO
+      // =====================================================================
+
+      const result = await this.calculateHybridSystemUseCase.execute(hybridSystemRequest);
       const duration = Date.now() - startTime;
+
+      if (!result.isSuccess) {
+        return this.badRequest(res, result.error!);
+      }
 
       return this.ok(res, {
         success: true,
-        data: result,
+        data: result.value!,
         metadata: {
           duration_ms: duration,
           timestamp: new Date().toISOString(),
+          calculationMethod: result.value!.metadata.calculationMethod
         },
       });
 
     } catch (error: any) {
       const duration = Date.now() - startTime;
 
-      
+      console.error('❌ Erro no cálculo de sistema híbrido:', {
+        error: error.message,
+        stack: error.stack,
+        duration: `${duration}ms`
+      });
 
       // Verificar tipo de erro e retornar status code apropriado
-      if (error.message?.includes('400')) {
+      if (error.message?.includes('400') || error.message?.includes('validação')) {
         return this.badRequest(res, 'Erro de validação nos parâmetros de entrada');
-      } else if (error.message?.includes('422')) {
+      } else if (error.message?.includes('422') || error.message?.includes('cálculo')) {
         return this.badRequest(res, 'Erro durante o cálculo do sistema híbrido');
       } else if (error.message?.includes('timeout') || error.message?.includes('ECONNREFUSED')) {
         return this.internalServerError(res, 'Serviço de cálculo BESS indisponível');
