@@ -18,7 +18,7 @@ import { ProjectMapper } from "./mappers/ProjectMapper";
 import { UserMapper } from "./mappers/UserMapper";
 import { NotificationService } from "./services/NotificationService";
 import { CreateAreaMontagemUseCase } from "./use-cases/area/CreateAreaMontagemUseCase";
-import { CalculateSolarSystemUseCase } from "./use-cases/calculation/CalculateSolarSystemUseCase";
+
 import { AnalyzeFinancialUseCase } from "./use-cases/financial/AnalyzeFinancialUseCase";
 import { ConvertLeadToProjectUseCase } from "./use-cases/lead/ConvertLeadToProjectUseCase";
 import { CreateLeadUseCase } from "./use-cases/lead/CreateLeadUseCase";
@@ -76,7 +76,6 @@ export {
   CreateAreaMontagemUseCase,
 
   // Use Cases - Calculation
-  CalculateSolarSystemUseCase,
   AnalyzeFinancialUseCase,
 
   // Mappers
