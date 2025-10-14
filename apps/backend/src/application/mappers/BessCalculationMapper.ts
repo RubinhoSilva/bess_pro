@@ -1,4 +1,4 @@
-// Types will be added to shared package in future implementation
+
 
 /**
  * Mapper for Battery Energy Storage System (BESS) calculations
@@ -14,48 +14,25 @@ export class BessCalculationMapper {
    * @param calculation - BESS calculation domain object
    * @returns Formatted response DTO for API consumption
    */
-  static toResponseDto(calculation: any): BessCalculationResult {
+  static toResponseDto(calculation: any): any {
     if (!calculation) {
       throw new Error('BESS calculation data is required');
     }
 
     const bessData = calculation.bess || calculation;
-    const energyManagement = bessData.energyManagement || {};
-    const economicBenefits = bessData.economicBenefits || {};
-    const technicalSpecs = bessData.technicalSpecifications || {};
 
     return {
       batteryCapacity: bessData.batteryCapacity || 0,
       batteryPower: bessData.batteryPower || 0,
       batteryCount: bessData.batteryCount || 0,
       batteryType: bessData.batteryType || 'LITHIUM_ION',
-      depthOfDischarge: bessData.depthOfDischarge || 80,
-      roundTripEfficiency: bessData.roundTripEfficiency || 90,
-      cycleLife: bessData.cycleLife || 6000,
-      energyManagement: {
-        strategy: energyManagement.strategy || 'SELF_CONSUMPTION',
-        peakShaving: energyManagement.peakShaving,
-        loadShifting: energyManagement.loadShifting,
-        backupPower: energyManagement.backupPower,
-        gridServices: energyManagement.gridServices
-      },
-      economicBenefits: {
-        arbitrageRevenue: economicBenefits.arbitrageRevenue || 0,
-        peakShavingSavings: economicBenefits.peakShavingSavings || 0,
-        gridServiceRevenue: economicBenefits.gridServiceRevenue || 0,
-        backupValue: economicBenefits.backupValue || 0,
-        totalAnnualBenefit: economicBenefits.totalAnnualBenefit || 0
-      },
-      technicalSpecifications: {
-        nominalVoltage: technicalSpecs.nominalVoltage || 400,
-        maxChargeCurrent: technicalSpecs.maxChargeCurrent || 0,
-        maxDischargeCurrent: technicalSpecs.maxDischargeCurrent || 0,
-        operatingTemperature: technicalSpecs.operatingTemperature || { min: -10, max: 50, optimal: 25 },
-        selfDischargeRate: technicalSpecs.selfDischargeRate || 2,
-        warranty: technicalSpecs.warranty || { years: 10, throughput: 0, cycles: 6000, remainingCapacity: 70 }
-      },
+      energyManagement: this.mapEnergyManagement(bessData),
+      technicalSpecifications: this.mapTechnicalSpecifications(bessData),
+      economicBenefits: this.mapEconomicBenefits(bessData),
+      operationalAnalysis: this.mapOperationalAnalysis(bessData),
       calculatedAt: calculation.calculatedAt || new Date(),
-      calculationVersion: calculation.calculationVersion || '1.0.0'
+      calculationVersion: calculation.calculationVersion || '1.0.0',
+      metadata: this.mapResultMetadata(calculation)
     };
   }
 
@@ -65,7 +42,7 @@ export class BessCalculationMapper {
    * @param specs - Battery technical specifications
    * @returns Battery configuration for system design
    */
-  static toBatteryConfiguration(specs: BatterySpecifications): BatteryConfig {
+  static toBatteryConfiguration(specs: any): any {
     return {
       capacity: specs.capacity || 0,
       power: specs.power || 0,
@@ -97,7 +74,7 @@ export class BessCalculationMapper {
    * @param results - BESS calculation results
    * @returns System analysis with performance and economic metrics
    */
-  static toSystemAnalysis(results: any): BessSystemAnalysis {
+  static toSystemAnalysis(results: any): any {
     const economicBenefits = results.economicBenefits || {};
     const technicalSpecs = results.technicalSpecifications || {};
     const energyManagement = results.energyManagement || {};
@@ -427,6 +404,134 @@ export class BessCalculationMapper {
     }
     
     return strategies;
+  }
+
+  /**
+   * Maps energy management data
+   */
+  private static mapEnergyManagement(bessData: any): any {
+    const energyManagement = bessData.energyManagement || {};
+    
+    return {
+      strategy: energyManagement.strategy || 'SELF_CONSUMPTION',
+      annualSavings: energyManagement.annualSavings || 0,
+      peakShavingSavings: energyManagement.peakShavingSavings,
+      loadShiftingSavings: energyManagement.loadShiftingSavings,
+      arbitrageRevenue: energyManagement.arbitrageRevenue,
+      backupValue: energyManagement.backupValue,
+      gridServiceRevenue: energyManagement.gridServiceRevenue,
+      utilizationRate: energyManagement.utilizationRate || 0,
+      throughput: energyManagement.throughput || 0,
+      cycleCount: energyManagement.cycleCount || 0,
+      operationalProfile: energyManagement.operationalProfile || {
+        chargingProfile: [],
+        dischargingProfile: [],
+        stateOfChargeProfile: []
+      }
+    };
+  }
+
+  /**
+   * Maps technical specifications
+   */
+  private static mapTechnicalSpecifications(bessData: any): any {
+    const technicalSpecs = bessData.technicalSpecifications || {};
+    
+    return {
+      nominalVoltage: technicalSpecs.nominalVoltage || 400,
+      maxChargeCurrent: technicalSpecs.maxChargeCurrent || 0,
+      maxDischargeCurrent: technicalSpecs.maxDischargeCurrent || 0,
+      roundTripEfficiency: bessData.roundTripEfficiency || technicalSpecs.roundTripEfficiency || 90,
+      depthOfDischarge: bessData.depthOfDischarge || technicalSpecs.depthOfDischarge || 80,
+      cycleLife: bessData.cycleLife || technicalSpecs.cycleLife || 6000,
+      selfDischargeRate: technicalSpecs.selfDischargeRate || 2,
+      operatingTemperature: technicalSpecs.operatingTemperature || { min: -10, max: 50, optimal: 25 },
+      warranty: technicalSpecs.warranty || { years: 10, cycles: 6000, throughput: 0, remainingCapacity: 70 },
+      degradationProfile: technicalSpecs.degradationProfile || {
+        year1: 98,
+        year10: 90,
+        endOfLife: 70,
+        annualDegradation: 0.02
+      }
+    };
+  }
+
+  /**
+   * Maps economic benefits
+   */
+  private static mapEconomicBenefits(bessData: any): any {
+    const economicBenefits = bessData.economicBenefits || {};
+    
+    return {
+      totalAnnualBenefit: economicBenefits.totalAnnualBenefit || 0,
+      benefitBreakdown: {
+        arbitrage: economicBenefits.arbitrageRevenue || 0,
+        peakShaving: economicBenefits.peakShavingSavings || 0,
+        loadShifting: economicBenefits.loadShiftingSavings || 0,
+        backupPower: economicBenefits.backupValue || 0,
+        gridServices: economicBenefits.gridServiceRevenue || 0
+      },
+      levelizedCostOfStorage: economicBenefits.levelizedCostOfStorage || 0,
+      paybackPeriod: economicBenefits.paybackPeriod || 0,
+      netPresentValue: economicBenefits.netPresentValue || 0,
+      internalRateOfReturn: economicBenefits.internalRateOfReturn || 0,
+      benefitCostRatio: economicBenefits.benefitCostRatio || 0,
+      revenueStreams: economicBenefits.revenueStreams || []
+    };
+  }
+
+  /**
+   * Maps operational analysis
+   */
+  private static mapOperationalAnalysis(bessData: any): any {
+    const operationalAnalysis = bessData.operationalAnalysis || {};
+    
+    return {
+      availability: operationalAnalysis.availability || 99.5,
+      utilizationRate: operationalAnalysis.utilizationRate || 0,
+      efficiency: bessData.roundTripEfficiency || 90,
+      maintenanceRequirements: operationalAnalysis.maintenanceRequirements || {
+        frequency: 'semiannual',
+        estimatedAnnualCost: 0,
+        requiredExpertise: 'basic',
+        sparePartsRecommendation: 'optional'
+      },
+      monitoringNeeds: operationalAnalysis.monitoringNeeds || ['state_of_charge', 'power_flow', 'temperature'],
+      operatingConstraints: operationalAnalysis.operatingConstraints || [],
+      optimizationOpportunities: operationalAnalysis.optimizationOpportunities || [],
+      performanceProjections: operationalAnalysis.performanceProjections || {
+        year5: 95,
+        year10: 90,
+        year15: 85
+      }
+    };
+  }
+
+  /**
+   * Maps result metadata
+   */
+  private static mapResultMetadata(calculation: any): any {
+    return {
+      calculationId: calculation.id || this.generateId(),
+      version: calculation.calculationVersion || '1.0.0',
+      algorithm: calculation.algorithm || 'bess_optimization',
+      dataSource: calculation.dataSource || 'manufacturer_specs',
+      assumptions: calculation.assumptions || [],
+      limitations: calculation.limitations || [],
+      accuracy: calculation.accuracy,
+      validationStatus: calculation.validationStatus || 'pending',
+      calculationTime: calculation.calculationTime || 0,
+      processingSteps: calculation.processingSteps || [],
+      warnings: calculation.warnings || [],
+      errors: calculation.errors || []
+    };
+  }
+
+  /**
+   * Generates a unique ID for calculations
+   */
+  private static generateId(): string {
+    return `bess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   }
 }
 

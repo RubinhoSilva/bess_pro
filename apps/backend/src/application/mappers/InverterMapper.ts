@@ -106,7 +106,7 @@ export class InverterMapper {
     };
   }
 
-  static toResponseDto(inverter: Inverter, moduleReferencePower?: number): InverterResponseDto {
+  static toResponseDto(inverter: Inverter, _moduleReferencePower?: number): InverterResponseDto {
     return this.toSharedInverter(inverter);
   }
 
@@ -115,10 +115,10 @@ export class InverterMapper {
     total: number,
     page?: number,
     pageSize?: number,
-    moduleReferencePower?: number
+    _moduleReferencePower?: number
   ): InverterListResponseDto {
     return {
-      inverters: inverters.map(inverter => this.toResponseDto(inverter, moduleReferencePower)),
+      inverters: inverters.map(inverter => this.toResponseDto(inverter)),
       total,
       page,
       pageSize,
@@ -126,7 +126,7 @@ export class InverterMapper {
     };
   }
 
-  static toResponseDtoList(inverters: Inverter[], moduleReferencePower?: number): InverterResponseDto[] {
-    return inverters.map(inverter => this.toResponseDto(inverter, moduleReferencePower));
+  static toResponseDtoList(inverters: Inverter[], _moduleReferencePower?: number): InverterResponseDto[] {
+    return inverters.map(inverter => this.toResponseDto(inverter));
   }
 }
