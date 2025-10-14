@@ -201,10 +201,6 @@ export const apiClient = {
     solarSystemStandalone: (data: any) =>
       api.post(`/calculations/solar-system`, data),
 
-    // Endpoints legados (mantidos para compatibilidade)
-    solarSystem: (projectId: string, data: any) =>
-      api.post(`/calculations/projects/${projectId}/solar-system`, data),
-
     financial: (projectId: string, data: any) =>
       api.post(`/calculations/projects/${projectId}/financial-analysis`, data),
 

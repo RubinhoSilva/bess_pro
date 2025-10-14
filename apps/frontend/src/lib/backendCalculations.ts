@@ -93,16 +93,7 @@ export class BackendCalculationService {
     }
   }
 
-  /**
-   * MÉTODO LEGADO: Mantido para compatibilidade (usa o novo método standalone)
-   */
-  static async calculateSolarSystem(
-    projectId: string,
-    params: BackendCalculationParams
-  ): Promise<BackendCalculationResult | null> {
 
-    return this.calculateSolarSystemStandalone(params);
-  }
 
   /**
    * Tenta combinar resultados do backend com cálculos locais

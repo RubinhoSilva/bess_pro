@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { CalculateProjectFinancialsUseCase } from '@/application/use-cases/calculation/CalculateProjectFinancialsUseCase';
 import { BaseController } from './BaseController';
-import { AppError } from '../../shared/errors/AppError';
+import { CalculationInputValidator } from '@/application/validators/CalculationInputValidator';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -23,6 +23,16 @@ export class FinancialCalculationController extends BaseController {
    */
   async calculateProjectFinancials(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
+      // 1. Validar entrada
+      const validation = CalculationInputValidator.validateFinancialAnalysis({
+        ...req.body,
+        projectId: req.params.projectId
+      });
+      if (!validation.isValid) {
+        return this.badRequest(res, validation.errors.join(', '));
+      }
+
+      // 2. Extrair dados
       const { projectId } = req.params;
       const userId = req.user?.id;
       const financialInput = req.body;
@@ -32,35 +42,36 @@ export class FinancialCalculationController extends BaseController {
         return this.unauthorized(res, 'Usuário não autenticado');
       }
 
-      console.log(`[FinancialCalculationController] Calculating financials for project ${projectId}`, {
-        userId,
-        investimento: financialInput.investimento_inicial,
-      });
-
-      const result = await this.calculateFinancialsUseCase.execute({
+      const command = {
         projectId,
         userId,
         input: financialInput,
         saveToProject,
-      });
+      };
 
-      return this.ok(res, result);
+      // 3. Executar use case
+      const result = await this.calculateFinancialsUseCase.execute(command);
+
+      // 4. Retornar resposta
+      if (result.success) {
+        return this.ok(res, result.data);
+      } else {
+        return this.badRequest(res, result.message);
+      }
+
     } catch (error: any) {
       console.error('[FinancialCalculationController] Error:', error);
 
-      if (error instanceof AppError) {
-        switch (error.statusCode) {
-          case 400:
-            return this.badRequest(res, error.message);
-          case 401:
-            return this.unauthorized(res, error.message);
-          case 403:
-            return this.forbidden(res, error.message);
-          case 404:
-            return this.notFound(res, error.message);
-          default:
-            return this.internalServerError(res, error.message);
-        }
+      if (error.message.includes('não autenticado')) {
+        return this.unauthorized(res, error.message);
+      }
+
+      if (error.message.includes('não encontrado') || error.message.includes('not found')) {
+        return this.notFound(res, error.message);
+      }
+
+      if (error.message.includes('inválido') || error.message.includes('invalid')) {
+        return this.badRequest(res, error.message);
       }
 
       return this.internalServerError(res, `Erro interno: ${error.message}`);
@@ -73,6 +84,7 @@ export class FinancialCalculationController extends BaseController {
    */
   async getLastFinancialResults(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
+      // 1. Extrair dados
       const { projectId } = req.params;
       const userId = req.user?.id;
 
@@ -80,35 +92,33 @@ export class FinancialCalculationController extends BaseController {
         return this.unauthorized(res, 'Usuário não autenticado');
       }
 
-      console.log(`[FinancialCalculationController] Getting last financial results for project ${projectId}`);
-
+      // 2. Executar use case
       const results = await this.calculateFinancialsUseCase.getLastResults(projectId, userId);
 
       if (!results) {
         return this.notFound(res, 'Nenhum cálculo financeiro encontrado para este projeto');
       }
 
+      // 3. Retornar resposta
       return this.ok(res, {
         success: true,
         data: results,
         message: 'Resultados financeiros recuperados com sucesso',
       });
+
     } catch (error: any) {
       console.error('[FinancialCalculationController] Error getting results:', error);
 
-      if (error instanceof AppError) {
-        switch (error.statusCode) {
-          case 400:
-            return this.badRequest(res, error.message);
-          case 401:
-            return this.unauthorized(res, error.message);
-          case 403:
-            return this.forbidden(res, error.message);
-          case 404:
-            return this.notFound(res, error.message);
-          default:
-            return this.internalServerError(res, error.message);
-        }
+      if (error.message.includes('não autenticado')) {
+        return this.unauthorized(res, error.message);
+      }
+
+      if (error.message.includes('não encontrado') || error.message.includes('not found')) {
+        return this.notFound(res, error.message);
+      }
+
+      if (error.message.includes('inválido') || error.message.includes('invalid')) {
+        return this.badRequest(res, error.message);
       }
 
       return this.internalServerError(res, `Erro interno: ${error.message}`);

@@ -87,7 +87,7 @@ import { UploadModel3DUseCase } from '../../application/use-cases/model3d/Upload
 import { CreateAreaMontagemUseCase } from '../../application/use-cases/area/CreateAreaMontagemUseCase';
 
 // Use Cases - Calculation
-import { CalculateSolarSystemUseCase } from '../../application/use-cases/calculation/CalculateSolarSystemUseCase';
+import { CalculateStandaloneSolarSystemUseCase } from '../../application/use-cases/calculation/CalculateStandaloneSolarSystemUseCase';
 import { CalculateProjectFinancialsUseCase } from '../../application/use-cases/calculation/CalculateProjectFinancialsUseCase';
 
 // Use Cases - Financial
@@ -99,6 +99,9 @@ import { GenerateFinancialReportUseCase } from '../../application/use-cases/repo
 // Use Cases - BESS
 import { CalculateBessSystemUseCase } from '../../application/use-cases/bess/CalculateBessSystemUseCase';
 import { CalculateMultiSystemUseCase } from '../../application/use-cases/bess/CalculateMultiSystemUseCase';
+import { GetBatteryDatabaseUseCase } from '../../application/use-cases/bess/GetBatteryDatabaseUseCase';
+import { GetLoadProfileTemplateUseCase } from '../../application/use-cases/bess/GetLoadProfileTemplateUseCase';
+import { CompareBatteryConfigurationsUseCase } from '../../application/use-cases/bess/CompareBatteryConfigurationsUseCase';
 
 // Use Cases - Irradiation
 import { GetSolarIrradiationUseCase } from '../../application/use-cases/irradiation/GetSolarIrradiationUseCase';
@@ -680,7 +683,7 @@ export class ContainerSetup {
     container.register('CreateAreaMontagemUseCase', CreateAreaMontagemUseCase);
 
     // Use Cases - Calculation
-    container.register(ServiceTokens.CALCULATE_SOLAR_SYSTEM_USE_CASE, CalculateSolarSystemUseCase);
+    container.register(ServiceTokens.CALCULATE_STANDALONE_SOLAR_SYSTEM_USE_CASE, CalculateStandaloneSolarSystemUseCase);
 
     // Use Cases - Financial Calculation (Python Service)
     container.registerFactory(ServiceTokens.CalculateProjectFinancialsUseCase, () => {
@@ -709,6 +712,10 @@ export class ContainerSetup {
         container.resolve(ServiceTokens.USER_REPOSITORY)
       );
     });
+
+    container.register(ServiceTokens.GetBatteryDatabaseUseCase, GetBatteryDatabaseUseCase);
+    container.register(ServiceTokens.GetLoadProfileTemplateUseCase, GetLoadProfileTemplateUseCase);
+    container.register(ServiceTokens.CompareBatteryConfigurationsUseCase, CompareBatteryConfigurationsUseCase);
 
     // Use Cases - Irradiation
     container.registerFactory(ServiceTokens.GetSolarIrradiationUseCase, () => {
@@ -835,7 +842,10 @@ export class ContainerSetup {
 
     container.registerFactory('BessController', () => {
       return new BessController(
-        container.resolve(ServiceTokens.CalculateBessSystemUseCase)
+        container.resolve(ServiceTokens.CalculateBessSystemUseCase),
+        container.resolve(ServiceTokens.GetBatteryDatabaseUseCase),
+        container.resolve(ServiceTokens.GetLoadProfileTemplateUseCase),
+        container.resolve(ServiceTokens.CompareBatteryConfigurationsUseCase)
       );
     });
 
