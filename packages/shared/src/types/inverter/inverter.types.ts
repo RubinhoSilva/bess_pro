@@ -60,7 +60,7 @@ export interface InverterMetadata {
   readonly protections?: string[]; // ex: ['Sobretensão CC', 'Sobrecorrente CA']
   readonly protectionRating?: string; // ex: 'IP65'
   readonly operatingTemperature?: string; // ex: '-25°C a +60°C'
-  readonly userId?: string; // User ID for ownership
+  readonly teamId?: string; // Team ID for ownership
   readonly sandiaParameters?: SandiaParameters;
 }
 

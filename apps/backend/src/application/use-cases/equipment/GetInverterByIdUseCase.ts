@@ -14,7 +14,7 @@ export class GetInverterByIdUseCase implements IUseCase<GetInverterByIdQuery, Re
 
   async execute(query: GetInverterByIdQuery): Promise<Result<InverterResponseDto>> {
     try {
-      const { id, userId } = query;
+      const { id, teamId } = query;
       
       const inverter = await this.inverterRepository.findById(id);
       
@@ -22,8 +22,8 @@ export class GetInverterByIdUseCase implements IUseCase<GetInverterByIdQuery, Re
         return Result.failure('Inversor não encontrado');
       }
 
-      // Verificar se o inversor é público ou pertence ao usuário
-      if (inverter.userId !== userId && inverter.userId !== SystemUsers.PUBLIC_EQUIPMENT) {
+      // Verificar se o inversor é público ou pertence ao time
+      if (inverter.teamId !== teamId && inverter.teamId !== SystemUsers.PUBLIC_EQUIPMENT) {
         return Result.failure('Inversor não encontrado');
       }
       

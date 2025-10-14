@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { CalculateProjectFinancialsUseCase } from '@/application/use-cases/calculation/CalculateProjectFinancialsUseCase';
 import { BaseController } from './BaseController';
-import { AppError } from '@/shared/errors/AppError';
+import { AppError } from '../../shared/errors/AppError';
 
 interface AuthenticatedRequest extends Request {
   user?: {

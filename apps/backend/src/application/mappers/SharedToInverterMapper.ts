@@ -41,7 +41,7 @@ export interface InverterResponseDto {
   status: string;
   createdAt: Date;
   updatedAt: Date;
-  userId: string;
+  teamId: string;
 }
 
 export interface InverterListResponseDto {
@@ -57,11 +57,10 @@ export interface InverterListResponseDto {
 
 export class SharedToInverterMapper {
   
-  static createRequestToEntityData(request: CreateInverterRequest & { userId: string }): InverterData {
+  static createRequestToEntityData(request: CreateInverterRequest & { teamId: string }): InverterData {
     return {
-      userId: request.userId,
-      manufacturerId: (request.metadata as any)?.manufacturerId,
-      fabricante: typeof request.manufacturer === 'string' ? request.manufacturer : request.manufacturer.name,
+      teamId: request.teamId,
+      manufacturerId: request.manufacturerId || (request.metadata as any)?.manufacturerId,
       modelo: request.model,
       
       // Potência (Power)
@@ -105,13 +104,17 @@ export class SharedToInverterMapper {
     };
   }
   
-  static updateRequestToEntityData(request: UpdateInverterRequest & { userId: string }): Partial<InverterData> {
+  static updateRequestToEntityData(request: UpdateInverterRequest & { teamId: string }): Partial<InverterData> {
     const data: Partial<InverterData> = {
-      userId: request.userId
+      teamId: request.teamId
     };
     
-    if (request.manufacturer !== undefined) {
-      data.fabricante = typeof request.manufacturer === 'string' ? request.manufacturer : request.manufacturer.name;
+    if (request.manufacturerId) {
+      data.manufacturerId = request.manufacturerId;
+    } else if ((request as any).manufacturer) {
+      // Handle manufacturer object from frontend
+      const mfg = (request as any).manufacturer;
+      data.fabricante = typeof mfg === 'string' ? mfg : mfg.name || 'Unknown';
     }
     if (request.model !== undefined) data.modelo = request.model;
     
@@ -138,7 +141,14 @@ export class SharedToInverterMapper {
       if (request.electrical.maxEfficiency !== undefined) data.eficienciaMax = request.electrical.maxEfficiency;
       if (request.electrical.europeanEfficiency !== undefined) data.eficienciaEuropeia = request.electrical.europeanEfficiency;
       if (request.electrical.mpptEfficiency !== undefined) data.eficienciaMppt = request.electrical.mpptEfficiency;
-      if (request.electrical.gridType !== undefined) data.tipoRede = request.electrical.gridType;
+      if (request.electrical.gridType !== undefined) {
+        // Tratar valores inválidos como "bifasico-220v" -> "bifasico"
+        let gridType = request.electrical.gridType;
+        if (gridType.includes('-')) {
+          gridType = gridType.split('-')[0] as any;
+        }
+        data.tipoRede = gridType;
+      }
       if (request.electrical.ratedVoltage !== undefined) data.tensaoSaidaNominal = request.electrical.ratedVoltage;
       if (request.electrical.frequency !== undefined) data.frequenciaNominal = request.electrical.frequency;
 

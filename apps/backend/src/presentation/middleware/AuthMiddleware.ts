@@ -8,6 +8,7 @@ export interface AuthenticatedRequest extends Request {
     userId: string;
     email: string;
     role: string;
+    teamId: string;
   };
 }
 
@@ -44,6 +45,7 @@ export class AuthMiddleware {
           userId: decoded.userId,
           email: decoded.email,
           role: decoded.role,
+          teamId: decoded.teamId,
         };
 
         next();
@@ -112,6 +114,7 @@ export class AuthMiddleware {
           userId: decoded.userId,
           email: decoded.email,
           role: decoded.role,
+          teamId: decoded.teamId,
         };
 
         next();

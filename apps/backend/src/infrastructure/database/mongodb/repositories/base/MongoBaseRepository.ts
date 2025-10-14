@@ -103,11 +103,17 @@ export class MongoBaseRepository<TDomain, TFilters = {}, TDocument extends Docum
       ? { ...query, ...this.getSoftDeleteQuery() }
       : query;
 
+    console.log('MongoBaseRepository.updateById - id:', id);
+    console.log('MongoBaseRepository.updateById - baseQuery:', JSON.stringify(baseQuery, null, 2));
+    console.log('MongoBaseRepository.updateById - persistenceData:', JSON.stringify(persistenceData, null, 2));
+
     const updatedDoc = await this.model.findOneAndUpdate(
       baseQuery,
       persistenceData,
       { new: true, runValidators: true }
     );
+    
+    console.log('MongoBaseRepository.updateById - updatedDoc:', updatedDoc);
 
     return updatedDoc ? this.config.mapper.toDomain(updatedDoc) : null;
   }
@@ -149,7 +155,6 @@ export class MongoBaseRepository<TDomain, TFilters = {}, TDocument extends Docum
     filters: TFilters = {} as TFilters,
     options: PaginationOptions = {}
   ): Promise<PaginatedResult<TDomain>> {
-    console.log('MongoBaseRepository.findWithPagination called with filters:', filters, 'and options:', options);
     const { page = 1, pageSize = 20, sortBy = 'createdAt', sortOrder = 'desc' } = options;
     const skip = (page - 1) * pageSize;
 
@@ -281,15 +286,15 @@ export class MongoBaseRepository<TDomain, TFilters = {}, TDocument extends Docum
 
   // === MÉTODOS ESPECÍFICOS PARA EQUIPAMENTOS ===
 
-  protected buildPublicAccessFilter(userId?: string): any {
+  protected buildPublicAccessFilter(teamId?: string): any {
     const baseFilter: any = {
       $or: [
-        { userId: SystemUsers.PUBLIC_EQUIPMENT }
+        { teamId: SystemUsers.PUBLIC_EQUIPMENT }
       ]
     };
     
-    if (userId) {
-      baseFilter.$or.push({ userId });
+    if (teamId) {
+      baseFilter.$or.push({ teamId });
     }
     
     return baseFilter;

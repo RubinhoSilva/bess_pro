@@ -4,11 +4,11 @@ import { InverterFilters } from '@bess-pro/shared';
  * Get Inverters Query - Alinhado com @bess-pro/shared
  * 
  * Este DTO estende o tipo compartilhado para adicionar campos específicos
- * do backend como userId para controle de acesso.
+ * do backend como teamId para controle de acesso.
  */
 export interface GetInvertersQuery extends InverterFilters {
-  /** ID do usuário para filtrar equipamentos acessíveis */
-  userId?: string;
+  /** ID do time para filtrar equipamentos acessíveis */
+  teamId?: string;
   
   /** Campos de paginação */
   page?: number;

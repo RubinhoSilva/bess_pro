@@ -27,7 +27,9 @@ import {
   type CreateModuleRequest,
   type CreateInverterRequest,
   type UpdateModuleRequest,
-  type UpdateInverterRequest
+  type UpdateInverterRequest,
+  type Manufacturer,
+  type GridType
 } from '@bess-pro/shared';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 
@@ -36,6 +38,24 @@ interface EquipmentManagerProps {
 }
 
 // Interfaces para formulários planos (para facilitar o uso no frontend)
+interface InverterFormData {
+  manufacturerId: string;
+  manufacturer: string;
+  model: string;
+  ratedACPower: number;
+  gridType: GridType;
+  maxPVPower: number;
+  maxDCVoltage?: number;
+  numberOfMppts: number;
+  stringsPerMppt: number;
+  maxEfficiency: number;
+  maxInputCurrent: number;
+  maxApparentPower: number;
+  shortCircuitVoltageMax: number;
+  warranty: number;
+  connectionType: 'on-grid' | 'off-grid' | 'hybrid';
+}
+
 interface ModuleFormData {
   manufacturerId: string;
   manufacturer: string;
@@ -63,21 +83,7 @@ interface ModuleFormData {
   weightKg: number;
 }
 
-interface InverterFormData {
-  manufacturerId: string;
-  manufacturer: string;
-  model: string; 
-  ratedACPower: number; 
-  gridType: string;
-  maxPVPower: number;
-  maxDCVoltage: number;
-  numberOfMppts: number;
-  stringsPerMppt: number;
-  maxEfficiency: number;
-  maxInputCurrent: number;
-  maxApparentPower: number;
-  shortCircuitVoltageMax: number;
-}
+
 
 // Funções de transformação
 const transformModuleFormToRequest = (form: ModuleFormData): CreateModuleRequest => ({
@@ -125,29 +131,31 @@ const transformModuleFormToRequest = (form: ModuleFormData): CreateModuleRequest
   teamId: '' // Will be set by service
 });
 
-const transformInverterFormToRequest = (form: InverterFormData): CreateInverterRequest => ({
+const transformInverterFormToRequest = (form: InverterFormData, existingInverter?: Inverter): CreateInverterRequest => {
+  console.log('Transforming inverter form to request:', form, existingInverter);
+  return {
   manufacturer: {
-    id: form.manufacturerId || 'temp-id',
-    name: form.manufacturer,
-    type: 'INVERTER' as any,
-    contact: {},
-    business: {},
-    certifications: [],
-    metadata: {
-      specialties: [],
-      markets: [],
-      qualityStandards: []
+      id: form.manufacturerId,
+      name: form.manufacturer,
+      type: 'INVERTER' as const,
+      contact: {},
+      business: {},
+      certifications: [],
+      metadata: {
+        specialties: [],
+        markets: [],
+        qualityStandards: []
+      },
+      status: 'active' as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     },
-    status: 'active' as any,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
   model: form.model,
   power: {
     ratedACPower: form.ratedACPower,
     maxPVPower: form.maxPVPower,
     shortCircuitVoltageMax: form.maxDCVoltage,
-    maxInputCurrent: form.maxInputCurrent,
+    maxInputCurrent: form.maxInputCurrent || 0,
     maxApparentPower: form.maxApparentPower
   },
   mppt: {
@@ -163,7 +171,8 @@ const transformInverterFormToRequest = (form: InverterFormData): CreateInverterR
     certifications: [],
     connectionType: 'on-grid'
   }
-});
+  };
+};
 
 export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) => {
   const { toast } = useToast();
@@ -213,10 +222,10 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   
   const [inverterForm, setInverterForm] = useState<InverterFormData>({
     manufacturerId: '',
-    manufacturer: '', 
+    manufacturer: '',
     model: '', 
     ratedACPower: 8000, 
-    gridType: 'trifasico-220v',
+    gridType: 'trifasico',
     maxPVPower: 12000,
     maxDCVoltage: 1000,
     numberOfMppts: 2,
@@ -225,6 +234,8 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
     maxInputCurrent: 18.5,
     maxApparentPower: 8200,
     shortCircuitVoltageMax: 1000,
+    warranty: 5,
+    connectionType: 'on-grid',
   });
   
   const queryClient = useQueryClient();
@@ -405,19 +416,16 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
   };
 
   const handleSaveInverter = async () => {
-    if (!inverterForm.manufacturer || !inverterForm.model || inverterForm.ratedACPower <= 0) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Campos obrigatórios', 
-        description: 'Fabricante, Modelo e Potência Nominal de Saída (CA) são obrigatórios.'
-      });
-      return;
-    }
+
+    console.log('Saving inverter with form data:', inverterForm, 'Current inverter:', currentInverter);
     
-    const dataToSave = transformInverterFormToRequest(inverterForm);
+    const dataToSave = transformInverterFormToRequest(inverterForm, currentInverter || undefined);
+
+    console.log('Transformed inverter data to save:', dataToSave);
     
     await executeWithErrorHandling(async () => {
       if (currentInverter) {
+        console.log('Updating inverter with data:', dataToSave);
         await updateInverterMutation.mutateAsync({ id: currentInverter.id, data: dataToSave as UpdateInverterRequest });
         toast({ title: 'Inversor atualizado com sucesso!' });
       } else {
@@ -427,12 +435,12 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       
       setIsInverterDialogOpen(false);
       setCurrentInverter(null);
-       setInverterForm({ 
+setInverterForm({ 
          manufacturerId: '',
-         manufacturer: '', 
+         manufacturer: '',
          model: '', 
          ratedACPower: 8000, 
-         gridType: 'trifasico-220v',
+         gridType: 'trifasico',
           maxPVPower: 12000,
           maxDCVoltage: 1000,
           numberOfMppts: 2,
@@ -441,14 +449,16 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
           maxInputCurrent: 18.5,
           maxApparentPower: 8200,
           shortCircuitVoltageMax: 1000,
-       });
+          warranty: 5,
+          connectionType: 'on-grid',
+        });
       onUpdate?.();
     }, {
       operation: 'save-inverter',
       context: { 
         isEdit: !!currentInverter,
         modelName: inverterForm.model,
-        manufacturer: inverterForm.manufacturer 
+        manufacturerId: inverterForm.manufacturerId
       }
     });
   };
@@ -561,7 +571,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
 
     setCurrentInverter(inverter);
     setInverterForm({
-      manufacturerId: inverter.manufacturer.id || '',
+      manufacturerId: inverter.manufacturer.id,
       manufacturer: inverter.manufacturer.name,
       model: inverter.model,
       ratedACPower: inverter.power.ratedACPower,
@@ -574,6 +584,8 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       maxInputCurrent: inverter.power.maxInputCurrent,
       maxApparentPower: inverter.power.maxApparentPower,
       shortCircuitVoltageMax: inverter.power.shortCircuitVoltageMax,
+      warranty: inverter.metadata.warranty || 5,
+      connectionType: inverter.metadata.connectionType || 'on-grid',
     });
     setIsInverterDialogOpen(true);
   };
@@ -615,12 +627,12 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
 
   const handleNewInverter = () => {
     setCurrentInverter(null);
-    const defaultInverterForm: InverterFormData = { 
+const defaultInverterForm: InverterFormData = {
       manufacturerId: '',
-      manufacturer: '', 
+      manufacturer: '',
       model: '', 
       ratedACPower: 8000, 
-      gridType: 'trifasico-380v',
+      gridType: 'trifasico',
       maxPVPower: 12000,
       maxDCVoltage: 1000,
       numberOfMppts: 2,
@@ -629,6 +641,8 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
       maxInputCurrent: 18.5,
       maxApparentPower: 8200,
       shortCircuitVoltageMax: 1000,
+      warranty: 5,
+      connectionType: 'on-grid',
     };
     setInverterForm(defaultInverterForm);
     setIsInverterDialogOpen(true);
@@ -678,7 +692,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
               <p className="text-slate-400 text-center py-4">Nenhum módulo cadastrado</p>
             ) : (
               modules.map((module: SolarModule) => {
-                const isPublic = module.metadata.userId === 'public-equipment-system';
+                const isPublic = module.teamId === 'public-equipment-system';
                 return (
                   <div key={module.id} className="flex items-center justify-between p-2 bg-muted rounded">
                     <div className="flex-1">
@@ -748,7 +762,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
               <p className="text-slate-400 text-center py-4">Nenhum inversor cadastrado</p>
             ) : (
               inverters.map((inverter: Inverter) => {
-                const isPublic = inverter.metadata.userId === 'public-equipment-system';
+                const isPublic = inverter.teamId === 'public-equipment-system';
                 return (
                   <div key={inverter.id} className="flex items-center justify-between p-2 bg-muted rounded">
                     <div className="flex-1">
@@ -1161,13 +1175,11 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
               <div className="space-y-2">
                 <Label>Fabricante *</Label>
                 <Select 
-                  value={inverterForm.manufacturer || ''} 
+                  value={inverterForm.manufacturerId } 
                   onValueChange={(value) => {
-                    const selectedManufacturer = inverterManufacturersList.find((m: any) => m.name === value);
                     setInverterForm(prev => ({ 
                       ...prev, 
-                      manufacturer: value,
-                      manufacturerId: selectedManufacturer?.id || ''
+                      manufacturerId: value,
                     }));
                   }}
                 >
@@ -1176,7 +1188,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                   </SelectTrigger>
                   <SelectContent>
                     {inverterManufacturersList.map((manufacturer: any) => (
-                      <SelectItem key={manufacturer.id} value={manufacturer.name}>
+                      <SelectItem key={manufacturer.id} value={manufacturer.id}>
                         {manufacturer.name}
                       </SelectItem>
                     ))}
@@ -1213,7 +1225,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
                   <Label>Tipo de Rede *</Label>
                   <Select
                     value={inverterForm.gridType || ''}
-                    onValueChange={value => setInverterForm(prev => ({ ...prev, gridType: value }))}
+                    onValueChange={value => setInverterForm(prev => ({ ...prev, gridType: value as GridType }))}
                   >
                     <SelectTrigger className="bg-background border-border">
                       <SelectValue placeholder="Selecione o tipo de rede" />

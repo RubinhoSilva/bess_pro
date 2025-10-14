@@ -9,11 +9,7 @@ export class BcryptPasswordHashService implements IPasswordHashService {
   }
 
   async verify(password: string, hash: string): Promise<boolean> {
-    console.log('🔑 Password verification:');
-    console.log('Password:', password);
-    console.log('Hash:', hash);
     const result = await bcrypt.compare(password, hash);
-    console.log('Result:', result);
     return result;
   }
 }

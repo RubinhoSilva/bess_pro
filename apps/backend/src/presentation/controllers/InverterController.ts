@@ -13,7 +13,7 @@ import {
 
 // Interfaces temporárias para queries
 interface GetInvertersQuery {
-  userId: string;
+  teamId: string;
   manufacturer?: string;
   model?: string;
   minPower?: number;
@@ -37,7 +37,7 @@ interface GetInvertersQuery {
 
 interface GetInverterByIdQuery {
   id: string;
-  userId: string;
+  teamId: string;
 }
 
 /**
@@ -57,11 +57,11 @@ export class InverterController extends BaseController {
 
   async create(req: Request, res: Response): Promise<Response> {
     try {
-      const userId = this.extractUserId(req);
+      const teamId = this.extractTeamId(req);
       
-      const request: CreateInverterRequest & { userId: string } = {
+      const request: CreateInverterRequest & { teamId: string } = {
         ...req.body,
-        userId
+        teamId
       };
       
       const result = await this.createInverterUseCase.execute(request);
@@ -76,9 +76,9 @@ export class InverterController extends BaseController {
 
   async findAll(req: Request, res: Response): Promise<Response> {
     try {
-      const userId = this.extractUserIdOptional(req) || 'system'; // Allow public access with default
+      const teamId = this.extractTeamIdOptional(req) || 'system'; // Allow public access with default
       const query: GetInvertersQuery = {
-        userId,
+        teamId,
         // InverterFilters (shared types)
         manufacturer: req.query.manufacturer as string,
         model: req.query.model as string,
@@ -115,16 +115,21 @@ export class InverterController extends BaseController {
 
   async update(req: Request, res: Response): Promise<Response> {
     try {
-      const userId = this.extractUserId(req);
+      const teamId = this.extractTeamId(req);
+      console.log('InverterController.update - Request Body:', req.body);
       
-      const request: UpdateInverterRequest & { userId: string } = {
+      const request: UpdateInverterRequest & { teamId: string } = {
         id: req.params.id,
         ...req.body,
-        userId
+        teamId
       };
+
+      console.log('InverterController.update - Mapped Request:', request);
       
       const result = await this.updateInverterUseCase.execute(request);
       
+      console.log('InverterController.update - UseCase Result:', result);
+
       return this.handleResult(res, result);
       
     } catch (error) {
@@ -135,11 +140,11 @@ export class InverterController extends BaseController {
 
   async delete(req: Request, res: Response): Promise<Response> {
     try {
-      const userId = this.extractUserId(req);
+      const teamId = this.extractTeamId(req);
       
-      const request: DeleteInverterRequest & { userId: string } = {
+      const request: DeleteInverterRequest & { teamId: string } = {
         id: req.params.id,
-        userId
+        teamId
       };
       
       const result = await this.deleteInverterUseCase.execute(request);
@@ -158,12 +163,12 @@ export class InverterController extends BaseController {
 
   async findById(req: Request, res: Response): Promise<Response> {
     try {
-      const userId = this.extractUserId(req);
+      const teamId = this.extractTeamId(req);
       const { id } = req.params;
 
       const query: GetInverterByIdQuery = {
         id,
-        userId
+        teamId
       };
 
       const result = await this.getInverterByIdUseCase.execute(query);

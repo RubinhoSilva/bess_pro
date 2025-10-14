@@ -4,7 +4,7 @@ import { Manufacturer } from '../manufacturer';
 // ============= INVERTER REQUEST TYPES =============
 
 export interface CreateInverterRequest {
-  manufacturer: Manufacturer;
+  manufacturerId: string;
   model: string;
   power: InverterPower;
   mppt: MPPTConfiguration;

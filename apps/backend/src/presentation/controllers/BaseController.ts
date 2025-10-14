@@ -130,6 +130,19 @@ export abstract class BaseController {
     return user?.userId || user?.id;
   }
 
+  protected extractTeamId(req: Request): string {
+    const user = (req as any).user;
+    if (!user || (!user.teamId && !user.team)) {
+      throw new Error('Time não autenticado');
+    }
+    return user.teamId || user.team;
+  }
+
+  protected extractTeamIdOptional(req: Request): string | undefined {
+    const user = (req as any).user;
+    return user?.teamId || user?.team;
+  }
+
   protected extractPagination(req: Request): { page: number; pageSize: number } {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 10));

@@ -88,7 +88,7 @@ export class InverterMapper {
         protections: inverter.protecoes,
         protectionRating: inverter.grauProtecao,
         operatingTemperature: inverter.temperaturaOperacao,
-        userId: inverter.userId,
+        teamId: inverter.teamId,
         sandiaParameters: {
           vdco: inverter.vdco,
           pso: inverter.pso,
@@ -100,7 +100,7 @@ export class InverterMapper {
         } as SandiaParameters,
       } as InverterMetadata,
       status: 'active',
-      isPublic: inverter.userId === SystemUsers.PUBLIC_EQUIPMENT,
+      isPublic: inverter.teamId === SystemUsers.PUBLIC_EQUIPMENT,
       createdAt: inverter.createdAt || new Date(),
       updatedAt: inverter.updatedAt || new Date(),
     };

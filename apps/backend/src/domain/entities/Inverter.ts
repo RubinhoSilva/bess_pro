@@ -3,9 +3,9 @@ import { SoftDeleteProps } from "./base/ISoftDeletable";
 
 export interface InverterData extends SoftDeleteProps {
   id?: string;
-  userId: string;
+  teamId: string;
   manufacturerId?: string;
-  fabricante: string;
+  fabricante?: string;
   modelo: string;
   potenciaSaidaCA: number; // Potência nominal de saída CA (W)
   tipoRede: string; // ex: 'Monofásico 220V', 'Trifásico 380V'
@@ -75,25 +75,22 @@ export class Inverter extends BaseEntity {
   }
 
   private validateRequired(): void {
-    if (!this.data.fabricante?.trim()) {
-      throw new Error('Fabricante é obrigatório');
-    }
     if (!this.data.modelo?.trim()) {
       throw new Error('Modelo é obrigatório');
     }
     if (!this.data.potenciaSaidaCA || this.data.potenciaSaidaCA <= 0) {
       throw new Error('Potência de saída CA deve ser maior que zero');
     }
-    if (!this.data.userId?.trim()) {
-      throw new Error('ID do usuário é obrigatório');
+    if (!this.data.teamId?.trim()) {
+      throw new Error('ID do time é obrigatório');
     }
   }
 
   // Getters
   get id(): string | undefined { return this.data.id; }
-  get userId(): string { return this.data.userId; }
+  get teamId(): string { return this.data.teamId; }
   get manufacturerId(): string | undefined { return this.data.manufacturerId; }
-  get fabricante(): string { return this.data.fabricante; }
+  get fabricante(): string | undefined { return this.data.fabricante; }
   get modelo(): string { return this.data.modelo; }
   get potenciaSaidaCA(): number { return this.data.potenciaSaidaCA; }
   get tipoRede(): string { return this.data.tipoRede; }

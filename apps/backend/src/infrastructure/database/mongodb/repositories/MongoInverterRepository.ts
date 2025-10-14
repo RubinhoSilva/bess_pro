@@ -7,7 +7,7 @@ import { SystemUsers } from '@/domain/constants/SystemUsers';
 
 // Interfaces para filtros específicos
 export interface InverterFilters {
-  userId?: string;
+  teamId?: string;
   search?: string;
   fabricante?: string;
   tipoRede?: string;
@@ -52,8 +52,8 @@ export class MongoInverterRepository implements IInverterRepository {
     return this.baseRepository.create(inverter);
   }
 
-  async findByUserId(
-    userId: string, 
+  async findByTeamId(
+    teamId: string, 
     options?: {
       searchTerm?: string;
       fabricante?: string;
@@ -66,7 +66,7 @@ export class MongoInverterRepository implements IInverterRepository {
   ): Promise<{ inverters: Inverter[]; total: number }> {
     
     const filters: InverterFilters = {
-      userId,
+      teamId,
       search: options?.searchTerm,
       fabricante: options?.fabricante,
       tipoRede: options?.tipoRede,
@@ -88,7 +88,7 @@ export class MongoInverterRepository implements IInverterRepository {
   }
 
   async findByFilters(filters: {
-    userId: string;
+    teamId: string;
     search?: string;
     fabricante?: string;
     tipoRede?: string;
@@ -121,16 +121,15 @@ export class MongoInverterRepository implements IInverterRepository {
 
   // === MÉTODOS LEGADOS (MANTIDOS POR COMPATIBILIDADE) ===
 
-  async findByFabricanteModelo(
-    fabricante: string, 
+  async findByManufacturerIdAndModel(
+    manufacturerId: string, 
     modelo: string, 
-    userId: string
+    teamId: string
   ): Promise<Inverter | null> {
-    const baseQuery = this.buildPublicAccessFilter(userId);
-    
+    const baseQuery = this.buildPublicAccessFilter(teamId);
     const query = {
       ...baseQuery,
-      fabricante: new RegExp(`^${fabricante}$`, 'i'),
+      manufacturerId,
       modelo: new RegExp(`^${modelo}$`, 'i')
     };
 
@@ -138,10 +137,10 @@ export class MongoInverterRepository implements IInverterRepository {
     return doc ? this.baseRepository['config'].mapper.toDomain(doc) : null;
   }
 
-  async getMostUsedInverters(userId: string, limit: number = 10): Promise<Inverter[]> {
+  async getMostUsedInverters(teamId: string, limit: number = 10): Promise<Inverter[]> {
     // Por enquanto, retorna os mais recentes
     const docs = await InverterModel
-      .find({ userId })
+      .find({ teamId })
       .sort({ createdAt: -1 })
       .limit(limit);
 
@@ -149,11 +148,11 @@ export class MongoInverterRepository implements IInverterRepository {
   }
 
   async getInvertersByPowerRange(
-    userId: string, 
+    teamId: string, 
     minPower: number, 
     maxPower: number
   ): Promise<Inverter[]> {
-    const baseQuery = this.buildPublicAccessFilter(userId);
+    const baseQuery = this.buildPublicAccessFilter(teamId);
     const powerFilter = this.buildRangeFilter('potenciaSaidaCA', minPower, maxPower);
     
     const query = this.mergeQueries(baseQuery, powerFilter);
@@ -165,8 +164,8 @@ export class MongoInverterRepository implements IInverterRepository {
     return docs.map(doc => this.baseRepository['config'].mapper.toDomain(doc));
   }
 
-  async searchInverters(userId: string, searchTerm: string): Promise<Inverter[]> {
-    const baseQuery = this.buildPublicAccessFilter(userId);
+  async searchInverters(teamId: string, searchTerm: string): Promise<Inverter[]> {
+    const baseQuery = this.buildPublicAccessFilter(teamId);
     const searchFilter = this.buildSearchFilter(searchTerm, ['fabricante', 'modelo', 'tipoRede']);
     
     const query = this.mergeQueries(baseQuery, searchFilter);
@@ -180,7 +179,7 @@ export class MongoInverterRepository implements IInverterRepository {
   }
 
   async getInvertersByPhaseType(
-    userId: string, 
+    teamId: string, 
     phaseType: 'monofásico' | 'bifásico' | 'trifásico'
   ): Promise<Inverter[]> {
     let regexPattern: string;
@@ -199,7 +198,7 @@ export class MongoInverterRepository implements IInverterRepository {
         regexPattern = phaseType;
     }
 
-    const baseQuery = this.buildPublicAccessFilter(userId);
+    const baseQuery = this.buildPublicAccessFilter(teamId);
     const phaseFilter = { tipoRede: new RegExp(regexPattern, 'i') };
     
     const query = this.mergeQueries(baseQuery, phaseFilter);
@@ -212,7 +211,7 @@ export class MongoInverterRepository implements IInverterRepository {
   }
 
   async getCompatibleInverters(
-    userId: string, 
+    teamId: string, 
     modulePower: number, 
     totalModules: number
   ): Promise<Inverter[]> {
@@ -220,7 +219,7 @@ export class MongoInverterRepository implements IInverterRepository {
     const minInverterPower = totalSystemPower * 0.8; // 20% undersizing
     const maxInverterPower = totalSystemPower * 1.2; // 20% oversizing
 
-    const baseQuery = this.buildPublicAccessFilter(userId);
+    const baseQuery = this.buildPublicAccessFilter(teamId);
     const powerFilter = this.buildRangeFilter('potenciaSaidaCA', minInverterPower, maxInverterPower);
     
     const query = this.mergeQueries(baseQuery, powerFilter);
@@ -256,13 +255,13 @@ export class MongoInverterRepository implements IInverterRepository {
     return this.baseRepository.delete(id);
   }
 
-  async findDefaults(userId: string): Promise<Inverter[]> {
+  async findDefaults(teamId: string): Promise<Inverter[]> {
     // Retorna inversores públicos padrão
-    return this.findByUserId(userId, { limit: 10 }).then(result => result.inverters);
+    return this.findByTeamId(teamId, { limit: 10 }).then(result => result.inverters);
   }
 
-  async hasEquipment(userId: string): Promise<boolean> {
-    const count = await this.baseRepository.count({ userId } as InverterFilters);
+  async hasEquipment(teamId: string): Promise<boolean> {
+    const count = await this.baseRepository.count({ teamId } as InverterFilters);
     return count > 0;
   }
 
@@ -272,7 +271,7 @@ export class MongoInverterRepository implements IInverterRepository {
     const customFilters: any = {};
 
     // Filtro de acesso público + usuário
-    const publicAccessFilter = this.buildPublicAccessFilter(filters.userId);
+    const publicAccessFilter = this.buildPublicAccessFilter(filters.teamId);
     
     // Filtro de fabricante
     if (filters.fabricante) {

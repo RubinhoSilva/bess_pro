@@ -66,6 +66,7 @@ export class JwtTokenService implements ITokenService {
   }
 
   async generateToken(payload: any): Promise<string> {
+    console.log('Generating token with payload:', payload);
     const jti = this.generateJti();
     const now = Math.floor(Date.now() / 1000);
     
@@ -151,6 +152,7 @@ export class JwtTokenService implements ITokenService {
         userId: decoded.userId,
         email: decoded.email,
         role: decoded.role,
+        teamId: decoded.teamId,
       });
     } catch (error: any) {
       if (error.name === 'TokenExpiredError') {

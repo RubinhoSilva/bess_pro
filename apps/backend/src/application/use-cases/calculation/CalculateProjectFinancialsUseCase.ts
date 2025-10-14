@@ -4,7 +4,7 @@ import { IUserRepository } from '@/domain/repositories/IUserRepository';
 import { Result } from '@/application/common/Result';
 import { Project } from '@/domain/entities/Project';
 import { FinancialValidator } from '@/application/validation/FinancialValidator';
-import { AppError } from '@/shared/errors/AppError';
+import { AppError } from '../../../shared/errors/AppError';
 import { ProjectId } from '@/domain/value-objects/ProjectId';
 import { UserId } from '@/domain/value-objects/UserId';
 import { UserPermissionService } from '@/domain/services/UserPermissionService';

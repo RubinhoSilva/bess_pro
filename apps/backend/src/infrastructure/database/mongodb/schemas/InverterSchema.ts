@@ -1,7 +1,7 @@
 import { Schema, model, Document } from 'mongoose';
 
 export interface IInverterDocument extends Document {
-  userId: string;
+  teamId: string;
   manufacturerId?: string;
   fabricante: string;
   modelo: string;
@@ -60,7 +60,7 @@ export interface IInverterDocument extends Document {
 }
 
 const InverterSchema = new Schema<IInverterDocument>({
-  userId: {
+  teamId: {
     type: String,
     required: true,
     index: true
@@ -250,9 +250,9 @@ const InverterSchema = new Schema<IInverterDocument>({
 });
 
 // Indexes
-InverterSchema.index({ userId: 1, fabricante: 1, modelo: 1 }, { unique: true });
-InverterSchema.index({ userId: 1, potenciaSaidaCA: 1 });
-InverterSchema.index({ userId: 1, tipoRede: 1 });
+InverterSchema.index({ teamId: 1, fabricante: 1, modelo: 1 }, { unique: true });
+InverterSchema.index({ teamId: 1, potenciaSaidaCA: 1 });
+InverterSchema.index({ teamId: 1, tipoRede: 1 });
 InverterSchema.index({ 
   fabricante: 'text', 
   modelo: 'text', 

@@ -14,7 +14,7 @@ export class GetInvertersUseCase implements IUseCase<GetInvertersQuery, Result<I
   async execute(query: GetInvertersQuery): Promise<Result<InverterListResponseDto>> {
     try {
       const { 
-        userId,
+        teamId,
         page = 1, 
         pageSize = 20, 
         search,
@@ -26,7 +26,7 @@ export class GetInvertersUseCase implements IUseCase<GetInvertersQuery, Result<I
       } = query;
 
       const { inverters, total } = await this.inverterRepository.findByFilters({
-        userId,
+        teamId,
         search,
         fabricante,
         tipoRede,

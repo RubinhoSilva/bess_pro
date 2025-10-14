@@ -37,6 +37,7 @@ export class LoginUserUseCase implements IUseCase<LoginUserCommand, Result<{ use
         userId: userWithPassword.user.getId(),
         email: userWithPassword.user.getEmail().getValue(),
         role: userWithPassword.user.getRole().getValue(),
+        teamId: userWithPassword.user.getTeamId(),
       });
 
       return Result.success({

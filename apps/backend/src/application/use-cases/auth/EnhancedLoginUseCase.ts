@@ -90,7 +90,8 @@ export class EnhancedLoginUseCase {
       const accessToken = this.tokenService.generateAccessToken({
         userId: user.getId(),
         email: user.getEmail().getValue(),
-        role: user.getRole().getValue()
+        role: user.getRole().getValue(),
+        teamId: user.getTeamId().getValue()
       });
 
       // Configurar duração do refresh token baseado em "lembrar de mim"

@@ -297,8 +297,8 @@ export class MongoEquipmentCatalogRepository implements IEquipmentCatalogReposit
     return await this.inverterRepository.findById(id);
   }
 
-  async findInvertersByManufacturer(manufacturerId: string, userId: string): Promise<Inverter[]> {
-    const result = await this.inverterRepository.findByUserId(userId, {
+  async findInvertersByManufacturer(manufacturerId: string, teamId: string): Promise<Inverter[]> {
+    const result = await this.inverterRepository.findByTeamId(teamId, {
       fabricante: undefined // Buscar todos do fabricante específico
     });
     
@@ -355,12 +355,12 @@ export class MongoEquipmentCatalogRepository implements IEquipmentCatalogReposit
     return result.modules;
   }
 
-  private async loadAccessibleInverters(userId?: string): Promise<Inverter[]> {
-    if (!userId) {
+  private async loadAccessibleInverters(teamId?: string): Promise<Inverter[]> {
+    if (!teamId) {
       return [];
     }
     
-    const result = await this.inverterRepository.findByUserId(userId);
+    const result = await this.inverterRepository.findByTeamId(teamId);
     return result.inverters;
   }
 

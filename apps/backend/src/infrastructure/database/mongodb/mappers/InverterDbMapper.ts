@@ -21,7 +21,7 @@ export class InverterDbMapper implements RepositoryMapper<Inverter, IInverterDoc
     const data = entity.toJSON();
     
     // Remover campos que não devem ser atualizados
-    const { id, createdAt, userId, ...updateData } = data;
+    const { id, createdAt, teamId, ...updateData } = data;
     
     return {
       ...updateData,
