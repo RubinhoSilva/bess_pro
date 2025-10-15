@@ -908,8 +908,8 @@ export class SolarSystemService {
         },
         orientacoes: [{
           nome: "Orientação Única",
-          orientacao: params.orientacao || 180,
-          inclinacao: params.inclinacao || 20,
+          orientacao: (params as any).orientacao || 180,
+          inclinacao: (params as any).inclinacao || 20,
           modulos_por_string: params.num_modules || 10,
           numero_strings: 1
         }]

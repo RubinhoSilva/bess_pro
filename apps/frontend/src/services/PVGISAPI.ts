@@ -366,7 +366,7 @@ export class PVGISAPI {
         const annualYield = result.outputs.totals.E_y;
         if (annualYield > bestYield) {
           bestYield = annualYield;
-          bestAngle = angle;
+          bestAngle = angle as 30;
           bestMonthlyYields = result.outputs.monthly.map(m => m.E_m);
         }
       } catch (error) {

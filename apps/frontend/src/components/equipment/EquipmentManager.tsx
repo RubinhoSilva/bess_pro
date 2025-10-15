@@ -135,27 +135,12 @@ const transformModuleFormToRequest = (form: ModuleFormData): CreateModuleRequest
 const transformInverterFormToRequest = (form: InverterFormData, existingInverter?: Inverter): CreateInverterRequest => {
   console.log('Transforming inverter form to request:', form, existingInverter);
   return {
-  manufacturer: {
-      id: form.manufacturerId,
-      name: form.manufacturer,
-      type: 'INVERTER' as const,
-      contact: {},
-      business: {},
-      certifications: [],
-      metadata: {
-        specialties: [],
-        markets: [],
-        qualityStandards: []
-      },
-      status: 'active' as const,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    },
+  manufacturerId: form.manufacturerId,
   model: form.model,
   power: {
     ratedACPower: form.ratedACPower,
     maxPVPower: form.maxPVPower,
-    shortCircuitVoltageMax: form.maxDCVoltage,
+    shortCircuitVoltageMax: form.maxDCVoltage || 0,
     maxInputCurrent: form.maxInputCurrent || 0,
     maxApparentPower: form.maxApparentPower
   },
@@ -490,7 +475,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
 
   const handleDeleteInverter = async (inverter: Inverter) => {
     // Verificar se é um equipamento público
-    if (inverter.metadata.userId === 'public-equipment-system') {
+    if (inverter.metadata.teamId === 'public-equipment-system') {
       toast({
         variant: 'destructive',
         title: 'Equipamento público não pode ser excluído',
@@ -561,7 +546,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
 
   const handleEditInverter = (inverter: Inverter) => {
     // Verificar se é um equipamento público
-    if (inverter.metadata.userId === 'public-equipment-system') {
+    if (inverter.metadata.teamId === 'public-equipment-system') {
       toast({
         variant: 'destructive',
         title: 'Equipamento público não pode ser editado',
@@ -693,7 +678,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
               <p className="text-slate-400 text-center py-4">Nenhum módulo cadastrado</p>
             ) : (
               modules.map((module: SolarModule) => {
-                const isPublic = module.teamId === 'public-equipment-system';
+                const isPublic = module.metadata.userId === 'public-equipment-system';
                 return (
                   <div key={module.id} className="flex items-center justify-between p-2 bg-muted rounded">
                     <div className="flex-1">
@@ -763,7 +748,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ onUpdate }) 
               <p className="text-slate-400 text-center py-4">Nenhum inversor cadastrado</p>
             ) : (
               inverters.map((inverter: Inverter) => {
-                const isPublic = inverter.teamId === 'public-equipment-system';
+                const isPublic = inverter.metadata.teamId === 'public-equipment-system';
                 return (
                   <div key={inverter.id} className="flex items-center justify-between p-2 bg-muted rounded">
                     <div className="flex-1">

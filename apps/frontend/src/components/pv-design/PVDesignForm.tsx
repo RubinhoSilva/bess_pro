@@ -58,8 +58,8 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
   });
 
   const {
-    saveDimensioning,
-    loadDimensioning,
+    save: saveDimensioning,
+    saveAsync: saveDimensioningAsync,
     isSaving
   } = useDimensioningOperations(dimensioningId);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -67,7 +67,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
   const notificationManager = NotificationManager.getInstance();
 
   const handleFormChange = (field: string, value: any) => {
-    setCurrentDimensioning(prev => ({ ...prev, [field]: value }));
+    setCurrentDimensioning((prev: any) => ({ ...prev, [field]: value }));
   };
 
 
@@ -680,7 +680,7 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           <Button 
             onClick={async () => {
               try {
-                const result = await saveDimensioning(currentDimensioning);
+                const result = await saveDimensioningAsync(currentDimensioning);
                 if (result?.id) {
                   setDimensioningId(result.id);
                   toast({

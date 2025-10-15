@@ -12,14 +12,14 @@ function Model3DViewerPageContent() {
   const [searchParams] = useSearchParams();
   const [dimensioningId, setDimensioningId] = useState<string | null>(null);
   const [currentDimensioning, setCurrentDimensioning] = useState<any>({});
-  const { saveDimensioning } = useDimensioningOperations(dimensioningId);
+  const { saveAsync: saveDimensioning } = useDimensioningOperations(dimensioningId);
   
   const [measurements, setMeasurements] = useState<any[]>([]);
   const [areas, setAreas] = useState<any[]>([]);
   const [selectedAreaId, setSelectedAreaId] = useState<string>();
 
   // Get initial model URL from query params
-  const initialModelUrl = searchParams.get('model') || currentDimensioning.modelo3dUrl;
+  const initialModelUrl = searchParams.get('model') || currentDimensioning.modelo3dUrl || undefined;
   
   // Get location from dimensioning data
   const latitude = currentDimensioning.latitude || -23.5505;
@@ -58,7 +58,7 @@ function Model3DViewerPageContent() {
 
   const handleSaveProject = () => {
     // Update dimensioning data with 3D data
-    setCurrentDimensioning(prev => ({ ...prev,
+    setCurrentDimensioning((prev: any) => ({ ...prev,
       mountingAreas: areas,
       measurements: measurements,
       modelo3dUrl: initialModelUrl

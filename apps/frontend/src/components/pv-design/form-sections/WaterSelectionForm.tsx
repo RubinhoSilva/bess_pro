@@ -9,11 +9,23 @@ import { Separator } from '@/components/ui/separator';
 import { Trash2, Plus, Home, Zap, AlertCircle, Compass, Triangle, Sun, Info, Settings } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AguaTelhado, SelectedInverter as LegacySelectedInverter } from '@/contexts/DimensioningContext';
+// import { AguaTelhado, SelectedInverter as LegacySelectedInverter } from '@/contexts/DimensioningContext';
 import { SelectedInverter } from '@bess-pro/shared';
 import { SolarSystemService } from '@/lib/solarSystemService';
 import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
 import { SolarModule } from '@bess-pro/shared';
+
+interface AguaTelhado {
+  id: string;
+  nome: string;
+  area: number;
+  inclinacao: number;
+  orientacao: number;
+  perdas: number;
+  sombreamento?: number;
+  potenciaInstalada?: number;
+  modulos?: number;
+}
 
 interface WaterSelectionFormProps {
   aguasTelhado: AguaTelhado[];
@@ -508,8 +520,8 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
           
           return {
             ...a,
-            areaCalculada: Math.round(dados.areaNecessariaM2 * proporcao * 100) / 100,
-            geracaoAnual: Math.round(dados.energiaAnualKwh * proporcao * 100) / 100,
+            areaCalculada: Math.round(dados.area_necessaria_m2 * proporcao * 100) / 100,
+            geracaoAnual: Math.round(dados.energia_total_anual_kwh * proporcao * 100) / 100,
             isCalculando: false
           };
         } else {

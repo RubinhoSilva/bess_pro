@@ -1,5 +1,31 @@
 import { useCallback } from 'react';
-import { SelectedInverter } from '@/contexts/DimensioningContext';
+// import { SelectedInverter } from '@/contexts/DimensioningContext';
+
+interface SelectedInverter {
+  id: string;
+  inverterId: string;
+  fabricante: string;
+  modelo: string;
+  potenciaSaidaCA: number;
+  tipoRede: string;
+  potenciaFvMax: number;
+  numeroMppt: number;
+  stringsPorMppt: number;
+  tensaoCcMax: number;
+  eficienciaMax: number;
+  correnteEntradaMax: number;
+  potenciaAparenteMax: number;
+  faixaMpptMin?: number;
+  faixaMpptMax?: number;
+  quantity: number;
+  vdco?: number;
+  pso?: number;
+  c0?: number;
+  c1?: number;
+  c2?: number;
+  c3?: number;
+  pnt?: number;
+}
 import { Inverter } from '../types/legacy-equipment';
 
 export interface UseMultipleInvertersReturn {

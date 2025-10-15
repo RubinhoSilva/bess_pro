@@ -25,7 +25,7 @@ function PVDesignPageContent() {
   const { currentProject } = useProject();
   const [dimensioningId, setDimensioningId] = useState<string | null>(null);
   const [currentDimensioning, setCurrentDimensioning] = useState<any>({});
-  const { loadDimensioning, saveDimensioning } = useDimensioningOperations(dimensioningId);
+  const { saveAsync: saveDimensioning } = useDimensioningOperations(dimensioningId);
   const { toast } = useToast();
 
   // Carregar dados do projeto quando houver projectId na URL
@@ -49,7 +49,7 @@ function PVDesignPageContent() {
       // Marcar que é um carregamento explícito
       sessionStorage.setItem('continueDimensioning', 'true');
       
-      setCurrentDimensioning(prev => ({ ...prev, customer: selectedLead }));
+      setCurrentDimensioning((prev: any) => ({ ...prev, customer: selectedLead }));
       
       toast({
         title: "Lead selecionado!",

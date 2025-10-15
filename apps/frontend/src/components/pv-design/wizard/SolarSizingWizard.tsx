@@ -128,7 +128,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
   // Buscar módulo completo selecionado pelo ID
   const selectedModuleFull = useMemo(() => {
-    const moduleId = currentDimensioning.moduloSelecionado || currentDimensioning.selectedModuleId;
+    const moduleId = currentDimensioning.moduloSelecionado || currentDimensioning.selectedModuleId || undefined;
     if (!moduleId || solarModules.length === 0) return undefined;
     return solarModules.find((m: any) => m.id === moduleId);
   }, [currentDimensioning.moduloSelecionado, currentDimensioning.selectedModuleId, solarModules]);
@@ -237,7 +237,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   }, [currentDimensioning.custoEquipamento, currentDimensioning.custoMateriais, currentDimensioning.custoMaoDeObra, currentDimensioning.bdi]);
 
   const handleFormChange = (field: string, value: any) => {
-    setCurrentDimensioning(prev => ({ ...prev, [field]: value }));
+    setCurrentDimensioning((prev: any) => ({ ...prev, [field]: value }));
   };
 
   const validateStep = (step: number): boolean => {
@@ -246,12 +246,12 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         return !!currentDimensioning.dimensioningName?.trim() && !!currentDimensioning.customer;
       case 2:
         return currentDimensioning.energyBills?.length > 0 && 
-               currentDimensioning.energyBills.some(bill => bill.consumoMensal.some(consumo => consumo > 0));
+               currentDimensioning.energyBills.some((bill: any) => bill.consumoMensal.some((consumo: number) => consumo > 0));
       case 3:
         // Validação mais rigorosa: deve ter coordenadas E dados de irradiação PVGIS
         const hasCoordinates = !!currentDimensioning.latitude && !!currentDimensioning.longitude;
-        const hasValidIrradiation = currentDimensioning.irradiacaoMensal?.length === 12 && 
-                                   currentDimensioning.irradiacaoMensal.some(value => value > 0);
+         const hasValidIrradiation = currentDimensioning.irradiacaoMensal?.length === 12 && 
+                                    currentDimensioning.irradiacaoMensal.some((value: number) => value > 0);
         return hasCoordinates && hasValidIrradiation;
       case 4:
         const hasModule = currentDimensioning.moduloSelecionado || currentDimensioning.selectedModuleId;
@@ -419,7 +419,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       // Calculate total monthly consumption
       logger.context('Consumo', 'Iniciando cálculo do consumo mensal total', {
         numeroContas: currentDimensioning.energyBills?.length || 0,
-        contas: currentDimensioning.energyBills?.map(bill => ({ nome: bill.name, consumo: bill.consumoMensal }))
+         contas: currentDimensioning.energyBills?.map((bill: any) => ({ nome: bill.name, consumo: bill.consumoMensal }))
       }, 'Agregação do consumo de todas as contas de energia para obter o perfil de consumo mensal');
 
       const totalConsumoMensal = currentDimensioning.energyBills?.reduce((acc: number[], bill: any) => {
@@ -444,7 +444,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       logger.result('Consumo', 'Consumo mensal total calculado', {
         consumoMensal: totalConsumoMensal,
         unidade: 'kWh/mês',
-        total_anual: totalConsumoMensal.reduce((a, b) => a + b, 0)
+         total_anual: totalConsumoMensal.reduce((a: number, b: number) => a + b, 0)
       });
 
       // Calculate system sizing using our new detailed method
@@ -920,10 +920,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
               orientacao: 180,
               area: areaEstimada
             },
-            irradiationData: {
-              monthly: currentDimensioning.irradiacaoMensal,
-              annual: currentDimensioning.irradiacaoMensal.reduce((a, b) => a + b, 0)
-            },
+               irradiationData: {
+                 monthly: currentDimensioning.irradiacaoMensal,
+                 annual: currentDimensioning.irradiacaoMensal.reduce((a: number, b: number) => a + b, 0)
+               },
             coordinates: {
               latitude: currentDimensioning.latitude || -23.5505,
               longitude: currentDimensioning.longitude || -46.6333

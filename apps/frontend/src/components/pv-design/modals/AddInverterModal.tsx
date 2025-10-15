@@ -48,29 +48,7 @@ const MANUFACTURERS = [
 
 export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInverterSelected }: AddInverterModalProps) {
   const [formData, setFormData] = useState<CreateInverterRequest>({
-    manufacturer: {
-      id: '',
-      name: '',
-      type: 'INVERTER' as any,
-      description: '',
-      website: '',
-      contact: {
-        email: '',
-        phone: '',
-      },
-      business: {
-        foundedYear: new Date().getFullYear(),
-      },
-      certifications: [],
-      metadata: {
-        specialties: [],
-        markets: [],
-        qualityStandards: [],
-      },
-      status: 'active',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
+    manufacturerId: '',
     model: '',
     power: {
       ratedACPower: 0,
@@ -110,7 +88,7 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.manufacturer.name || !formData.model || !formData.power.ratedACPower) {
+    if (!formData.manufacturerId || !formData.model || !formData.power.ratedACPower) {
       return;
     }
 
@@ -127,29 +105,7 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
       
       // Reset form
       setFormData({
-        manufacturer: {
-          id: '',
-          name: '',
-          type: 'INVERTER' as any,
-          description: '',
-          website: '',
-          contact: {
-            email: '',
-            phone: '',
-          },
-          business: {
-            foundedYear: new Date().getFullYear(),
-          },
-          certifications: [],
-          metadata: {
-            specialties: [],
-            markets: [],
-            qualityStandards: [],
-          },
-          status: 'active',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
+        manufacturerId: '',
         model: '',
         power: {
           ratedACPower: 0,
@@ -212,7 +168,7 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
             <div className="space-y-2">
               <Label>Fabricante *</Label>
               <Input 
-                value={formData.manufacturer.name || ''} 
+                value={selectedManufacturer?.name || ''} 
                 onChange={e => updateFormData('manufacturer', 'name', e.target.value)} 
                 className="bg-background border-border" 
                 placeholder="Ex: Fronius"
@@ -348,7 +304,7 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
             </Button>
             <Button
               type="submit"
-              disabled={createInverter.isPending || !formData.manufacturer.name || !formData.model || !formData.power.ratedACPower}
+              disabled={createInverter.isPending || !formData.manufacturerId || !formData.model || !formData.power.ratedACPower}
             >
               {createInverter.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Adicionar Inversor
