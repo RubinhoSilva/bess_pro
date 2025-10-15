@@ -511,17 +511,30 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
 
       // Chamar API de cálculo avançado
       const dados = await SolarSystemService.calculateAdvancedFromDimensioning(dimensioningData);
+      
+      // Debug: Verificar dados retornados pela API
+      console.log('🔍 [WaterSelectionForm] Dados retornados pela API:', dados);
+      console.log('🔍 [WaterSelectionForm] energiaAnualKwh:', dados.energiaAnualKwh);
+      console.log('🔍 [WaterSelectionForm] area_necessaria_m2:', dados.area_necessaria_m2);
         
       // Distribuir os resultados proporcionalmente entre todas as águas que têm módulos
       const finalAguas = aguasTelhado.map(a => {
         if (a.numeroModulos > 0) {
           // Calcular proporção desta água no sistema total
           const proporcao = a.numeroModulos / totalModulos;
+          // Usar energiaAnualKwh (camelCase) - campo correto retornado pelo adapter
+          const energiaTotal = dados.energiaAnualKwh || 0;
+          const geracaoProporcional = Math.round(energiaTotal * proporcao * 100) / 100;
+          
+          console.log('🔍 [WaterSelectionForm] Processando água:', a.nome);
+          console.log('🔍 [WaterSelectionForm] - Módulos:', a.numeroModulos, 'Total:', totalModulos, 'Proporção:', proporcao);
+          console.log('🔍 [WaterSelectionForm] - Geração total API:', dados.energiaAnualKwh);
+          console.log('🔍 [WaterSelectionForm] - Geração proporcional:', geracaoProporcional);
           
           return {
             ...a,
             areaCalculada: Math.round(dados.area_necessaria_m2 * proporcao * 100) / 100,
-            geracaoAnual: Math.round(dados.energia_total_anual_kwh * proporcao * 100) / 100,
+            geracaoAnual: geracaoProporcional,
             isCalculando: false
           };
         } else {
@@ -533,9 +546,10 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         }
       });
 
+      const energiaTotalSistema = dados.energiaAnualKwh || 0;
       const resultadosSistema = {
         areaTotalSistema: dados.area_necessaria_m2,
-        geracaoTotalSistema: dados.energia_total_anual_kwh,
+        geracaoTotalSistema: energiaTotalSistema,
         totalModulos,
         distribuicao: finalAguas
           .filter(a => a.numeroModulos > 0)
@@ -547,7 +561,13 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
             geracao: a.geracaoAnual
           }))
       };
+      
+      console.log('🔍 [WaterSelectionForm] Resultados do sistema:', resultadosSistema);
         
+      
+      console.log('🔍 [WaterSelectionForm] Águas finais:', finalAguas);
+      console.log('🔍 [WaterSelectionForm] Geração total calculada:', aguasTelhado.reduce((sum, agua) => sum + (agua.geracaoAnual || 0), 0));
+      
       onAguasChange(finalAguas);
     } catch (error) {
       
@@ -1060,7 +1080,12 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                     <Sun className="w-6 h-6 text-green-600" />
                   </div>
                   <p className="text-2xl font-bold text-green-600">
-                    {Math.round(aguasTelhado.reduce((sum, agua) => sum + (agua.geracaoAnual || 0), 0)).toLocaleString()}
+                    {(() => {
+                      const total = aguasTelhado.reduce((sum, agua) => sum + (agua.geracaoAnual || 0), 0);
+                      console.log('🔍 [WaterSelectionForm] Valor exibido na UI (Geração Total):', total);
+                      console.log('🔍 [WaterSelectionForm] aguasTelhado com geracaoAnual:', aguasTelhado.map(a => ({ nome: a.nome, geracaoAnual: a.geracaoAnual })));
+                      return Math.round(total).toLocaleString();
+                    })()}
                   </p>
                   <p className="text-sm text-gray-600">Geração Total</p>
                   <p className="text-xs text-gray-500">kWh/ano calculados</p>

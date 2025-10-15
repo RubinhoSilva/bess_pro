@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Sun, BarChart, FilePlus, Layers } from 'lucide-react';
+import { ArrowLeft, Sun, BarChart, FilePlus } from 'lucide-react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
 import { useDimensioningOperations } from '@/hooks/dimensioning';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import PVDesignForm from '../../components/pv-design/PVDesignForm';
+
 import SolarSizingWizard from '../../components/pv-design/wizard/SolarSizingWizard';
 import { PVResultsDashboard } from '../../components/pv-design/results/PVResultsDashboard';
 import { apiClient } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
-type ViewType = 'wizard' | 'form' | 'results';
+type ViewType = 'wizard' | 'results';
 
 // Componente interno que tem acesso ao DimensioningContext
 function PVDesignPageContent() {
@@ -185,10 +185,6 @@ function PVDesignPageContent() {
     setCurrentView('results');
   };
 
-  const handleBackToForm = () => {
-    setCurrentView('form');
-  };
-
   const handleNewProject = () => {
     // Reset calculation results and go back to wizard
     setCalculationResults(null);
@@ -202,10 +198,6 @@ function PVDesignPageContent() {
 
   const handleBackToWizard = () => {
     setCurrentView('wizard');
-  };
-
-  const handleSwitchToForm = () => {
-    setCurrentView('form');
   };
 
   return (
@@ -222,26 +214,6 @@ function PVDesignPageContent() {
         </Button>
         
         <div className="flex items-center gap-2">
-          {/* Switch between wizard and classic form */}
-          {(currentView === 'wizard' || currentView === 'form') && (
-            <Button 
-              variant="outline" 
-              onClick={currentView === 'wizard' ? handleSwitchToForm : handleBackToWizard}
-              className="text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-            >
-              {currentView === 'wizard' ? (
-                <>
-                  <Layers className="w-4 h-4 mr-2" />
-                  Formulário Clássico
-                </>
-              ) : (
-                <>
-                  <Sun className="w-4 h-4 mr-2" />
-                  Assistente por Passos
-                </>
-              )}
-            </Button>
-          )}
           <ThemeToggle />
         </div>
       </div>
@@ -270,20 +242,7 @@ function PVDesignPageContent() {
             </motion.div>
           )}
 
-          {currentView === 'form' && (
-            <motion.div
-              key="form"
-              initial={{ opacity: 0, x: -100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 100 }}
-              transition={{ duration: 0.5 }}
-            >
-              <PVDesignForm 
-                onCalculationComplete={handleCalculationComplete}
-                onNewProject={handleNewProject}
-              />
-            </motion.div>
-          )}
+
 
           {currentView === 'results' && calculationResults && (
             <motion.div
@@ -295,7 +254,7 @@ function PVDesignPageContent() {
             >
               <PVResultsDashboard 
                 results={calculationResults}
-                onBackToForm={handleBackToWizard}
+                onBackToWizard={handleBackToWizard}
                 onNewCalculation={handleNewProject}
               />
             </motion.div>

@@ -96,7 +96,7 @@ interface PVResultsDashboardProps {
     };
   };
   onGenerateProposal?: () => void;
-  onBackToForm?: () => void;
+  onBackToWizard?: () => void;
   onNewCalculation?: () => void;
 }
 
@@ -459,7 +459,7 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
 export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({ 
   results, 
   onGenerateProposal, 
-  onBackToForm, 
+  onBackToWizard, 
   onNewCalculation 
 }) => {
   const [currentDimensioning] = useState<any>({});
@@ -625,15 +625,14 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
           transition={{ duration: 0.5, delay: 0.7 }}
           className="flex flex-wrap justify-center gap-4 pt-12"
         >
-          {onBackToForm && (
-            <Button 
-              onClick={onBackToForm} 
-              size="lg" 
-              variant="outline" 
-              className="bg-transparent border-border text-muted-foreground hover:bg-muted hover:text-foreground px-8 py-6 text-lg font-semibold rounded-full shadow-lg"
+          {onBackToWizard && (
+            <Button
+              variant="outline"
+              onClick={onBackToWizard}
+              className="flex items-center gap-2"
             >
-              <ArrowLeft className="mr-3 w-5 h-5" />
-              Voltar ao Dimensionamento
+              <ArrowLeft className="w-4 h-4" />
+              Voltar ao Assistente
             </Button>
           )}
           

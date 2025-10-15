@@ -72,6 +72,8 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
     }
   });
 
+  const [manufacturerName, setManufacturerName] = useState('');
+
   const queryClient = useQueryClient();
   
   const createInverter = useMutation({
@@ -88,12 +90,17 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.manufacturerId || !formData.model || !formData.power.ratedACPower) {
+    if (!manufacturerName || !formData.model || !formData.power.ratedACPower) {
+      toast.error('Preencha todos os campos obrigatórios');
       return;
     }
 
     try {
-      const newInverter = await createInverter.mutateAsync(formData);
+      const dataToSubmit = {
+        ...formData,
+        manufacturerId: manufacturerName
+      };
+      const newInverter = await createInverter.mutateAsync(dataToSubmit);
       onInverterAdded?.(newInverter);
       
       // Auto-select the newly added inverter
@@ -168,8 +175,11 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
             <div className="space-y-2">
               <Label>Fabricante *</Label>
               <Input 
-                value={selectedManufacturer?.name || ''} 
-                onChange={e => updateFormData('manufacturer', 'name', e.target.value)} 
+                value={manufacturerName} 
+                onChange={e => {
+                  setManufacturerName(e.target.value);
+                  setFormData(prev => ({ ...prev, manufacturerId: e.target.value }));
+                }} 
                 className="bg-background border-border" 
                 placeholder="Ex: Fronius"
               />

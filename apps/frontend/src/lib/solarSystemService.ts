@@ -561,8 +561,9 @@ export class SolarSystemService {
       const response = await api.post('/solar-analysis/calculate-advanced-modules', processedParams);
       console.log('🔍 Resposta completa da API:', response.data);
       console.log('🔍 Response data:', response.data?.data);
-      console.log('🔍 Potência na resposta da API:', response.data?.data?.potenciaTotalKwp);
-      console.log('🔍 Energia na resposta da API:', response.data?.data?.energiaAnualKwh);
+      console.log('🔍 Potência na resposta da API:', response.data?.data?.potencia_total_kw);
+      console.log('🔍 Energia na resposta da API (energia_total_anual_kwh):', response.data?.data?.energia_total_anual_kwh);
+      console.log('🔍 Energia na resposta da API (energiaAnualKwh):', response.data?.data?.energiaAnualKwh);
        
       
       // A resposta agora vem no formato { success: true, data: {...}, timestamp: "..." }
