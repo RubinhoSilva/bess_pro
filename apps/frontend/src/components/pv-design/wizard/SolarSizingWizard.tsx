@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { ChevronLeft, ChevronRight, Sun, User, Zap, MapPin, Settings, Calculator, CheckCircle, Home, Compass } from 'lucide-react';
-import { useDimensioning } from '@/hooks/useDimensioningCompat';
+import { useDimensioningOperations } from '@/hooks/dimensioning';
 import { AdvancedSolarCalculator, SolarCalculationOptions } from '@/lib/solarCalculations';
 import { AdvancedFinancialInput } from '@/types/financial';
 import { apiClient } from '@/lib/api';
@@ -89,13 +89,35 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   const [calculationResults, setCalculationResults] = useState<any>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const { toast } = useToast();
+  const [dimensioningId, setDimensioningId] = useState<string | null>(null);
+  const [currentDimensioning, setCurrentDimensioning] = useState<any>({
+    dimensioningName: '',
+    irradiacaoMensal: Array(12).fill(5.0),
+    potenciaModulo: 550,
+    eficienciaSistema: 85,
+    numeroModulos: 0,
+    custoEquipamento: 0,
+    custoMateriais: 0,
+    custoMaoDeObra: 0,
+    bdi: 25,
+    tarifaEnergiaB: 0.75,
+    custoFioB: 0.30,
+    selectedInverters: [],
+    totalInverterPower: 0,
+    totalMpptChannels: 0,
+    aguasTelhado: [],
+    energyBills: [{
+      id: crypto.randomUUID(),
+      name: 'Conta Principal',
+      consumoMensal: Array(12).fill(500)
+    }],
+    grupoTarifario: 'B' as const,
+  });
+
   const {
-    currentDimensioning,
-    updateDimensioning,
     saveDimensioning,
-    dimensioningId,
     isSaving
-  } = useDimensioning();
+  } = useDimensioningOperations(dimensioningId);
 
   // Buscar módulos solares para obter dados completos
   const { data: solarModulesData } = useQuery({
@@ -216,7 +238,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   }, [currentDimensioning.custoEquipamento, currentDimensioning.custoMateriais, currentDimensioning.custoMaoDeObra, currentDimensioning.bdi]);
 
   const handleFormChange = (field: string, value: any) => {
-    updateDimensioning({ [field]: value });
+    setCurrentDimensioning(prev => ({ ...prev, [field]: value }));
   };
 
   const validateStep = (step: number): boolean => {

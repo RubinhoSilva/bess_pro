@@ -13,7 +13,7 @@ import { AnnualSavingsChart } from './AnnualSavingsChart';
 import { AdvancedSolarAnalysis } from './AdvancedSolarAnalysis';
 import { AdvancedFinancialAnalysis } from './AdvancedFinancialAnalysis';
 import AdvancedPDFGenerator from '../report/AdvancedPDFGenerator';
-import { useDimensioning } from '@/hooks/useDimensioningCompat';
+import { useDimensioningOperations } from '@/hooks/dimensioning';
 import { ProposalDocument } from '../proposal/ProposalDocument';
 
 interface PVResultsDashboardProps {
@@ -462,7 +462,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
   onBackToForm, 
   onNewCalculation 
 }) => {
-  const { currentDimensioning } = useDimensioning();
+  const [currentDimensioning] = useState<any>({});
   
   // Validação inicial dos dados
   if (!results) {

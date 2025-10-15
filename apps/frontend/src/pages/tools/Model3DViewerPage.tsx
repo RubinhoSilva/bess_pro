@@ -3,14 +3,16 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Settings, Save, Share2, Download } from 'lucide-react';
 import { Viewer3D } from '@/components/viewer-3d/Viewer3D';
-import { useDimensioning } from '@/hooks/useDimensioningCompat';
+import { useDimensioningOperations } from '@/hooks/dimensioning';
 import toast from 'react-hot-toast';
 
 // Componente interno que tem acesso ao DimensioningContext
 function Model3DViewerPageContent() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { currentDimensioning, updateDimensioning } = useDimensioning();
+  const [dimensioningId, setDimensioningId] = useState<string | null>(null);
+  const [currentDimensioning, setCurrentDimensioning] = useState<any>({});
+  const { saveDimensioning } = useDimensioningOperations(dimensioningId);
   
   const [measurements, setMeasurements] = useState<any[]>([]);
   const [areas, setAreas] = useState<any[]>([]);
@@ -55,12 +57,12 @@ function Model3DViewerPageContent() {
   };
 
   const handleSaveProject = () => {
-    // Update dimensioning context with 3D data
-    updateDimensioning({
+    // Update dimensioning data with 3D data
+    setCurrentDimensioning(prev => ({ ...prev,
       mountingAreas: areas,
       measurements: measurements,
       modelo3dUrl: initialModelUrl
-    });
+    }));
     
     toast.success('Dados 3D salvos no projeto');
   };

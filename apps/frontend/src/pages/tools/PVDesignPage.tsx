@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Sun, BarChart, FilePlus, Layers } from 'lucide-react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
-import { useDimensioning } from '@/hooks/useDimensioningCompat';
+import { useDimensioningOperations } from '@/hooks/dimensioning';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import PVDesignForm from '../../components/pv-design/PVDesignForm';
 import SolarSizingWizard from '../../components/pv-design/wizard/SolarSizingWizard';
@@ -23,7 +23,9 @@ function PVDesignPageContent() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const { currentProject } = useProject();
-  const { loadDimensioning, updateDimensioning, forceCleanStart } = useDimensioning();
+  const [dimensioningId, setDimensioningId] = useState<string | null>(null);
+  const [currentDimensioning, setCurrentDimensioning] = useState<any>({});
+  const { loadDimensioning, saveDimensioning } = useDimensioningOperations(dimensioningId);
   const { toast } = useToast();
 
   // Carregar dados do projeto quando houver projectId na URL
@@ -33,8 +35,8 @@ function PVDesignPageContent() {
     if (projectId) {
       loadProjectData(projectId);
     } else {
-      // Força limpeza completa quando acessar diretamente sem parâmetros
-      forceCleanStart();
+      // Limpa o dimensionamento quando acessar diretamente sem parâmetros
+      setDimensioningId(null);
     }
   }, [searchParams]);
 
@@ -47,16 +49,14 @@ function PVDesignPageContent() {
       // Marcar que é um carregamento explícito
       sessionStorage.setItem('continueDimensioning', 'true');
       
-      updateDimensioning({
-        customer: selectedLead,
-      });
+      setCurrentDimensioning(prev => ({ ...prev, customer: selectedLead }));
       
       toast({
         title: "Lead selecionado!",
         description: `Dimensionamento iniciado para ${selectedLead.name}`,
       });
     }
-  }, [location.state, updateDimensioning, toast]);
+  }, [location.state, toast]);
 
   const loadProjectData = async (projectId: string) => {
     setIsLoading(true);

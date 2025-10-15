@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Sun, BarChart, FilePlus } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
-import { useDimensioning } from '@/hooks/useDimensioningCompat';
+import { useDimensioningOperations } from '@/hooks/dimensioning';
 import { ProjectType } from '@/types/project';
 import { AdvancedSolarCalculator, SolarCalculationOptions } from '@/lib/solarCalculations';
 import { AdvancedFinancialInput } from '@/types/financial';
@@ -32,25 +32,47 @@ interface PVDesignFormProps {
 const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNewProject }) => {
   const { toast } = useToast();
   const { currentProject, updateProject, projectName } = useProject();
-  const { 
-    currentDimensioning, 
-    updateDimensioning, 
+  const [dimensioningId, setDimensioningId] = useState<string | null>(null);
+  const [currentDimensioning, setCurrentDimensioning] = useState<any>({
+    dimensioningName: '',
+    irradiacaoMensal: Array(12).fill(5.0),
+    potenciaModulo: 550,
+    eficienciaSistema: 85,
+    numeroModulos: 0,
+    custoEquipamento: 0,
+    custoMateriais: 0,
+    custoMaoDeObra: 0,
+    bdi: 25,
+    tarifaEnergiaB: 0.75,
+    custoFioB: 0.30,
+    selectedInverters: [],
+    totalInverterPower: 0,
+    totalMpptChannels: 0,
+    aguasTelhado: [],
+    energyBills: [{
+      id: crypto.randomUUID(),
+      name: 'Conta Principal',
+      consumoMensal: Array(12).fill(500)
+    }],
+    grupoTarifario: 'B' as const,
+  });
+
+  const {
     saveDimensioning,
-    dimensioningId,
-    createNewDimensioning,
+    loadDimensioning,
     isSaving
-  } = useDimensioning();
+  } = useDimensioningOperations(dimensioningId);
   const [isCalculating, setIsCalculating] = useState(false);
 
   const notificationManager = NotificationManager.getInstance();
 
   const handleFormChange = (field: string, value: any) => {
-    updateDimensioning({ [field]: value });
+    setCurrentDimensioning(prev => ({ ...prev, [field]: value }));
   };
 
 
   const handleRestoreBackup = (restoredData: any) => {
-    updateDimensioning(restoredData);
+    setCurrentDimensioning(restoredData);
     notificationManager.success(
       "Backup Restaurado",
       "Dados importados com sucesso. Verifique as informações antes de calcular.",
@@ -539,7 +561,8 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
   };
 
   const handleNewDimensioning = () => {
-    updateDimensioning({
+    setDimensioningId(null);
+    setCurrentDimensioning({
       dimensioningName: '',
       customer: undefined,
       irradiacaoMensal: Array(12).fill(5.0),
@@ -655,9 +678,19 @@ const PVDesignForm: React.FC<PVDesignFormProps> = ({ onCalculationComplete, onNe
           
           <div className="relative">
           <Button 
-            onClick={() => {
-              const debugSaveInfo = { savingDimensioning: true };
-              saveDimensioning();
+            onClick={async () => {
+              try {
+                const result = await saveDimensioning(currentDimensioning);
+                if (result?.id) {
+                  setDimensioningId(result.id);
+                  toast({
+                    title: "Dimensionamento salvo!",
+                    description: "Os dados foram salvos com sucesso."
+                  });
+                }
+              } catch (error) {
+                // Erro já é tratado pelo hook
+              }
             }}
               disabled={isSaving || !currentDimensioning.customer || !currentDimensioning.dimensioningName?.trim()}
               variant="outline" 
