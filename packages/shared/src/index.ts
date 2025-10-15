@@ -2,8 +2,14 @@ export * from './types/user.types';
 export * from './types/lead.types';
 export * from './types/financial';
 export * from './types/common';
+export * from './types/common-types';
+export * from './types/grupo-configs';
+
+// Exportar tipo união explicitamente
+export type { FinancialConfiguration } from './types/grupo-configs';
 export type { PaginatedModules, PaginatedInverters, PaginatedManufacturers } from './types/common/pagination';
 export * from './types/module';
+export * from './types/module/module.requests';
 export * from './types/inverter';
 export * from './types/manufacturer';
 export type { 

@@ -1,38 +1,20 @@
 /**
  * Cliente simplificado para comunicação com o serviço Python de cálculos financeiros (pvlib-service)
- * Versão temporária sem dependência de @bess-pro/shared para testes
+ * Usando tipos do pacote shared
  */
 
 import axios, { AxiosInstance } from 'axios';
+import {
+  AdvancedFinancialResults,
+  GrupoConfig,
+  FinancialConfiguration,
+  isGrupoBConfig,
+  isGrupoAConfig
+} from '@bess-pro/shared';
 
-// Interfaces temporárias para teste
-export interface SimpleFinancialInput {
-  investimento_inicial: number;
-  geracao_mensal: number[];
-  consumo_mensal: number[];
-  tarifa_energia: number;
-  custo_fio_b: number;
-  vida_util: number;
-  taxa_desconto: number;
-  inflacao_energia: number;
-}
-
-export interface SimpleFinancialResult {
-  vpl: number;
-  tir: number;
-  payback_simples: number;
-  payback_descontado: number;
-  economia_total_25_anos: number;
-  economia_anual_media: number;
-  cash_flow: Array<{
-    ano: number;
-    geracao_anual: number;
-    economia_energia: number;
-    fluxo_liquido: number;
-    fluxo_acumulado: number;
-    valor_presente: number;
-  }>;
-}
+// Usar tipos do pacote shared
+export type SimpleFinancialInput = FinancialConfiguration;
+export type SimpleFinancialResult = AdvancedFinancialResults;
 
 export class SimplePvlibServiceClient {
   private client: AxiosInstance;
@@ -75,11 +57,27 @@ export class SimplePvlibServiceClient {
 
   async calculateFinancials(input: SimpleFinancialInput): Promise<SimpleFinancialResult> {
     try {
-      console.log('[SimplePvlibService] Enviando requisição para Python:', {
-        investimento: input.investimento_inicial,
-        geracao_anual: input.geracao_mensal.reduce((a: number, b: number) => a + b, 0),
-        consumo_anual: input.consumo_mensal.reduce((a: number, b: number) => a + b, 0),
-      });
+      // Log baseado no tipo de configuração
+      if (isGrupoBConfig(input)) {
+        console.log('[SimplePvlibService] Enviando requisição para Python (Grupo B):', {
+          investimento: input.financeiros.capex,
+          geracao_anual: (Object.values(input.geracao) as number[]).reduce((a: number, b: number) => a + b, 0),
+          consumo_anual: (Object.values(input.consumoLocal) as number[]).reduce((a: number, b: number) => a + b, 0),
+        });
+      } else if (isGrupoAConfig(input)) {
+        console.log('[SimplePvlibService] Enviando requisição para Python (Grupo A):', {
+          investimento: input.financeiros.capex,
+          geracao_anual: (Object.values(input.geracao) as number[]).reduce((a: number, b: number) => a + b, 0),
+          consumo_anual: (Object.values(input.consumoLocal.foraPonta) as number[]).reduce((a: number, b: number) => a + b, 0) + 
+                        (Object.values(input.consumoLocal.ponta) as number[]).reduce((a: number, b: number) => a + b, 0),
+        });
+      } else {
+        // Formato legado FinancialInput
+        console.log('[SimplePvlibService] Enviando requisição para Python (Legado):', {
+        // Salvar payload conforme o tipo
+        payload: input,
+        });
+      }
 
       // 💾 SALVAR PAYLOAD EM ARQUIVO JSON para debug
       try {

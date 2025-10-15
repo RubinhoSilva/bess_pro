@@ -5,6 +5,21 @@
  */
 
 import {
+  FinancialTypes,
+  GrupoConfig,
+  CommonTypes,
+  GrupoBConfig,
+  GrupoAConfig,
+  isGrupoBConfig,
+  isGrupoAConfig,
+  validateGrupoBConfig,
+  validateGrupoAConfig,
+  calcularPotenciaInstalada,
+  calcularAreaNecessaria
+} from '@bess-pro/shared';
+
+// Exportar tipos do pacote shared
+export type { 
   FinancialInput,
   CashFlowDetails,
   FinancialIndicators,
@@ -12,10 +27,25 @@ import {
   ScenarioAnalysis,
   AdvancedFinancialResults,
   FinancialCalculationResponse,
-  FINANCIAL_DEFAULTS,
-  objectSnakeToCamel,
-  objectCamelToSnake
+  GrupoConfig,
+  GrupoBConfig,
+  GrupoAConfig,
+  CommonTypes
 } from '@bess-pro/shared';
+
+export { 
+  isGrupoBConfig,
+  isGrupoAConfig,
+  validateGrupoBConfig,
+  validateGrupoAConfig,
+  calcularPotenciaInstalada,
+  calcularAreaNecessaria
+} from '@bess-pro/shared';
+
+// Manter compatibilidade com exports existentes
+const FINANCIAL_DEFAULTS = FinancialTypes.FINANCIAL_DEFAULTS;
+const objectSnakeToCamel = FinancialTypes.objectSnakeToCamel;
+const objectCamelToSnake = FinancialTypes.objectCamelToSnake;
 
 // ===== TIPOS COMPATÍVEIS COM FRONTEND (camelCase) =====
 

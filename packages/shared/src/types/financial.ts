@@ -131,6 +131,11 @@ export interface AdvancedFinancialResults {
   tir: number; // Taxa Interna de Retorno (%)
   payback_simples: number; // anos
   payback_descontado: number; // anos
+  
+  // Propriedades para compatibilidade (aliases)
+  roi: number; // Return on Investment (%) - alias para tir
+  npv: number; // Net Present Value (R$) - alias para vpl  
+  irr: number; // Internal Rate of Return (%) - alias para tir
 
   // Métricas de economia
   economia_total_25_anos: number; // R$
@@ -146,6 +151,10 @@ export interface AdvancedFinancialResults {
   // Análises complementares
   sensibilidade: SensitivityAnalysis;
   cenarios: ScenarioAnalysis;
+  
+  // Propriedades para compatibilidade (aliases)
+  sensitivity_analysis: SensitivityAnalysis; // alias para sensibilidade
+  scenario_analysis: ScenarioAnalysis; // alias para cenarios
 }
 
 // ===== CONFIGURAÇÕES PADRÃO =====

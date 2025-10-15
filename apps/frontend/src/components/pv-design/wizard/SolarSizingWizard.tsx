@@ -107,7 +107,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     aguasTelhado: [],
     energyBills: [{
       id: crypto.randomUUID(),
-      name: 'Conta Principal',
+      name: 'Unidade Geradora',
       consumoMensal: Array(12).fill(500)
     }],
     grupoTarifario: 'B' as const,

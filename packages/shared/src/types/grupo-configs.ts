@@ -14,6 +14,7 @@
  */
 
 import { CommonTypes } from './common-types';
+import { FinancialInput } from './financial';
 
 /**
  * Configuração completa para cenário com unidade geradora do Grupo B
@@ -331,22 +332,42 @@ export interface GrupoAConfig {
 // =================================================================================
 
 /**
- * Tipo união para configurações de qualquer grupo tarifário
- * @description Permite trabalhar com ambos os tipos de configuração
- * @usage Em funções que aceitam qualquer configuração de grupo
- * @pattern Polimorfismo - tratamento unificado de diferentes grupos
+ * Tipo união para configurações de grupo tarifário
+ * @description Aceita qualquer configuração de grupo (A ou B)
+ * @usage Para APIs e funções que aceitam ambos os formatos
+ * @pattern Union Type Pattern - flexibilidade de tipo
  * @example
  * ```typescript
- * function processarConfig(config: GrupoConfig) {
+ * function processarConfiguracao(config: GrupoConfig) {
  *   if (isGrupoBConfig(config)) {
- *     // Lógica específica Grupo B
+ *     // Tratar como Grupo B
  *   } else {
- *     // Lógica específica Grupo A
+ *     // Tratar como Grupo A
  *   }
  * }
  * ```
  */
 export type GrupoConfig = GrupoBConfig | GrupoAConfig;
+
+/**
+ * Tipo união para todos os formatos de configuração financeira
+ * @description Aceita configurações antigas (FinancialInput) e novas (GrupoConfig)
+ * @usage Para migração gradual e compatibilidade com código legado
+ * @pattern Union Type Pattern - compatibilidade e migração
+ * @example
+ * ```typescript
+ * function processarConfiguracao(config: FinancialConfiguration) {
+ *   if (isGrupoBConfig(config)) {
+ *     // Nova configuração Grupo B
+ *   } else if (isGrupoAConfig(config)) {
+ *     // Nova configuração Grupo A
+ *   } else {
+ *     // Configuração legada FinancialInput
+ *   }
+ * }
+ * ```
+ */
+export type FinancialConfiguration = FinancialInput | GrupoConfig;
 
 /**
  * Type guard para verificar se configuração é GrupoBConfig
@@ -363,7 +384,7 @@ export type GrupoConfig = GrupoBConfig | GrupoAConfig;
  * }
  * ```
  */
-export function isGrupoBConfig(config: GrupoConfig): config is GrupoBConfig {
+export function isGrupoBConfig(config: FinancialConfiguration): config is GrupoBConfig {
   return 'tarifaBase' in config && 'tipoConexao' in config;
 }
 
@@ -382,8 +403,8 @@ export function isGrupoBConfig(config: GrupoConfig): config is GrupoBConfig {
  * }
  * ```
  */
-export function isGrupoAConfig(config: GrupoConfig): config is GrupoAConfig {
-  return 'consumoLocal' in config && 'foraPonta' in config.consumoLocal;
+export function isGrupoAConfig(config: FinancialConfiguration): config is GrupoAConfig {
+  return 'tarifas' in config && 'ponta' in config.tarifas;
 }
 
 // =================================================================================

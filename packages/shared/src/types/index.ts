@@ -21,6 +21,17 @@
 import * as FinancialTypes from './financial';
 export { FinancialTypes };
 
+// Exportar tipos individuais para facilitar importação
+export type { 
+  FinancialInput,
+  CashFlowDetails,
+  FinancialIndicators,
+  SensitivityAnalysis,
+  ScenarioAnalysis,
+  AdvancedFinancialResults,
+  FinancialCalculationResponse
+} from './financial';
+
 // Tipos de cálculo existentes
 export * from './calculation/calculation.types';
 
@@ -33,6 +44,9 @@ export * from './common-types';
 
 // Configurações específicas dos grupos tarifários
 export * from './grupo-configs';
+
+// Exportar tipo união explicitamente
+export type { GrupoConfig } from './grupo-configs';
 
 // =================================================================================
 // EXPORTS DE CONFIGURAÇÕES

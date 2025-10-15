@@ -108,7 +108,7 @@ function PVDesignPageContent() {
           // Consumo energético
           energyBills: project.projectData.energyBills || [{
             id: crypto.randomUUID(),
-            name: 'Conta Principal',
+            name: 'Unidade Geradora',
             consumoMensal: Array(12).fill(500)
           }],
           

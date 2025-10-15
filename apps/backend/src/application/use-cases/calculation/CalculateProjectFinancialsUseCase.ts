@@ -3,50 +3,28 @@ import { IProjectRepository } from '@/domain/repositories/IProjectRepository';
 import { IUserRepository } from '@/domain/repositories/IUserRepository';
 import { Result } from '@/application/common/Result';
 import { Project } from '@/domain/entities/Project';
-import { FinancialValidator } from '@/application/validation/FinancialValidator';
+
 import { AppError } from '../../../shared/errors/AppError';
 import { ProjectId } from '@/domain/value-objects/ProjectId';
 import { UserId } from '@/domain/value-objects/UserId';
 import { UserPermissionService } from '@/domain/services/UserPermissionService';
 import { CalculationConstants } from '@/domain/constants/CalculationConstants';
-// Tipos temporários até shared package estar disponível
-interface FinancialInput {
-  investimento_inicial: number;
-  geracao_mensal: number[];
-  consumo_mensal: number[];
-  tarifa_energia: number;
-  custo_fio_b: number;
-  vida_util: number;
-  taxa_desconto: number;
-  inflacao_energia: number;
-}
-
-interface AdvancedFinancialResults {
-  vpl: number;
-  tir: number;
-  payback_simples: number;
-  payback_descontado: number;
-  economia_total_25_anos: number;
-  economia_anual_media: number;
-  roi?: number;
-  npv?: number;
-  irr?: number;
-  cash_flow: Array<{
-    ano: number;
-    geracao_anual: number;
-    economia_energia: number;
-    fluxo_liquido: number;
-    fluxo_acumulado: number;
-    valor_presente: number;
-  }>;
-  sensitivity_analysis?: any;
-  scenario_analysis?: any;
-}
+// Importar tipos do pacote shared
+import {
+  GrupoConfig,
+  FinancialConfiguration,
+  isGrupoBConfig,
+  isGrupoAConfig,
+  validateGrupoBConfig,
+  validateGrupoAConfig,
+  AdvancedFinancialResults,
+  FinancialInput
+} from '@bess-pro/shared';
 
 export interface CalculateProjectFinancialsDTO {
   projectId: string;
   userId: string;
-  input: FinancialInput;
+  input: FinancialConfiguration; // Aceitar ambos os formatos
   saveToProject?: boolean;
 }
 
@@ -88,15 +66,56 @@ export class CalculateProjectFinancialsUseCase {
       // 3. Validar dados de entrada
       this.validateInput(input);
 
-      // 4. Realizar cálculo financeiro usando Python service
-      console.log('[CalculateProjectFinancials] Calling Python service...');
-      const results = await this.pvlibClient.calculateFinancials(input);
-
-      // 5. Salvar no projeto se solicitado
-      if (saveToProject) {
-        await this.saveResultsToProject(project, input, results, userId);
+      // 4. Adaptar input para formato compatível com Python service
+      let adaptedInput: FinancialInput;
+      if (isGrupoBConfig(input)) {
+        // Converter GrupoBConfig para FinancialInput
+        adaptedInput = {
+          investimento_inicial: input.financeiros.capex,
+          geracao_mensal: Object.values(input.geracao),
+          consumo_mensal: Object.values(input.consumoLocal),
+          tarifa_energia: input.tarifaBase,
+          custo_fio_b: input.fioB.schedule[input.fioB.baseYear] || 0.45,
+          vida_util: input.financeiros.anos,
+          taxa_desconto: input.financeiros.taxaDesconto,
+          inflacao_energia: input.financeiros.inflacaoEnergia,
+          degradacao_modulos: input.financeiros.degradacao,
+          custo_om: input.financeiros.capex * input.financeiros.omaFirstPct,
+          inflacao_om: input.financeiros.omaInflacao
+        };
+      } else if (isGrupoAConfig(input)) {
+        // Converter GrupoAConfig para FinancialInput
+        adaptedInput = {
+          investimento_inicial: input.financeiros.capex,
+          geracao_mensal: Object.values(input.geracao),
+          consumo_mensal: [
+            ...Object.values(input.consumoLocal.foraPonta),
+            ...Object.values(input.consumoLocal.ponta)
+          ],
+          tarifa_energia: input.tarifas.foraPonta,
+          custo_fio_b: input.fioB.schedule[input.fioB.baseYear] || 0.45,
+          vida_util: input.financeiros.anos,
+          taxa_desconto: input.financeiros.taxaDesconto,
+          inflacao_energia: input.financeiros.inflacaoEnergia,
+          degradacao_modulos: input.financeiros.degradacao,
+          custo_om: input.financeiros.capex * input.financeiros.omaFirstPct,
+          inflacao_om: input.financeiros.omaInflacao
+        };
+      } else {
+        // Já é FinancialInput
+        adaptedInput = input as FinancialInput;
       }
 
+      // 5. Realizar cálculo financeiro usando Python service
+      console.log('[CalculateProjectFinancials] Calling Python service...');
+      const results = await this.pvlibClient.calculateFinancials(adaptedInput);
+
+      // 6. Salvar no projeto se solicitado
+      if (saveToProject) {
+        await this.saveResultsToProject(project, adaptedInput, results, userId);
+      }
+
+      // 7. Log de sucesso
       console.log('[CalculateProjectFinancials] Calculation completed successfully');
 
       return {
@@ -115,25 +134,34 @@ export class CalculateProjectFinancialsUseCase {
     }
   }
 
-  private validateInput(input: FinancialInput): void {
-    // Validações básicas
-    if (input.investimento_inicial <= 0) {
-      throw AppError.badRequest('Investimento inicial deve ser maior que zero');
+  private validateInput(input: FinancialConfiguration): void {
+    // Verificar tipo de configuração e validar conforme o formato
+    if (isGrupoBConfig(input)) {
+      const validation = validateGrupoBConfig(input);
+      if (!validation.isValid) {
+        throw AppError.badRequest('Erros de validação Grupo B: ' + validation.errors.join(', '));
+      }
+    } else if (isGrupoAConfig(input)) {
+      const validation = validateGrupoAConfig(input);
+      if (!validation.isValid) {
+        throw AppError.badRequest('Erros de validação Grupo A: ' + validation.errors.join(', '));
+      }
+    } else {
+      // Validação legada para FinancialInput
+      if (input.investimento_inicial <= 0) {
+        throw AppError.badRequest('Investimento inicial deve ser maior que zero');
+      }
+
+      if (!input.geracao_mensal || input.geracao_mensal.length !== 12) {
+        throw AppError.badRequest('Dados de geração mensal incompletos');
+      }
+
+      if (!input.consumo_mensal || input.consumo_mensal.length !== 12) {
+        throw AppError.badRequest('Dados de consumo mensal incompletos');
+      }
     }
 
-    if (!input.geracao_mensal || input.geracao_mensal.length !== 12) {
-      throw AppError.badRequest('Dados de geração mensal incompletos');
-    }
 
-    if (!input.consumo_mensal || input.consumo_mensal.length !== 12) {
-      throw AppError.badRequest('Dados de consumo mensal incompletos');
-    }
-
-    // Validações avançadas
-    const validation = FinancialValidator.validateFinancialInput(input);
-    if (!validation.isValid) {
-      throw AppError.badRequest('Dados de entrada inválidos: ' + validation.errors.join(', '));
-    }
   }
 
   private async saveResultsToProject(
