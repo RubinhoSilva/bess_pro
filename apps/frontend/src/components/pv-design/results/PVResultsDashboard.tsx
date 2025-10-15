@@ -13,7 +13,7 @@ import { AnnualSavingsChart } from './AnnualSavingsChart';
 import { AdvancedSolarAnalysis } from './AdvancedSolarAnalysis';
 import { AdvancedFinancialAnalysis } from './AdvancedFinancialAnalysis';
 import AdvancedPDFGenerator from '../report/AdvancedPDFGenerator';
-import { useDimensioning } from '@/contexts/DimensioningContext';
+import { useDimensioning } from '@/hooks/useDimensioningCompat';
 import { ProposalDocument } from '../proposal/ProposalDocument';
 
 interface PVResultsDashboardProps {

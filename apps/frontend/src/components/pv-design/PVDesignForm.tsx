@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Sun, BarChart, FilePlus } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
-import { useDimensioning } from '@/contexts/DimensioningContext';
+import { useDimensioning } from '@/hooks/useDimensioningCompat';
 import { ProjectType } from '@/types/project';
 import { AdvancedSolarCalculator, SolarCalculationOptions } from '@/lib/solarCalculations';
 import { AdvancedFinancialInput } from '@/types/financial';

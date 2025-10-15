@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Settings, Save, Share2, Download } from 'lucide-react';
 import { Viewer3D } from '@/components/viewer-3d/Viewer3D';
-import { DimensioningProvider, useDimensioning } from '@/contexts/DimensioningContext';
+import { useDimensioning } from '@/hooks/useDimensioningCompat';
 import toast from 'react-hot-toast';
 
 // Componente interno que tem acesso ao DimensioningContext
@@ -221,11 +221,7 @@ function Model3DViewerPageContent() {
   );
 }
 
-// Componente principal que envolve tudo no DimensioningProvider
+// Componente principal - Provider removido (agora usa Zustand)
 export default function Model3DViewerPage() {
-  return (
-    <DimensioningProvider>
-      <Model3DViewerPageContent />
-    </DimensioningProvider>
-  );
+  return <Model3DViewerPageContent />;
 }

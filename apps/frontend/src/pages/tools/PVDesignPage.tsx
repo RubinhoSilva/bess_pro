@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Sun, BarChart, FilePlus, Layers } from 'lucide-react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
-import { DimensioningProvider, useDimensioning } from '@/contexts/DimensioningContext';
+import { useDimensioning } from '@/hooks/useDimensioningCompat';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import PVDesignForm from '../../components/pv-design/PVDesignForm';
 import SolarSizingWizard from '../../components/pv-design/wizard/SolarSizingWizard';
@@ -306,12 +306,8 @@ function PVDesignPageContent() {
   );
 }
 
-// Componente principal que envolve tudo no DimensioningProvider
+// Componente principal - Provider removido (agora usa Zustand)
 export default function PVDesignPage() {
-  return (
-    <DimensioningProvider>
-      <PVDesignPageContent />
-    </DimensioningProvider>
-  );
+  return <PVDesignPageContent />;
 }
 

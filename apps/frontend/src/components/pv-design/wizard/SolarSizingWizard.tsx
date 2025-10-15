@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { ChevronLeft, ChevronRight, Sun, User, Zap, MapPin, Settings, Calculator, CheckCircle, Home, Compass } from 'lucide-react';
-import { useDimensioning } from '@/contexts/DimensioningContext';
+import { useDimensioning } from '@/hooks/useDimensioningCompat';
 import { AdvancedSolarCalculator, SolarCalculationOptions } from '@/lib/solarCalculations';
 import { AdvancedFinancialInput } from '@/types/financial';
 import { apiClient } from '@/lib/api';
