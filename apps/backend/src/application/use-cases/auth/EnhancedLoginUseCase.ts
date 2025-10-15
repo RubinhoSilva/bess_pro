@@ -91,7 +91,7 @@ export class EnhancedLoginUseCase {
         userId: user.getId(),
         email: user.getEmail().getValue(),
         role: user.getRole().getValue(),
-        teamId: user.getTeamId().getValue()
+        teamId: user.getTeamId()?.getValue()
       });
 
       // Configurar duração do refresh token baseado em "lembrar de mim"

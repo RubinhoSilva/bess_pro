@@ -1,15 +1,15 @@
 import { Request, Response } from 'express';
 import { validateWithZod, validateQueryWithZod } from '../ZodValidationMiddleware';
 import { 
-  SolarModuleSchema, 
-  SolarModuleUpdateSchema, 
-  SolarModuleQuerySchema,
-  InverterSchema,
-  InverterUpdateSchema,
-  InverterQuerySchema,
-  ManufacturerSchema,
-  ManufacturerUpdateSchema,
-  ManufacturerQuerySchema
+  CreateModuleRequest,
+  UpdateModuleRequest,
+  ModuleFilters,
+  CreateInverterRequest,
+  UpdateInverterRequest,
+  InverterFilters,
+  CreateManufacturerRequest,
+  UpdateManufacturerRequest,
+  ManufacturerFilters
 } from '@bess-pro/shared';
 
 /**
