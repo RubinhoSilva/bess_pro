@@ -23,7 +23,7 @@ export class EquipmentControllerExample {
    * Criar novo módulo solar com validação Zod
    */
   createSolarModule = [
-    validateWithZod(SolarModuleSchema),
+    validateWithZod(CreateModuleRequest),
     async (req: Request, res: Response) => {
       try {
         // req.body já está validado e tipado pelo Zod
@@ -52,7 +52,7 @@ export class EquipmentControllerExample {
    * Atualizar módulo solar com validação Zod
    */
   updateSolarModule = [
-    validateWithZod(SolarModuleUpdateSchema),
+    validateWithZod(UpdateModuleRequest),
     async (req: Request, res: Response) => {
       try {
         const { id } = req.params;
@@ -81,7 +81,7 @@ export class EquipmentControllerExample {
    * Listar módulos com validação de query params
    */
   getSolarModules = [
-    validateQueryWithZod(SolarModuleQuerySchema),
+    validateQueryWithZod(ModuleFilters),
     async (req: Request, res: Response) => {
       try {
         const queryParams = req.query; // Tipo: SolarModuleQueryOutput
@@ -113,7 +113,7 @@ export class EquipmentControllerExample {
    * Criar novo inversor com validação Zod
    */
   createInverter = [
-    validateWithZod(InverterSchema),
+    validateWithZod(CreateInverterRequest),
     async (req: Request, res: Response) => {
       try {
         const inverterData = req.body; // Tipo: InverterOutput
@@ -141,7 +141,7 @@ export class EquipmentControllerExample {
    * Criar novo fabricante com validação Zod
    */
   createManufacturer = [
-    validateWithZod(ManufacturerSchema),
+    validateWithZod(CreateManufacturerRequest),
     async (req: Request, res: Response) => {
       try {
         const manufacturerData = req.body; // Tipo: ManufacturerOutput
