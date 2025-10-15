@@ -21,7 +21,6 @@ import CustomerDataForm from '../form-sections/CustomerDataForm';
 import ConsumptionForm from '../form-sections/ConsumptionForm';
 import LocationForm from '../form-sections/LocationForm';
 import SystemParametersForm from '../form-sections/SystemParametersForm';
-import MultipleRoofAreasForm from '../form-sections/MultipleRoofAreasForm';
 import { WaterSelectionForm } from '../form-sections/WaterSelectionForm';
 import FinancialForm from '../form-sections/FinancialForm';
 import PaymentConditionsForm from '../form-sections/PaymentConditionsForm';
