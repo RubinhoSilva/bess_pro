@@ -12,7 +12,7 @@ function Model3DViewerPageContent() {
   const [searchParams] = useSearchParams();
   const [dimensioningId, setDimensioningId] = useState<string | null>(null);
   const [currentDimensioning, setCurrentDimensioning] = useState<any>({});
-  const { saveAsync: saveDimensioning } = useDimensioningOperations(dimensioningId);
+  const { saveAsync: saveDimensioning } = useDimensioningOperations(dimensioningId || undefined);
   
   const [measurements, setMeasurements] = useState<any[]>([]);
   const [areas, setAreas] = useState<any[]>([]);

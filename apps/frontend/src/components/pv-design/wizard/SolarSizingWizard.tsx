@@ -116,7 +116,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   const {
     saveAsync,
     isSaving
-  } = useDimensioningOperations(dimensioningId);
+  } = useDimensioningOperations(dimensioningId || undefined);
 
   // Buscar módulos solares para obter dados completos
   const { data: solarModulesData } = useQuery({

@@ -571,7 +571,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         geracaoTotalSistema: energiaTotalSistema,
         totalModulos,
         distribuicao: finalAguas
-          .filter(a => a.numeroModulos > 0)
+          .filter(a => (a.numeroModulos || 0) > 0)
           .map(a => ({
             nome: a.nome,
             modulos: a.numeroModulos || 0,
@@ -897,7 +897,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                              const limit = mpptLimits[inverterId];
 
                              if (limit && !limit.isLoading && !limit.error) {
-                               return agua.numeroModulos > limit.modulosPorString ? 'border-red-500' : '';
+                                return (agua.numeroModulos || 0) > limit.modulosPorString ? 'border-red-500' : '';
                              }
                              return '';
                            })() : ''}
@@ -923,7 +923,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                          })()}
                         
                          {/* Distribuição por strings */}
-                         {hasValidMppt && agua.numeroModulos > 0 && (() => {
+                          {hasValidMppt && (agua.numeroModulos || 0) > 0 && (() => {
                            const inverterData = selectedInverters.find(inv =>
                              inv.inverter.id === agua.inversorId?.split('_unit')[0]
                            );
@@ -1050,7 +1050,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                     }`} />
                   </div>
                   <p className={`text-2xl font-bold ${
-                    aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) > maxModules
+                    aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0) > maxModules
                       ? 'text-red-600'
                       : 'text-blue-600'
                   }`}>
@@ -1058,7 +1058,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                     {maxModules && ` / ${maxModules}`}
                   </p>
                   <p className={`text-sm ${
-                    aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) > maxModules
+                    aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0) > maxModules
                       ? 'text-red-600'
                       : 'text-gray-600'
                   }`}>
