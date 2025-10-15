@@ -65,5 +65,7 @@ export type {
   CompleteSystemResult,
   SolarAnalysisError,
   ValidationError,
-  ValidationResult
+  ValidationResult,
+  FrontendIrradiationData,
+  FrontendPvlibData
 } from './response.types';

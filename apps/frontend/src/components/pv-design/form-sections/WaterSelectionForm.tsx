@@ -508,8 +508,8 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
           
           return {
             ...a,
-            areaCalculada: Math.round(dados.area_necessaria_m2 * proporcao * 100) / 100,
-            geracaoAnual: Math.round(dados.energia_total_anual_kwh * proporcao * 100) / 100,
+            areaCalculada: Math.round(dados.areaNecessariaM2 * proporcao * 100) / 100,
+            geracaoAnual: Math.round(dados.energiaAnualKwh * proporcao * 100) / 100,
             isCalculando: false
           };
         } else {

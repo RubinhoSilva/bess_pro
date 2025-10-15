@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { BaseController } from './BaseController';
 import { AnalyzeSolarPotentialUseCase } from '../../application/use-cases/solar/AnalyzeSolarPotentialUseCase';
 import { CalculationConstants } from '../../domain/constants/CalculationConstants';
+import { irradiationToFrontend, pythonToFrontend } from '@bess-pro/shared';
 import axios from 'axios';
 
 export class SolarAnalysisController extends BaseController {
@@ -71,27 +72,23 @@ export class SolarAnalysisController extends BaseController {
 
   async calculateAdvancedModules(req: Request, res: Response): Promise<Response> {
     try {
-      // 1. Validação HTTP básica
-      const { lat, lon, modulo, consumo_anual_kwh, origem_dados } = req.body;
-      
-      if (!lat || !lon || !modulo || !consumo_anual_kwh || !origem_dados) {
-        return this.badRequest(res, 'Parâmetros obrigatórios ausentes: lat, lon, modulo, consumo_anual_kwh, origem_dados');
-      }
-
-      // 2. Chamar Python (SEM TRANSFORMAÇÕES)
+      // 1. Chamar Python diretamente (SEM VALIDAÇÕES ESPECÍFICAS)
       const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
-      
+
       const response = await axios.post(
         `${pythonServiceUrl}/api/v1/solar/calculate`,
-        req.body, // ⚠️ ENVIAR DIRETO, SEM TRANSFORMAR
+        req.body,
         {
           timeout: CalculationConstants.API_TIMEOUTS.CALCULATION_TIMEOUT_MS,
           headers: { 'Content-Type': 'application/json' }
         }
       );
 
-      // 3. Retornar direto (SEM TRANSFORMAÇÕES)
-      return this.ok(res, response.data);
+      // 2. Usar adaptador para converter snake_case → camelCase
+      const adaptedResponse = pythonToFrontend(response.data, req.body);
+  
+      // 3. Retornar resposta adaptada
+      return this.ok(res, adaptedResponse.data);
 
     } catch (error: any) {
       return this.handlePythonServiceError(error, res);
@@ -173,20 +170,25 @@ export class SolarAnalysisController extends BaseController {
         return this.badRequest(res, 'Parâmetros obrigatórios ausentes: lat, lon, data_source');
       }
 
-      // 2. Chamar Python (SEM TRANSFORMAÇÕES)
+      // 2. Chamar Python
       const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
+
+      console.log('Request body for irradiation analysis:', req.body);
       
       const response = await axios.post(
         `${pythonServiceUrl}/api/v1/irradiation/monthly`,
-        req.body, // ⚠️ ENVIAR DIRETO, SEM TRANSFORMAR
+        req.body,
         {
           timeout: CalculationConstants.API_TIMEOUTS.IRRADIATION_TIMEOUT_MS,
           headers: { 'Content-Type': 'application/json' }
         }
       );
 
-      // 3. Retornar direto (SEM TRANSFORMAÇÕES)
-      return this.ok(res, response.data);
+      // 3. Usar adaptador para converter snake_case → camelCase
+      const adaptedResponse = irradiationToFrontend(response.data);
+  
+      // 4. Retornar resposta adaptada
+      return this.ok(res, adaptedResponse.data);
 
     } catch (error: any) {
       return this.handlePythonServiceError(error, res);

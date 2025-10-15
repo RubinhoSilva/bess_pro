@@ -193,9 +193,9 @@ export interface HybridDimensioningRequest {
  * Resultados do sistema solar
  */
 export interface SistemaSolarResult {
-  potencia_total_kwp: number;
-  energia_anual_kwh: number;
-  geracao_mensal_kwh: {
+  potenciaTotalKwp: number;
+  energiaAnualKwh: number;
+  geracaoMensalKwh: {
     Jan: number;
     Fev: number;
     Mar: number;
@@ -209,9 +209,9 @@ export interface SistemaSolarResult {
     Nov: number;
     Dez: number;
   };
-  yield_especifico: number; // kWh/kWp
-  fator_capacidade: number; // %
-  pr_total: number; // Performance Ratio %
+  yieldEspecifico: number; // kWh/kWp
+  fatorCapacidade: number; // %
+  prTotal: number; // Performance Ratio %
   inversores?: any[];
   [key: string]: any;
 }

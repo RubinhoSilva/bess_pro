@@ -52,13 +52,64 @@ export interface ProcessingStep {
   error?: string;
 }
 
+// Frontend-compatible types
+export interface FrontendIrradiationData {
+  irradiacaoMensal: number[];
+  mediaAnual: number;
+  maximo: any;
+  minimo: any;
+  variacaoSazonal: number;
+  configuracao: any;
+  coordenadas: {
+    lat: number;
+    lon: number;
+  };
+  periodoAnalise: any;
+  registrosProcessados: number;
+}
+
+export interface FrontendPvlibData {
+  numModulos: number;
+  potenciaTotalKwp: number;
+  energiaPorModulo?: number;
+  energiaAnualKwh: number;
+  energiaDcAnualKwh: number;
+  perdaClippingKwh?: number;
+  perdaClippingPct?: number;
+  geracaoMensalKwh: number[];
+  consumoAnualKwh?: number;
+  yieldEspecifico: number;
+  coberturaPercentual?: number;
+  fatorCapacidade?: number;
+  prTotal: number;
+  hspEquivalenteDia?: number;
+  hspEquivalenteAnual?: number;
+  energiaAnualStd?: number;
+  variabilidadePercentual?: number;
+  energiaPorAno?: number[];
+  energiaDiariaMedia?: number;
+  energiaDiariaStd?: number;
+  energiaDiariaMin?: number;
+  energiaDiariaMax?: number;
+  compatibilidadeSistema?: any;
+  areaNecessariaM2?: number;
+  pesoTotalKg?: number;
+  economiaAnualCo2?: number;
+  perdasDetalhadas?: any;
+  parametrosCompletos?: any;
+  dadosProcessados?: any;
+  anosAnalisados?: number;
+  periodoDados?: string;
+  inversores?: any[];
+}
+
 // Specific result types for each endpoint
 export interface AdvancedModulesResult extends SolarAnalysisResult {
-  data: PythonPvlibResponse;
+  data: FrontendPvlibData;
 }
 
 export interface MonthlyIrradiationResult extends SolarAnalysisResult {
-  data: PythonIrradiationResponse;
+  data: FrontendIrradiationData;
 }
 
 export interface FinancialAnalysisResult extends SolarAnalysisResult {

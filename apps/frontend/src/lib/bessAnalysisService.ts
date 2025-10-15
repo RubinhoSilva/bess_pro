@@ -89,126 +89,11 @@ export async function calculateHybridSystem(
 
     bessLogger.result('Hybrid System Calculation', `Completed in ${duration}ms`, { duration });
 
-
-    
-    // Backend Node.js aninha a resposta do Python:
-    // {success: true, data: {success: true, data: {sistema_solar, sistema_bess, analise_hibrida}}, timestamp: '...'}
-    let actualData, actualMetadata;
-    
-    if (response.data.success && response.data.data && response.data.data.sistema_solar) {
-      // Estrutura completa com aninhamento: {success: true, data: {success: true, data: {...}}}
-      actualData = response.data.data;
-      actualMetadata = response.data.metadata || {
-        duration_ms: duration,
-        timestamp: response.data.timestamp || new Date().toISOString(),
-      };
-    } else if (response.data.success && response.data.data) {
-      // Estrutura simples: {success: true, data: {...}, metadata: {...}}
-      actualData = response.data.data;
-      actualMetadata = response.data.metadata || {
-        duration_ms: duration,
-        timestamp: response.data.timestamp || new Date().toISOString(),
-      };
-    } else if (response.data.sistema_solar) {
-      // Estrutura direta: {sistema_solar, sistema_bess, analise_hibrida, ...}
-      actualData = response.data;
-      actualMetadata = {
-        duration_ms: duration,
-        timestamp: response.data.timestamp || new Date().toISOString(),
-      };
-    } else {
-      // Estrutura inesperada
-
-      throw new Error('Estrutura de resposta inválida do servidor');
-    }
-
-
-
-    // Validação segura antes de acessar propriedades aninhadas
-    if (!actualData || !actualData.sistema_solar) {
-      throw new Error('Resposta inválida do servidor: dados do sistema solar não encontrados');
-    }
-
-
-
-    // Retornar no formato esperado pelo frontend
-    return {
-      success: true,
-      data: actualData as HybridDimensioningResponse,
-      metadata: actualMetadata,
-    };
-
-  } catch (error: any) {
-    const duration = Date.now() - startTime;
-
-    bessLogger.error('Hybrid System Calculation', error.message || 'Unknown error', { 
-      error,
-      responseStatus: error.response?.status,
-      responseData: error.response?.data 
-    });
-
-
-
-    // Re-throw com mensagem mais descritiva
-    if (error.response?.status === 400) {
-      throw new Error(
-        error.response.data?.error ||
-        'Erro de validação nos parâmetros de entrada'
-      );
-    } else if (error.response?.status === 422) {
-      throw new Error(
-        error.response.data?.error ||
-        'Erro durante o cálculo do sistema híbrido'
-      );
-    } else if (error.response?.status === 503) {
-      throw new Error(
-        'Serviço de cálculo BESS indisponível. Tente novamente mais tarde.'
-      );
-    } else if (error.code === 'ECONNABORTED') {
-      throw new Error(
-        'Timeout ao calcular sistema híbrido. O cálculo está demorando mais que o esperado.'
-      );
-    } else {
-      throw new Error(
-        error.response?.data?.error ||
-        error.message ||
-        'Erro ao calcular sistema híbrido'
-      );
-    }
-  }
-}
-
-/**
- * Verifica o status do serviço BESS
- *
- * Útil para:
- * - Monitoramento de saúde do serviço
- * - Verificar disponibilidade antes de iniciar cálculos pesados
- * - Debugging de problemas de conectividade
- *
- * @returns Status do serviço BESS
- * @throws Error se o serviço estiver indisponível
- *
- * @example
- * ```typescript
- * const health = await healthCheckBess();
- * if (health.status === 'healthy') {
- *   // Serviço BESS está disponível
- * }
- * ```
- */
-export async function healthCheckBess(): Promise<BessHealthCheckResponse> {
-  try {
-
-    // Chamar endpoint do backend Node.js
-    // GET /api/v1/bess-analysis/health
-    const response = await api.get<BessHealthCheckResponse>(
-      '/bess-analysis/health',
-      {
-        timeout: 10000, // 10 segundos
-      }
-    );
-
+    // 🔍 Logs para debug da resposta da API
+    console.log('🔍 calculateHybridSystem - Resposta completa da API:', response.data);
+    console.log('🔍 calculateHybridSystem - Sistema solar da resposta:', response.data.sistema_solar);
+    console.log('🔍 calculateHybridSystem - Potência na resposta:', response.data.sistema_solar?.potenciaTotalKwp);
+    console.log('🔍 calculateHybridSystem - Energia na resposta:', response.data.sistema_solar?.energiaAnualKwh);
 
     return response.data;
 
@@ -311,7 +196,6 @@ export function validateHybridRequest(
  */
 export const BessAnalysisService = {
   calculateHybridSystem,
-  healthCheckBess,
   validateHybridRequest,
 };
 

@@ -557,13 +557,17 @@ export class SolarSystemService {
       const processedParams = this._processRoofWatersForCalculation(params, inversorGlobal);
 
       // Fazer chamada através do backend Node.js
+      console.log('🔍 Enviando para API /solar-analysis/calculate-advanced-modules:', processedParams);
       const response = await api.post('/solar-analysis/calculate-advanced-modules', processedParams);
-      
-
+      console.log('🔍 Resposta completa da API:', response.data);
+      console.log('🔍 Response data:', response.data?.data);
+      console.log('🔍 Potência na resposta da API:', response.data?.data?.potenciaTotalKwp);
+      console.log('🔍 Energia na resposta da API:', response.data?.data?.energiaAnualKwh);
+       
       
       // A resposta agora vem no formato { success: true, data: {...}, timestamp: "..." }
       if (response.data && response.data.success && response.data.data) {
-
+        console.log('✅ Retornando response.data.data:', response.data.data);
         return response.data.data;
       }
       
@@ -752,13 +756,13 @@ export class SolarSystemService {
       consumo_anual_kwh: consumoAnual,
       modulo,
       perdas: {
-        sujeira: dimensioningData.perdaSujeira ?? 5,
-        sombreamento: dimensioningData.perdaSombreamento ?? 3,
-        incompatibilidade: dimensioningData.perdaMismatch ?? 2,
-        fiacao: dimensioningData.perdaCabeamento ?? 2,
+        sujeira: dimensioningData.perdaSujeira ?? 0,
+        sombreamento: dimensioningData.perdaSombreamento ?? 0,
+        incompatibilidade: dimensioningData.perdaMismatch ?? 0,
+        fiacao: dimensioningData.perdaCabeamento ?? 0,
         outras: dimensioningData.perdaOutras ?? 0
       },
-      fator_seguranca: 1.1,
+      // Removido fator_seguranca pois não existe no formato Python
       num_modules: dimensioningData.num_modules, // Incluir num_modules se fornecido
       // ✅ Incluir águas de telhado se existirem
       aguasTelhado: dimensioningData.aguasTelhado
@@ -782,69 +786,135 @@ export class SolarSystemService {
     */
   private static _processRoofWatersForCalculation(params: MultiInverterCalculationParams, inversorGlobal?: any): any {
 
-
-    // Se há águas de telhado, enviar estrutura completa com inversor embutido
+    // Se há águas de telhado, transformar para o formato que o Python espera
     if (params.aguasTelhado && params.aguasTelhado.length > 0) {
-
       
-      // ✅ Usar inversor global ou criar padrão WEG para embutir
-      const inversorPadrao = inversorGlobal || {
-        fabricante: "WEG",
-        modelo: "SIW500H-M",
-        potencia_saida_ca_w: 7500,
-        tipo_rede: "Monofásico 220V",
-        potencia_fv_max_w: 7500,
-        tensao_cc_max_v: 600,
-        numero_mppt: 2,
-        strings_por_mppt: 2,
-        eficiencia_max: 97.6,
-        vdco: 480,
-        pso: 25,
-        c0: -0.000008,
-        c1: -0.00012,
-        c2: 0.0014,
-        c3: -0.02,
-        pnt: 0.02
-      };
+      // Agrupar águas por inversor para criar a estrutura esperada pelo Python
+      const inversoresMap = new Map();
+      
+      params.aguasTelhado.forEach(agua => {
+        const inversorId = agua.inversorId || 'default';
+        
+        if (!inversoresMap.has(inversorId)) {
+          // Usar inversor da água ou o inversor global/padrão
+          const inversorData = agua.inversor || inversorGlobal || {
+            fabricante: "WEG",
+            modelo: "SIW500H-M",
+            potencia_saida_ca_w: 7500,
+            tipo_rede: "Monofásico 220V",
+            potencia_fv_max_w: 7500,
+            tensao_cc_max_v: 600,
+            numero_mppt: 2,
+            strings_por_mppt: 2,
+            eficiencia_max: 97.6,
+            efficiency_dc_ac: 0.976,
+            corrente_entrada_max_a: 20,
+            potencia_aparente_max_va: 7500
+          };
+          
+          inversoresMap.set(inversorId, {
+            inversor: inversorData,
+            orientacoes: []
+          });
+        }
+        
+        // Adicionar orientação para este inversor
+        inversoresMap.get(inversorId).orientacoes.push({
+          nome: agua.nome,
+          orientacao: agua.orientacao,
+          inclinacao: agua.inclinacao,
+          modulos_por_string: agua.numeroModulos, // Simplificado: assume 1 string
+          numero_strings: 1 // Simplificado: assume 1 string
+        });
+      });
+      
+      const inversores = Array.from(inversoresMap.values());
+      
+      // Converter consumo_anual_kwh para consumo_mensal_kwh (distribuir igualmente)
+      const consumoMensalKwh = Array(12).fill(Math.round((params.consumo_anual_kwh || 0) / 12));
       
       const processedParams = {
-        // ✅ Campos obrigatórios
+        // ✅ Campos obrigatórios no formato Python
         lat: params.lat,
         lon: params.lon,
         origem_dados: params.origem_dados || 'PVGIS',
         startyear: params.startyear || 2015,
         endyear: params.endyear || 2020,
-        modelo_decomposicao: params.modelo_decomposicao,
-        modelo_transposicao: params.modelo_transposicao,
-        consumo_anual_kwh: params.consumo_anual_kwh,
+        modelo_decomposicao: params.modelo_decomposicao || 'louche',
+        modelo_transposicao: params.modelo_transposicao || 'perez',
+        mount_type: 'close_mount_glass_glass', // Campo obrigatório que faltava
+        
+        // ✅ Consumo mensal (não anual)
+        consumo_mensal_kwh: consumoMensalKwh,
+        
+        // ✅ Módulo e perdas
         modulo: params.modulo,
-        perdas: params.perdas,
-        perdas_sistema: params.perdas_sistema,
-        fator_seguranca: params.fator_seguranca,
-
-        // ✅ Enviar águas com inversor embutido
-        aguasTelhado: params.aguasTelhado.map(agua => ({
-          id: agua.id,
-          nome: agua.nome,
-          orientacao: agua.orientacao,
-          inclinacao: agua.inclinacao,
-          numeroModulos: agua.numeroModulos,
-          sombreamentoParcial: agua.sombreamentoParcial || 0,
-          inversorId: agua.inversorId,
-          mpptNumero: agua.mpptNumero,
-          // ✅ Usar inversor da água (se existir), senão fallback para padrão
-          inversor: agua.inversor || inversorPadrao
-        }))
+        perdas: params.perdas || {
+          sujeira: 0,
+          sombreamento: 0,
+          incompatibilidade: 0,
+          fiacao: 0,
+          outras: 0
+        },
+        
+        // ✅ Estrutura de inversores com orientações (formato Python)
+        inversores: inversores
       };
 
-
+      // Remover campos que não existem no formato Python
+      delete (processedParams as any).consumo_anual_kwh;
+      delete (processedParams as any).perdas_sistema;
+      delete (processedParams as any).fator_seguranca;
+      delete (processedParams as any).aguasTelhado;
 
       return processedParams;
     }
 
-    // Fallback para sistema único - manter estrutura original
-
-    return params;
+    // Fallback para sistema único - converter para formato Python também
+    const consumoMensalKwh = Array(12).fill(Math.round((params.consumo_anual_kwh || 0) / 12));
+    
+    return {
+      lat: params.lat,
+      lon: params.lon,
+      origem_dados: params.origem_dados || 'PVGIS',
+      startyear: params.startyear || 2015,
+      endyear: params.endyear || 2020,
+      modelo_decomposicao: params.modelo_decomposicao || 'louche',
+      modelo_transposicao: params.modelo_transposicao || 'perez',
+      mount_type: 'close_mount_glass_glass',
+      consumo_mensal_kwh: consumoMensalKwh,
+      modulo: params.modulo,
+      perdas: params.perdas || {
+        sujeira: 0,
+        sombreamento: 0,
+        incompatibilidade: 0,
+        fiacao: 0,
+        outras: 0
+      },
+      inversores: [{
+        inversor: inversorGlobal || {
+          fabricante: "WEG",
+          modelo: "SIW500H-M",
+          potencia_saida_ca_w: 7500,
+          tipo_rede: "Monofásico 220V",
+          potencia_fv_max_w: 7500,
+          tensao_cc_max_v: 600,
+          numero_mppt: 2,
+          strings_por_mppt: 2,
+          eficiencia_max: 97.6,
+          efficiency_dc_ac: 0.976,
+          corrente_entrada_max_a: 20,
+          potencia_aparente_max_va: 7500
+        },
+        orientacoes: [{
+          nome: "Orientação Única",
+          orientacao: params.orientacao || 180,
+          inclinacao: params.inclinacao || 20,
+          modulos_por_string: params.num_modules || 10,
+          numero_strings: 1
+        }]
+      }]
+    };
   }
 
   /**

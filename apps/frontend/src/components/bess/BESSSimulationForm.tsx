@@ -102,6 +102,12 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
   };
 
   const runBESSSimulation = async () => {
+    console.log('🚀 BOTÃO CLICADO - runBESSSimulation iniciado!');
+    console.log('🔍 runBESSSimulation - Iniciando simulação BESS');
+    console.log('🔍 runBESSSimulation - System config:', systemConfig);
+    console.log('🔍 runBESSSimulation - Inputs:', inputs);
+    console.log('🔍 runBESSSimulation - Selected lead:', selectedLead);
+    
     // ========================================================================
     // ETAPA 1: VALIDAÇÕES
     // ========================================================================
@@ -671,7 +677,10 @@ const BESSSimulationForm: React.FC<BESSSimulationFormProps> = ({
         className="text-center mt-8"
       >
         <Button
-          onClick={runBESSSimulation}
+          onClick={() => {
+            console.log('🚀 BOTÃO CLICADO!');
+            runBESSSimulation();
+          }}
           disabled={isSimulating || !selectedLead}
           size="lg"
           className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white px-10 py-6 text-xl font-semibold rounded-full shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"

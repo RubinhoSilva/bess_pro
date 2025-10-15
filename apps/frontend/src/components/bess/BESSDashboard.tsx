@@ -109,6 +109,16 @@ const BESSDashboard: React.FC<BESSDashboardProps> = ({
 
   // Destructure dos resultados com validação
   const sistema_solar = results.sistema_solar || {};
+  
+  // 🔍 Logs para debug do fluxo de dados
+  console.log('🔍 BESSDashboard - Results completo:', results);
+  console.log('🔍 BESSDashboard - Sistema Solar completo:', sistema_solar);
+  console.log('🔍 BESSDashboard - Potência Total kWp:', sistema_solar.potenciaTotalKwp);
+  console.log('🔍 BESSDashboard - Energia Anual kWh:', sistema_solar.energiaAnualKwh);
+  console.log('🔍 BESSDashboard - PR Total:', sistema_solar.prTotal);
+  console.log('🔍 BESSDashboard - Yield Específico:', sistema_solar.yieldEspecifico);
+  console.log('🔍 BESSDashboard - Tipo da potência:', typeof sistema_solar.potenciaTotalKwp);
+  console.log('🔍 BESSDashboard - Chaves disponíveis:', Object.keys(sistema_solar));
   const sistema_bess = results.sistema_bess || {};
   const analise_hibrida = results.analise_hibrida || {};
 
@@ -193,20 +203,20 @@ const BESSDashboard: React.FC<BESSDashboardProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <MetricCard
               title="Potência Instalada"
-              value={`${formatNumber(sistema_solar.potencia_total_kwp)} kWp`}
+              value={`${formatNumber(sistema_solar.potenciaTotalKwp)} kWp`}
               icon={<Zap className="w-5 h-5" />}
               color="orange"
             />
             <MetricCard
               title="Geração Anual"
-              value={`${formatNumber(sistema_solar.energia_anual_kwh / 1000, 1)} MWh`}
-              subtitle={`${formatNumber(sistema_solar.energia_anual_kwh)} kWh/ano`}
+              value={`${formatNumber(sistema_solar.energiaAnualKwh / 1000, 1)} MWh`}
+              subtitle={`${formatNumber(sistema_solar.energiaAnualKwh)} kWh/ano`}
               icon={<Sun className="w-5 h-5" />}
               color="orange"
             />
             <MetricCard
               title="Performance Ratio"
-              value={formatPercentage(sistema_solar.pr_total)}
+              value={formatPercentage(sistema_solar.prTotal)}
               subtitle="Eficiência do sistema"
               icon={<TrendingUp className="w-5 h-5" />}
               color="green"
@@ -214,7 +224,7 @@ const BESSDashboard: React.FC<BESSDashboardProps> = ({
             />
             <MetricCard
               title="Yield Específico"
-              value={`${formatNumber(sistema_solar.yield_especifico)} kWh/kWp`}
+              value={`${formatNumber(sistema_solar.yieldEspecifico)} kWh/kWp`}
               subtitle="Produtividade anual"
               icon={<BarChart3 className="w-5 h-5" />}
               color="purple"

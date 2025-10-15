@@ -160,7 +160,14 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
 
   // Função para atualizar geração de TODAS as águas de telhado
   const handleAtualizarGeracao = async (areaId: string) => {
+    console.log('🚀 BOTÃO ATUALIZAR GERAÇÃO CLICADO!');
+    console.log('🔍 handleAtualizarGeracao - areaId:', areaId);
+    console.log('🔍 handleAtualizarGeracao - latitude:', latitude);
+    console.log('🔍 handleAtualizarGeracao - longitude:', longitude);
+    console.log('🔍 handleAtualizarGeracao - aguasTelhado:', aguasTelhado);
+    
     if (!latitude || !longitude) {
+      console.log('❌ Latitude ou longitude faltando');
       return;
     }
 
@@ -235,25 +242,29 @@ const MultipleRoofAreasForm: React.FC<MultipleRoofAreasFormProps> = ({
       };
 
       // Chamar API de cálculo avançado com múltiplas águas
+      console.log('🔍 Chamando API calculateAdvancedFromDimensioning com:', dimensioningData);
       const dados = await SolarSystemService.calculateAdvancedFromDimensioning(dimensioningData);
+      console.log('🔍 Resposta da API calculateAdvancedFromDimensioning:', dados);
+      console.log('🔍 Potência total na resposta:', dados.potenciaTotalKwp);
+      console.log('🔍 Energia anual na resposta:', dados.energiaAnualKwh);
         
       // ✅ Se a API retornou dados agregados, distribuir proporcionalmente
-      if (dados.energia_total_anual_kwh && dados.area_necessaria_m2) {
+      if (dados.energiaAnualKwh && dados.areaNecessariaM2) {
         const totalModulos = aguasTelhado.reduce((sum, a) => sum + a.numeroModulos, 0);
         
         const finalAreas = aguasTelhado.map(a => {
           const proporcao = totalModulos > 0 ? a.numeroModulos / totalModulos : 1 / aguasTelhado.length;
           return {
             ...a,
-            areaCalculada: dados.area_necessaria_m2 * proporcao,
-            geracaoAnual: dados.energia_total_anual_kwh * proporcao,
+            areaCalculada: dados.areaNecessariaM2 * proporcao,
+            geracaoAnual: dados.energiaAnualKwh * proporcao,
             isCalculando: false
           };
         });
           
           const debugInfo = {
-            areaTotal: dados.area_necessaria_m2,
-            geracaoTotal: dados.energia_total_anual_kwh,
+            areaTotal: dados.areaNecessariaM2,
+            geracaoTotal: dados.energiaAnualKwh,
             distribuicao: finalAreas.map(a => ({
               nome: a.nome,
               area: a.areaCalculada?.toFixed(2),

@@ -115,7 +115,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   });
 
   const {
-    saveDimensioning,
+    saveAsync,
     isSaving
   } = useDimensioningOperations(dimensioningId);
 
@@ -291,7 +291,11 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     // Auto-save progress - bloquear avanço se falhar
     if (currentDimensioning.customer && currentDimensioning.dimensioningName?.trim()) {
       try {
-        await saveDimensioning();
+        const result = await saveAsync(currentDimensioning);
+        // Atualizar o ID se for um novo dimensionamento
+        if (result?.data?.data?.id && !dimensioningId) {
+          setDimensioningId(result.data.data.id);
+        }
       } catch (error: any) {
         const debugSaveError = { error };
         

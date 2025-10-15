@@ -15,7 +15,9 @@ import {
   FinancialAnalysisResult,
   MPPTLimitsResult,
   CompleteSystemResult,
-  SolarAnalysisError
+  SolarAnalysisError,
+  FrontendIrradiationData,
+  FrontendPvlibData
 } from '../../types/solar-analysis';
 
 /**
@@ -29,42 +31,44 @@ export function pythonToFrontend(
   pythonResponse: PythonPvlibResponse,
   originalRequest: any
 ): AdvancedModulesResult {
+  const frontendData: FrontendPvlibData = {
+    numModulos: pythonResponse.num_modulos,
+    potenciaTotalKwp: pythonResponse.potencia_total_kwp,
+    energiaPorModulo: pythonResponse.energia_por_modulo,
+    energiaAnualKwh: pythonResponse.energia_anual_kwh,
+    energiaDcAnualKwh: pythonResponse.energia_dc_anual_kwh,
+    perdaClippingKwh: pythonResponse.perda_clipping_kwh,
+    perdaClippingPct: pythonResponse.perda_clipping_pct,
+    geracaoMensalKwh: pythonResponse.geracao_mensal_kwh,
+    consumoAnualKwh: pythonResponse.consumo_anual_kwh,
+    yieldEspecifico: pythonResponse.yield_especifico,
+    coberturaPercentual: pythonResponse.cobertura_percentual,
+    fatorCapacidade: pythonResponse.fator_capacidade,
+    prTotal: pythonResponse.pr_total,
+    hspEquivalenteDia: pythonResponse.hsp_equivalente_dia,
+    hspEquivalenteAnual: pythonResponse.hsp_equivalente_anual,
+    energiaAnualStd: pythonResponse.energia_anual_std,
+    variabilidadePercentual: pythonResponse.variabilidade_percentual,
+    energiaPorAno: pythonResponse.energia_por_ano,
+    energiaDiariaMedia: pythonResponse.energia_diaria_media,
+    energiaDiariaStd: pythonResponse.energia_diaria_std,
+    energiaDiariaMin: pythonResponse.energia_diaria_min,
+    energiaDiariaMax: pythonResponse.energia_diaria_max,
+    compatibilidadeSistema: pythonResponse.compatibilidade_sistema,
+    areaNecessariaM2: pythonResponse.area_necessaria_m2,
+    pesoTotalKg: pythonResponse.peso_total_kg,
+    economiaAnualCo2: pythonResponse.economia_anual_co2,
+    perdasDetalhadas: pythonResponse.perdas_detalhadas,
+    parametrosCompletos: pythonResponse.parametros_completos,
+    dadosProcessados: pythonResponse.dados_processados,
+    anosAnalisados: pythonResponse.anos_analisados,
+    periodoDados: pythonResponse.periodo_dados,
+    inversores: pythonResponse.inversores
+  };
+
   return {
     success: true,
-    data: {
-      num_modulos: pythonResponse.num_modulos,
-      potencia_total_kwp: pythonResponse.potencia_total_kwp,
-      energia_por_modulo: pythonResponse.energia_por_modulo,
-      energia_anual_kwh: pythonResponse.energia_anual_kwh,
-      energia_dc_anual_kwh: pythonResponse.energia_dc_anual_kwh,
-      perda_clipping_kwh: pythonResponse.perda_clipping_kwh,
-      perda_clipping_pct: pythonResponse.perda_clipping_pct,
-      geracao_mensal_kwh: pythonResponse.geracao_mensal_kwh,
-      consumo_anual_kwh: pythonResponse.consumo_anual_kwh,
-      yield_especifico: pythonResponse.yield_especifico,
-      cobertura_percentual: pythonResponse.cobertura_percentual,
-      fator_capacidade: pythonResponse.fator_capacidade,
-      pr_total: pythonResponse.pr_total,
-      hsp_equivalente_dia: pythonResponse.hsp_equivalente_dia,
-      hsp_equivalente_anual: pythonResponse.hsp_equivalente_anual,
-      energia_anual_std: pythonResponse.energia_anual_std,
-      variabilidade_percentual: pythonResponse.variabilidade_percentual,
-      energia_por_ano: pythonResponse.energia_por_ano,
-      energia_diaria_media: pythonResponse.energia_diaria_media,
-      energia_diaria_std: pythonResponse.energia_diaria_std,
-      energia_diaria_min: pythonResponse.energia_diaria_min,
-      energia_diaria_max: pythonResponse.energia_diaria_max,
-      compatibilidade_sistema: pythonResponse.compatibilidade_sistema,
-      area_necessaria_m2: pythonResponse.area_necessaria_m2,
-      peso_total_kg: pythonResponse.peso_total_kg,
-      economia_anual_co2: pythonResponse.economia_anual_co2,
-      perdas_detalhadas: pythonResponse.perdas_detalhadas,
-      parametros_completos: pythonResponse.parametros_completos,
-      dados_processados: pythonResponse.dados_processados,
-      anos_analisados: pythonResponse.anos_analisados,
-      periodo_dados: pythonResponse.periodo_dados,
-      inversores: pythonResponse.inversores
-    },
+    data: frontendData,
     timestamp: new Date().toISOString(),
     message: 'Cálculo avançado de módulos realizado com sucesso'
   };
@@ -76,19 +80,21 @@ export function pythonToFrontend(
 export function irradiationToFrontend(
   pythonResponse: PythonIrradiationResponse
 ): MonthlyIrradiationResult {
+  const frontendData: FrontendIrradiationData = {
+    irradiacaoMensal: pythonResponse.irradiacao_mensal,
+    mediaAnual: pythonResponse.media_anual,
+    maximo: pythonResponse.maximo,
+    minimo: pythonResponse.minimo,
+    variacaoSazonal: pythonResponse.variacao_sazonal,
+    configuracao: pythonResponse.configuracao,
+    coordenadas: pythonResponse.coordenadas,
+    periodoAnalise: pythonResponse.periodo_analise,
+    registrosProcessados: pythonResponse.registros_processados
+  };
+
   return {
     success: true,
-    data: {
-      irradiacao_mensal: pythonResponse.irradiacao_mensal,
-      media_anual: pythonResponse.media_anual,
-      maximo: pythonResponse.maximo,
-      minimo: pythonResponse.minimo,
-      variacao_sazonal: pythonResponse.variacao_sazonal,
-      configuracao: pythonResponse.configuracao,
-      coordenadas: pythonResponse.coordenadas,
-      periodo_analise: pythonResponse.periodo_analise,
-      registros_processados: pythonResponse.registros_processados
-    },
+    data: frontendData,
     timestamp: new Date().toISOString(),
     message: `Dados de irradiação obtidos com sucesso de ${pythonResponse.configuracao.fonte_dados} para ${pythonResponse.coordenadas.lat.toFixed(4)}, ${pythonResponse.coordenadas.lon.toFixed(4)}`
   };
