@@ -110,8 +110,6 @@ export default function ProjectForm({ onSuccess, onCancel, initialData, project,
           custoFioB: 0.05,
           tarifaEnergiaPontaA: 1.20,
           tarifaEnergiaForaPontaA: 0.60,
-          demandaContratada: 100,
-          tarifaDemanda: 30,
           custoEquipamento: 0,
           custoMateriais: 0,
           custoMaoDeObra: 0,
@@ -178,16 +176,11 @@ export default function ProjectForm({ onSuccess, onCancel, initialData, project,
                       Sistema Fotovoltaico (PV)
                     </div>
                   </SelectItem>
-                  <SelectItem value={ProjectType.BESS}>
-                    <div className="flex items-center">
-                      <Battery className="w-4 h-4 mr-2 text-blue-500" />
-                      Sistema de Armazenamento (BESS)
-                    </div>
-                  </SelectItem>
+
                   <SelectItem value={ProjectType.HYBRID}>
                     <div className="flex items-center">
                       <Layers className="w-4 h-4 mr-2 text-purple-500" />
-                      Sistema Híbrido (PV + BESS)
+                      Sistema Híbrido (PV + Solar)
                     </div>
                   </SelectItem>
                 </SelectContent>

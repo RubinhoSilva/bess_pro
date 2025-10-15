@@ -1,6 +1,6 @@
 export enum ProjectType {
   PV = 'pv',
-  BESS = 'bess',
+  HYBRID = 'hybrid',
 }
 
 export interface ProjectData {
@@ -49,8 +49,6 @@ export interface ProjectData {
   custoFioB?: number;
   tarifaEnergiaPontaA?: number;
   tarifaEnergiaForaPontaA?: number;
-  demandaContratada?: number;
-  tarifaDemanda?: number;
 
   // Financial data
   custoEquipamento?: number;

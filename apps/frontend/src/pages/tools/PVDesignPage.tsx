@@ -118,8 +118,6 @@ function PVDesignPageContent() {
           custoFioB: project.projectData.custoFioB || 0.30,
           tarifaEnergiaPontaA: project.projectData.tarifaEnergiaPontaA,
           tarifaEnergiaForaPontaA: project.projectData.tarifaEnergiaForaPontaA,
-          demandaContratada: project.projectData.demandaContratada,
-          tarifaDemanda: project.projectData.tarifaDemanda,
           
           // Dados da instalação
           concessionaria: project.projectData.concessionaria,

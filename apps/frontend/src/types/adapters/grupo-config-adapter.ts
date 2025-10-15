@@ -139,8 +139,7 @@ export class GrupoConfigAdapter {
       },
       tarifas: {
         foraPonta: formData.tarifaForaPonta || 0.65,
-        ponta: formData.tarifaPonta || 0.95,
-        demanda: formData.demandaContratada || 45.00
+        ponta: formData.tarifaPonta || 0.95
       },
       te: {
         foraPonta: formData.teForaPonta || 0.40,
@@ -273,7 +272,6 @@ export class GrupoConfigAdapter {
       consumoMensalPonta: CommonTypes.monthlyDataToArray(config.consumoLocal.ponta),
       tarifaForaPonta: config.tarifas.foraPonta,
       tarifaPonta: config.tarifas.ponta,
-      demandaContratada: config.tarifas.demanda,
       teForaPonta: config.te.foraPonta,
       tePonta: config.te.ponta,
       fatorSimultaneidadeLocal: config.fatorSimultaneidadeLocal,

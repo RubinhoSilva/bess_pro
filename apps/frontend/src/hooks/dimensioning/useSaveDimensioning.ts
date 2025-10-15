@@ -39,8 +39,6 @@ export interface DimensioningData {
   custoFioB?: number;
   tarifaEnergiaPontaA?: number;
   tarifaEnergiaForaPontaA?: number;
-  demandaContratada?: number;
-  tarifaDemanda?: number;
   custoEquipamento?: number;
   custoMateriais?: number;
   custoMaoDeObra?: number;

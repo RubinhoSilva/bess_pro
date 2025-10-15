@@ -597,31 +597,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="demandaContratada" className="text-foreground">Demanda Contratada (kW)</Label>
-                  <Input 
-                    id="demandaContratada" 
-                    type="number" 
-                    value={formData.demandaContratada || ''} 
-                    onChange={(e) => onFormChange('demandaContratada', parseFloat(e.target.value) || 0)}
-                    placeholder="Ex: 100"
-                    className="bg-background border-border text-foreground"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tarifaDemanda" className="text-foreground">Tarifa Demanda (R$/kW)</Label>
-                  <Input 
-                    id="tarifaDemanda" 
-                    type="number" 
-                    step="0.01" 
-                    value={formData.tarifaDemanda || ''} 
-                    onChange={(e) => onFormChange('tarifaDemanda', parseFloat(e.target.value) || 0)}
-                    placeholder="Ex: 25.50"
-                    className="bg-background border-border text-foreground"
-                  />
-                </div>
-              </div>
+
             </motion.div>
           )}
         </AnimatePresence>

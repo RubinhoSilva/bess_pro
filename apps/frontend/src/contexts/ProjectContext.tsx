@@ -53,8 +53,6 @@ const getInitialFormData = (): ProjectData => ({
   custoFioB: 0.05,
   tarifaEnergiaPontaA: 1.20,
   tarifaEnergiaForaPontaA: 0.60,
-  demandaContratada: 100,
-  tarifaDemanda: 30,
   
   custoEquipamento: 0,
   custoMateriais: 0,
