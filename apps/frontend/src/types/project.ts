@@ -1,7 +1,6 @@
 export enum ProjectType {
   PV = 'pv',
   BESS = 'bess',
-  HYBRID = 'hybrid'
 }
 
 export interface ProjectData {
@@ -45,6 +44,7 @@ export interface ProjectData {
 
   // Tariff data
   grupoTarifario?: 'A' | 'B';
+  subgrupoTarifario?: 'verde' | 'azul';
   tarifaEnergiaB?: number;
   custoFioB?: number;
   tarifaEnergiaPontaA?: number;
@@ -97,20 +97,7 @@ export interface PVDimensioning {
   status: 'draft' | 'calculated' | 'approved';
 }
 
-export interface BESSAnalysis {
-  id: string;
-  name: string;
-  createdAt: string;
-  updatedAt: string;
-  systemConfig: {
-    solar: boolean;
-    bess: boolean;
-    diesel: boolean;
-  };
-  inputs: any; // Dados de entrada da simulação BESS
-  results?: any; // Resultados da simulação
-  status: 'draft' | 'simulated' | 'approved';
-}
+
 
 export interface Project {
   id: string;
@@ -130,11 +117,9 @@ export interface Project {
   
   // Arrays de dimensionamentos e análises
   pvDimensionings: PVDimensioning[];
-  bessAnalyses: BESSAnalysis[];
   
   // Contadores para preview
   totalPVDimensionings: number;
-  totalBESSAnalyses: number;
 }
 
 export interface ProjectSummary {
@@ -149,11 +134,9 @@ export interface ProjectSummary {
   
   // Contadores para preview
   totalPVDimensionings: number;
-  totalBESSAnalyses: number;
   
   // Status do último item
   lastPVStatus?: 'draft' | 'calculated' | 'approved';
-  lastBESSStatus?: 'draft' | 'simulated' | 'approved';
 }
 
 export interface CreateProjectData {

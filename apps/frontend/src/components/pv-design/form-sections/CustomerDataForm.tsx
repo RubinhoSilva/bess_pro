@@ -407,6 +407,29 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
           </Select>
         </div>
 
+        {formData.grupoTarifario === 'A' && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="space-y-2"
+          >
+            <Label className="text-foreground">Subgrupo Tarifário</Label>
+            <Select 
+              onValueChange={(v) => onFormChange('subgrupoTarifario', v)} 
+              value={formData.subgrupoTarifario || ''}
+            >
+              <SelectTrigger className="bg-background border-border text-foreground">
+                <SelectValue placeholder="Selecione o subgrupo tarifário" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="verde">Verde</SelectItem>
+                <SelectItem value="azul">Azul</SelectItem>
+              </SelectContent>
+            </Select>
+          </motion.div>
+        )}
+
         <AnimatePresence>
           {formData.grupoTarifario === 'B' && (
             <motion.div 

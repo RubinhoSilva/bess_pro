@@ -48,6 +48,7 @@ const getInitialFormData = (): ProjectData => ({
   totalInverterPower: 0,
   
   grupoTarifario: 'B',
+  subgrupoTarifario: undefined,
   tarifaEnergiaB: 0.75,
   custoFioB: 0.05,
   tarifaEnergiaPontaA: 1.20,
