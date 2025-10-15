@@ -128,7 +128,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
   // Buscar módulo completo selecionado pelo ID
   const selectedModuleFull = useMemo(() => {
-    const moduleId = currentDimensioning.moduloSelecionado || currentDimensioning.selectedModuleId || undefined;
+    const moduleId = currentDimensioning.moduloSelecionado || currentDimensioning.selectedModuleId;
     if (!moduleId || solarModules.length === 0) return undefined;
     return solarModules.find((m: any) => m.id === moduleId);
   }, [currentDimensioning.moduloSelecionado, currentDimensioning.selectedModuleId, solarModules]);

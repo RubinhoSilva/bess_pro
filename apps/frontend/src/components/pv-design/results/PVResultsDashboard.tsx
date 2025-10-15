@@ -97,6 +97,7 @@ interface PVResultsDashboardProps {
   };
   onGenerateProposal?: () => void;
   onBackToWizard?: () => void;
+  onBackToForm?: () => void;
   onNewCalculation?: () => void;
 }
 

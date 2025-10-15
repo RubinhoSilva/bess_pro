@@ -25,6 +25,21 @@ interface AguaTelhado {
   sombreamento?: number;
   potenciaInstalada?: number;
   modulos?: number;
+  // Propriedades adicionais usadas no componente
+  numeroModulos?: number;
+  inversorId?: string;
+  mpptNumero?: number;
+  sombreamentoParcial?: number;
+  areaDisponivel?: number;
+  areaCalculada?: number;
+  geracaoAnual?: number;
+  isCalculando?: boolean;
+}
+
+// Tipo local para resultado do cálculo
+interface FrontendPvlibData {
+  energiaAnualKwh: number;
+  areaNecessariaM2?: number;
 }
 
 interface WaterSelectionFormProps {
@@ -170,7 +185,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     if (aguasTelhado.length === 0) return;
     
     // Verificar se há águas com módulos configurados
-    const aguasComModulos = aguasTelhado.filter(agua => agua.numeroModulos > 0);
+    const aguasComModulos = aguasTelhado.filter(agua => (agua.numeroModulos || 0) > 0);
     if (aguasComModulos.length === 0 || !latitude || !longitude) return;
     
 
@@ -229,6 +244,8 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     const newAgua: AguaTelhado = {
       id: crypto.randomUUID(),
       nome: `Orientação #${nextNumber}`,
+      area: 0,
+      perdas: 0,
       orientacao: 180, // Norte no Brasil (azimute 180°)
       inclinacao: 20, // Inclinação padrão (~latitude média do Brasil)
       numeroModulos: 0, // Começar com 0 módulos
@@ -365,7 +382,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
           nome: a.nome,
           orientacao: a.orientacao,
           inclinacao: a.inclinacao,
-          numeroModulos: a.numeroModulos
+          numeroModulos: a.numeroModulos || 0
         })),
         latitude,
         longitude
@@ -380,13 +397,14 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         let somaInclinacao = 0;
 
         aguasTelhado.forEach(a => {
-          if (a.numeroModulos > 0) {
+          const modulos = a.numeroModulos || 0;
+          if (modulos > 0) {
             // Validar e clampar valores antes de calcular média ponderada
             const orientacaoValida = Math.max(0, Math.min(360, a.orientacao));
             const inclinacaoValida = Math.max(0, Math.min(90, a.inclinacao));
 
-            somaOrientacao += orientacaoValida * a.numeroModulos;
-            somaInclinacao += inclinacaoValida * a.numeroModulos;
+            somaOrientacao += orientacaoValida * modulos;
+            somaInclinacao += inclinacaoValida * modulos;
           }
         });
 
@@ -435,18 +453,18 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         longitude,
         fonteDados, // ✅ Adicionar fonte de dados
         // ✅ Enviar TODAS as águas COM INVERSOR EMBUTIDO
-        aguasTelhado: aguasTelhado.map(a => ({
-          id: a.id,
-          nome: a.nome,
-          orientacao: a.orientacao,
-          inclinacao: a.inclinacao,
-          numeroModulos: a.numeroModulos,
-          sombreamentoParcial: a.sombreamentoParcial || 0,
-          inversorId: a.inversorId, // Manter para compatibilidade
-          mpptNumero: a.mpptNumero, // Manter para compatibilidade
-          // ✅ NOVO: Incluir dados do inversor dentro de cada água
-          inversor: inverterData
-        })),
+          aguasTelhado: aguasTelhado.map(a => ({
+            id: a.id,
+            nome: a.nome,
+            orientacao: a.orientacao,
+            inclinacao: a.inclinacao,
+            numeroModulos: a.numeroModulos || 0,
+            sombreamentoParcial: a.sombreamentoParcial || 0,
+            inversorId: a.inversorId, // Manter para compatibilidade
+            mpptNumero: a.mpptNumero, // Manter para compatibilidade
+            // ✅ NOVO: Incluir dados do inversor dentro de cada água
+            inversor: inverterData
+          })),
         potenciaModulo: selectedModule ? selectedModule.nominalPower : potenciaModulo,
         energyBills: [{ 
           consumoMensal: [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500] // 6000 kWh/ano padrão
@@ -514,26 +532,27 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
       
       // Debug: Verificar dados retornados pela API
       console.log('🔍 [WaterSelectionForm] Dados retornados pela API:', dados);
-      console.log('🔍 [WaterSelectionForm] energiaAnualKwh:', dados.energiaAnualKwh);
-      console.log('🔍 [WaterSelectionForm] area_necessaria_m2:', dados.area_necessaria_m2);
+      console.log('🔍 [WaterSelectionForm] energiaAnualKwh:', (dados as any).energiaAnualKwh);
+      console.log('🔍 [WaterSelectionForm] area_necessaria_m2:', (dados as any).area_necessaria_m2);
         
       // Distribuir os resultados proporcionalmente entre todas as águas que têm módulos
       const finalAguas = aguasTelhado.map(a => {
-        if (a.numeroModulos > 0) {
+        const modulos = a.numeroModulos || 0;
+        if (modulos > 0) {
           // Calcular proporção desta água no sistema total
-          const proporcao = a.numeroModulos / totalModulos;
+          const proporcao = modulos / totalModulos;
           // Usar energiaAnualKwh (camelCase) - campo correto retornado pelo adapter
-          const energiaTotal = dados.energiaAnualKwh || 0;
+          const energiaTotal = (dados as any).energiaAnualKwh || 0;
           const geracaoProporcional = Math.round(energiaTotal * proporcao * 100) / 100;
           
           console.log('🔍 [WaterSelectionForm] Processando água:', a.nome);
-          console.log('🔍 [WaterSelectionForm] - Módulos:', a.numeroModulos, 'Total:', totalModulos, 'Proporção:', proporcao);
-          console.log('🔍 [WaterSelectionForm] - Geração total API:', dados.energiaAnualKwh);
+          console.log('🔍 [WaterSelectionForm] - Módulos:', modulos, 'Total:', totalModulos, 'Proporção:', proporcao);
+          console.log('🔍 [WaterSelectionForm] - Geração total API:', (dados as any).energiaAnualKwh);
           console.log('🔍 [WaterSelectionForm] - Geração proporcional:', geracaoProporcional);
           
           return {
             ...a,
-            areaCalculada: Math.round(dados.area_necessaria_m2 * proporcao * 100) / 100,
+            areaCalculada: Math.round(((dados as any).area_necessaria_m2 || 0) * proporcao * 100) / 100,
             geracaoAnual: geracaoProporcional,
             isCalculando: false
           };
@@ -546,17 +565,17 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         }
       });
 
-      const energiaTotalSistema = dados.energiaAnualKwh || 0;
+      const energiaTotalSistema = (dados as any).energiaAnualKwh || 0;
       const resultadosSistema = {
-        areaTotalSistema: dados.area_necessaria_m2,
+        areaTotalSistema: (dados as any).area_necessaria_m2,
         geracaoTotalSistema: energiaTotalSistema,
         totalModulos,
         distribuicao: finalAguas
           .filter(a => a.numeroModulos > 0)
           .map(a => ({
             nome: a.nome,
-            modulos: a.numeroModulos,
-            proporcao: Math.round((a.numeroModulos / totalModulos) * 10000) / 100 + '%',
+            modulos: a.numeroModulos || 0,
+            proporcao: Math.round(((a.numeroModulos || 0) / totalModulos) * 10000) / 100 + '%',
             area: a.areaCalculada,
             geracao: a.geracaoAnual
           }))
@@ -659,9 +678,9 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline">
-                        {agua.numeroModulos} módulos
-                      </Badge>
+                       <Badge variant="outline">
+                         {agua.numeroModulos || 0} módulos
+                       </Badge>
                       <Badge variant="outline">
                         {orientacaoLabel}
                       </Badge>
@@ -844,7 +863,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
 
                              return limit && !limit.isLoading && !limit.error ? limit.modulosPorString : 100;
                            })() : 100}
-                          value={agua.numeroModulos}
+                           value={agua.numeroModulos || 0}
                           onChange={(e) => {
                             const value = parseInt(e.target.value) || 0;
 
@@ -892,7 +911,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                            const inverterId = inverterData.inverter.id;
                            const limit = mpptLimits[inverterId];
 
-                           if (limit && !limit.isLoading && !limit.error && agua.numeroModulos > limit.modulosPorString) {
+                            if (limit && !limit.isLoading && !limit.error && (agua.numeroModulos || 0) > limit.modulosPorString) {
                              return (
                                <p className="text-xs text-red-500 flex items-center gap-1">
                                  <AlertCircle className="w-3 h-3" />
@@ -911,13 +930,13 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                            if (!inverterData) return null;
 
                            const stringsPorMppt = inverterData.inverter.mppt.stringsPerMppt || 1;
-                           const totalModulosNoMppt = agua.numeroModulos * stringsPorMppt;
+                            const totalModulosNoMppt = (agua.numeroModulos || 0) * stringsPorMppt;
 
                            return (
                              <div className="mt-1">
                                <p className="text-xs text-blue-600 flex items-center gap-1">
                                  <Settings className="w-3 h-3" />
-                                 {agua.numeroModulos} módulos/string × {stringsPorMppt} strings = {totalModulosNoMppt} módulos no MPPT
+                                  {agua.numeroModulos || 0} módulos/string × {stringsPorMppt} strings = {totalModulosNoMppt} módulos no MPPT
                                </p>
                              </div>
                            );
@@ -926,8 +945,8 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                     </div>
                   </div>
 
-                  {/* Botão Calcular Sistema Completo */}
-                  {agua.numeroModulos > 0 && hasValidMppt && latitude && longitude && (
+                   {/* Botão Calcular Sistema Completo */}
+                   {(agua.numeroModulos || 0) > 0 && hasValidMppt && latitude && longitude && (
                     <div className="flex justify-center">
                       <Button 
                         onClick={() => handleCalculateGeneration(agua.id)}
@@ -1020,12 +1039,12 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                 
                 <div className="text-center p-3">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ${
-                    aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) > maxModules 
+                    aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0) > maxModules
                       ? 'bg-red-100' 
                       : 'bg-blue-100'
                   }`}>
                     <Settings className={`w-6 h-6 ${
-                      aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) > maxModules
+                      aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0) > maxModules
                         ? 'text-red-600'
                         : 'text-blue-600'
                     }`} />
@@ -1035,7 +1054,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                       ? 'text-red-600'
                       : 'text-blue-600'
                   }`}>
-                    {aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0)}
+                     {aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0)}
                     {maxModules && ` / ${maxModules}`}
                   </p>
                   <p className={`text-sm ${
@@ -1044,10 +1063,10 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                       : 'text-gray-600'
                   }`}>
                     Total de Módulos
-                    {aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) > maxModules && ' (Excede!)'}
+                     {aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0) > maxModules && ' (Excede!)'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {((aguasTelhado.reduce((sum, agua) => sum + agua.numeroModulos, 0) * (selectedModule ? selectedModule.nominalPower : potenciaModulo)) / 1000).toFixed(1)} kWp
+                     {((aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0) * (selectedModule ? selectedModule.nominalPower : potenciaModulo)) / 1000).toFixed(1)} kWp
                   </p>
                 </div>
                 
@@ -1146,7 +1165,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                         <div className="flex-1">
                           <p className="font-medium text-sm">{agua.nome}</p>
                           <div className="flex items-center gap-3 text-xs text-gray-500">
-                            <span>{agua.numeroModulos} módulos</span>
+                            <span>{agua.numeroModulos || 0} módulos</span>
                             <span>{orientacaoLabel}</span>
                             <span>{agua.inclinacao}°</span>
                             {hasValidMppt && (

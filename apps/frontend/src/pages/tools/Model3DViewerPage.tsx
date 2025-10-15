@@ -19,7 +19,7 @@ function Model3DViewerPageContent() {
   const [selectedAreaId, setSelectedAreaId] = useState<string>();
 
   // Get initial model URL from query params
-  const initialModelUrl = searchParams.get('model') || currentDimensioning.modelo3dUrl || undefined;
+  const initialModelUrl = searchParams.get('model') || currentDimensioning.modelo3dUrl;
   
   // Get location from dimensioning data
   const latitude = currentDimensioning.latitude || -23.5505;

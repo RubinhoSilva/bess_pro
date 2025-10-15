@@ -28,7 +28,6 @@ export function useDimensioningOperations(dimensioningId?: string) {
 
     // Additional states
     isSuccess: loadQuery.isSuccess || saveMutation.isSuccess,
-    isIdle: loadQuery.isIdle && !saveMutation.isPending && !deleteMutation.isPending,
 
     // Refetch
     refetch: loadQuery.refetch,
