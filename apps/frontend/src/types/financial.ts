@@ -4,29 +4,8 @@
  * Com funções de conversão para compatibilidade camelCase
  */
 
-import {
-  FinancialTypes,
-  GrupoConfig,
-  CommonTypes,
-  GrupoBConfig,
-  GrupoAConfig,
-  isGrupoBConfig,
-  isGrupoAConfig,
-  validateGrupoBConfig,
-  validateGrupoAConfig,
-  calcularPotenciaInstalada,
-  calcularAreaNecessaria
-} from '@bess-pro/shared';
-
 // Exportar tipos do pacote shared
 export type { 
-  FinancialInput,
-  CashFlowDetails,
-  FinancialIndicators,
-  SensitivityAnalysis,
-  ScenarioAnalysis,
-  AdvancedFinancialResults,
-  FinancialCalculationResponse,
   GrupoConfig,
   GrupoBConfig,
   GrupoAConfig,
@@ -43,9 +22,7 @@ export {
 } from '@bess-pro/shared';
 
 // Manter compatibilidade com exports existentes
-const FINANCIAL_DEFAULTS = FinancialTypes.FINANCIAL_DEFAULTS;
-const objectSnakeToCamel = FinancialTypes.objectSnakeToCamel;
-const objectCamelToSnake = FinancialTypes.objectCamelToSnake;
+import { FINANCIAL_DEFAULTS, objectSnakeToCamel, objectCamelToSnake, CashFlowDetails, FinancialIndicators, SensitivityAnalysis, ScenarioAnalysis, FinancialInput, AdvancedFinancialResults, FinancialCalculationResponse } from '@bess-pro/shared';
 
 // ===== TIPOS COMPATÍVEIS COM FRONTEND (camelCase) =====
 

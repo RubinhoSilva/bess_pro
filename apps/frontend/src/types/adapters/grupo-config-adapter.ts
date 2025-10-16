@@ -135,11 +135,13 @@ export class GrupoConfigAdapter {
       geracao,
       consumoLocal: {
         foraPonta: consumoForaPonta,
-        ponta: consumoPonta
+        ponta: consumoPonta,
+        // demanda: formData.demanda || 0
       },
       tarifas: {
         foraPonta: formData.tarifaForaPonta || 0.65,
-        ponta: formData.tarifaPonta || 0.95
+        ponta: formData.tarifaPonta || 0.95,
+        demanda: formData.demanda || 0
       },
       te: {
         foraPonta: formData.teForaPonta || 0.40,

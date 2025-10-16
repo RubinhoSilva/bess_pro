@@ -127,7 +127,6 @@ function PVDesignPageContent() {
           concessionaria: project.projectData.concessionaria,
           tipoRede: project.projectData.tipoRede,
           tensaoRede: project.projectData.tensaoRede,
-          fatorSimultaneidade: project.projectData.fatorSimultaneidade,
           tipoTelhado: project.projectData.tipoTelhado,
           
           // Custos e financeiro
