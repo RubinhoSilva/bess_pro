@@ -213,6 +213,13 @@ export const apiClient = {
 
     // Generic post method for calculations
     post: (endpoint: string, data: any) => api.post(endpoint, data),
+
+    // NOVO: Cálculos financeiros diretos do Python service
+    calculateGrupoAFinancials: (data: any) =>
+      api.post('/financial/calculate-grupo-a', data),
+
+    calculateGrupoBFinancials: (data: any) =>
+      api.post('/financial/calculate-grupo-b', data),
   },
 
   // Solar Analysis (integração com pvlib-service)

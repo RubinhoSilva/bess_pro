@@ -203,3 +203,89 @@ export function useValidateFinancialInput(input: Partial<FinancialCalculationInp
     hasErrors: errors.length > 0,
   };
 }
+
+/**
+ * Hook para calcular análise financeira para Grupo A
+ * Usa o novo endpoint direto do Python service
+ *
+ * @param options - Opções do hook
+ * @returns Mutation hook com função de cálculo e estado
+ */
+export function useGrupoAFinancialCalculation(options?: {
+  onSuccess?: (data: any) => void;
+  onError?: (error: any) => void;
+}) {
+  const { onSuccess, onError } = options || {};
+
+  return useMutation({
+    mutationFn: async (input: any) => {
+      const response = await apiClient.calculations.calculateGrupoAFinancials(input);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success('Cálculo financeiro Grupo A realizado com sucesso!');
+      onSuccess?.(data);
+    },
+    onError: (error: any) => {
+      let message = 'Erro ao calcular análise financeira Grupo A';
+      
+      if (error?.code === 'ECONNABORTED') {
+        message = 'Timeout na conexão com o serviço financeiro';
+      } else if (error?.response?.status === 400) {
+        message = 'Dados inválidos: ' + (error?.response?.data?.detail || 'verifique os parâmetros');
+      } else if (error?.response?.status === 500) {
+        message = 'Erro interno no servidor financeiro';
+      } else if (error?.response?.data?.detail) {
+        message = error.response.data.detail;
+      } else if (error?.message) {
+        message = error.message;
+      }
+      
+      toast.error(message);
+      onError?.(error);
+    },
+  });
+}
+
+/**
+ * Hook para calcular análise financeira para Grupo B
+ * Usa o novo endpoint direto do Python service
+ *
+ * @param options - Opções do hook
+ * @returns Mutation hook com função de cálculo e estado
+ */
+export function useGrupoBFinancialCalculation(options?: {
+  onSuccess?: (data: any) => void;
+  onError?: (error: any) => void;
+}) {
+  const { onSuccess, onError } = options || {};
+
+  return useMutation({
+    mutationFn: async (input: any) => {
+      const response = await apiClient.calculations.calculateGrupoBFinancials(input);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success('Cálculo financeiro Grupo B realizado com sucesso!');
+      onSuccess?.(data);
+    },
+    onError: (error: any) => {
+      let message = 'Erro ao calcular análise financeira Grupo B';
+      
+      if (error?.code === 'ECONNABORTED') {
+        message = 'Timeout na conexão com o serviço financeiro';
+      } else if (error?.response?.status === 400) {
+        message = 'Dados inválidos: ' + (error?.response?.data?.detail || 'verifique os parâmetros');
+      } else if (error?.response?.status === 500) {
+        message = 'Erro interno no servidor financeiro';
+      } else if (error?.response?.data?.detail) {
+        message = error.response.data.detail;
+      } else if (error?.message) {
+        message = error.message;
+      }
+      
+      toast.error(message);
+      onError?.(error);
+    },
+  });
+}
