@@ -241,7 +241,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
                     <Badge variant="outline" className="text-xs">
                       <span className={`w-2 h-2 rounded-full mr-1 ${
                         project.lastBESSStatus === 'approved' ? 'bg-green-500' : 
-                        project.lastBESSStatus === 'simulated' ? 'bg-blue-500' : 'bg-yellow-500'
+                        project.lastBESSStatus === 'draft' ? 'bg-blue-500' : 'bg-yellow-500'
                       }`} />
                       {getStatusText(project.lastBESSStatus, 'bess')}
                     </Badge>
