@@ -48,6 +48,9 @@ export * from './grupo-configs';
 // Tipos especializados para EnergyBill
 export * from './energy-bill-types';
 
+// Tipos de resultados financeiros especializados
+export * from './financial-results';
+
 // Exportar tipo união explicitamente
 export type { GrupoConfig } from './grupo-configs';
 

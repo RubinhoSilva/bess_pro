@@ -18,8 +18,17 @@ import {
   validateGrupoBConfig,
   validateGrupoAConfig,
   AdvancedFinancialResults,
-  FinancialInput
+  FinancialInput,
+  GrupoBConfig,
+  GrupoAConfig
 } from '@bess-pro/shared';
+
+// Importar novos DTOs e mappers
+import { GrupoFinancialResultDto } from '@/application/dtos/output/GrupoFinancialResultDto';
+import { GrupoBFinancialResultDto } from '@/application/dtos/output/GrupoBFinancialResultDto';
+import { GrupoAFinancialResultDto } from '@/application/dtos/output/GrupoAFinancialResultDto';
+import { GrupoBFinancialMapper } from '@/application/mappers/GrupoBFinancialMapper';
+import { GrupoAFinancialMapper } from '@/application/mappers/GrupoAFinancialMapper';
 
 export interface CalculateProjectFinancialsDTO {
   projectId: string;
@@ -30,7 +39,7 @@ export interface CalculateProjectFinancialsDTO {
 
 export interface CalculateProjectFinancialsResponse {
   success: boolean;
-  data: AdvancedFinancialResults;
+  data: GrupoFinancialResultDto;
   message: string;
 }
 
@@ -66,61 +75,23 @@ export class CalculateProjectFinancialsUseCase {
       // 3. Validar dados de entrada
       this.validateInput(input);
 
-      // 4. Adaptar input para formato compatível com Python service
-      let adaptedInput: FinancialInput;
+      // 4. Realizar cálculo especializado conforme o tipo de configuração
+      let result: GrupoFinancialResultDto;
       if (isGrupoBConfig(input)) {
-        // Converter GrupoBConfig para FinancialInput
-        adaptedInput = {
-          investimento_inicial: input.financeiros.capex,
-          geracao_mensal: Object.values(input.geracao),
-          consumo_mensal: Object.values(input.consumoLocal),
-          tarifa_energia: input.tarifaBase,
-          custo_fio_b: input.fioB.schedule[input.fioB.baseYear] || 0.45,
-          vida_util: input.financeiros.anos,
-          taxa_desconto: input.financeiros.taxaDesconto,
-          inflacao_energia: input.financeiros.inflacaoEnergia,
-          degradacao_modulos: input.financeiros.degradacao,
-          custo_om: input.financeiros.capex * input.financeiros.omaFirstPct,
-          inflacao_om: input.financeiros.omaInflacao
-        };
+        result = await this.calculateGrupoB(input as GrupoBConfig, project, userId, saveToProject);
       } else if (isGrupoAConfig(input)) {
-        // Converter GrupoAConfig para FinancialInput
-        adaptedInput = {
-          investimento_inicial: input.financeiros.capex,
-          geracao_mensal: Object.values(input.geracao),
-          consumo_mensal: [
-            ...Object.values(input.consumoLocal.foraPonta),
-            ...Object.values(input.consumoLocal.ponta)
-          ],
-          tarifa_energia: input.tarifas.foraPonta,
-          custo_fio_b: input.fioB.schedule[input.fioB.baseYear] || 0.45,
-          vida_util: input.financeiros.anos,
-          taxa_desconto: input.financeiros.taxaDesconto,
-          inflacao_energia: input.financeiros.inflacaoEnergia,
-          degradacao_modulos: input.financeiros.degradacao,
-          custo_om: input.financeiros.capex * input.financeiros.omaFirstPct,
-          inflacao_om: input.financeiros.omaInflacao
-        };
+        result = await this.calculateGrupoA(input as GrupoAConfig, project, userId, saveToProject);
       } else {
-        // Já é FinancialInput
-        adaptedInput = input as FinancialInput;
+        // Manter compatibilidade com formato legado
+        result = await this.calculateLegacy(input as FinancialInput, project, userId, saveToProject);
       }
 
-      // 5. Realizar cálculo financeiro usando Python service
-      console.log('[CalculateProjectFinancials] Calling Python service...');
-      const results = await this.pvlibClient.calculateFinancials(adaptedInput);
-
-      // 6. Salvar no projeto se solicitado
-      if (saveToProject) {
-        await this.saveResultsToProject(project, adaptedInput, results, userId);
-      }
-
-      // 7. Log de sucesso
+      // 5. Log de sucesso
       console.log('[CalculateProjectFinancials] Calculation completed successfully');
 
       return {
         success: true,
-        data: results,
+        data: result,
         message: 'Cálculo financeiro realizado com sucesso'
       };
 
@@ -128,10 +99,82 @@ export class CalculateProjectFinancialsUseCase {
       console.error('[CalculateProjectFinancials] Error:', error);
       return {
         success: false,
-        data: {} as AdvancedFinancialResults,
+        data: {} as GrupoFinancialResultDto,
         message: error instanceof Error ? error.message : 'Erro desconhecido no cálculo financeiro'
       };
     }
+  }
+
+  private async calculateGrupoB(
+    input: GrupoBConfig,
+    project: Project,
+    userId: string,
+    saveToProject: boolean
+  ): Promise<GrupoBFinancialResultDto> {
+    console.log('[CalculateProjectFinancials] Calculating Grupo B financials...');
+    
+    // 1. Chamar serviço especializado
+    const pythonResults = await this.pvlibClient.calculateGrupoBFinancials(input);
+    
+    // 2. Mapear para DTO TypeScript
+    const result = GrupoBFinancialMapper.toDto(pythonResults);
+    
+    // 3. Salvar no projeto se solicitado
+    if (saveToProject) {
+      await this.saveGrupoBResultsToProject(project, input, result, userId);
+    }
+    
+    return result;
+  }
+
+  private async calculateGrupoA(
+    input: GrupoAConfig,
+    project: Project,
+    userId: string,
+    saveToProject: boolean
+  ): Promise<GrupoAFinancialResultDto> {
+    console.log('[CalculateProjectFinancials] Calculating Grupo A financials...');
+    
+    // 1. Chamar serviço especializado
+    const pythonResults = await this.pvlibClient.calculateGrupoAFinancials(input);
+    
+    // 2. Mapear para DTO TypeScript
+    const result = GrupoAFinancialMapper.toDto(pythonResults);
+    
+    // 3. Salvar no projeto se solicitado
+    if (saveToProject) {
+      await this.saveGrupoAResultsToProject(project, input, result, userId);
+    }
+    
+    return result;
+  }
+
+  private async calculateLegacy(
+    input: FinancialInput,
+    project: Project,
+    userId: string,
+    saveToProject: boolean
+  ): Promise<GrupoBFinancialResultDto> {
+    console.log('[CalculateProjectFinancials] Using legacy calculation method...');
+    
+    // Manter compatibilidade com formato existente
+    const results = await this.pvlibClient.calculateFinancials(input);
+    
+    // Converter para formato compatível (temporário)
+    // Usar GrupoBFinancialResultDto como fallback para compatibilidade
+    const legacyResult: GrupoBFinancialResultDto = {
+      success: true,
+      grupoTarifario: 'B', // Default para compatibilidade
+      data: results as any,
+      timestamp: new Date().toISOString(),
+      projectId: project.getId()
+    };
+    
+    if (saveToProject) {
+      await this.saveResultsToProject(project, input, results, userId);
+    }
+    
+    return legacyResult;
   }
 
   private validateInput(input: FinancialConfiguration): void {
@@ -164,6 +207,66 @@ export class CalculateProjectFinancialsUseCase {
 
   }
 
+  private async saveGrupoBResultsToProject(
+    project: Project,
+    input: GrupoBConfig,
+    result: GrupoBFinancialResultDto,
+    userId: string
+  ): Promise<void> {
+    try {
+      const currentData = project.getProjectData() || {};
+
+      const financialData = {
+        ...currentData.financialData,
+        lastCalculation: {
+          timestamp: new Date().toISOString(),
+          tipo: 'Grupo B',
+          input: input,
+          results: result
+        }
+      };
+
+      project.updateProjectData({ financialData });
+      await this.projectRepository.save(project);
+
+      console.log(`[CalculateProjectFinancials] Grupo B results saved to project ${project.getId()}`);
+
+    } catch (error) {
+      console.error('[CalculateProjectFinancials] Error saving Grupo B results:', error);
+      throw AppError.internal('Erro ao salvar resultados Grupo B no projeto');
+    }
+  }
+
+  private async saveGrupoAResultsToProject(
+    project: Project,
+    input: GrupoAConfig,
+    result: GrupoAFinancialResultDto,
+    userId: string
+  ): Promise<void> {
+    try {
+      const currentData = project.getProjectData() || {};
+
+      const financialData = {
+        ...currentData.financialData,
+        lastCalculation: {
+          timestamp: new Date().toISOString(),
+          tipo: 'Grupo A',
+          input: input,
+          results: result
+        }
+      };
+
+      project.updateProjectData({ financialData });
+      await this.projectRepository.save(project);
+
+      console.log(`[CalculateProjectFinancials] Grupo A results saved to project ${project.getId()}`);
+
+    } catch (error) {
+      console.error('[CalculateProjectFinancials] Error saving Grupo A results:', error);
+      throw AppError.internal('Erro ao salvar resultados Grupo A no projeto');
+    }
+  }
+
   private async saveResultsToProject(
     project: Project,
     input: FinancialInput,
@@ -179,6 +282,7 @@ export class CalculateProjectFinancialsUseCase {
         ...currentData.financialData,
         lastCalculation: {
           timestamp: new Date().toISOString(),
+          tipo: 'Legacy',
           input: {
             investimento_inicial: input.investimento_inicial,
             geracao_mensal: input.geracao_mensal,
@@ -210,15 +314,15 @@ export class CalculateProjectFinancialsUseCase {
       project.updateProjectData({ financialData });
       await this.projectRepository.save(project);
 
-      console.log(`[CalculateProjectFinancials] Results saved to project ${project.getId()}`);
+      console.log(`[CalculateProjectFinancials] Legacy results saved to project ${project.getId()}`);
 
     } catch (error) {
-      console.error('[CalculateProjectFinancials] Error saving results:', error);
-      throw AppError.internal('Erro ao salvar resultados no projeto');
+      console.error('[CalculateProjectFinancials] Error saving legacy results:', error);
+      throw AppError.internal('Erro ao salvar resultados legados no projeto');
     }
   }
 
-  async getLastResults(projectId: string, userId: string): Promise<AdvancedFinancialResults | null> {
+  async getLastResults(projectId: string, userId: string): Promise<GrupoFinancialResultDto | null> {
     try {
       const projectIdVo = ProjectId.create(projectId);
       const project = await this.projectRepository.findById(projectIdVo.getValue());

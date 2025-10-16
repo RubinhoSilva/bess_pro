@@ -11,6 +11,8 @@ import type { ProjectListDto } from "./dtos/output/ProjectListDto";
 import type { ProjectResponseDto } from "./dtos/output/ProjectResponseDto";
 import type { UserResponseDto } from "./dtos/output/UserResponseDto";
 import { AreaMontagemMapper } from "./mappers/AreaMontagemMapper";
+import { GrupoBFinancialMapper } from "./mappers/GrupoBFinancialMapper";
+import { GrupoAFinancialMapper } from "./mappers/GrupoAFinancialMapper";
 import { LeadMapper } from "./mappers/LeadMapper";
 import { LeadInteractionMapper } from "./mappers/LeadInteractionMapper";
 import { Model3DMapper } from "./mappers/Model3DMapper";
@@ -85,6 +87,8 @@ export {
   LeadInteractionMapper,
   Model3DMapper,
   AreaMontagemMapper,
+  GrupoBFinancialMapper,
+  GrupoAFinancialMapper,
 
   // Common
   Result,

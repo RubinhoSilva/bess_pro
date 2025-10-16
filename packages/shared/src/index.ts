@@ -1,6 +1,90 @@
 export * from './types/user.types';
 export * from './types/lead.types';
-export * from './types/financial';
+
+// Import explícito do financial.ts para renomear FinancialIndicators
+import {
+  FinancialInput,
+  CashFlowDetails,
+  FinancialIndicators as LegacyFinancialIndicators,
+  SensitivityPoint,
+  SensitivityAnalysis,
+  ScenarioIndicators,
+  ScenarioAnalysis,
+  AdvancedFinancialResults,
+  FINANCIAL_DEFAULTS,
+  FinancialValidationRule,
+  FINANCIAL_VALIDATION_RULES,
+  FinancialCalculationMetadata,
+  FinancialCalculationResponse,
+  camelToSnake,
+  snakeToCamel,
+  objectCamelToSnake,
+  objectSnakeToCamel
+} from './types/financial';
+
+// Import explícito do financial-results.ts para renomear FinancialIndicators
+import {
+  FinancialIndicators as GrupoFinancialIndicators,
+  InitialSums,
+  ResultadosCodigoB,
+  InitialSumsGrupoA,
+  ConsumoAno1GrupoA,
+  ResultadosCodigoA,
+  isResultadosCodigoB,
+  isResultadosCodigoA,
+  GrupoFinancialResults,
+  isGrupoFinancialResults,
+  getGrupoTarifario,
+  formatarMoeda,
+  formatarEnergia
+} from './types/financial-results';
+
+// Re-exportar tipos do financial.ts
+export type {
+  FinancialInput,
+  CashFlowDetails,
+  LegacyFinancialIndicators as FinancialIndicators,
+  SensitivityPoint,
+  SensitivityAnalysis,
+  ScenarioIndicators,
+  ScenarioAnalysis,
+  AdvancedFinancialResults,
+  FinancialValidationRule,
+  FinancialCalculationMetadata,
+  FinancialCalculationResponse
+};
+
+// Re-exportar valores do financial.ts
+export {
+  FINANCIAL_DEFAULTS,
+  FINANCIAL_VALIDATION_RULES,
+  camelToSnake,
+  snakeToCamel,
+  objectCamelToSnake,
+  objectSnakeToCamel
+};
+
+// Re-exportar tipos do financial-results.ts
+export type {
+  GrupoFinancialIndicators,
+  InitialSums,
+  ResultadosCodigoB,
+  InitialSumsGrupoA,
+  ConsumoAno1GrupoA,
+  ResultadosCodigoA,
+  GrupoFinancialResults
+};
+
+// Re-exportar valores do financial-results.ts
+export {
+  isResultadosCodigoB,
+  isResultadosCodigoA,
+  isGrupoFinancialResults,
+  getGrupoTarifario,
+  formatarMoeda,
+  formatarEnergia
+};
+
 export * from './types/common';
 export * from './types/common-types';
 export * from './types/grupo-configs';
