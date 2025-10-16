@@ -394,7 +394,12 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
         <div className="space-y-2">
           <Label className="text-foreground">Grupo Tarifário</Label>
           <Select 
-            onValueChange={(v) => onFormChange('grupoTarifario', v)} 
+            onValueChange={(v) => {
+              onFormChange('grupoTarifario', v);
+              // Limpar contas existentes ao mudar de grupo
+              onFormChange('energyBills', []);
+              onFormChange('energyBillsA', []);
+            }} 
             value={formData.grupoTarifario || 'B'}
           >
             <SelectTrigger className="bg-background border-border text-foreground">

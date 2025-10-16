@@ -135,9 +135,11 @@ export interface ProjectSummary {
   
   // Contadores para preview
   totalPVDimensionings: number;
+  totalBESSAnalyses: number;
   
   // Status do último item
   lastPVStatus?: 'draft' | 'calculated' | 'approved';
+  lastBESSStatus?: 'draft' | 'calculated' | 'approved';
 }
 
 export interface CreateProjectData {

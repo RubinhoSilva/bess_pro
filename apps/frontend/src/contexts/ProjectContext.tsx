@@ -31,10 +31,7 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 const getInitialFormData = (): ProjectData => ({
   customer: undefined,
   location: undefined,
-  energyBills: [createEnergyBillB({ 
-    name: 'Unidade Geradora', 
-    consumoMensal: Array(12).fill(500) 
-  })],
+  energyBills: [],
   energyBillsA: [],
   potenciaModulo: 0,
   numeroModulos: 0,
