@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from api.v1.endpoints import irradiation, admin, mppt, solar, bess
 from api.financial_router import router as financial_router
+from api.financial_grupo_router import router as financial_grupo_router
 
 # Router principal da API v1
 api_router = APIRouter()
@@ -13,6 +14,7 @@ api_router.include_router(mppt.router, prefix="/mppt", tags=["MPPT"])
 api_router.include_router(bess.router, prefix="/bess", tags=["BESS - Battery Energy Storage System"])
 api_router.include_router(admin.router)
 api_router.include_router(financial_router)
+api_router.include_router(financial_grupo_router)
 
 # Endpoint de informações da API
 @api_router.get(
@@ -45,7 +47,9 @@ async def api_info():
             },
             "financial": {
                 "POST /financial/calculate-advanced": "Análise financeira avançada",
-                "POST /financial/calculate-simple": "Análise financeira simplificada"
+                "POST /financial/calculate-simple": "Análise financeira simplificada",
+                "POST /financial/calculate-grupo-a": "Análise financeira Grupo A (Verde)",
+                "POST /financial/calculate-grupo-b": "Análise financeira Grupo B"
             },
             "admin": {
                 "GET /admin/health": "Health check",
