@@ -70,7 +70,7 @@ export default function EconomicParametersForm({ formData, onFormChange }: Econo
           <div className="space-y-2">
             <Label htmlFor="custoFioB">Custo Fio B (R$/kWh)</Label>
             <CustomCurrencyInput
-              value={formData.custoFioB || ((formData.tarifaEnergiaB || 0.8) * 0.3)}
+              value={formData.custoFioB || ''}
               onValueChange={(value) => onFormChange('custoFioB', value)}
               placeholder="R$ 0,0000"
               className="bg-background border-border text-foreground"

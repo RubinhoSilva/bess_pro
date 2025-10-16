@@ -165,6 +165,15 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
     return !hasGrupoATariffData;
   };
 
+  const needsGrupoBTariffData = () => {
+    const hasGrupoBTariffData = (formData.tarifaEnergiaB != null && formData.tarifaEnergiaB > 0) && 
+                               (formData.custoFioB != null && formData.custoFioB > 0);
+    const hasGrupoBAccounts = energyBills.length > 0;
+    
+    // Mostrar formulário se há contas B mas não há dados tarifários B significativos
+    return hasGrupoBAccounts && !hasGrupoBTariffData;
+  };
+
   const addNewBill = (tipo: 'A' | 'B') => {
     const totalAccounts = energyBillsA.length + energyBills.length;
     
@@ -294,6 +303,59 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
                     onRemove={() => removeBillA(bill.id)}
                   />
                 ))}
+              </div>
+            )}
+
+            {/* Seção Grupo B - aparece quando adiciona conta B em projeto A */}
+            {energyBills.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-700">Contas Grupo B (Residencial/Comercial)</h3>
+                
+                {/* Configuração de tarifas Grupo B */}
+                {needsGrupoBTariffData() && (
+                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-700">
+                    <h4 className="font-medium text-green-800 dark:text-green-200 mb-4">Configurar Tarifas Grupo B</h4>
+                    <p className="text-sm text-green-600 dark:text-green-400 mb-4">
+                      Preencha os dados tarifários para contas do Grupo B (Residencial/Comercial)
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Tarifa de Energia (R$/kWh)</Label>
+                        <Input 
+                          type="number"
+                          step="0.01"
+                          value={formData.tarifaEnergiaB || ''}
+                          onChange={(e) => handleGrupoATariffChange('tarifaEnergiaB', parseFloat(e.target.value) || null)}
+                          placeholder="0.75"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Custo Fio B (R$/kWh)</Label>
+                        <Input 
+                          type="number"
+                          step="0.01"
+                          value={formData.custoFioB || ''}
+                          onChange={(e) => handleGrupoATariffChange('custoFioB', parseFloat(e.target.value) || null)}
+                          placeholder="0.05"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Lista de contas Grupo B */}
+                <div className="space-y-4">
+                  {energyBills.map((bill: EnergyBillB) => (
+                    <EnergyBillComponent
+                      key={bill.id}
+                      bill={bill}
+                      onBillChange={updateBillB}
+                      onRemoveBill={removeBillB}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </>

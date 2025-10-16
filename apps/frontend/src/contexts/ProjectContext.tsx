@@ -47,12 +47,12 @@ const getInitialFormData = (): ProjectData => ({
   
   grupoTarifario: 'B',
   subgrupoTarifario: undefined,
-  tarifaEnergiaB: 0.75,
-  custoFioB: 0.05,
-  tarifaEnergiaPontaA: 1.20,
-  tarifaEnergiaForaPontaA: 0.60,
-  tePontaA: 0.60,
-  teForaPontaA: 0.40,
+  tarifaEnergiaB: null,
+  custoFioB: null,
+  tarifaEnergiaPontaA: null,
+  tarifaEnergiaForaPontaA: null,
+  tePontaA: null,
+  teForaPontaA: null,
   fatorSimultaneidade: 100,
   
   custoEquipamento: 0,

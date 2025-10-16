@@ -115,8 +115,8 @@ function PVDesignPageContent() {
           
           // Parâmetros tarifários
           grupoTarifario: project.projectData.grupoTarifario || 'B',
-          tarifaEnergiaB: project.projectData.tarifaEnergiaB || 0.75,
-          custoFioB: project.projectData.custoFioB || 0.30,
+          tarifaEnergiaB: project.projectData.tarifaEnergiaB || null,
+          custoFioB: project.projectData.custoFioB || null,
           tarifaEnergiaPontaA: project.projectData.tarifaEnergiaPontaA,
           tarifaEnergiaForaPontaA: project.projectData.tarifaEnergiaForaPontaA,
           tePontaA: project.projectData.tePontaA,
