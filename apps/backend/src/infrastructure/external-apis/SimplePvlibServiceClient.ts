@@ -242,8 +242,7 @@ export class SimplePvlibServiceClient {
         consumo_ponta: consumoPonta,
         consumo_total: consumoTotal,
         tarifa_ponta: input.tarifas.ponta,
-        tarifa_fora_ponta: input.tarifas.foraPonta,
-        demanda: input.tarifas.demanda
+        tarifa_fora_ponta: input.tarifas.foraPonta
       });
 
       // Converter input para snake_case (trata ponta/fora-ponta corretamente)

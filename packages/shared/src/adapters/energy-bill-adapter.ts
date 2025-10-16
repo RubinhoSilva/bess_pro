@@ -235,9 +235,8 @@ function calculateTarifaMediaFromA(bill: EnergyBillA): number {
   
   const custoForaPonta = consumoForaPontaAnual * bill.tarifas.foraPonta;
   const custoPonta = consumoPontaAnual * bill.tarifas.ponta;
-  const custoDemanda = bill.demandaContratada ? bill.demandaContratada * bill.tarifas.demanda * 12 : 0;
   
-  const custoTotal = custoForaPonta + custoPonta + custoDemanda;
+  const custoTotal = custoForaPonta + custoPonta;
   
   return custoTotal / consumoAnual;
 }
@@ -326,9 +325,9 @@ function validateEnergyBillA(bill: any): { isValid: boolean; errors: string[] } 
   if (!bill.consumo || !bill.consumo.foraPonta || !bill.consumo.ponta) {
     errors.push('consumo.foraPonta e consumo.ponta são obrigatórios');
   }
-  
-  if (!bill.tarifas || !bill.tarifas.foraPonta || !bill.tarifas.ponta || !bill.tarifas.demanda) {
-    errors.push('tarifas.foraPonta, tarifas.ponta e tarifas.demanda são obrigatórios');
+
+  if (!bill.tarifas || !bill.tarifas.foraPonta || !bill.tarifas.ponta) {
+    errors.push('tarifas.foraPonta e tarifas.ponta são obrigatórios');
   }
   
   return { isValid: errors.length === 0, errors };

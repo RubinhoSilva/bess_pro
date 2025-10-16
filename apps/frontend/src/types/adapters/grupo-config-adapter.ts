@@ -141,7 +141,6 @@ export class GrupoConfigAdapter {
       tarifas: {
         foraPonta: formData.tarifaForaPonta || 0.65,
         ponta: formData.tarifaPonta || 0.95,
-        demanda: formData.demanda || 0
       },
       te: {
         foraPonta: formData.teForaPonta || 0.40,

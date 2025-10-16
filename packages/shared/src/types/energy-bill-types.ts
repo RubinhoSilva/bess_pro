@@ -95,8 +95,7 @@ export interface EnergyBillB {
  *   },
  *   tarifas: {
  *     foraPonta: 0.65,
- *     ponta: 0.95,
- *     demanda: 45.00
+ *     ponta: 0.95
  *   },
  *   demandaContratada: 100,
  *   dataReferencia: '2025-01-15',
@@ -127,13 +126,7 @@ export interface EnergyBillA {
     
     /** Tarifa em ponta (R$/kWh) */
     ponta: number;
-    
-    /** Custo de demanda (R$/kW) */
-    demanda: number;
   };
-  
-  /** Demanda contratada (kW) */
-  demandaContratada?: number;
   
   /** Demanda medida no mês (kW) */
   demandaMedida?: CommonTypes.MonthlyData;
@@ -331,9 +324,6 @@ export function validateEnergyBillA(bill: any): { isValid: boolean; errors: stri
     if (typeof bill.tarifas.ponta !== 'number' || bill.tarifas.ponta <= 0) {
       errors.push('tarifas.ponta deve ser número positivo');
     }
-    if (typeof bill.tarifas.demanda !== 'number' || bill.tarifas.demanda < 0) {
-      errors.push('tarifas.demanda deve ser número não negativo');
-    }
   }
   
   return {
@@ -388,8 +378,6 @@ export function createEnergyBillA(data: {
   consumoPonta: number[] | CommonTypes.MonthlyData;
   tarifaForaPonta: number;
   tarifaPonta: number;
-  tarifaDemanda: number;
-  demandaContratada?: number;
   dataReferencia?: string;
   fornecedor?: string;
   subgrupo?: 'verde' | 'azul';
@@ -412,9 +400,7 @@ export function createEnergyBillA(data: {
     tarifas: {
       foraPonta: data.tarifaForaPonta,
       ponta: data.tarifaPonta,
-      demanda: data.tarifaDemanda
     },
-    ...(data.demandaContratada && { demandaContratada: data.demandaContratada }),
     ...(data.dataReferencia && { dataReferencia: data.dataReferencia }),
     ...(data.fornecedor && { fornecedor: data.fornecedor }),
     ...(data.subgrupo && { subgrupo: data.subgrupo })

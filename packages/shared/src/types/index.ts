@@ -132,7 +132,7 @@ export * from '../config/financial';
  *     console.log('Tipo de conexão:', config.tipoConexao);
  *   } else if (isGrupoAConfig(config)) {
  *     console.log('Configuração Grupo A - Tarifa ponta:', config.tarifas.ponta);
- *     console.log('Demanda contratada:', config.tarifas.demanda);
+
  *   }
  *   
  *   // Calcular totais anuais

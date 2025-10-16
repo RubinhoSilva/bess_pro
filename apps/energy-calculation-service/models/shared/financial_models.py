@@ -8,6 +8,108 @@ from typing import List, Dict, Optional, Any
 import re
 
 
+class FinancialInput(BaseModel):
+    """Modelo simplificado para entrada de dados financeiros"""
+    geracao_mensal: List[float]
+    consumo_mensal: List[float]
+    tarifa_energia: float
+    custo_fio_b: float
+    investimento_inicial: float
+    taxa_desconto: float
+    inflacao_energia: float
+    vida_util: int
+    degradacao_modulos: float
+    fator_simultaneidade: float
+    fio_b_schedule: Dict[int, float]
+    base_year: int
+    custo_om: float
+    inflacao_om: float
+    autoconsumo_remoto_b: bool = False
+    consumo_remoto_b_mensal: List[float] = []
+    tarifa_remoto_b: float = 0
+    fio_b_remoto_b: float = 0
+    perc_creditos_b: float = 0
+    autoconsumo_remoto_a_verde: bool = False
+    consumo_remoto_a_verde_fp_mensal: List[float] = []
+    consumo_remoto_a_verde_p_mensal: List[float] = []
+    tarifa_remoto_a_verde_fp: float = 0
+    tarifa_remoto_a_verde_p: float = 0
+    tusd_remoto_a_verde_fp: float = 0
+    tusd_remoto_a_verde_p: float = 0
+    te_ponta_a_verde: float = 0
+    te_fora_ponta_a_verde: float = 0
+    perc_creditos_a_verde: float = 0
+    autoconsumo_remoto_a_azul: bool = False
+    consumo_remoto_a_azul_fp_mensal: List[float] = []
+    consumo_remoto_a_azul_p_mensal: List[float] = []
+    tarifa_remoto_a_azul_fp: float = 0
+    tarifa_remoto_a_azul_p: float = 0
+    tusd_remoto_a_azul_fp: float = 0
+    tusd_remoto_a_azul_p: float = 0
+    te_ponta_a_azul: float = 0
+    te_fora_ponta_a_azul: float = 0
+    perc_creditos_a_azul: float = 0
+    
+    def copy(self):
+        """Cria uma cópia do objeto"""
+        return FinancialInput(**self.dict())
+
+
+class CashFlowDetails(BaseModel):
+    """Detalhes do fluxo de caixa anual"""
+    ano: int
+    geracao_anual: float
+    economia_energia: float
+    custos_om: float
+    fluxo_liquido: float
+    fluxo_acumulado: float
+    valor_presente: float
+
+
+class FinancialIndicators(BaseModel):
+    """Indicadores financeiros"""
+    yield_especifico: float
+    custo_nivelado_energia: float
+    eficiencia_investimento: float
+    retorno_sobre_investimento: float
+
+
+class SensitivityPoint(BaseModel):
+    """Ponto de análise de sensibilidade"""
+    parametro: float
+    vpl: float
+
+
+class SensitivityAnalysis(BaseModel):
+    """Análise de sensibilidade"""
+    vpl_variacao_tarifa: List[SensitivityPoint]
+    vpl_variacao_inflacao: List[SensitivityPoint]
+    vpl_variacao_desconto: List[SensitivityPoint]
+
+
+class ScenarioAnalysis(BaseModel):
+    """Análise de cenários"""
+    base: Dict[str, float]
+    otimista: Dict[str, float]
+    conservador: Dict[str, float]
+    pessimista: Dict[str, float]
+
+
+class AdvancedFinancialResults(BaseModel):
+    """Resultados financeiros avançados"""
+    vpl: float
+    tir: float
+    payback_simples: float
+    payback_descontado: float
+    economia_total_25_anos: float
+    economia_anual_media: float
+    lucratividade_index: float
+    cash_flow: List[CashFlowDetails]
+    indicadores: FinancialIndicators
+    sensibilidade: SensitivityAnalysis
+    cenarios: ScenarioAnalysis
+
+
 class ProjectFinancialsModel(BaseModel):
     """
     Modelo para parâmetros financeiros do projeto
@@ -165,13 +267,12 @@ class TarifasGrupoAModel(BaseModel):
     """
     Modelo para tarifas Grupo A
     
-    Estrutura completa de tarifas para consumidores do Grupo A incluindo
-    tarifas de energia, TUSD e demanda contratada.
+    Estrutura de tarifas para consumidores do Grupo A incluindo
+    tarifas de energia e TUSD.
     """
     
     fora_ponta: Dict[str, float] = Field(..., description="Tarifas fora ponta (te, tusd) em R$/kWh")
     ponta: Dict[str, float] = Field(..., description="Tarifas ponta (te, tusd) em R$/kWh")
-    demanda: Dict[str, float] = Field(..., description="Tarifas de demanda em R$/kW")
     
     @validator('fora_ponta', 'ponta')
     def validate_energy_tariffs(cls, v):
@@ -200,7 +301,7 @@ class GrupoBFinancialRequest(BaseModel):
     geracao: MonthlyDataModel = Field(..., description="Dados de geração mensal em kWh")
     consumo_local: MonthlyDataModel = Field(..., description="Dados de consumo local mensal em kWh")
     tarifa_base: float = Field(..., gt=0, description="Tarifa base de energia em R$/kWh")
-    tipo_conexao: str = Field(..., regex=r'^(Monofasico|Bifasico|Trifasico)$', description="Tipo de conexão")
+    tipo_conexao: str = Field(..., pattern=r'^(Monofasico|Bifasico|Trifasico)$', description="Tipo de conexão")
     fator_simultaneidade: float = Field(..., ge=0, le=1, description="Fator de simultaneidade")
     fio_b: FioBParamsModel = Field(..., description="Parâmetros do Fio B")
     remoto_b: RemoteConsumptionGrupoBModel = Field(..., description="Autoconsumo remoto Grupo B")
@@ -357,8 +458,7 @@ class GrupoAFinancialRequest(BaseModel):
                 },
                 "tarifas": {
                     "fora_ponta": {"te": 0.34334, "tusd": 0.16121},
-                    "ponta": {"te": 0.55158, "tusd": 1.6208},
-                    "demanda": {"fora_ponta": 28.45, "ponta": 85.35}
+                    "ponta": {"te": 0.55158, "tusd": 1.6208}
                 },
                 "te": {"foraPonta": 0.34334, "ponta": 0.55158},
                 "fator_simultaneidade_local": 0.35,

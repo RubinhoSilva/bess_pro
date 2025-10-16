@@ -91,13 +91,13 @@ export interface GrupoBConfig {
    */
   tarifaBase: number;
 
-  /** 
-   * Tipo de conexão elétrica da unidade
-   * @description Define a padrão de conexão e demanda mínima
-   * @options 'Monofasico' | 'Bifasico' | 'Trifasico'
-   * @usage Para dimensionamento de proteção e adequação à rede
-   * @pattern Residencial: Monofásico/Bifásico, Comercial: Trifásico
-   */
+   /** 
+    * Tipo de conexão elétrica da unidade
+    * @description Define o padrão de conexão
+    * @options 'Monofasico' | 'Bifasico' | 'Trifasico'
+    * @usage Para dimensionamento de proteção e adequação à rede
+    * @pattern Residencial: Monofásico/Bifásico, Comercial: Trifásico
+    */
   tipoConexao: 'Monofasico' | 'Bifasico' | 'Trifasico';
 
   /** 
@@ -170,7 +170,7 @@ export interface GrupoBConfig {
  *     foraPonta: { Jan: 3000, Fev: 3100, ..., Dez: 2900 },
  *     ponta: { Jan: 800, Fev: 850, ..., Dez: 750 }
  *   },
- *   tarifas: { foraPonta: 0.65, ponta: 0.95, demanda: 45.00 },
+ *   tarifas: { foraPonta: 0.65, ponta: 0.95 },
  *   te: { foraPonta: 0.40, ponta: 0.60 },
  *   fatorSimultaneidadeLocal: 0.85,
  *   fioB: { schedule: { 2025: 0.45, 2026: 0.60 }, baseYear: 2025 },
@@ -223,12 +223,11 @@ export interface GrupoAConfig {
      */
     foraPonta: CommonTypes.MonthlyData;
 
-    /** 
-     * Consumo mensal em ponta em kWh
-     * @description Consumo no período de ponta (3 horas diárias)
-     * @usage Horários de maior demanda do sistema
-     * @pattern Geralmente 10-30% do consumo total
-     */
+     /** 
+      * Consumo mensal em ponta em kWh
+      * @description Consumo no período de ponta (3 horas diárias)
+      * @pattern Geralmente 10-30% do consumo total
+      */
     ponta: CommonTypes.MonthlyData;
   };
 
@@ -253,14 +252,6 @@ export interface GrupoAConfig {
      * @example 0.95 para R$ 0,95/kWh (comercial típico)
      */
     ponta: number;
-
-    /** 
-     * Custo da demanda contratada em R$/kW
-     * @description Custo fixo pela potência contratada
-     * @usage Aplicado mesmo que não consuma a demanda total
-     * @example 45.00 para R$ 45,00/kW (demanda comercial)
-     */
-    demanda: number;
   };
 
   /** 
@@ -518,21 +509,6 @@ export function validateGrupoAConfig(config: any): { isValid: boolean; errors: s
     }
     if (!CommonTypes.validateMonthlyData(config.consumoLocal.ponta)) {
       errors.push('consumoLocal.ponta deve conter todos os meses com valores numéricos');
-    }
-  }
-
-  // Validação de tarifas (específico Grupo A)
-  if (!config.tarifas || typeof config.tarifas !== 'object') {
-    errors.push('tarifas é obrigatório');
-  } else {
-    if (typeof config.tarifas.foraPonta !== 'number' || config.tarifas.foraPonta <= 0) {
-      errors.push('tarifas.foraPonta deve ser número positivo');
-    }
-    if (typeof config.tarifas.ponta !== 'number' || config.tarifas.ponta <= 0) {
-      errors.push('tarifas.ponta deve ser número positivo');
-    }
-    if (typeof config.tarifas.demanda !== 'number' || config.tarifas.demanda < 0) {
-      errors.push('tarifas.demanda deve ser número não negativo');
     }
   }
 
