@@ -45,12 +45,12 @@ export interface ProjectData {
   // Tariff data
   grupoTarifario?: 'A' | 'B';
   subgrupoTarifario?: 'verde' | 'azul';
-  tarifaEnergiaB?: number;
-  custoFioB?: number;
-  tarifaEnergiaPontaA?: number;
-  tarifaEnergiaForaPontaA?: number;
-  tePontaA?: number; // TE Ponta (Diferente de Tarifa Ponta)
-  teForaPontaA?: number; // TE Fora Ponta (Diferente de Tarifa Fora Ponta)
+  tarifaEnergiaB?: number | null; // Tarifa de Energia para Grupo B
+  custoFioB?: number | null; // Custo Fio para Grupo B
+  tarifaEnergiaPontaA?: number | null; // Tarifa de Energia Ponta para Grupo A
+  tarifaEnergiaForaPontaA?: number | null; // Tarifa de Energia Fora Ponta para Grupo A
+  tePontaA?: number | null; // TE Ponta (Diferente de Tarifa Ponta)
+  teForaPontaA?: number | null; // TE Fora Ponta (Diferente de Tarifa Fora Ponta)
   fatorSimultaneidade?: number;
 
   // Financial data
