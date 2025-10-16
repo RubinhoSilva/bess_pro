@@ -23,14 +23,6 @@ const services = [
     gradient: 'from-yellow-500/20 to-orange-500/20',
   },
   {
-    title: 'Análise BESS',
-    description: 'Analise a viabilidade de Sistemas de Armazenamento de Energia.',
-    icon: <BarChart3 className="w-10 h-10 text-green-400" />,
-    path: '/dashboard/bess-analysis',
-    color: 'hover:border-green-400/50',
-    gradient: 'from-green-500/20 to-emerald-500/20',
-  },
-  {
     title: 'CRM de Vendas',
     description: 'Gerencie seu funil de vendas e leads de forma integrada.',
     icon: <Briefcase className="w-10 h-10 text-blue-400" />,

@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Zap, PlusCircle, Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { EnergyBillA, EnergyBillB, createEnergyBillA, createEnergyBillB } from '@/types/energy-bill-types';
@@ -108,11 +109,14 @@ const EnergyBillComponent: React.FC<{
 const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChange }) => {
   const energyBills = formData.energyBills || [];
   const energyBillsA = formData.energyBillsA || [];
+  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
 
-  const addNewBill = () => {
-    if (formData.grupoTarifario === 'A') {
+  const addNewBill = (tipo: 'A' | 'B') => {
+    const totalAccounts = energyBillsA.length + energyBills.length;
+    
+    if (tipo === 'A') {
       const newBill: EnergyBillA = createEnergyBillA({
-        name: energyBillsA.length === 0 ? 'Unidade Geradora' : `Conta ${energyBillsA.length + 1}`,
+        name: totalAccounts === 0 ? 'Unidade Geradora' : `Conta ${totalAccounts + 1}`,
         consumoMensalPonta: Array(12).fill(500),
         consumoMensalForaPonta: Array(12).fill(500)
       });
@@ -121,62 +125,75 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
       onFormChange('energyBillsA', updatedBills);
     } else {
       const newBill: EnergyBillB = createEnergyBillB({
-        name: energyBills.length === 0 ? 'Unidade Geradora' : `Conta ${energyBills.length + 1}`,
+        name: totalAccounts === 0 ? 'Unidade Geradora' : `Conta ${totalAccounts + 1}`,
         consumoMensal: Array(12).fill(500)
       });
       
       const updatedBills = [...energyBills, newBill];
       onFormChange('energyBills', updatedBills);
     }
+    setShowAddAccountModal(false);
   };
 
-  const updateBill = (id: string, field: string, value: any) => {
+  const addFirstBill = () => {
+    // Primeira conta segue o grupo escolhido em CustomerDataForm
     if (formData.grupoTarifario === 'A') {
-      const updatedBills = energyBillsA.map((bill: EnergyBillA) => 
-        bill.id === id ? value : bill  // Para EnergyBillA, value é o objeto completo
-      );
-      onFormChange('energyBillsA', updatedBills);
+      addNewBill('A');
     } else {
-      const updatedBills = energyBills.map((bill: EnergyBillB) => 
-        bill.id === id ? { ...bill, [field]: value } : bill
-      );
-      onFormChange('energyBills', updatedBills);
+      addNewBill('B');
     }
   };
 
-  const removeBill = (id: string) => {
-    if (formData.grupoTarifario === 'A') {
-      const updatedBills = energyBillsA.filter((bill: EnergyBillA) => bill.id !== id);
-      onFormChange('energyBillsA', updatedBills);
-    } else {
-      const updatedBills = energyBills.filter((bill: EnergyBillB) => bill.id !== id);
-      onFormChange('energyBills', updatedBills);
-    }
+  const updateBillA = (id: string, updatedBill: EnergyBillA) => {
+    const updatedBills = energyBillsA.map((bill: EnergyBillA) => 
+      bill.id === id ? updatedBill : bill
+    );
+    onFormChange('energyBillsA', updatedBills);
+  };
+
+  const updateBillB = (id: string, field: string, value: any) => {
+    const updatedBills = energyBills.map((bill: EnergyBillB) => 
+      bill.id === id ? { ...bill, [field]: value } : bill
+    );
+    onFormChange('energyBills', updatedBills);
+  };
+
+  const removeBillA = (id: string) => {
+    const updatedBills = energyBillsA.filter((bill: EnergyBillA) => bill.id !== id);
+    onFormChange('energyBillsA', updatedBills);
+  };
+
+  const removeBillB = (id: string) => {
+    const updatedBills = energyBills.filter((bill: EnergyBillB) => bill.id !== id);
+    onFormChange('energyBills', updatedBills);
   };
 
   // Calcular totais
   let totalAnualConsumption = 0;
   const monthlyTotals = Array(12).fill(0);
 
-  if (formData.grupoTarifario === 'A') {
-    energyBillsA.forEach((bill: EnergyBillA) => {
-      bill.consumoMensalPonta.forEach((consumption: number, index: number) => {
-        monthlyTotals[index] += consumption;
-        totalAnualConsumption += consumption;
-      });
-      bill.consumoMensalForaPonta.forEach((consumption: number, index: number) => {
-        monthlyTotals[index] += consumption;
-        totalAnualConsumption += consumption;
-      });
+  // Somar consumo do Grupo A
+  energyBillsA.forEach((bill: EnergyBillA) => {
+    bill.consumoMensalPonta.forEach((consumption: number, index: number) => {
+      monthlyTotals[index] += consumption;
+      totalAnualConsumption += consumption;
     });
-  } else {
-    energyBills.forEach((bill: EnergyBillB) => {
-      bill.consumoMensal.forEach((consumption: number, index: number) => {
-        monthlyTotals[index] += consumption;
-        totalAnualConsumption += consumption;
-      });
+    bill.consumoMensalForaPonta.forEach((consumption: number, index: number) => {
+      monthlyTotals[index] += consumption;
+      totalAnualConsumption += consumption;
     });
-  }
+  });
+
+  // Somar consumo do Grupo B
+  energyBills.forEach((bill: EnergyBillB) => {
+    bill.consumoMensal.forEach((consumption: number, index: number) => {
+      monthlyTotals[index] += consumption;
+      totalAnualConsumption += consumption;
+    });
+  });
+
+  // Verificar se já existe alguma conta
+  const hasAnyAccount = energyBillsA.length > 0 || energyBills.length > 0;
 
   return (
     <Card className="bg-card border border-border shadow-lg">
@@ -192,55 +209,137 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
             Configure uma ou mais contas de energia para dimensionar o sistema.
           </p>
           <Button 
-            onClick={addNewBill} 
+            onClick={hasAnyAccount ? () => setShowAddAccountModal(true) : addFirstBill} 
             variant="outline" 
             size="sm"
             className="border-green-500 text-green-600 hover:bg-green-50"
           >
             <PlusCircle className="w-4 h-4 mr-2" />
-            Adicionar Conta
+            {hasAnyAccount ? 'Adicionar Outra Conta' : 'Adicionar Conta'}
           </Button>
         </div>
 
+        {/* Seção do grupo selecionado na step 1 aparece primeiro */}
         {formData.grupoTarifario === 'A' ? (
-          energyBillsA.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Zap className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>Nenhuma conta de energia Grupo A adicionada.</p>
-              <p className="text-sm">Clique em "Adicionar Conta" para começar.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {energyBillsA.map((bill: EnergyBillA) => (
-                <EnergyBillComponentA
-                  key={bill.id}
-                  bill={bill}
-                  onUpdate={(updatedBill) => updateBill(bill.id, 'updated', updatedBill)}
-                  onRemove={() => removeBill(bill.id)}
-                />
-              ))}
-            </div>
-          )
+          <>
+            {/* Seção Grupo A */}
+            {energyBillsA.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-700">Contas Grupo A (Alta Tensão)</h3>
+                {energyBillsA.map((bill: EnergyBillA) => (
+                  <EnergyBillComponentA
+                    key={bill.id}
+                    bill={bill}
+                    onUpdate={updateBillA}
+                    onRemove={removeBillA}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Seção Grupo B */}
+            {energyBills.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-700">Contas Grupo B (Residencial/Comercial)</h3>
+                <div className="space-y-4">
+                  {energyBills.map((bill: EnergyBillB) => (
+                    <EnergyBillComponent
+                      key={bill.id}
+                      bill={bill}
+                      onBillChange={updateBillB}
+                      onRemoveBill={removeBillB}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         ) : (
-          energyBills.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Zap className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>Nenhuma conta de energia adicionada.</p>
-              <p className="text-sm">Clique em "Adicionar Conta" para começar.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {energyBills.map((bill: EnergyBillB) => (
-                <EnergyBillComponent
-                  key={bill.id}
-                  bill={bill}
-                  onBillChange={updateBill}
-                  onRemoveBill={removeBill}
-                />
-              ))}
-            </div>
-          )
+          <>
+            {/* Seção Grupo B */}
+            {energyBills.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-700">Contas Grupo B (Residencial/Comercial)</h3>
+                <div className="space-y-4">
+                  {energyBills.map((bill: EnergyBillB) => (
+                    <EnergyBillComponent
+                      key={bill.id}
+                      bill={bill}
+                      onBillChange={updateBillB}
+                      onRemoveBill={removeBillB}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Seção Grupo A */}
+            {energyBillsA.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-700">Contas Grupo A (Alta Tensão)</h3>
+                {energyBillsA.map((bill: EnergyBillA) => (
+                  <EnergyBillComponentA
+                    key={bill.id}
+                    bill={bill}
+                    onUpdate={updateBillA}
+                    onRemove={removeBillA}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
+
+        {/* Estado vazio */}
+        {!hasAnyAccount && (
+          <div className="text-center py-8 text-gray-500">
+            <Zap className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <p>Nenhuma conta de energia adicionada.</p>
+            <p className="text-sm">Clique em "Adicionar Conta" para começar.</p>
+          </div>
+        )}
+
+        {/* Modal para selecionar tipo de conta adicional */}
+        <Dialog open={showAddAccountModal} onOpenChange={setShowAddAccountModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-center">Adicionar Nova Conta</DialogTitle>
+              <p className="text-sm text-gray-600 text-center mt-2">
+                Selecione o tipo de conta de energia que deseja adicionar
+              </p>
+            </DialogHeader>
+            <div className="grid grid-cols-1 gap-4 mt-6">
+              <Button 
+                onClick={() => addNewBill('A')} 
+                className="h-auto p-6 flex flex-col items-center space-y-3 hover:bg-blue-50 hover:border-blue-300 border-2"
+                variant="outline"
+              >
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-lg">Grupo A</div>
+                  <div className="text-sm text-gray-600">Alta Tensão</div>
+                  <div className="text-xs text-gray-500 mt-1">Consumo ponta e fora ponta</div>
+                </div>
+              </Button>
+              <Button 
+                onClick={() => addNewBill('B')} 
+                className="h-auto p-6 flex flex-col items-center space-y-3 hover:bg-green-50 hover:border-green-300 border-2"
+                variant="outline"
+              >
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-lg">Grupo B</div>
+                  <div className="text-sm text-gray-600">Residencial/Comercial</div>
+                  <div className="text-xs text-gray-500 mt-1">Consumo único</div>
+                </div>
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Resumo Total */}
         {totalAnualConsumption > 0 && (

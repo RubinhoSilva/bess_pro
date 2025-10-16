@@ -47,12 +47,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ProjectType, ProjectSummary, Project, PVDimensioning, BESSAnalysis } from '@/types/project';
+import { ProjectType, ProjectSummary, Project } from '@/types/project';
 import { useToast } from '@/components/ui/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useProjects, useDeleteProject, useCloneProject, useProject, useCreateProject } from '@/hooks/project-hooks';
+import { useProjects, useDeleteProject, useCloneProject, useCreateProject } from '@/hooks/project-hooks';
 import ProjectDetailView from '@/components/projects/ProjectDetailView';
-import ProjectForm from '@/components/projects/ProjectForm';
 import { ProposalGenerator } from '@/components/proposal/ProposalGenerator';
 import { useClients } from '@/hooks/client-hooks';
 import { useLeads } from '@/hooks/lead-hooks';
@@ -91,7 +90,7 @@ const ProjectsDashboard: React.FC = () => {
   const getProjectStats = () => {
     const total = projects.length;
     const totalPVDimensionings = projects.reduce((sum, project) => sum + (project.totalPVDimensionings || 0), 0);
-    const totalBESSAnalyses = projects.reduce((sum, project) => sum + (project.totalBESSAnalyses || 0), 0);
+    const totalBESSAnalyses = 0;
     
     // Calcular itens criados este mês
     const thisMonth = new Date();
@@ -355,7 +354,6 @@ const ProjectsDashboard: React.FC = () => {
         project={selectedProject}
         onBack={() => setSelectedProject(null)}
         onDeletePVDimensioning={handleDeletePVDimensioning}
-        onDeleteBESSAnalysis={handleDeleteBESSAnalysis}
       />
     );
   }

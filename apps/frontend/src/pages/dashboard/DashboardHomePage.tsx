@@ -499,8 +499,6 @@ export default function DashboardHomePage() {
                 className="h-20 flex-col gap-2"
                 onClick={() => navigate('/dashboard/bess-analysis')}
               >
-                <Battery className="h-6 w-6" />
-                <span className="text-sm">Análise BESS</span>
               </Button>
               
               <Button 

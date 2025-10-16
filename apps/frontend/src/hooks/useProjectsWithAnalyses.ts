@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { Project, ProjectSummary, PVDimensioning, BESSAnalysis, CreateProjectData, UpdateProjectData } from '@/types/project';
+import { Project, ProjectSummary, PVDimensioning, CreateProjectData, UpdateProjectData } from '@/types/project';
 import { apiClient } from '../lib/api';
 
 interface UseProjectsWithAnalysesReturn {
@@ -20,12 +20,7 @@ interface UseProjectsWithAnalysesReturn {
   updatePVDimensioning: (projectId: string, dimensioningId: string, data: Partial<PVDimensioning>) => Promise<PVDimensioning | null>;
   deletePVDimensioning: (projectId: string, dimensioningId: string) => Promise<boolean>;
   duplicatePVDimensioning: (projectId: string, dimensioningId: string) => Promise<PVDimensioning | null>;
-  
-  // Operations for BESS analyses
-  createBESSAnalysis: (projectId: string, data: Partial<BESSAnalysis>) => Promise<BESSAnalysis | null>;
-  updateBESSAnalysis: (projectId: string, analysisId: string, data: Partial<BESSAnalysis>) => Promise<BESSAnalysis | null>;
-  deleteBESSAnalysis: (projectId: string, analysisId: string) => Promise<boolean>;
-  duplicateBESSAnalysis: (projectId: string, analysisId: string) => Promise<BESSAnalysis | null>;
+
   
   // Utility functions
   refreshProjects: () => Promise<void>;
@@ -243,40 +238,16 @@ export const useProjectsWithAnalyses = (): UseProjectsWithAnalysesReturn => {
     return false;
   }, [toast]);
 
-  // BESS Analysis Operations (stubs - implementar quando API estiver disponível)
-  const createBESSAnalysis = useCallback(async (
-    projectId: string,
-    data: Partial<BESSAnalysis>
-  ): Promise<BESSAnalysis | null> => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "Análises BESS serão implementadas em breve."
-    });
-    return null;
-  }, [toast]);
-
-  const deleteBESSAnalysis = useCallback(async (
-    projectId: string,
-    analysisId: string
-  ): Promise<boolean> => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "Exclusão de análises BESS será implementada em breve."
-    });
-    return false;
-  }, [toast]);
-
   // Utility functions
   const getProjectStats = useCallback(() => {
     const totalProjects = projects.length;
-    const totalPVDimensionings = projects.reduce((sum, p) => sum + (p.totalPVDimensionings || 0), 0);
-    const totalBESSAnalyses = projects.reduce((sum, p) => sum + (p.totalBESSAnalyses || 0), 0);
-    const avgAnalysesPerProject = totalProjects > 0 ? (totalPVDimensionings + totalBESSAnalyses) / totalProjects : 0;
+    const totalPVDimensionings = projects.reduce((sum,p) => sum + (p.totalPVDimensionings || 0), 0);
+    const avgAnalysesPerProject = totalProjects > 0 ? (totalPVDimensionings / totalProjects : 0;
     
     return {
       totalProjects,
       totalPVDimensionings,
-      totalBESSAnalyses,
+      totalBESSAnalyses: 0, // Placeholder, implementar quando análises BESS estiverem disponíveis
       avgAnalysesPerProject
     };
   }, [projects]);
@@ -284,8 +255,6 @@ export const useProjectsWithAnalyses = (): UseProjectsWithAnalysesReturn => {
   // Implementações simplificadas para outras operações
   const updatePVDimensioning = useCallback(async () => null, []);
   const duplicatePVDimensioning = useCallback(async () => null, []);
-  const updateBESSAnalysis = useCallback(async () => null, []);
-  const duplicateBESSAnalysis = useCallback(async () => null, []);
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -305,10 +274,6 @@ export const useProjectsWithAnalyses = (): UseProjectsWithAnalysesReturn => {
     updatePVDimensioning,
     deletePVDimensioning,
     duplicatePVDimensioning,
-    createBESSAnalysis,
-    updateBESSAnalysis,
-    deleteBESSAnalysis,
-    duplicateBESSAnalysis,
     refreshProjects,
     getProjectStats
   };

@@ -216,18 +216,18 @@ const LeadsPage = () => {
 
   const handleCreateBESSAnalysis = (lead: Lead) => {
     // Navegar para análise BESS com lead pré-selecionado
-    navigate('/dashboard/bess-analysis', { 
-      state: { 
-        selectedLead: {
-          id: lead.id,
-          name: lead.name,
-          email: lead.email,
-          phone: lead.phone,
-          company: lead.company,
-          type: 'lead'
-        }
-      }
-    });
+    // navigate('/dashboard/bess-analysis', { 
+    //   state: { 
+    //     selectedLead: {
+    //       id: lead.id,
+    //       name: lead.name,
+    //       email: lead.email,
+    //       phone: lead.phone,
+    //       company: lead.company,
+    //       type: 'lead'
+    //     }
+    //   }
+    // });
   };
 
   const confirmDelete = async () => {

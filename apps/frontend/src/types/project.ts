@@ -1,5 +1,6 @@
 export enum ProjectType {
   PV = 'pv',
+  BESS = 'bess',
   HYBRID = 'hybrid',
 }
 

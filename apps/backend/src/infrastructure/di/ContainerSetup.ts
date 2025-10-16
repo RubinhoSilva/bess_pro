@@ -34,7 +34,6 @@ import { S3FileStorageService } from '../storage/S3FileStorageService';
 import { PvgisApiService } from '../external-apis/PvgisApiService';
 import { PaymentGatewayService } from '../external-apis/PaymentGatewayService';
 import { SimplePvlibServiceClient } from '../external-apis/SimplePvlibServiceClient';
-import { BessCalculationClient } from '../external-services/BessCalculationClient';
 
 // Domain Services
 import { ProjectDomainService } from '../../domain/services/ProjectDomainService';
@@ -290,16 +289,6 @@ export class ContainerSetup {
 
       console.log('🔧 SimplePvlibServiceClient config:', { baseUrl: pvlibUrl });
       return new SimplePvlibServiceClient(pvlibUrl);
-    }, true);
-
-    // BessCalculationClient (Python BESS Calculation Service)
-    // Cliente para cálculos de sistemas híbridos Solar + BESS
-    // Usa o mesmo endpoint do energy-calculation-service (mesma URL do PVLIB)
-    container.registerFactory(ServiceTokens.BESS_CALCULATION_CLIENT, () => {
-      const bessUrl = config.externalApis.energyService?.baseUrl || process.env.ENERGY_SERVICE_URL || 'http://host.docker.internal:8110';
-
-      console.log('🔧 BessCalculationClient config:', { baseUrl: bessUrl });
-      return new BessCalculationClient(bessUrl);
     }, true);
 
     // Domain Services (Singletons)
