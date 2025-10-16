@@ -242,7 +242,7 @@ export const useProjectsWithAnalyses = (): UseProjectsWithAnalysesReturn => {
   const getProjectStats = useCallback(() => {
     const totalProjects = projects.length;
     const totalPVDimensionings = projects.reduce((sum,p) => sum + (p.totalPVDimensionings || 0), 0);
-    const avgAnalysesPerProject = totalProjects > 0 ? (totalPVDimensionings / totalProjects : 0;
+    const avgAnalysesPerProject = totalProjects > 0 ? (totalPVDimensionings / totalProjects) : 0;
     
     return {
       totalProjects,
