@@ -1,163 +1,586 @@
 """
-Modelos para cálculos financeiros de sistemas fotovoltaicos
+Modelos Pydantic para cálculos financeiros de sistemas fotovoltaicos
+Grupo A e Grupo B
 """
 
 from pydantic import BaseModel, Field, validator
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
+import re
 
-class FinancialInput(BaseModel):
-    """Dados de entrada para análise financeira"""
-    
-    # Investimento
-    investimento_inicial: float = Field(..., description="Investimento inicial em R$")
-    
-    # Geração e consumo
-    geracao_mensal: List[float] = Field(..., description="Geração mensal em kWh (12 valores)")
-    consumo_mensal: List[float] = Field(..., description="Consumo mensal em kWh (12 valores)")
-    
-    # Tarifas
-    tarifa_energia: float = Field(..., description="Tarifa de energia em R$/kWh")
-    custo_fio_b: float = Field(..., description="Custo do fio B em R$/kWh")
-    
-    # Parâmetros temporais
-    vida_util: int = Field(default=25, description="Vida útil do sistema em anos")
-    taxa_desconto: float = Field(default=8.0, description="Taxa de desconto anual em %")
-    inflacao_energia: float = Field(default=4.5, description="Inflação da tarifa de energia em %")
-    
-    # Parâmetros opcionais
-    degradacao_modulos: float = Field(default=0.5, description="Degradação anual dos módulos em %")
-    custo_om: float = Field(default=0, description="Custo anual de O&M em R$")
-    inflacao_om: float = Field(default=4.0, description="Inflação dos custos de O&M em %")
-    
-    # Simultaneidade
-    fator_simultaneidade: float = Field(default=0.25, description="Fator de simultaneidade (autoconsumo instantâneo)")
-    
-    # Lei 14.300
-    fio_b_schedule: Dict[int, float] = Field(default={2025: 0.45, 2026: 0.60, 2027: 0.75, 2028: 0.90}, description="Cronograma Lei 14.300 - % Fio B não compensado")
-    base_year: int = Field(default=2025, description="Ano base para cronograma Lei 14.300")
-    
-    # Autoconsumo remoto Grupo B
-    autoconsumo_remoto_b: bool = Field(default=False, description="Habilitar autoconsumo remoto Grupo B")
-    consumo_remoto_b_mensal: List[float] = Field(default=[0.0] * 12, description="Consumo remoto Grupo B mensal em kWh")
-    tarifa_remoto_b: float = Field(default=0.84, description="Tarifa remoto Grupo B em R$/kWh")
-    fio_b_remoto_b: float = Field(default=0.25, description="Fio B remoto Grupo B em R$/kWh")
-    perc_creditos_b: float = Field(default=0.40, description="% créditos destinados ao Grupo B")
-    
-    # Autoconsumo remoto Grupo A Verde
-    autoconsumo_remoto_a_verde: bool = Field(default=False, description="Habilitar autoconsumo remoto Grupo A Verde")
-    consumo_remoto_a_verde_fp_mensal: List[float] = Field(default=[0.0] * 12, description="Consumo remoto A Verde fora ponta mensal em kWh")
-    consumo_remoto_a_verde_p_mensal: List[float] = Field(default=[0.0] * 12, description="Consumo remoto A Verde ponta mensal em kWh")
-    tarifa_remoto_a_verde_fp: float = Field(default=0.48, description="Tarifa remoto A Verde fora ponta em R$/kWh")
-    tarifa_remoto_a_verde_p: float = Field(default=2.20, description="Tarifa remoto A Verde ponta em R$/kWh")
-    tusd_remoto_a_verde_fp: float = Field(default=0.16121, description="TUSD remoto A Verde fora ponta em R$/kWh")
-    tusd_remoto_a_verde_p: float = Field(default=1.6208, description="TUSD remoto A Verde ponta em R$/kWh")
-    te_ponta_a_verde: float = Field(default=0.55158, description="TE ponta A Verde em R$/kWh")
-    te_fora_ponta_a_verde: float = Field(default=0.34334, description="TE fora ponta A Verde em R$/kWh")
-    perc_creditos_a_verde: float = Field(default=0.30, description="% créditos destinados ao A Verde")
-    
-    # Autoconsumo remoto Grupo A Azul
-    autoconsumo_remoto_a_azul: bool = Field(default=False, description="Habilitar autoconsumo remoto Grupo A Azul")
-    consumo_remoto_a_azul_fp_mensal: List[float] = Field(default=[0.0] * 12, description="Consumo remoto A Azul fora ponta mensal em kWh")
-    consumo_remoto_a_azul_p_mensal: List[float] = Field(default=[0.0] * 12, description="Consumo remoto A Azul ponta mensal em kWh")
-    tarifa_remoto_a_azul_fp: float = Field(default=0.48, description="Tarifa remoto A Azul fora ponta em R$/kWh")
-    tarifa_remoto_a_azul_p: float = Field(default=2.20, description="Tarifa remoto A Azul ponta em R$/kWh")
-    tusd_remoto_a_azul_fp: float = Field(default=0.16121, description="TUSD remoto A Azul fora ponta em R$/kWh")
-    tusd_remoto_a_azul_p: float = Field(default=1.6208, description="TUSD remoto A Azul ponta em R$/kWh")
-    te_ponta_a_azul: float = Field(default=0.55158, description="TE ponta A Azul em R$/kWh")
-    te_fora_ponta_a_azul: float = Field(default=0.34334, description="TE fora ponta A Azul em R$/kWh")
-    perc_creditos_a_azul: float = Field(default=0.30, description="% créditos destinados ao A Azul")
-    
-    # Tarifa branca (opcional)
-    tarifa_branca: Optional[Dict[str, float]] = Field(None, description="Tarifas por horário")
-    modalidade_tarifaria: str = Field(default="convencional", description="Modalidade tarifária")
-    
-    @validator('perc_creditos_a_azul')
-    def validate_percentuais_somam_100(cls, v, values):
-        """
-        Valida que soma dos percentuais de distribuicao de creditos e 100%
-        """
-        perc_b = values.get('perc_creditos_b', 0)
-        perc_verde = values.get('perc_creditos_a_verde', 0)
-        total = perc_b + perc_verde + v
 
-        # Tolerancia de 1% para evitar problemas de precisao float
-        if abs(total - 1.0) > 0.01:
-            raise ValueError(
-                "Soma dos percentuais de creditos deve ser 100%. "
-                "Configuracao atual: "
-                "Grupo B = {:.1f}%, "
-                "Grupo A Verde = {:.1f}%, "
-                "Grupo A Azul = {:.1f}% "
-                "-> Total = {:.1f}%".format(
-                    perc_b * 100,
-                    perc_verde * 100,
-                    v * 100,
-                    total * 100
-                )
-            )
+class ProjectFinancialsModel(BaseModel):
+    """
+    Modelo para parâmetros financeiros do projeto
+    
+    Contém todos os parâmetros financeiros necessários para análise de viabilidade
+    de sistemas fotovoltaicos, incluindo custos, taxas e parâmetros econômicos.
+    """
+    
+    capex: float = Field(..., gt=0, description="Investimento inicial em R$")
+    anos: int = Field(default=25, ge=1, le=50, description="Vida útil do projeto em anos")
+    taxa_desconto: float = Field(..., ge=0, le=100, description="Taxa de desconto anual em %")
+    inflacao_energia: float = Field(..., ge=0, le=100, description="Inflação anual da tarifa de energia em %")
+    degradacao: float = Field(default=0.5, ge=0, le=5, description="Taxa de degradação anual dos módulos em %")
+    salvage_pct: float = Field(default=0.1, ge=0, le=1, description="Percentual de valor residual no final do projeto")
+    oma_first_pct: float = Field(default=0.015, ge=0, le=0.1, description="Percentual de O&M no primeiro ano")
+    oma_inflacao: float = Field(default=4.0, ge=0, le=100, description="Inflação anual dos custos de O&M em %")
 
+
+class MonthlyDataModel(BaseModel):
+    """
+    Modelo para dados mensais de consumo ou geração
+    
+    Armazena valores mensais para um ano completo, permitindo análise sazonal
+    de consumo e geração de energia.
+    """
+    
+    jan: float = Field(..., ge=0, description="Valor para janeiro em kWh")
+    fev: float = Field(..., ge=0, description="Valor para fevereiro em kWh")
+    mar: float = Field(..., ge=0, description="Valor para março em kWh")
+    abr: float = Field(..., ge=0, description="Valor para abril em kWh")
+    mai: float = Field(..., ge=0, description="Valor para maio em kWh")
+    jun: float = Field(..., ge=0, description="Valor para junho em kWh")
+    jul: float = Field(..., ge=0, description="Valor para julho em kWh")
+    ago: float = Field(..., ge=0, description="Valor para agosto em kWh")
+    set: float = Field(..., ge=0, description="Valor para setembro em kWh")
+    out: float = Field(..., ge=0, description="Valor para outubro em kWh")
+    nov: float = Field(..., ge=0, description="Valor para novembro em kWh")
+    dez: float = Field(..., ge=0, description="Valor para dezembro em kWh")
+    
+    @validator('*')
+    def validate_non_negative(cls, v):
+        """Valida que todos os valores são não-negativos"""
+        if v < 0:
+            raise ValueError("Valores mensais devem ser não-negativos")
+        return v
+    
+    def to_list(self) -> List[float]:
+        """Converte para lista de valores mensais"""
+        return [
+            self.jan, self.fev, self.mar, self.abr, self.mai, self.jun,
+            self.jul, self.ago, self.set, self.out, self.nov, self.dez
+        ]
+    
+    @classmethod
+    def from_list(cls, values: List[float]) -> 'MonthlyDataModel':
+        """Cria instância a partir de lista de 12 valores"""
+        if len(values) != 12:
+            raise ValueError("Lista deve conter exatamente 12 valores mensais")
+        
+        months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 
+                 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+        data = dict(zip(months, values))
+        return cls(**data)
+
+
+class FioBParamsModel(BaseModel):
+    """
+    Modelo para parâmetros do Fio B (Lei 14.300/2022)
+    
+    Define o cronograma de compensação do Fio B conforme a legislação,
+    permitindo simulação da transição gradual do sistema de compensação.
+    """
+    
+    schedule: Dict[int, float] = Field(..., description="Cronograma de percentual do Fio B não compensado por ano")
+    base_year: int = Field(..., description="Ano base para o cronograma")
+    
+    @validator('schedule')
+    def validate_schedule(cls, v):
+        """Valida estrutura e valores do cronograma"""
+        if not v:
+            raise ValueError("Cronograma não pode ser vazio")
+        
+        for year, percentage in v.items():
+            if not isinstance(year, int) or year < 2000 or year > 2100:
+                raise ValueError(f"Ano inválido: {year}")
+            if not isinstance(percentage, (int, float)) or percentage < 0 or percentage > 1:
+                raise ValueError(f"Percentual inválido para ano {year}: {percentage}")
+        
         return v
 
-class CashFlowDetails(BaseModel):
-    """Detalhes do fluxo de caixa anual"""
+
+class RemoteConsumptionGrupoBModel(BaseModel):
+    """
+    Modelo para autoconsumo remoto Grupo B
+    
+    Configuração para simulação de autoconsumo remoto para consumidores
+    do Grupo B (residencial, rural e outras baixas tensões).
+    """
+    
+    enabled: bool = Field(default=False, description="Habilitar autoconsumo remoto Grupo B")
+    percentage: float = Field(..., ge=0, le=100, description="Percentual de créditos destinados ao Grupo B")
+    data: MonthlyDataModel = Field(..., description="Dados de consumo mensal remoto em kWh")
+    tarifa_total: float = Field(..., gt=0, description="Tarifa total de energia em R$/kWh")
+    fio_b_value: float = Field(..., ge=0, description="Valor do Fio B em R$/kWh")
+
+
+class RemoteConsumptionGrupoAModel(BaseModel):
+    """
+    Modelo para autoconsumo remoto Grupo A
+    
+    Configuração para simulação de autoconsumo remoto para consumidores
+    do Grupo A (média e alta tensão) com tarifação horossazonal.
+    """
+    
+    enabled: bool = Field(default=False, description="Habilitar autoconsumo remoto Grupo A")
+    percentage: float = Field(..., ge=0, le=100, description="Percentual de créditos destinados ao Grupo A")
+    data_off_peak: MonthlyDataModel = Field(..., description="Consumo fora ponta mensal em kWh")
+    data_peak: MonthlyDataModel = Field(..., description="Consumo ponta mensal em kWh")
+    tarifas: Dict[str, float] = Field(..., description="Tarifas de energia (offPeak, peak) em R$/kWh")
+    tusd: Dict[str, float] = Field(..., description="TUSD (offPeak, peak) em R$/kWh")
+    te: Dict[str, float] = Field(..., description="TE (offPeak, peak) em R$/kWh")
+    
+    @validator('tarifas', 'tusd', 'te')
+    def validate_tariff_structure(cls, v):
+        """Valida estrutura dos dicionários de tarifas"""
+        required_keys = {'offPeak', 'peak'}
+        
+        if not isinstance(v, dict):
+            raise ValueError("Tarifas devem ser um dicionário")
+        
+        missing_keys = required_keys - set(v.keys())
+        if missing_keys:
+            raise ValueError(f"Chaves obrigatórias ausentes: {missing_keys}")
+        
+        for key, value in v.items():
+            if not isinstance(value, (int, float)) or value < 0:
+                raise ValueError(f"Valor inválido para {key}: {value}")
+        
+        return v
+
+
+class ConsumoLocalGrupoAModel(BaseModel):
+    """
+    Modelo para consumo local Grupo A
+    
+    Dados de consumo local para consumidores do Grupo A com separação
+    entre períodos fora ponta e ponta.
+    """
+    
+    fora_ponta: MonthlyDataModel = Field(..., description="Consumo fora ponta mensal em kWh")
+    ponta: MonthlyDataModel = Field(..., description="Consumo ponta mensal em kWh")
+
+
+class TarifasGrupoAModel(BaseModel):
+    """
+    Modelo para tarifas Grupo A
+    
+    Estrutura completa de tarifas para consumidores do Grupo A incluindo
+    tarifas de energia, TUSD e demanda contratada.
+    """
+    
+    fora_ponta: Dict[str, float] = Field(..., description="Tarifas fora ponta (te, tusd) em R$/kWh")
+    ponta: Dict[str, float] = Field(..., description="Tarifas ponta (te, tusd) em R$/kWh")
+    demanda: Dict[str, float] = Field(..., description="Tarifas de demanda em R$/kW")
+    
+    @validator('fora_ponta', 'ponta')
+    def validate_energy_tariffs(cls, v):
+        """Valida estrutura das tarifas de energia"""
+        required_keys = {'te', 'tusd'}
+        
+        if not isinstance(v, dict):
+            raise ValueError("Tarifas devem ser um dicionário")
+        
+        missing_keys = required_keys - set(v.keys())
+        if missing_keys:
+            raise ValueError(f"Chaves obrigatórias ausentes: {missing_keys}")
+        
+        return v
+
+
+class GrupoBFinancialRequest(BaseModel):
+    """
+    Request para cálculo financeiro Grupo B
+    
+    Estrutura completa de dados para análise financeira de consumidores
+    do Grupo B (residencial, rural e outras baixas tensões).
+    """
+    
+    financeiros: ProjectFinancialsModel = Field(..., description="Parâmetros financeiros do projeto")
+    geracao: MonthlyDataModel = Field(..., description="Dados de geração mensal em kWh")
+    consumo_local: MonthlyDataModel = Field(..., description="Dados de consumo local mensal em kWh")
+    tarifa_base: float = Field(..., gt=0, description="Tarifa base de energia em R$/kWh")
+    tipo_conexao: str = Field(..., regex=r'^(Monofasico|Bifasico|Trifasico)$', description="Tipo de conexão")
+    fator_simultaneidade: float = Field(..., ge=0, le=1, description="Fator de simultaneidade")
+    fio_b: FioBParamsModel = Field(..., description="Parâmetros do Fio B")
+    remoto_b: RemoteConsumptionGrupoBModel = Field(..., description="Autoconsumo remoto Grupo B")
+    remoto_a_verde: RemoteConsumptionGrupoAModel = Field(..., description="Autoconsumo remoto Grupo A Verde")
+    remoto_a_azul: RemoteConsumptionGrupoAModel = Field(..., description="Autoconsumo remoto Grupo A Azul")
+    
+    @validator('remoto_b', 'remoto_a_verde', 'remoto_a_azul')
+    def validate_remote_percentages_sum(cls, v, values):
+        """Valida que soma dos percentuais remotos não ultrapassa 100%"""
+        # Esta validação será feita em nível de request completo
+        return v
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "financeiros": {
+                    "capex": 50000.0,
+                    "anos": 25,
+                    "taxa_desconto": 8.0,
+                    "inflacao_energia": 4.5,
+                    "degradacao": 0.5,
+                    "salvage_pct": 0.1,
+                    "oma_first_pct": 0.015,
+                    "oma_inflacao": 4.0
+                },
+                "geracao": {
+                    "jan": 450, "fev": 420, "mar": 480, "abr": 460,
+                    "mai": 430, "jun": 400, "jul": 410, "ago": 440,
+                    "set": 470, "out": 490, "nov": 465, "dez": 455
+                },
+                "consumo_local": {
+                    "jan": 350, "fev": 320, "mar": 380, "abr": 360,
+                    "mai": 330, "jun": 300, "jul": 310, "ago": 340,
+                    "set": 370, "out": 390, "nov": 365, "dez": 355
+                },
+                "tarifa_base": 0.85,
+                "tipo_conexao": "Monofasico",
+                "fator_simultaneidade": 0.25,
+                "fio_b": {
+                    "schedule": {2025: 0.45, 2026: 0.60, 2027: 0.75, 2028: 0.90},
+                    "base_year": 2025
+                },
+                "remoto_b": {
+                    "enabled": True,
+                    "percentage": 40.0,
+                    "data": {
+                        "jan": 100, "fev": 95, "mar": 105, "abr": 100,
+                        "mai": 90, "jun": 85, "jul": 88, "ago": 95,
+                        "set": 102, "out": 108, "nov": 98, "dez": 92
+                    },
+                    "tarifa_total": 0.84,
+                    "fio_b_value": 0.25
+                },
+                "remoto_a_verde": {
+                    "enabled": False,
+                    "percentage": 30.0,
+                    "data_off_peak": {
+                        "jan": 50, "fev": 48, "mar": 52, "abr": 50,
+                        "mai": 45, "jun": 42, "jul": 44, "ago": 48,
+                        "set": 51, "out": 54, "nov": 49, "dez": 46
+                    },
+                    "data_peak": {
+                        "jan": 20, "fev": 19, "mar": 21, "abr": 20,
+                        "mai": 18, "jun": 17, "jul": 18, "ago": 19,
+                        "set": 20, "out": 22, "nov": 20, "dez": 18
+                    },
+                    "tarifas": {"offPeak": 0.48, "peak": 2.20},
+                    "tusd": {"offPeak": 0.16121, "peak": 1.6208},
+                    "te": {"offPeak": 0.34334, "peak": 0.55158}
+                },
+                "remoto_a_azul": {
+                    "enabled": False,
+                    "percentage": 30.0,
+                    "data_off_peak": {
+                        "jan": 50, "fev": 48, "mar": 52, "abr": 50,
+                        "mai": 45, "jun": 42, "jul": 44, "ago": 48,
+                        "set": 51, "out": 54, "nov": 49, "dez": 46
+                    },
+                    "data_peak": {
+                        "jan": 20, "fev": 19, "mar": 21, "abr": 20,
+                        "mai": 18, "jun": 17, "jul": 18, "ago": 19,
+                        "set": 20, "out": 22, "nov": 20, "dez": 18
+                    },
+                    "tarifas": {"offPeak": 0.48, "peak": 2.20},
+                    "tusd": {"offPeak": 0.16121, "peak": 1.6208},
+                    "te": {"offPeak": 0.34334, "peak": 0.55158}
+                }
+            }
+        }
+
+
+class GrupoAFinancialRequest(BaseModel):
+    """
+    Request para cálculo financeiro Grupo A
+    
+    Estrutura completa de dados para análise financeira de consumidores
+    do Grupo A (média e alta tensão) com tarifação horossazonal.
+    """
+    
+    financeiros: ProjectFinancialsModel = Field(..., description="Parâmetros financeiros do projeto")
+    geracao: MonthlyDataModel = Field(..., description="Dados de geração mensal em kWh")
+    consumo_local: ConsumoLocalGrupoAModel = Field(..., description="Dados de consumo local mensal em kWh")
+    tarifas: TarifasGrupoAModel = Field(..., description="Estrutura de tarifas Grupo A")
+    te: Dict[str, float] = Field(..., description="TE por período (foraPonta, ponta) em R$/kWh")
+    fator_simultaneidade_local: float = Field(..., ge=0, le=1, description="Fator de simultaneidade local")
+    fio_b: FioBParamsModel = Field(..., description="Parâmetros do Fio B")
+    remoto_b: RemoteConsumptionGrupoBModel = Field(..., description="Autoconsumo remoto Grupo B")
+    remoto_a_verde: RemoteConsumptionGrupoAModel = Field(..., description="Autoconsumo remoto Grupo A Verde")
+    remoto_a_azul: RemoteConsumptionGrupoAModel = Field(..., description="Autoconsumo remoto Grupo A Azul")
+    
+    @validator('te')
+    def validate_te_structure(cls, v):
+        """Valida estrutura do dicionário TE"""
+        required_keys = {'foraPonta', 'ponta'}
+        
+        if not isinstance(v, dict):
+            raise ValueError("TE deve ser um dicionário")
+        
+        missing_keys = required_keys - set(v.keys())
+        if missing_keys:
+            raise ValueError(f"Chaves obrigatórias ausentes no TE: {missing_keys}")
+        
+        return v
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "financeiros": {
+                    "capex": 150000.0,
+                    "anos": 25,
+                    "taxa_desconto": 8.0,
+                    "inflacao_energia": 4.5,
+                    "degradacao": 0.5,
+                    "salvage_pct": 0.1,
+                    "oma_first_pct": 0.015,
+                    "oma_inflacao": 4.0
+                },
+                "geracao": {
+                    "jan": 1800, "fev": 1680, "mar": 1920, "abr": 1840,
+                    "mai": 1720, "jun": 1600, "jul": 1640, "ago": 1760,
+                    "set": 1880, "out": 1960, "nov": 1860, "dez": 1820
+                },
+                "consumo_local": {
+                    "fora_ponta": {
+                        "jan": 1200, "fev": 1100, "mar": 1300, "abr": 1250,
+                        "mai": 1150, "jun": 1050, "jul": 1080, "ago": 1180,
+                        "set": 1280, "out": 1350, "nov": 1220, "dez": 1160
+                    },
+                    "ponta": {
+                        "jan": 400, "fev": 380, "mar": 420, "abr": 410,
+                        "mai": 390, "jun": 360, "jul": 370, "ago": 400,
+                        "set": 430, "out": 450, "nov": 415, "dez": 395
+                    }
+                },
+                "tarifas": {
+                    "fora_ponta": {"te": 0.34334, "tusd": 0.16121},
+                    "ponta": {"te": 0.55158, "tusd": 1.6208},
+                    "demanda": {"fora_ponta": 28.45, "ponta": 85.35}
+                },
+                "te": {"foraPonta": 0.34334, "ponta": 0.55158},
+                "fator_simultaneidade_local": 0.35,
+                "fio_b": {
+                    "schedule": {2025: 0.45, 2026: 0.60, 2027: 0.75, 2028: 0.90},
+                    "base_year": 2025
+                },
+                "remoto_b": {
+                    "enabled": True,
+                    "percentage": 40.0,
+                    "data": {
+                        "jan": 300, "fev": 285, "mar": 315, "abr": 300,
+                        "mai": 270, "jun": 255, "jul": 264, "ago": 285,
+                        "set": 306, "out": 324, "nov": 294, "dez": 276
+                    },
+                    "tarifa_total": 0.84,
+                    "fio_b_value": 0.25
+                },
+                "remoto_a_verde": {
+                    "enabled": False,
+                    "percentage": 30.0,
+                    "data_off_peak": {
+                        "jan": 150, "fev": 144, "mar": 156, "abr": 150,
+                        "mai": 135, "jun": 126, "jul": 132, "ago": 144,
+                        "set": 153, "out": 162, "nov": 147, "dez": 138
+                    },
+                    "data_peak": {
+                        "jan": 60, "fev": 57, "mar": 63, "abr": 60,
+                        "mai": 54, "jun": 51, "jul": 53, "ago": 57,
+                        "set": 61, "out": 66, "nov": 59, "dez": 55
+                    },
+                    "tarifas": {"offPeak": 0.48, "peak": 2.20},
+                    "tusd": {"offPeak": 0.16121, "peak": 1.6208},
+                    "te": {"offPeak": 0.34334, "peak": 0.55158}
+                },
+                "remoto_a_azul": {
+                    "enabled": False,
+                    "percentage": 30.0,
+                    "data_off_peak": {
+                        "jan": 150, "fev": 144, "mar": 156, "abr": 150,
+                        "mai": 135, "jun": 126, "jul": 132, "ago": 144,
+                        "set": 153, "out": 162, "nov": 147, "dez": 138
+                    },
+                    "data_peak": {
+                        "jan": 60, "fev": 57, "mar": 63, "abr": 60,
+                        "mai": 54, "jun": 51, "jul": 53, "ago": 57,
+                        "set": 61, "out": 66, "nov": 59, "dez": 55
+                    },
+                    "tarifas": {"offPeak": 0.48, "peak": 2.20},
+                    "tusd": {"offPeak": 0.16121, "peak": 1.6208},
+                    "te": {"offPeak": 0.34334, "peak": 0.55158}
+                }
+            }
+        }
+
+
+class FinancialSummaryFormatted(BaseModel):
+    """
+    Modelo para resumo financeiro formatado
+    
+    Apresenta os principais indicadores financeiros com formatação
+    brasileira para exibição em relatórios e interfaces.
+    """
+    
+    vpl: str = Field(..., description="Valor Presente Líquido formatado (R$ 123.456,78)")
+    tir: str = Field(..., description="Taxa Interna de Retorno formatada (15,50% ou N/A)")
+    pi: str = Field(..., description="Índice de lucratividade formatado (1,25)")
+    payback_simples: str = Field(..., description="Payback simples formatado (5,23 anos)")
+    payback_descontado: str = Field(..., description="Payback descontado formatado (7,85 anos)")
+    lcoe: str = Field(..., description="LCOE formatado (R$ 0,45/kWh)")
+    roi_simples: str = Field(..., description="ROI simples formatado (25,50%)")
+    economia_total_nominal: str = Field(..., description="Economia total nominal formatada")
+    economia_total_valor_presente: str = Field(..., description="Economia total valor presente formatada")
+
+
+class CashFlowRow(BaseModel):
+    """
+    Modelo para linha da tabela de fluxo de caixa
+    
+    Representa os dados financeiros de um ano específico no fluxo
+    de caixa do projeto.
+    """
     
     ano: int = Field(..., description="Ano da análise")
-    geracao_anual: float = Field(..., description="Geração anual em kWh")
-    economia_energia: float = Field(..., description="Economia com energia em R$")
-    custos_om: float = Field(..., description="Custos de O&M em R$")
-    fluxo_liquido: float = Field(..., description="Fluxo de caixa líquido em R$")
-    fluxo_acumulado: float = Field(..., description="Fluxo de caixa acumulado em R$")
-    valor_presente: float = Field(..., description="Valor presente do fluxo em R$")
+    fluxo_nominal: float = Field(..., description="Fluxo de caixa nominal em R$")
+    fluxo_acumulado_nominal: float = Field(..., description="Fluxo acumulado nominal em R$")
+    fluxo_descontado: float = Field(..., description="Fluxo de caixa descontado em R$")
+    fluxo_acumulado_descontado: float = Field(..., description="Fluxo acumulado descontado em R$")
 
-class SensitivityPoint(BaseModel):
-    """Ponto de análise de sensibilidade"""
-    
-    parametro: float = Field(..., description="Valor do parâmetro")
-    vpl: float = Field(..., description="VPL resultante em R$")
 
-class FinancialIndicators(BaseModel):
-    """Indicadores financeiros de performance"""
+class ResultadosCodigoBResponse(BaseModel):
+    """
+    Modelo de response para resultados Grupo B
     
-    yield_especifico: float = Field(..., description="Yield específico em kWh/kW/R$1000")
-    custo_nivelado_energia: float = Field(..., description="LCOE em R$/kWh")
-    eficiencia_investimento: float = Field(..., description="Eficiência do investimento em %")
-    retorno_sobre_investimento: float = Field(..., description="ROI em %")
+    Estrutura completa de resposta para cálculos financeiros do
+    Grupo B incluindo todos os indicadores e tabelas detalhadas.
+    """
+    
+    somas_iniciais: Dict[str, str] = Field(..., description="Somas iniciais formatadas")
+    comparativo_custo_abatimento: Dict[str, str] = Field(..., description="Comparativo de custos formatado")
+    financeiro: FinancialSummaryFormatted = Field(..., description="Resumo financeiro formatado")
+    consumo_ano1: Dict[str, Any] = Field(..., description="Dados de consumo do primeiro ano")
+    tabela_resumo_anual: List[Dict[str, Any]] = Field(..., description="Tabela resumo anual")
+    tabela_fluxo_caixa: List[CashFlowRow] = Field(..., description="Tabela de fluxo de caixa")
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "somas_iniciais": {
+                    "geracao_anual": "5.400 kWh",
+                    "consumo_local_anual": "4.200 kWh",
+                    "excedente_anual": "1.200 kWh"
+                },
+                "comparativo_custo_abatimento": {
+                    "custo_sem_sistema": "R$ 4.284,00/ano",
+                    "custo_com_sistema": "R$ 1.071,00/ano",
+                    "economia_anual": "R$ 3.213,00"
+                },
+                "financeiro": {
+                    "vpl": "R$ 45.678,90",
+                    "tir": "12,50%",
+                    "pi": "1,85",
+                    "payback_simples": "6,23 anos",
+                    "payback_descontado": "8,45 anos",
+                    "lcoe": "R$ 0,42/kWh",
+                    "roi_simples": "85,50%",
+                    "economia_total_nominal": "R$ 80.325,00",
+                    "economia_total_valor_presente": "R$ 45.678,90"
+                },
+                "consumo_ano1": {
+                    "consumo_local": 4200,
+                    "geracao": 5400,
+                    "excedente": 1200,
+                    "autoconsumo": 1050,
+                    "injetado_rede": 4350
+                },
+                "tabela_resumo_anual": [
+                    {
+                        "ano": 1,
+                        "geracao": 5400,
+                        "economia": 3213,
+                        "custos_om": 750,
+                        "fluxo_liquido": 2463
+                    }
+                ],
+                "tabela_fluxo_caixa": [
+                    {
+                        "ano": 1,
+                        "fluxo_nominal": 2463,
+                        "fluxo_acumulado_nominal": 2463,
+                        "fluxo_descontado": 2280,
+                        "fluxo_acumulado_descontado": 2280
+                    }
+                ]
+            }
+        }
 
-class SensitivityAnalysis(BaseModel):
-    """Análise de sensibilidade"""
-    
-    vpl_variacao_tarifa: List[SensitivityPoint] = Field(..., description="Sensibilidade à variação da tarifa")
-    vpl_variacao_inflacao: List[SensitivityPoint] = Field(..., description="Sensibilidade à inflação")
-    vpl_variacao_desconto: List[SensitivityPoint] = Field(..., description="Sensibilidade à taxa de desconto")
 
-class ScenarioAnalysis(BaseModel):
-    """Análise de cenários"""
+class ResultadosCodigoAResponse(BaseModel):
+    """
+    Modelo de response para resultados Grupo A
     
-    base: Dict = Field(..., description="Cenário base")
-    otimista: Dict = Field(..., description="Cenário otimista")
-    conservador: Dict = Field(..., description="Cenário conservador")
-    pessimista: Dict = Field(..., description="Cenário pessimista")
-
-class AdvancedFinancialResults(BaseModel):
-    """Resultado completo da análise financeira"""
+    Estrutura completa de resposta para cálculos financeiros do
+    Grupo A incluindo análise de sensibilidade.
+    """
     
-    # Indicadores principais
-    vpl: float = Field(..., description="Valor Presente Líquido em R$")
-    tir: float = Field(..., description="Taxa Interna de Retorno em %")
-    payback_simples: float = Field(..., description="Payback simples em anos")
-    payback_descontado: float = Field(..., description="Payback descontado em anos")
+    somas_iniciais: Dict[str, str] = Field(..., description="Somas iniciais formatadas")
+    financeiro: FinancialSummaryFormatted = Field(..., description="Resumo financeiro formatado")
+    consumo_ano1: Dict[str, Any] = Field(..., description="Dados de consumo do primeiro ano")
+    tabela_resumo_anual: List[Dict[str, Any]] = Field(..., description="Tabela resumo anual")
+    tabela_fluxo_caixa: List[CashFlowRow] = Field(..., description="Tabela de fluxo de caixa")
+    dados_sensibilidade: Dict[str, List[float]] = Field(..., description="Dados de análise de sensibilidade")
     
-    # Métricas de economia
-    economia_total_25_anos: float = Field(..., description="Economia total em 25 anos em R$")
-    economia_anual_media: float = Field(..., description="Economia anual média em R$")
-    lucratividade_index: float = Field(..., description="Índice de lucratividade")
-    
-    # Fluxo de caixa detalhado
-    cash_flow: List[CashFlowDetails] = Field(..., description="Fluxo de caixa detalhado")
-    
-    # Indicadores de performance
-    indicadores: FinancialIndicators = Field(..., description="Indicadores de performance")
-    
-    # Análises complementares
-    sensibilidade: SensitivityAnalysis = Field(..., description="Análise de sensibilidade")
-    cenarios: ScenarioAnalysis = Field(..., description="Análise de cenários")
+    class Config:
+        schema_extra = {
+            "example": {
+                "somas_iniciais": {
+                    "geracao_anual": "21.600 kWh",
+                    "consumo_local_anual": "19.200 kWh",
+                    "excedente_anual": "2.400 kWh"
+                },
+                "financeiro": {
+                    "vpl": "R$ 125.678,90",
+                    "tir": "15,80%",
+                    "pi": "1,92",
+                    "payback_simples": "5,45 anos",
+                    "payback_descontado": "7,23 anos",
+                    "lcoe": "R$ 0,38/kWh",
+                    "roi_simples": "92,50%",
+                    "economia_total_nominal": "R$ 320.400,00",
+                    "economia_total_valor_presente": "R$ 125.678,90"
+                },
+                "consumo_ano1": {
+                    "consumo_local_fora_ponta": 14400,
+                    "consumo_local_ponta": 4800,
+                    "geracao": 21600,
+                    "excedente": 2400,
+                    "autoconsumo": 19200,
+                    "injetado_rede": 2400
+                },
+                "tabela_resumo_anual": [
+                    {
+                        "ano": 1,
+                        "geracao": 21600,
+                        "economia": 12852,
+                        "custos_om": 2250,
+                        "fluxo_liquido": 10602
+                    }
+                ],
+                "tabela_fluxo_caixa": [
+                    {
+                        "ano": 1,
+                        "fluxo_nominal": 10602,
+                        "fluxo_acumulado_nominal": 10602,
+                        "fluxo_descontado": 9817,
+                        "fluxo_acumulado_descontado": 9817
+                    }
+                ],
+                "dados_sensibilidade": {
+                    "vpl_variacao_tarifa": [95678.90, 125678.90, 155678.90],
+                    "vpl_variacao_inflacao": [115678.90, 125678.90, 135678.90],
+                    "vpl_variacao_desconto": [145678.90, 125678.90, 105678.90]
+                }
+            }
+        }
