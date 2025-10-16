@@ -8,7 +8,7 @@ import { ClientRoutes } from './ClientRoutes';
 import { Model3DRoutes } from './Model3DRoutes';
 import { CalculationRoutes } from './CalculationRoutes';
 import { ReportRoutes } from './ReportRoutes';
-import { BessRoutes } from './BessRoutes';
+
 import { IrradiationRoutes } from './IrradiationRoutes';
 import { AlertRoutes } from './AlertRoutes';
 import { TeamRoutes } from './TeamRoutes';
@@ -20,9 +20,9 @@ import { ManufacturerRoutes } from './ManufacturerRoutes';
 import { ProposalTemplateRoutes } from './ProposalTemplateRoutes';
 import { ProposalSettingsRoutes } from './ProposalSettingsRoutes';
 import { ProjectBackupRoutes } from './ProjectBackupRoutes';
-import { MultiSystemRoutes } from './MultiSystemRoutes';
+
 import { createSolarAnalysisRoutes } from './SolarAnalysisRoutes';
-import { createBessAnalysisRoutes } from './bess.routes';
+
 import { createAdvancedTemplateRoutes } from './AdvancedTemplateRoutes';
 import { clientAlertRoutes } from './client-alert.routes';
 import { EnergyCompanyRoutes } from './EnergyCompanyRoutes';
@@ -54,7 +54,7 @@ export class ApiRoutes {
     router.use('/models-3d', Model3DRoutes.create(container));
     router.use('/calculations', CalculationRoutes.create(container));
     router.use('/reports', new ReportRoutes(container).getRouter());
-    router.use('/bess', new BessRoutes(container).getRouter());
+
     router.use('/irradiation', new IrradiationRoutes(container).getRouter());
     router.use('/alerts', AlertRoutes.create(container));
     router.use('/equipment/modules', new SolarModuleRoutes(container).router);
@@ -63,9 +63,9 @@ export class ApiRoutes {
     router.use('/proposal-templates', ProposalTemplateRoutes.create(container));
     router.use('/proposal-settings', ProposalSettingsRoutes.create(container));
     router.use('/project-backups', new ProjectBackupRoutes(container).getRouter());
-    router.use('/multi-system', new MultiSystemRoutes(container).getRouter());
+
     router.use('/solar-analysis', createSolarAnalysisRoutes(container));
-    router.use('/bess-analysis', createBessAnalysisRoutes(container)); // Rotas de análise de sistemas híbridos Solar + BESS
+
     router.use('/advanced-templates', createAdvancedTemplateRoutes(container));
     router.use('/client-alerts', clientAlertRoutes);
     router.use('/energy-companies', EnergyCompanyRoutes.create(container));

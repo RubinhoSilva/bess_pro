@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { CalculationController } from '../controllers/CalculationController';
 import { FinancialCalculationController } from '../controllers/FinancialCalculationController';
 import { SolarAnalysisController } from '../controllers/SolarAnalysisController';
-import { BessAnalysisController } from '../controllers/BessAnalysisController';
+
 import { CalculateStandaloneSolarSystemUseCase } from '../../application/use-cases/calculation/CalculateStandaloneSolarSystemUseCase';
 import { AnalyzeFinancialUseCase } from '../../application/use-cases/financial/AnalyzeFinancialUseCase';
 import { Container } from '../../infrastructure/di/Container';
@@ -29,7 +29,7 @@ export class CalculationRoutes {
       ServiceTokens.FinancialCalculationController
     );
     const solarAnalysisController = container.resolve<SolarAnalysisController>('SolarAnalysisController');
-    const bessAnalysisController = container.resolve<BessAnalysisController>('BessAnalysisController');
+
     const authMiddleware = new AuthMiddleware(container);
 
     // All routes require authentication
@@ -70,16 +70,7 @@ export class CalculationRoutes {
       solarAnalysisController.calculateMPPTLimits.bind(solarAnalysisController)
     );
 
-    /**
-     * POST /calculations/bess
-     * Realiza cálculo BESS standalone
-     * Body: BessCalculationRequest
-     * Response: BessCalculationResult
-     */
-    router.post('/bess',
-      ValidationMiddleware.handleValidationErrors(),
-      bessAnalysisController.calculateHybridSystem.bind(bessAnalysisController)
-    );
+
 
     /**
      * POST /calculations/financial
@@ -118,18 +109,7 @@ export class CalculationRoutes {
       calculationController.calculateSolarSystemStandalone.bind(calculationController)
     );
 
-    /**
-     * POST /calculations/projects/:projectId/bess
-     * Realiza e salva cálculo BESS no projeto
-     * Params: projectId
-     * Body: BessCalculationRequest
-     * Response: SavedBessCalculation
-     */
-    router.post('/projects/:projectId/bess',
-      ValidationMiddleware.validateProjectId(),
-      ValidationMiddleware.handleValidationErrors(),
-      bessAnalysisController.calculateHybridSystem.bind(bessAnalysisController)
-    );
+
 
     /**
      * POST /calculations/projects/:projectId/financial

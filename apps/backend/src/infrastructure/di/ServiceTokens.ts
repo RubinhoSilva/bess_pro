@@ -79,10 +79,7 @@ export const ServiceTokens = {
   RevertClientToLeadUseCase: 'RevertClientToLeadUseCase',
   ConvertClientToLeadUseCase: 'ConvertClientToLeadUseCase',
   GenerateFinancialReportUseCase: 'GenerateFinancialReportUseCase',
-  CalculateBessSystemUseCase: 'CalculateBessSystemUseCase',
-  GetBatteryDatabaseUseCase: 'GetBatteryDatabaseUseCase',
-  GetLoadProfileTemplateUseCase: 'GetLoadProfileTemplateUseCase',
-  CompareBatteryConfigurationsUseCase: 'CompareBatteryConfigurationsUseCase',
+
   GetSolarIrradiationUseCase: 'GetSolarIrradiationUseCase',
   CalculateProjectFinancialsUseCase: 'CalculateProjectFinancialsUseCase',
   CREATE_TEAM_USE_CASE: 'CreateTeamUseCase',
@@ -125,7 +122,7 @@ export const ServiceTokens = {
   ImportProjectBackupUseCase: 'ImportProjectBackupUseCase',
 
   // Multi System Use Cases
-  CalculateMultiSystemUseCase: 'CalculateMultiSystemUseCase',
+
 
   // Solar Analysis Use Cases
   AnalyzeSolarPotentialUseCase: 'AnalyzeSolarPotentialUseCase',
@@ -158,7 +155,7 @@ export const ServiceTokens = {
   ProposalTemplateController: 'ProposalTemplateController',
   ProposalSettingsController: 'ProposalSettingsController',
   SolarAnalysisController: 'SolarAnalysisController',
-  BessAnalysisController: 'BessAnalysisController',
+
   AdvancedProposalTemplateController: 'AdvancedProposalTemplateController',
   EnergyCompanyController: 'EnergyCompanyController',
   FinancialCalculationController: 'FinancialCalculationController',

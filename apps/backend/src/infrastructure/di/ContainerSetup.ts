@@ -96,8 +96,7 @@ import { AnalyzeFinancialUseCase } from '../../application/use-cases/financial/A
 // Use Cases - Report
 import { GenerateFinancialReportUseCase } from '../../application/use-cases/report/GenerateFinancialReportUseCase';
 
-// Use Cases - BESS
-import { CalculateBessSystemUseCase } from '../../application/use-cases/bess/CalculateBessSystemUseCase';
+
 
 // Use Cases - Advanced Template
 import { CloneAdvancedTemplateUseCase } from '../../application/use-cases/advanced-template/CloneAdvancedTemplateUseCase';
@@ -107,12 +106,7 @@ import { GetPVGISIrradiationUseCase } from '../../application/use-cases/irradiat
 import { GetPVGISMRDataUseCase } from '../../application/use-cases/irradiation/GetPVGISMRDataUseCase';
 import { GetPVGISMonthlyComponentsUseCase } from '../../application/use-cases/irradiation/GetPVGISMonthlyComponentsUseCase';
 
-// Use Cases - Hybrid
-import { CalculateHybridSystemUseCase } from '../../application/use-cases/hybrid/CalculateHybridSystemUseCase';
-import { CalculateMultiSystemUseCase } from '../../application/use-cases/bess/CalculateMultiSystemUseCase';
-import { GetBatteryDatabaseUseCase } from '../../application/use-cases/bess/GetBatteryDatabaseUseCase';
-import { GetLoadProfileTemplateUseCase } from '../../application/use-cases/bess/GetLoadProfileTemplateUseCase';
-import { CompareBatteryConfigurationsUseCase } from '../../application/use-cases/bess/CompareBatteryConfigurationsUseCase';
+
 
 // Use Cases - Irradiation
 import { GetSolarIrradiationUseCase } from '../../application/use-cases/irradiation/GetSolarIrradiationUseCase';
@@ -196,7 +190,7 @@ import { LeadInteractionController } from '../../presentation/controllers/LeadIn
 import { ClientController } from '../../presentation/controllers/ClientController';
 import { EnergyCompanyController } from '../../presentation/controllers/EnergyCompanyController';
 import { ReportController } from '../../presentation/controllers/ReportController';
-import { BessController } from '../../presentation/controllers/BessController';
+
 import { IrradiationController } from '../../presentation/controllers/IrradiationController';
 import { TeamController } from '../../presentation/controllers/TeamController';
 import { KanbanController } from '../../presentation/controllers/KanbanController';
@@ -206,7 +200,7 @@ import { ManufacturerController } from '../../presentation/controllers/Manufactu
 import { ProposalTemplateController } from '../../presentation/controllers/ProposalTemplateController';
 import { ProposalSettingsController } from '../../presentation/controllers/ProposalSettingsController';
 import { SolarAnalysisController } from '../../presentation/controllers/SolarAnalysisController';
-import { BessAnalysisController } from '../../presentation/controllers/BessAnalysisController';
+
 import { AdvancedProposalTemplateController } from '../../presentation/controllers/AdvancedProposalTemplateController';
 import { ClientAlertController } from '../../presentation/controllers/ClientAlertController';
 import { FinancialCalculationController } from '../../presentation/controllers/FinancialCalculationController';
@@ -730,17 +724,7 @@ export class ContainerSetup {
       );
     });
 
-    // Use Cases - BESS
-    container.registerFactory(ServiceTokens.CalculateBessSystemUseCase, () => {
-      return new CalculateBessSystemUseCase(
-        container.resolve(ServiceTokens.ProjectRepository),
-        container.resolve(ServiceTokens.USER_REPOSITORY)
-      );
-    });
 
-    container.register(ServiceTokens.GetBatteryDatabaseUseCase, GetBatteryDatabaseUseCase);
-    container.register(ServiceTokens.GetLoadProfileTemplateUseCase, GetLoadProfileTemplateUseCase);
-    container.register(ServiceTokens.CompareBatteryConfigurationsUseCase, CompareBatteryConfigurationsUseCase);
 
     // Use Cases - Irradiation
     container.registerFactory(ServiceTokens.GetSolarIrradiationUseCase, () => {
@@ -865,14 +849,7 @@ export class ContainerSetup {
       );
     });
 
-    container.registerFactory('BessController', () => {
-      return new BessController(
-        container.resolve(ServiceTokens.CalculateBessSystemUseCase),
-        container.resolve(ServiceTokens.GetBatteryDatabaseUseCase),
-        container.resolve(ServiceTokens.GetLoadProfileTemplateUseCase),
-        container.resolve(ServiceTokens.CompareBatteryConfigurationsUseCase)
-      );
-    });
+
 
     container.registerFactory('IrradiationController', () => {
       return new IrradiationController(
@@ -967,13 +944,7 @@ export class ContainerSetup {
       );
     });
 
-    // Controllers - BESS Analysis
-    container.registerFactory(ServiceTokens.BessAnalysisController, () => {
-      return new BessAnalysisController(
-        container.resolve(ServiceTokens.BESS_CALCULATION_CLIENT),
-        container.resolve('CalculateHybridSystemUseCase')
-      );
-    });
+
 
     // Use Cases - Advanced Templates
     container.registerFactory(ServiceTokens.CreateAdvancedTemplateUseCase, () => {
@@ -1035,11 +1006,7 @@ export class ContainerSetup {
     });
 
     // Use Cases - Hybrid System
-    container.registerFactory('CalculateHybridSystemUseCase', () => {
-      return new CalculateHybridSystemUseCase(
-        container.resolve('CalculationLogger')
-      );
-    });
+
 
     // Controllers - Client Alert
     container.registerFactory('ClientAlertController', () => {

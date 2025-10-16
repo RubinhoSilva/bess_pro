@@ -18,7 +18,9 @@ import {
   isEnergyBillLegacy,
   convertLegacyToEnergyBillB,
   convertEnergyBillBToLegacy,
-  getEnergyBillTipo
+  getEnergyBillTipo,
+  createEnergyBillB,
+  createEnergyBillA
 } from '../types/energy-bill-types';
 
 import { CommonTypes } from '../types/common-types';
@@ -31,7 +33,7 @@ import { CommonTypes } from '../types/common-types';
  * Estrutura para energyBills no ProjectData
  * @description Formato atualizado que aceita ambos os tipos
  */
-export interface ProjectDataEnergyBills {
+interface ProjectDataEnergyBills {
   bills: EnergyBillGrupo[];
   grupoTarifario: 'A' | 'B';
   metadados?: {
@@ -44,7 +46,7 @@ export interface ProjectDataEnergyBills {
 /**
  * Resultado da conversão/migração
  */
-export interface EnergyBillMigrationResult {
+interface EnergyBillMigrationResult {
   success: boolean;
   bills: EnergyBillGrupo[];
   errors: string[];
@@ -61,7 +63,7 @@ export interface EnergyBillMigrationResult {
  * Converte energyBills do ProjectData para novo formato
  * @description Migração do formato legado para tipos especializados
  */
-export function adaptProjectDataEnergyBills(
+function adaptProjectDataEnergyBills(
   energyBills: any[], 
   grupoTarifario?: 'A' | 'B'
 ): EnergyBillMigrationResult {
@@ -122,7 +124,7 @@ export function adaptProjectDataEnergyBills(
  * Adapta EnergyBill para o grupo tarifário especificado
  * @description Converte entre EnergyBillB e EnergyBillA conforme necessário
  */
-export function adaptEnergyBillToGrupo(
+function adaptEnergyBillToGrupo(
   bill: EnergyBillAny, 
   targetGrupo: 'A' | 'B'
 ): EnergyBillGrupo {
@@ -169,7 +171,7 @@ export function adaptEnergyBillToGrupo(
  * Prepara energyBills para salvar no ProjectData
  * @description Converte para formato compatível com backend
  */
-export function prepareEnergyBillsForProjectData(
+function prepareEnergyBillsForProjectData(
   bills: EnergyBillGrupo[]
 ): Array<{ id: string; name: string; consumoMensal: number[] }> {
   return bills.map(bill => {
@@ -190,8 +192,8 @@ export function prepareEnergyBillsForProjectData(
     
     // Fallback para formato legado
     return {
-      id: bill.id,
-      name: bill.name,
+      id: (bill as any).id || 'unknown',
+      name: (bill as any).name || 'Unknown Bill',
       consumoMensal: []
     };
   });
@@ -243,7 +245,7 @@ function calculateTarifaMediaFromA(bill: EnergyBillA): number {
 /**
  * Valida conjunto de energyBills
  */
-export function validateEnergyBills(bills: EnergyBillGrupo[]): {
+function validateEnergyBills(bills: EnergyBillGrupo[]): {
   isValid: boolean;
   errors: string[];
   warnings: string[];
@@ -339,7 +341,7 @@ function validateEnergyBillA(bill: any): { isValid: boolean; errors: string[] } 
 /**
  * Hook/utilitário para gerenciar energyBills no ProjectData
  */
-export class ProjectDataEnergyBillManager {
+class ProjectDataEnergyBillManager {
   private bills: EnergyBillGrupo[] = [];
   private grupoTarifario: 'A' | 'B' = 'B';
 
@@ -448,3 +450,21 @@ export class ProjectDataEnergyBillManager {
     };
   }
 }
+
+// Re-exportar tipos e funções para conveniência
+export type { 
+  EnergyBillB, 
+  EnergyBillA, 
+  EnergyBillGrupo,
+  ProjectDataEnergyBills,
+  EnergyBillMigrationResult 
+};
+
+export { 
+  adaptProjectDataEnergyBills,
+  prepareEnergyBillsForProjectData,
+  validateEnergyBills,
+  ProjectDataEnergyBillManager,
+  createEnergyBillB,
+  createEnergyBillA
+};
