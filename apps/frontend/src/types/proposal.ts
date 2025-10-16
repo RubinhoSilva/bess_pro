@@ -2,7 +2,7 @@ export interface ProposalTemplate {
   id?: string;
   name: string;
   description?: string;
-  category: 'PV' | 'BESS' | 'HYBRID' | 'GENERAL';
+  category: 'PV' | 'HYBRID' | 'GENERAL';
   isDefault: boolean;
   structure: ProposalSection[];
   variables: TemplateVariable[];
@@ -106,7 +106,7 @@ export interface TemplateEditorState {
 export interface CreateTemplateRequest {
   name: string;
   description?: string;
-  category: 'PV' | 'BESS' | 'HYBRID' | 'GENERAL';
+  category: 'PV' | 'HYBRID' | 'GENERAL';
   structure: ProposalSection[];
   variables: TemplateVariable[];
   styling: TemplateStyle;

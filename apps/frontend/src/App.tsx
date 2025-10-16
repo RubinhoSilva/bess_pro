@@ -20,7 +20,7 @@ import ProjectsDashboard from './pages/projects/ProjectsDashboard'
 // import CreateProjectPage from './pages/projects/CreateProjectPage' // Removido
 import PVDesignPage from './pages/tools/PVDesignPage'
 import EquipmentPage from './pages/equipment/EquipmentPage'
-import BESSAnalysisPage from './pages/tools/BESSAnalysisPage'
+
 import SolarAnalysisPage from './pages/tools/SolarAnalysisPage'
 import Model3DViewerPage from './pages/tools/Model3DViewerPage'
 import GeoMapPage from './pages/tools/GeoMapPage'
@@ -85,7 +85,7 @@ function App() {
                   <Route path="projects" element={<ProjectsDashboard />} />
                   {/* <Route path="projects/new" element={<CreateProjectPage />} /> */}
                   <Route path="pv-design" element={<PVDesignPage />} />
-                  <Route path="bess-analysis" element={<BESSAnalysisPage />} />
+
                   <Route path="solar-analysis" element={<SolarAnalysisPage />} />
                   <Route path="model3d-viewer" element={<Model3DViewerPage />} />
                   <Route path="geo-map" element={<GeoMapPage />} />

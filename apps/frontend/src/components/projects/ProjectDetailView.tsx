@@ -8,7 +8,7 @@ import {
   ArrowLeft, 
   Plus, 
   Sun, 
-  Battery, 
+ 
   MapPin, 
   Calendar,
   FileText,
@@ -20,7 +20,7 @@ import {
   Settings,
   MoreVertical
 } from 'lucide-react';
-import { Project, PVDimensioning, BESSAnalysis, ProjectType } from '@/types/project';
+import { Project, PVDimensioning, ProjectType } from '@/types/project';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -38,7 +38,7 @@ interface ProjectDetailViewProps {
   onBack: () => void;
   onUpdateProject?: (project: Project) => void;
   onDeletePVDimensioning?: (projectId: string, dimensioningId: string) => void;
-  onDeleteBESSAnalysis?: (projectId: string, analysisId: string) => void;
+
 }
 
 const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
@@ -46,7 +46,7 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   onBack,
   onUpdateProject,
   onDeletePVDimensioning,
-  onDeleteBESSAnalysis
+
 }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -138,21 +138,12 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     }
   };
 
-  const getStatusText = (status: string, type: 'pv' | 'bess') => {
-    if (type === 'pv') {
-      switch (status) {
-        case 'approved': return 'Aprovado';
-        case 'calculated': return 'Calculado';
-        case 'draft': return 'Rascunho';
-        default: return status;
-      }
-    } else {
-      switch (status) {
-        case 'approved': return 'Aprovado';
-        case 'simulated': return 'Simulado';
-        case 'draft': return 'Rascunho';
-        default: return status;
-      }
+  const getStatusText = (status: string, type: 'pv') => {
+    switch (status) {
+      case 'approved': return 'Aprovado';
+      case 'calculated': return 'Calculado';
+      case 'draft': return 'Rascunho';
+      default: return status;
     }
   };
 
@@ -161,19 +152,14 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     navigate(`/dashboard/pv-design?projectId=${project.id}&new=true`);
   };
 
-  const handleCreateNewBESSAnalysis = () => {
-    // Navegar para página de análise BESS com o projeto selecionado
-    navigate(`/dashboard/bess-analysis?projectId=${project.id}&new=true`);
-  };
+
 
   const handleEditPVDimensioning = (dimensioning: any) => {
     // Navegar diretamente para o dimensionamento (que é um projeto)
     navigate(`/dashboard/pv-design?projectId=${dimensioning.id}`);
   };
 
-  const handleEditBESSAnalysis = (analysis: BESSAnalysis) => {
-    navigate(`/dashboard/bess-analysis?projectId=${project.id}&analysisId=${analysis.id}`);
-  };
+
 
   const handleDuplicatePV = async (dimensioning: any) => {
     try {
@@ -216,31 +202,7 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     }
   };
 
-  const handleDuplicateBESS = (analysis: BESSAnalysis) => {
-    const newAnalysis: BESSAnalysis = {
-      ...analysis,
-      id: crypto.randomUUID(),
-      name: `${analysis.name} (Cópia)`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      status: 'draft'
-    };
 
-    const updatedProject: Project = {
-      ...project,
-      bessAnalyses: [...project.bessAnalyses, newAnalysis],
-      totalBESSAnalyses: project.totalBESSAnalyses + 1
-    };
-
-    if (onUpdateProject) {
-      onUpdateProject(updatedProject);
-    }
-
-    toast({
-      title: "Análise BESS duplicada",
-      description: `${newAnalysis.name} foi criado com sucesso.`
-    });
-  };
 
   const renderPVDimensionings = () => {
     if (isLoadingDimensionings) {
@@ -374,123 +336,12 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     );
   };
 
-  const renderBESSAnalyses = () => {
-    if (!project.bessAnalyses || project.bessAnalyses.length === 0) {
-      return (
-        <div className="text-center py-12">
-          <Battery className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold mb-2">Nenhuma Análise BESS</h3>
-          <p className="text-muted-foreground mb-6">
-            Crie sua primeira análise de sistema de baterias para este projeto.
-          </p>
-          <Button onClick={handleCreateNewBESSAnalysis} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Criar Análise BESS
-          </Button>
-        </div>
-      );
-    }
 
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">
-            Análises BESS ({project.bessAnalyses?.length || 0})
-          </h3>
-          <Button onClick={handleCreateNewBESSAnalysis} size="sm" className="gap-2">
-            <Plus className="w-4 h-4" />
-            Nova Análise BESS
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {(project.bessAnalyses || []).map((analysis) => (
-            <motion.div
-              key={analysis.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              layout
-            >
-              <Card className="hover:shadow-md transition-shadow cursor-pointer group">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="text-base font-medium">
-                        {analysis.name}
-                      </CardTitle>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant={getStatusBadgeVariant(analysis.status)}>
-                          {getStatusText(analysis.status, 'bess')}
-                        </Badge>
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditBESSAnalysis(analysis)}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicateBESS(analysis)}>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Duplicar
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          className="text-red-600"
-                          onClick={() => onDeleteBESSAnalysis?.(project.id, analysis.id)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Criado:</span>
-                      <span>{formatDate(analysis.createdAt)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Sistemas:</span>
-                      <div className="flex gap-1">
-                        {analysis.systemConfig.solar && (
-                          <Badge variant="outline" className="text-xs">Solar</Badge>
-                        )}
-                        {analysis.systemConfig.bess && (
-                          <Badge variant="outline" className="text-xs">BESS</Badge>
-                        )}
-                        {analysis.systemConfig.diesel && (
-                          <Badge variant="outline" className="text-xs">Diesel</Badge>
-                        )}
-                      </div>
-                    </div>
-                    {analysis.results && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">ROI:</span>
-                        <span>{(analysis.results.financeiro?.roi || 0).toFixed(1)}%</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    );
-  };
 
   const getProjectTypeColor = () => {
     switch (project.projectType) {
       case ProjectType.PV: return 'from-yellow-500 to-orange-500';
-      case ProjectType.BESS: return 'from-green-500 to-blue-500';
+
       case ProjectType.HYBRID: return 'from-purple-500 to-pink-500';
       default: return 'from-gray-500 to-slate-500';
     }
@@ -499,7 +350,7 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const getProjectTypeIcon = () => {
     switch (project.projectType) {
       case ProjectType.PV: return <Sun className="w-6 h-6 text-white" />;
-      case ProjectType.BESS: return <Battery className="w-6 h-6 text-white" />;
+
       case ProjectType.HYBRID: return <Zap className="w-6 h-6 text-white" />;
       default: return <FileText className="w-6 h-6 text-white" />;
     }
@@ -508,7 +359,7 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const getProjectTypeName = () => {
     switch (project.projectType) {
       case ProjectType.PV: return 'Fotovoltaico';
-      case ProjectType.BESS: return 'BESS';
+
       case ProjectType.HYBRID: return 'Híbrido';
       default: return project.projectType;
     }
@@ -570,17 +421,7 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Análises BESS</p>
-                <p className="text-2xl font-bold">{project.totalBESSAnalyses}</p>
-              </div>
-              <Battery className="w-8 h-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
+
         
         <Card>
           <CardContent className="p-4">
@@ -614,19 +455,14 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             <Sun className="w-4 h-4" />
             Dimensionamentos PV
           </TabsTrigger>
-          <TabsTrigger value="bess" className="gap-2">
-            <Battery className="w-4 h-4" />
-            Análises BESS
-          </TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="pv" className="mt-6">
           {renderPVDimensionings()}
         </TabsContent>
 
-        <TabsContent value="bess" className="mt-6">
-          {renderBESSAnalyses()}
-        </TabsContent>
+
       </Tabs>
     </div>
   );
