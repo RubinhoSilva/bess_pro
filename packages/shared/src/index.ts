@@ -4,6 +4,7 @@ export * from './types/financial';
 export * from './types/common';
 export * from './types/common-types';
 export * from './types/grupo-configs';
+export * from './types/energy-bill-types';
 
 // Exportar tipo união explicitamente
 export type { FinancialConfiguration } from './types/grupo-configs';
@@ -71,4 +72,6 @@ export type {
 } from './types/solar-analysis';
 // Solar Analysis Adapters
 export * from './adapters/solar-analysis';
+// Energy Bill Adapters
+export * from './adapters/energy-bill-adapter';
 // Export outros tipos conforme criados

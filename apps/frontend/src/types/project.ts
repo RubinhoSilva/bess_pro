@@ -3,6 +3,8 @@ export enum ProjectType {
   HYBRID = 'hybrid',
 }
 
+import { EnergyBillA, EnergyBillB } from './energy-bill-types';
+
 export interface ProjectData {
   // Customer data
   customer?: {
@@ -22,11 +24,8 @@ export interface ProjectData {
   };
 
   // Energy consumption data
-  energyBills?: Array<{
-    id: string;
-    name: string;
-    consumoMensal: number[];
-  }>;
+  energyBills?: EnergyBillB[];  // Para Grupo B
+  energyBillsA?: EnergyBillA[]; // Para Grupo A (consumo ponta/fora ponta obrigatório)
 
   // System parameters
   potenciaModulo?: number;
@@ -49,6 +48,9 @@ export interface ProjectData {
   custoFioB?: number;
   tarifaEnergiaPontaA?: number;
   tarifaEnergiaForaPontaA?: number;
+  tePontaA?: number; // TE Ponta (Diferente de Tarifa Ponta)
+  teForaPontaA?: number; // TE Fora Ponta (Diferente de Tarifa Fora Ponta)
+  fatorSimultaneidade?: number;
 
   // Financial data
   custoEquipamento?: number;

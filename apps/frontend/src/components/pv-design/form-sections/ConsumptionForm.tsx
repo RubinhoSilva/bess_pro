@@ -6,20 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Zap, PlusCircle, Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { EnergyBillA, EnergyBillB, createEnergyBillA, createEnergyBillB } from '@/types/energy-bill-types';
+import { EnergyBillComponentA } from './EnergyBillComponentA';
 
 interface ConsumptionFormProps {
   formData: any;
   onFormChange: (field: string, value: any) => void;
 }
 
-interface EnergyBill {
-  id: string;
-  name: string;
-  consumoMensal: number[];
-}
+// Usando tipos importados: EnergyBillA e EnergyBillB
 
 const EnergyBillComponent: React.FC<{
-  bill: EnergyBill;
+  bill: EnergyBillB;
   onBillChange: (id: string, field: string, value: any) => void;
   onRemoveBill: (id: string) => void;
 }> = ({ bill, onBillChange, onRemoveBill }) => {
@@ -109,41 +107,76 @@ const EnergyBillComponent: React.FC<{
 
 const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChange }) => {
   const energyBills = formData.energyBills || [];
+  const energyBillsA = formData.energyBillsA || [];
 
   const addNewBill = () => {
-    const newBill: EnergyBill = {
-      id: uuidv4(),
-      name: `Conta ${energyBills.length + 1}`,
-      consumoMensal: Array(12).fill(0)
-    };
-    
-    const updatedBills = [...energyBills, newBill];
-    onFormChange('energyBills', updatedBills);
+    if (formData.grupoTarifario === 'A') {
+      const newBill: EnergyBillA = createEnergyBillA({
+        name: energyBillsA.length === 0 ? 'Unidade Geradora' : `Conta ${energyBillsA.length + 1}`,
+        consumoMensalPonta: Array(12).fill(500),
+        consumoMensalForaPonta: Array(12).fill(500)
+      });
+      
+      const updatedBills = [...energyBillsA, newBill];
+      onFormChange('energyBillsA', updatedBills);
+    } else {
+      const newBill: EnergyBillB = createEnergyBillB({
+        name: energyBills.length === 0 ? 'Unidade Geradora' : `Conta ${energyBills.length + 1}`,
+        consumoMensal: Array(12).fill(500)
+      });
+      
+      const updatedBills = [...energyBills, newBill];
+      onFormChange('energyBills', updatedBills);
+    }
   };
 
   const updateBill = (id: string, field: string, value: any) => {
-    const updatedBills = energyBills.map((bill: EnergyBill) => 
-      bill.id === id ? { ...bill, [field]: value } : bill
-    );
-    onFormChange('energyBills', updatedBills);
+    if (formData.grupoTarifario === 'A') {
+      const updatedBills = energyBillsA.map((bill: EnergyBillA) => 
+        bill.id === id ? value : bill  // Para EnergyBillA, value é o objeto completo
+      );
+      onFormChange('energyBillsA', updatedBills);
+    } else {
+      const updatedBills = energyBills.map((bill: EnergyBillB) => 
+        bill.id === id ? { ...bill, [field]: value } : bill
+      );
+      onFormChange('energyBills', updatedBills);
+    }
   };
 
   const removeBill = (id: string) => {
-    const updatedBills = energyBills.filter((bill: EnergyBill) => bill.id !== id);
-    onFormChange('energyBills', updatedBills);
+    if (formData.grupoTarifario === 'A') {
+      const updatedBills = energyBillsA.filter((bill: EnergyBillA) => bill.id !== id);
+      onFormChange('energyBillsA', updatedBills);
+    } else {
+      const updatedBills = energyBills.filter((bill: EnergyBillB) => bill.id !== id);
+      onFormChange('energyBills', updatedBills);
+    }
   };
 
   // Calcular totais
-  const totalAnualConsumption = energyBills.reduce((total: number, bill: EnergyBill) => {
-    return total + bill.consumoMensal.reduce((a: number, b: number) => a + b, 0);
-  }, 0);
-
+  let totalAnualConsumption = 0;
   const monthlyTotals = Array(12).fill(0);
-  energyBills.forEach((bill: EnergyBill) => {
-    bill.consumoMensal.forEach((consumption: number, index: number) => {
-      monthlyTotals[index] += consumption;
+
+  if (formData.grupoTarifario === 'A') {
+    energyBillsA.forEach((bill: EnergyBillA) => {
+      bill.consumoMensalPonta.forEach((consumption: number, index: number) => {
+        monthlyTotals[index] += consumption;
+        totalAnualConsumption += consumption;
+      });
+      bill.consumoMensalForaPonta.forEach((consumption: number, index: number) => {
+        monthlyTotals[index] += consumption;
+        totalAnualConsumption += consumption;
+      });
     });
-  });
+  } else {
+    energyBills.forEach((bill: EnergyBillB) => {
+      bill.consumoMensal.forEach((consumption: number, index: number) => {
+        monthlyTotals[index] += consumption;
+        totalAnualConsumption += consumption;
+      });
+    });
+  }
 
   return (
     <Card className="bg-card border border-border shadow-lg">
@@ -169,23 +202,44 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
           </Button>
         </div>
 
-        {energyBills.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Zap className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>Nenhuma conta de energia adicionada.</p>
-            <p className="text-sm">Clique em "Adicionar Conta" para começar.</p>
-          </div>
+        {formData.grupoTarifario === 'A' ? (
+          energyBillsA.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Zap className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>Nenhuma conta de energia Grupo A adicionada.</p>
+              <p className="text-sm">Clique em "Adicionar Conta" para começar.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {energyBillsA.map((bill: EnergyBillA) => (
+                <EnergyBillComponentA
+                  key={bill.id}
+                  bill={bill}
+                  onUpdate={(updatedBill) => updateBill(bill.id, 'updated', updatedBill)}
+                  onRemove={() => removeBill(bill.id)}
+                />
+              ))}
+            </div>
+          )
         ) : (
-          <div className="space-y-4">
-            {energyBills.map((bill: EnergyBill) => (
-              <EnergyBillComponent
-                key={bill.id}
-                bill={bill}
-                onBillChange={updateBill}
-                onRemoveBill={removeBill}
-              />
-            ))}
-          </div>
+          energyBills.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Zap className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>Nenhuma conta de energia adicionada.</p>
+              <p className="text-sm">Clique em "Adicionar Conta" para começar.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {energyBills.map((bill: EnergyBillB) => (
+                <EnergyBillComponent
+                  key={bill.id}
+                  bill={bill}
+                  onBillChange={updateBill}
+                  onRemoveBill={removeBill}
+                />
+              ))}
+            </div>
+          )
         )}
 
         {/* Resumo Total */}

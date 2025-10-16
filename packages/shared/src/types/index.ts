@@ -45,6 +45,9 @@ export * from './common-types';
 // Configurações específicas dos grupos tarifários
 export * from './grupo-configs';
 
+// Tipos especializados para EnergyBill
+export * from './energy-bill-types';
+
 // Exportar tipo união explicitamente
 export type { GrupoConfig } from './grupo-configs';
 

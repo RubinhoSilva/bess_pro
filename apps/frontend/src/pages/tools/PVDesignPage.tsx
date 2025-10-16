@@ -11,6 +11,7 @@ import SolarSizingWizard from '../../components/pv-design/wizard/SolarSizingWiza
 import { PVResultsDashboard } from '../../components/pv-design/results/PVResultsDashboard';
 import { apiClient } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
+import { createEnergyBillB } from '@/types/energy-bill-types';
 
 type ViewType = 'wizard' | 'results';
 
@@ -106,11 +107,11 @@ function PVDesignPageContent() {
           totalInverterPower: project.projectData.totalInverterPower || 0,
           
           // Consumo energético
-          energyBills: project.projectData.energyBills || [{
-            id: crypto.randomUUID(),
+          energyBills: project.projectData.energyBills || [createEnergyBillB({
             name: 'Unidade Geradora',
             consumoMensal: Array(12).fill(500)
-          }],
+          })],
+          energyBillsA: project.projectData.energyBillsA || [],
           
           // Parâmetros tarifários
           grupoTarifario: project.projectData.grupoTarifario || 'B',
@@ -118,6 +119,9 @@ function PVDesignPageContent() {
           custoFioB: project.projectData.custoFioB || 0.30,
           tarifaEnergiaPontaA: project.projectData.tarifaEnergiaPontaA,
           tarifaEnergiaForaPontaA: project.projectData.tarifaEnergiaForaPontaA,
+          tePontaA: project.projectData.tePontaA,
+          teForaPontaA: project.projectData.teForaPontaA,
+          fatorSimultaneidade: project.projectData.fatorSimultaneidade,
           
           // Dados da instalação
           concessionaria: project.projectData.concessionaria,

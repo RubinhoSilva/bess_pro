@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { ProjectType, ProjectData, CreateProjectData } from '@/types/project';
+import { createEnergyBillB } from '@/types/energy-bill-types';
 import { useCreateProject, useUpdateProject } from '@/hooks/project-hooks';
 import { useAuth } from '@/hooks/auth-hooks';
 import toast from 'react-hot-toast';
@@ -30,11 +31,11 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 const getInitialFormData = (): ProjectData => ({
   customer: undefined,
   location: undefined,
-  energyBills: [{ 
-    id: crypto.randomUUID(), 
+  energyBills: [createEnergyBillB({ 
     name: 'Unidade Geradora', 
     consumoMensal: Array(12).fill(500) 
-  }],
+  })],
+  energyBillsA: [],
   potenciaModulo: 0,
   numeroModulos: 0,
   eficienciaSistema: 80,
@@ -53,6 +54,9 @@ const getInitialFormData = (): ProjectData => ({
   custoFioB: 0.05,
   tarifaEnergiaPontaA: 1.20,
   tarifaEnergiaForaPontaA: 0.60,
+  tePontaA: 0.60,
+  teForaPontaA: 0.40,
+  fatorSimultaneidade: 100,
   
   custoEquipamento: 0,
   custoMateriais: 0,

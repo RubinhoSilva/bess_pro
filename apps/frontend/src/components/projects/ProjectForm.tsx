@@ -22,6 +22,7 @@ import {
   FormMessage 
 } from '@/components/ui/form';
 import { ProjectType, CreateProjectData, ProjectSummary } from '@/types/project';
+import { createEnergyBillB } from '@/types/energy-bill-types';
 import { useCreateProject, useUpdateProject } from '@/hooks/project-hooks';
 import { Loader2, Zap, Battery, Layers } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -90,11 +91,11 @@ export default function ProjectForm({ onSuccess, onCancel, initialData, project,
             longitude: 0,
             address: data.address,
           } : undefined,
-          energyBills: [{
-            id: crypto.randomUUID(),
+          energyBills: [createEnergyBillB({
             name: 'Unidade Geradora',
             consumoMensal: Array(12).fill(500)
-          }],
+          })],
+          energyBillsA: [],
           potenciaModulo: 0,
           numeroModulos: 0,
           eficienciaSistema: 80,
@@ -110,6 +111,9 @@ export default function ProjectForm({ onSuccess, onCancel, initialData, project,
           custoFioB: 0.05,
           tarifaEnergiaPontaA: 1.20,
           tarifaEnergiaForaPontaA: 0.60,
+          tePontaA: 0.60,
+          teForaPontaA: 0.40,
+          fatorSimultaneidade: 100,
           custoEquipamento: 0,
           custoMateriais: 0,
           custoMaoDeObra: 0,

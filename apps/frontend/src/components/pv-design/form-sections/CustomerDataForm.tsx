@@ -430,6 +430,27 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
           </motion.div>
         )}
 
+        {/* Fator de Simultaneidade - aparece para ambos os grupos */}
+        <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="fatorSimultaneidade">Fator de Simultaneidade (%)</Label>
+            <Input 
+              id="fatorSimultaneidade" 
+              type="number" 
+              min="0" 
+              max="100" 
+              step="1" 
+              value={formData.fatorSimultaneidade || 100} 
+              onChange={(e) => onFormChange('fatorSimultaneidade', parseInt(e.target.value) || 100)} 
+              className="bg-background border-border text-foreground"
+              placeholder="0-100"
+            />
+            <p className="text-xs text-muted-foreground">
+              Percentual máximo de uso simultâneo da energia gerada (padrão: 100%)
+            </p>
+          </div>
+        </div>
+
         <AnimatePresence>
           {formData.grupoTarifario === 'B' && (
             <motion.div 
@@ -532,22 +553,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fatorSimultaneidade">Fator de Simultaneidade (%)</Label>
-                    <Input 
-                      id="fatorSimultaneidade" 
-                      type="number" 
-                      min="0" 
-                      max="100" 
-                      step="1" 
-                      value={formData.fatorSimultaneidade || 100} 
-                      onChange={(e) => onFormChange('fatorSimultaneidade', parseInt(e.target.value) || 100)} 
-                      className="bg-background border-border text-foreground"
-                      placeholder="0-100"
-                    />
-                  </div>
-
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="tipoTelhado">Tipo de Telhado</Label>
                     <Select 
@@ -567,6 +573,22 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   </div>
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fatorSimultaneidade" className="text-foreground">Fator de Simultaneidade (%)</Label>
+                <Input 
+                  id="fatorSimultaneidade" 
+                  type="number" 
+                  min="0" 
+                  max="100" 
+                  step="1" 
+                  value={formData.fatorSimultaneidade || 100} 
+                  onChange={(e) => onFormChange('fatorSimultaneidade', parseInt(e.target.value) || 100)} 
+                  className="bg-background border-border text-foreground"
+                  placeholder="0-100"
+                />
+              </div>
+
             </motion.div>
           )}
           
@@ -596,6 +618,42 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                     className="bg-background border-border text-foreground"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tePontaA" className="text-foreground">TE Ponta (R$/kWh)</Label>
+                  <CustomCurrencyInput
+                    value={formData.tePontaA}
+                    onValueChange={(value) => onFormChange('tePontaA', value)}
+                    placeholder="R$ 0,00"
+                    className="bg-background border-border text-foreground"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="teForaPontaA" className="text-foreground">TE Fora Ponta (R$/kWh)</Label>
+                  <CustomCurrencyInput
+                    value={formData.teForaPontaA}
+                    onValueChange={(value) => onFormChange('teForaPontaA', value)}
+                    placeholder="R$ 0,00"
+                    className="bg-background border-border text-foreground"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fatorSimultaneidade" className="text-foreground">Fator de Simultaneidade (%)</Label>
+                <Input 
+                  id="fatorSimultaneidade" 
+                  type="number" 
+                  min="0" 
+                  max="100" 
+                  step="1" 
+                  value={formData.fatorSimultaneidade || 100} 
+                  onChange={(e) => onFormChange('fatorSimultaneidade', parseInt(e.target.value) || 100)} 
+                  className="bg-background border-border text-foreground"
+                  placeholder="0-100"
+                />
               </div>
 
             </motion.div>
