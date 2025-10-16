@@ -29,7 +29,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import TeamManagementPage from './pages/team/TeamManagementPage'
 import ReportsPage from './pages/reports/ReportsPage'
 import CalendarPage from './pages/calendar/CalendarPage'
-import LogsConsole from './pages/tools/LogsConsole'
+
 
 // Components
 import { ProtectedRoute } from './components/providers/protected-route'
@@ -103,7 +103,7 @@ function App() {
                     </ProtectedRoute>
                   } />
                   <Route path="calendar" element={<CalendarPage />} />
-                  <Route path="tools/logs" element={<LogsConsole />} />
+
                   <Route 
                     path="admin" 
                     element={
