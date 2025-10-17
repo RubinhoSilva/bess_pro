@@ -15,6 +15,9 @@ import { AdvancedFinancialAnalysis } from './AdvancedFinancialAnalysis';
 import AdvancedPDFGenerator from '../report/AdvancedPDFGenerator';
 import { useDimensioningOperations } from '@/hooks/dimensioning';
 import { ProposalDocument } from '../proposal/ProposalDocument';
+import { isResultadosCodigoB, isResultadosCodigoA } from '@bess-pro/shared';
+import GrupoBFinancialResults from './GrupoBFinancialResults';
+import GrupoAFinancialResults from './GrupoAFinancialResults';
 
 interface PVResultsDashboardProps {
   results: {
@@ -550,6 +553,20 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
           {validatedResults.advancedFinancial && (
             <Section title="Análise Financeira" delay={3}>
               <AdvancedFinancialAnalysis results={validatedResults} />
+            </Section>
+          )}
+
+          {/* Grupo B Financial Results */}
+          {validatedResults && isResultadosCodigoB(validatedResults) && (
+            <Section title="Resultados Financeiros - Grupo B" delay={3}>
+              <GrupoBFinancialResults results={validatedResults} />
+            </Section>
+          )}
+
+          {/* Grupo A Financial Results */}
+          {validatedResults && isResultadosCodigoA(validatedResults) && (
+            <Section title="Resultados Financeiros - Grupo A" delay={3}>
+              <GrupoAFinancialResults results={validatedResults} />
             </Section>
           )}
 

@@ -6,8 +6,8 @@ import path from 'path'
 // or locally (shared at ../../packages/shared)
 const isDocker = process.env.DOCKER_ENV === 'true'
 const sharedPath = isDocker
-  ? '/app/shared/dist'
-  : path.resolve(__dirname, '../../packages/shared/dist')
+  ? '/app/shared/dist/index.esm.js'
+  : path.resolve(__dirname, '../../packages/shared/dist/index.esm.js')
 
 export default defineConfig({
   plugins: [react()],

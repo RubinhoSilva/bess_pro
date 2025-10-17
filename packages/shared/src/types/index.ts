@@ -50,6 +50,7 @@ export * from './energy-bill-types';
 
 // Tipos de resultados financeiros especializados
 export * from './financial-results';
+export { isResultadosCodigoB, isResultadosCodigoA } from './financial-results';
 
 // Exportar tipo união explicitamente
 export type { GrupoConfig } from './grupo-configs';

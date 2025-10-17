@@ -3,14 +3,25 @@
   "version": "1.0.0",
   "private": true,
   "main": "dist/index.js",
+  "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
-    "build": "tsc --build --verbose",
-    "build:dev": "tsc --build --verbose",
-    "build:clean": "tsc --build --clean && tsc --build --verbose",
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc --build --verbose",
+    "build:esm": "tsc --project tsconfig.esm.json",
+    "build:dev": "npm run build",
+    "build:clean": "npm run clean && npm run build",
     "dev": "tsc --build --watch",
     "clean": "tsc --build --clean && rm -rf dist",
-    "verify": "tsc --noEmit --skipLibCheck"
+    "verify": "tsc --noEmit --skipLibCheck",
+    "postbuild": "cp dist/esm/index.js dist/index.esm.js && node scripts/fix-esm-paths.js"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
