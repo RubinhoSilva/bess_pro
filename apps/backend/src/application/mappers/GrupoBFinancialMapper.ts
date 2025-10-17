@@ -71,8 +71,43 @@ export class GrupoBFinancialMapper {
       // Converter objeto principal de snake_case para camelCase
       const camelCaseData = objectSnakeToCamel(pythonData);
 
+      // Log detalhado para debug
+      logger.info('Estrutura convertida para camelCase:');
+      logger.info('Campos principais: ' + Object.keys(camelCaseData).join(', '));
+      if (camelCaseData.somasIniciais) {
+        logger.info('somasIniciais: ' + Object.keys(camelCaseData.somasIniciais).join(', '));
+      }
+      if (camelCaseData.comparativoCustoAbatimento) {
+        logger.info('comparativoCustoAbatimento: ' + Object.keys(camelCaseData.comparativoCustoAbatimento).join(', '));
+      }
+      if (camelCaseData.consumoAno1) {
+        logger.info('consumoAno1: ' + Object.keys(camelCaseData.consumoAno1).join(', '));
+      }
+      if (camelCaseData.tabelaResumoAnual && camelCaseData.tabelaResumoAnual.length > 0) {
+        logger.info('tabelaResumoAnual[0]: ' + Object.keys(camelCaseData.tabelaResumoAnual[0]).join(', '));
+      }
+      if (camelCaseData.tabelaFluxoCaixa && camelCaseData.tabelaFluxoCaixa.length > 0) {
+        logger.info('tabelaFluxoCaixa[0]: ' + Object.keys(camelCaseData.tabelaFluxoCaixa[0]).join(', '));
+      }
+
       // Validação adicional após conversão
       if (!isResultadosCodigoB(camelCaseData)) {
+        // Análise detalhada da falha
+        const requiredFields = ['somasIniciais', 'comparativoCustoAbatimento', 'financeiro', 'consumoAno1', 'tabelaResumoAnual', 'tabelaFluxoCaixa'];
+        const missingFields = requiredFields.filter(field => !(field in camelCaseData));
+        if (missingFields.length > 0) {
+          logger.error('Campos obrigatórios ausentes: ' + missingFields.join(', '));
+        }
+
+        if (camelCaseData.comparativoCustoAbatimento) {
+          const grupoBFields = ['custoSemSistema', 'custoComSistema', 'economiaAnual'];
+          const missingGrupoBFields = grupoBFields.filter(field => !(field in camelCaseData.comparativoCustoAbatimento));
+          if (missingGrupoBFields.length > 0) {
+            logger.error('Campos do comparativoCustoAbatimento ausentes: ' + missingGrupoBFields.join(', '));
+            logger.error('Disponíveis: ' + Object.keys(camelCaseData.comparativoCustoAbatimento).join(', '));
+          }
+        }
+
         throw new Error('Dados convertidos não correspondem à estrutura esperada de ResultadosCodigoB');
       }
 
@@ -187,7 +222,7 @@ export class GrupoBFinancialMapper {
         return false;
       }
 
-      const comparativoFields = ['custo_fio_b', 'custo_disponibilidade', 'maior_custo'];
+      const comparativoFields = ['custo_sem_sistema', 'custo_com_sistema', 'economia_anual'];
       for (const field of comparativoFields) {
         if (!(field in comparativoCusto)) {
           logger.warn(`Campo ausente em comparativo_custo_abatimento: ${field}`);

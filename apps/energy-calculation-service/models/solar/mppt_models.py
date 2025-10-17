@@ -32,7 +32,7 @@ class MPPTCalculationRequest(BaseModel):
     tipo_rede: str = Field(default="Monofásico 220V", description="Tipo de rede")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "fabricante": "WEG",
                 "modelo": "SIW500H-M",
@@ -72,7 +72,7 @@ class MPPTCalculationResponse(BaseModel):
     parametros_entrada: Dict[str, Any] = Field(..., description="Parâmetros utilizados no cálculo")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "modulos_por_mppt": 5,
                 "modulos_total_sistema": 10,

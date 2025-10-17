@@ -27,6 +27,7 @@ import { createAdvancedTemplateRoutes } from './AdvancedTemplateRoutes';
 import { clientAlertRoutes } from './client-alert.routes';
 import { EnergyCompanyRoutes } from './EnergyCompanyRoutes';
 import { TestFinancialController } from '../controllers/TestFinancialController';
+import { GrupoFinancialRoutes } from './GrupoFinancialRoutes';
 
 export class ApiRoutes {
   static create(container: Container): Router {
@@ -65,6 +66,9 @@ export class ApiRoutes {
     router.use('/project-backups', new ProjectBackupRoutes(container).getRouter());
 
     router.use('/solar-analysis', createSolarAnalysisRoutes(container));
+    
+    const grupoFinancialRoutes = new GrupoFinancialRoutes(container);
+    router.use('/financial', grupoFinancialRoutes.getRouter());
 
     router.use('/advanced-templates', createAdvancedTemplateRoutes(container));
     router.use('/client-alerts', clientAlertRoutes);

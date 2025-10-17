@@ -293,7 +293,22 @@ export interface FinancialCalculationResponse {
  * Converte camelCase para snake_case
  */
 export function camelToSnake(str: string): string {
-  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+  // 1. Adiciona um underscore antes de cada letra maiúscula.
+  //    Ex: "meuNomeCompleto" -> "meu_Nome_Completo"
+  //    Ex: "NomeCompleto" -> "_Nome_Completo"
+  const withUnderscores = str.replace(/[A-Z]/g, letter => `_${letter}`);
+
+  // 2. Remove o primeiro caractere se ele for um underscore.
+  //    Ex: "_Nome_Completo" -> "Nome_Completo"
+  //    Ex: "meu_Nome_Completo" -> "meu_Nome_Completo" (sem alteração)
+  const withoutLeadingUnderscore = withUnderscores.startsWith('_') 
+    ? withUnderscores.slice(1) 
+    : withUnderscores;
+
+  // 3. Converte toda a string para minúsculas.
+  //    Ex: "Nome_Completo" -> "nome_completo"
+  //    Ex: "meu_Nome_Completo" -> "meu_nome_completo"
+  return withoutLeadingUnderscore.toLowerCase();
 }
 
 /**
@@ -318,7 +333,18 @@ export function objectCamelToSnake(obj: any): any {
   const result: any = {};
   for (const key in obj) {
     if (obj.hasOwnProperty(key)) {
-      const snakeKey = camelToSnake(key);
+      // Caso especial para nomes de meses: Jan -> jan, Fev -> fev, etc.
+      const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      let snakeKey: string;
+      
+      if (monthNames.includes(key)) {
+        // Para meses, apenas converter para minúsculas sem prefixo underscore
+        snakeKey = key.toLowerCase();
+      } else {
+        // Para outros campos, usar conversão normal camelCase para snake_case
+        snakeKey = camelToSnake(key);
+      }
+      
       result[snakeKey] = objectCamelToSnake(obj[key]);
     }
   }

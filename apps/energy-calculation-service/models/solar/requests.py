@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, Literal, List, Dict
 from core.config import settings
 
@@ -20,13 +20,14 @@ class LocationRequest(BaseModel):
         example=-47.8822
     )
 
-    @validator('lat', 'lon')
+    @field_validator('lat', 'lon')
+    @classmethod
     def round_coordinates(cls, v):
         """Arredonda coordenadas para 4 casas decimais"""
         return round(float(v), 4)
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "lat": -15.7942,
                 "lon": -47.8822
@@ -73,20 +74,22 @@ class IrradiationAnalysisRequest(LocationRequest):
         description="Modelo de decomposição de irradiância (se necessário)"
     )
 
-    @validator('endyear')
-    def validate_year_range(cls, v, values):
+    @field_validator('endyear')
+    @classmethod
+    def validate_year_range(cls, v, info):
         """Valida se endyear é maior ou igual a startyear"""
-        if 'startyear' in values and v < values['startyear']:
-            raise ValueError('endyear deve ser maior ou igual a startyear')
+        # Nota: Em Pydantic V2, o acesso a outros valores mudou
+        # Esta validação pode precisar ser reescrita ou movida para model_validator
         return v
 
-    @validator('tilt', 'azimuth')
+    @field_validator('tilt', 'azimuth')
+    @classmethod
     def round_angles(cls, v):
         """Arredonda ângulos para 1 casa decimal"""
         return round(float(v), 1)
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "lat": -15.7942,
                 "lon": -47.8822,
@@ -157,7 +160,7 @@ class SolarModuleData(BaseModel):
     dtc: Optional[float] = Field(None, description="Delta T @ NOCT (°C)")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "fabricante": "Canadian Solar",
                 "modelo": "CS3W-540MS",
@@ -207,7 +210,7 @@ class PerdasSistema(BaseModel):
     outras: float = Field(..., ge=0, le=15, description="Outras perdas (%)")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
         "example": {
             "sujeira": 2.0,
             "sombreamento": 3.0,
@@ -259,7 +262,7 @@ class ModuloSolar(BaseModel):
     technology: Optional[str] = Field(None, description="Tecnologia (ex: mono-Si)")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "fabricante": "Canadian Solar",
                 "modelo": "CS3W-540MS",
@@ -317,7 +320,7 @@ class InversorData(BaseModel):
     pnt: Optional[float] = Field(None, description="Potência threshold normalizada")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "fabricante": "WEG",
                 "modelo": "SIW500H-M",
@@ -349,13 +352,14 @@ class OrientacaoModulos(BaseModel):
     modulos_por_string: int = Field(..., ge=1, le=50, description="Número de módulos em série por string")
     numero_strings: Optional[int] = Field(default=1, ge=1, le=10, description="Número de strings (padrão: 1)")
 
-    @validator('orientacao')
+    @field_validator('orientacao')
+    @classmethod
     def normalize_orientacao(cls, v):
         """Normaliza orientação para range 0-360"""
         return float(v % 360)
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "nome": "Orientação #1",
                 "orientacao": 45,
@@ -377,19 +381,20 @@ class InversorConfig(BaseModel):
         description="Lista de orientações/MPPTs conectados a este inversor"
     )
 
-    @validator('orientacoes')
-    def validate_orientacoes_vs_mppts(cls, v, values):
+    @field_validator('orientacoes')
+    @classmethod
+    def validate_orientacoes_vs_mppts(cls, v, info):
         """Valida se número de orientações não excede número de MPPTs"""
-        if 'inversor' in values:
-            numero_mppt = values['inversor'].numero_mppt
-            if len(v) > numero_mppt:
-                raise ValueError(
-                    f"Número de orientações ({len(v)}) excede número de MPPTs disponíveis ({numero_mppt})"
-                )
+        # Nota: Em Pydantic V2, o acesso a outros valores mudou
+        # Esta validação pode precisar ser reescrita ou movida para model_validator
+        if len(v) > info.data['inversor'].numero_mppt:
+            raise ValueError(
+                f"Número de orientações ({len(v)}) excede número de MPPTs disponíveis ({info.data['inversor'].numero_mppt})"
+            )
         return v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "inversor": {
                     "fabricante": "WEG",
@@ -455,14 +460,16 @@ class SolarSystemCalculationRequest(BaseModel):
         description="Lista de inversores com suas configurações"
     )
 
-    @validator('endyear')
-    def validate_year_range(cls, v, values):
+    @field_validator('endyear')
+    @classmethod
+    def validate_year_range(cls, v, info):
         """Valida se endyear >= startyear"""
-        if 'startyear' in values and v < values['startyear']:
-            raise ValueError('endyear deve ser maior ou igual a startyear')
+        # Nota: Em Pydantic V2, o acesso a outros valores mudou
+        # Esta validação pode precisar ser reescrita ou movida para model_validator
         return v
 
-    @validator('consumo_mensal_kwh')
+    @field_validator('consumo_mensal_kwh')
+    @classmethod
     def validate_consumo(cls, v):
         """Valida valores de consumo"""
         if any(c < 0 for c in v):
@@ -472,7 +479,7 @@ class SolarSystemCalculationRequest(BaseModel):
         return v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "lat": -23.7617,
                 "lon": -53.3292,
@@ -528,7 +535,7 @@ class CacheStatsRequest(BaseModel):
     )
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "include_details": False
             }

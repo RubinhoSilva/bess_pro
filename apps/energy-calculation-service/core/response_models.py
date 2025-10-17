@@ -17,7 +17,7 @@ class SuccessResponse(BaseModel, Generic[T]):
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Timestamp da resposta")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success": True,
                 "data": {},
@@ -35,7 +35,7 @@ class ErrorResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Timestamp do erro")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success": False,
                 "error": "Erro de validação",

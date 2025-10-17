@@ -6,78 +6,198 @@
 import { GrupoAConfig, GrupoBConfig, CommonTypes } from '@bess-pro/shared';
 
 /**
- * Converte configuração do frontend para formato esperado pelo endpoint Grupo A
+ * Converte configuração do frontend para formato GrupoAConfig completo
  */
-export function convertToGrupoAInput(config: Partial<GrupoAConfig>, investimentoInicial: number) {
-  const geracaoArray = config.geracao ? Object.values(config.geracao) : [];
-  const consumoForaPontaArray = config.consumoLocal?.foraPonta ? Object.values(config.consumoLocal.foraPonta) : [];
-  const consumoPontaArray = config.consumoLocal?.ponta ? Object.values(config.consumoLocal.ponta) : [];
-  const consumoArray = consumoForaPontaArray.map((val, idx) => val + (consumoPontaArray[idx] || 0));
+export function convertToGrupoAInput(
+  config: any, 
+  calculatedData: { investimentoInicial: number; geracaoMensal: number[]; consumoMensal: number[] }
+): GrupoAConfig {
+  // Construir dados mensais a partir de arrays
+  const meses: CommonTypes.Month[] = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   
-  return {
-    investimento_inicial: investimentoInicial,
-    geracao_mensal: geracaoArray,
-    consumo_mensal: consumoArray,
+  // Converter arrays para objetos mensais
+  const geracaoMensal: CommonTypes.MonthlyData = meses.reduce((obj, mes, index) => {
+    obj[mes] = calculatedData.geracaoMensal[index] || 0;
+    return obj;
+  }, {} as CommonTypes.MonthlyData);
+  
+  // Dividir consumo proporcionalmente (80% fora ponta, 20% ponta)
+  const consumoForaPonta: CommonTypes.MonthlyData = meses.reduce((obj, mes, index) => {
+    obj[mes] = (calculatedData.consumoMensal[index] || 0) * 0.8;
+    return obj;
+  }, {} as CommonTypes.MonthlyData);
+  
+  const consumoPonta: CommonTypes.MonthlyData = meses.reduce((obj, mes, index) => {
+    obj[mes] = (calculatedData.consumoMensal[index] || 0) * 0.2;
+    return obj;
+  }, {} as CommonTypes.MonthlyData);
+
+  // Valores padrão para campos obrigatórios
+  const defaultFinanceiros: CommonTypes.ProjectFinancials = {
+    capex: calculatedData.investimentoInicial,
+    anos: 25,
+    taxaDesconto: 0.12,
+    inflacaoEnergia: 0.10,
+    degradacao: 0.005,
+    salvagePct: 0.10,
+    omaFirstPct: 0.015,
+    omaInflacao: 0.04
+  };
+
+  const defaultFioB: CommonTypes.FioBParams = {
+    schedule: {
+      2025: 0.45,
+      2026: 0.60,
+      2027: 0.75,
+      2028: 0.90
+    },
+    baseYear: 2025
+  };
+
+  const defaultTarifas = {
+    foraPonta: 0.65,
+    ponta: 0.95
+  };
+
+  const defaultTE = {
+    foraPonta: 0.40,
+    ponta: 0.60
+  };
+
+  const defaultRemotoB: CommonTypes.RemoteConsumptionGrupoB = {
+    enabled: false,
+    percentage: 0,
+    data: { Jan: 0, Fev: 0, Mar: 0, Abr: 0, Mai: 0, Jun: 0, Jul: 0, Ago: 0, Set: 0, Out: 0, Nov: 0, Dez: 0 },
+    tarifaTotal: 0,
+    fioBValue: 0
+  };
+
+  const defaultRemotoA: CommonTypes.RemoteConsumptionGrupoA = {
+    enabled: false,
+    percentage: 0,
+    dataOffPeak: { Jan: 0, Fev: 0, Mar: 0, Abr: 0, Mai: 0, Jun: 0, Jul: 0, Ago: 0, Set: 0, Out: 0, Nov: 0, Dez: 0 },
+    dataPeak: { Jan: 0, Fev: 0, Mar: 0, Abr: 0, Mai: 0, Jun: 0, Jul: 0, Ago: 0, Set: 0, Out: 0, Nov: 0, Dez: 0 },
     tarifas: {
-      energia: config.tarifas?.foraPonta || 0,
-      fio_b: config.fioB?.schedule?.[config.fioB?.baseYear || 2025] || 0,
-      // Demanda removida - não usar mais no Grupo A
+      offPeak: 0,
+      peak: 0
     },
-    parametros: {
-      vida_util: config.financeiros?.anos || 25,
-      taxa_desconto: config.financeiros?.taxaDesconto || 0.12,
-      inflacao_energia: config.financeiros?.inflacaoEnergia || 0.10,
-      degradacao_modulos: config.financeiros?.degradacao || 0.005,
-      custo_om: config.financeiros?.omaFirstPct ? config.financeiros.omaFirstPct * investimentoInicial : 0,
-      inflacao_om: config.financeiros?.omaInflacao || 0.10,
-      fator_simultaneidade: config.fatorSimultaneidadeLocal || 0.85,
-      base_year: config.fioB?.baseYear || 2025,
+    tusd: {
+      offPeak: 0,
+      peak: 0
     },
-    creditos_remotos: {
-      autoconsumo_remoto_b: config.remotoB?.enabled || false,
-      perc_creditos_b: config.remotoB?.percentage || 0,
-      autoconsumo_remoto_a_verde: config.remotoAVerde?.enabled || false,
-      perc_creditos_a_verde: config.remotoAVerde?.percentage || 0,
-      autoconsumo_remoto_a_azul: config.remotoAAzul?.enabled || false,
-      perc_creditos_a_azul: config.remotoAAzul?.percentage || 0,
+    te: {
+      offPeak: 0,
+      peak: 0
     }
+  };
+
+  return {
+    financeiros: config.financeiros || defaultFinanceiros,
+    geracao: geracaoMensal,
+    consumoLocal: {
+      foraPonta: consumoForaPonta,
+      ponta: consumoPonta
+    },
+    tarifas: config.tarifas || defaultTarifas,
+    te: config.te || defaultTE,
+    fatorSimultaneidadeLocal: config.fatorSimultaneidadeLocal || 0.85,
+    fioB: config.fioB || defaultFioB,
+    remotoB: config.remotoB || defaultRemotoB,
+    remotoAVerde: config.remotoAVerde || defaultRemotoA,
+    remotoAAzul: config.remotoAAzul || defaultRemotoA
   };
 }
 
 /**
- * Converte configuração do frontend para formato esperado pelo endpoint Grupo B
+ * Converte configuração do frontend para formato GrupoBConfig completo
  */
-export function convertToGrupoBInput(config: Partial<GrupoBConfig>, investimentoInicial: number) {
-  const geracaoArray = config.geracao ? Object.values(config.geracao) : [];
-  const consumoArray = config.consumoLocal ? Object.values(config.consumoLocal) : [];
+export function convertToGrupoBInput(
+  config: any, 
+  calculatedData: { investimentoInicial: number; geracaoMensal: number[]; consumoMensal: number[] }
+): GrupoBConfig {
+  // Construir dados mensais a partir de arrays
+  const meses: CommonTypes.Month[] = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   
-  return {
-    investimento_inicial: investimentoInicial,
-    geracao_mensal: geracaoArray,
-    consumo_mensal: consumoArray,
+  // Converter arrays para objetos mensais
+  const geracaoMensal: CommonTypes.MonthlyData = meses.reduce((obj, mes, index) => {
+    obj[mes] = calculatedData.geracaoMensal[index] || 0;
+    return obj;
+  }, {} as CommonTypes.MonthlyData);
+  
+  const consumoMensal: CommonTypes.MonthlyData = meses.reduce((obj, mes, index) => {
+    obj[mes] = calculatedData.consumoMensal[index] || 0;
+    return obj;
+  }, {} as CommonTypes.MonthlyData);
+
+  // Validações básicas
+  if (!geracaoMensal || Object.keys(geracaoMensal).length === 0) {
+    throw new Error('Dados de geração mensal são obrigatórios');
+  }
+  
+  if (!consumoMensal || Object.keys(consumoMensal).length === 0) {
+    throw new Error('Dados de consumo mensal são obrigatórios');
+  }
+
+  // Valores padrão para campos obrigatórios
+  const defaultFinanceiros: CommonTypes.ProjectFinancials = {
+    capex: calculatedData.investimentoInicial,
+    anos: 25,
+    taxaDesconto: 0.08,
+    inflacaoEnergia: 0.045,
+    degradacao: 0.005,
+    salvagePct: 0.10,
+    omaFirstPct: 0.015,
+    omaInflacao: 0.04
+  };
+
+  const defaultFioB: CommonTypes.FioBParams = {
+    schedule: {
+      2025: 0.45,
+      2026: 0.60,
+      2027: 0.75,
+      2028: 0.90
+    },
+    baseYear: 2025
+  };
+
+  const defaultRemotoB: CommonTypes.RemoteConsumptionGrupoB = {
+    enabled: false,
+    percentage: 0,
+    data: { Jan: 0, Fev: 0, Mar: 0, Abr: 0, Mai: 0, Jun: 0, Jul: 0, Ago: 0, Set: 0, Out: 0, Nov: 0, Dez: 0 },
+    tarifaTotal: 0,
+    fioBValue: 0
+  };
+
+  const defaultRemotoA: CommonTypes.RemoteConsumptionGrupoA = {
+    enabled: false,
+    percentage: 0,
+    dataOffPeak: { Jan: 0, Fev: 0, Mar: 0, Abr: 0, Mai: 0, Jun: 0, Jul: 0, Ago: 0, Set: 0, Out: 0, Nov: 0, Dez: 0 },
+    dataPeak: { Jan: 0, Fev: 0, Mar: 0, Abr: 0, Mai: 0, Jun: 0, Jul: 0, Ago: 0, Set: 0, Out: 0, Nov: 0, Dez: 0 },
     tarifas: {
-      energia: config.tarifaBase || 0,
-      fio_b: config.fioB?.schedule?.[config.fioB?.baseYear || 2025] || 0,
-      demanda: 0, // Grupo B não tem demanda no novo modelo
+      offPeak: 0,
+      peak: 0
     },
-    parametros: {
-      vida_util: config.financeiros?.anos || 25,
-      taxa_desconto: config.financeiros?.taxaDesconto || 0.12,
-      inflacao_energia: config.financeiros?.inflacaoEnergia || 0.10,
-      degradacao_modulos: config.financeiros?.degradacao || 0.005,
-      custo_om: config.financeiros?.omaFirstPct ? config.financeiros.omaFirstPct * investimentoInicial : 0,
-      inflacao_om: config.financeiros?.omaInflacao || 0.10,
-      fator_simultaneidade: config.fatorSimultaneidade || 0.85,
-      base_year: config.fioB?.baseYear || 2025,
+    tusd: {
+      offPeak: 0,
+      peak: 0
     },
-    creditos_remotos: {
-      autoconsumo_remoto_b: config.remotoB?.enabled || false,
-      perc_creditos_b: config.remotoB?.percentage || 0,
-      autoconsumo_remoto_a_verde: config.remotoAVerde?.enabled || false,
-      perc_creditos_a_verde: config.remotoAVerde?.percentage || 0,
-      autoconsumo_remoto_a_azul: config.remotoAAzul?.enabled || false,
-      perc_creditos_a_azul: config.remotoAAzul?.percentage || 0,
+    te: {
+      offPeak: 0,
+      peak: 0
     }
+  };
+
+  return {
+    financeiros: config.financeiros || defaultFinanceiros,
+    geracao: geracaoMensal,
+    consumoLocal: consumoMensal,
+    tarifaBase: config.tarifaBase || 0.85,
+    tipoConexao: config.tipoConexao || 'Monofasico',
+    fatorSimultaneidade: config.fatorSimultaneidade || 0.85,
+    fioB: config.fioB || defaultFioB,
+    remotoB: config.remotoB || defaultRemotoB,
+    remotoAVerde: config.remotoAVerde || defaultRemotoA,
+    remotoAAzul: config.remotoAAzul || defaultRemotoA
   };
 }
 

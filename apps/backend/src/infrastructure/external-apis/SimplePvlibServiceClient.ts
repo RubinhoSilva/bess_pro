@@ -27,7 +27,7 @@ export class SimplePvlibServiceClient {
   private readonly baseURL: string;
 
   constructor(baseURL?: string) {
-    this.baseURL = baseURL || process.env.PVLIB_SERVICE_URL || 'http://pvlib-service:8000';
+    this.baseURL = baseURL || process.env.ENERGY_SERVICE_URL || process.env.PVLIB_SERVICE_URL || 'http://localhost:8110';
 
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -128,9 +128,24 @@ export class SimplePvlibServiceClient {
 
   async calculateGrupoBFinancials(input: GrupoBConfig): Promise<ResultadosCodigoB> {
     try {
-      // Log da chamada com dados resumidos
-      const geracaoAnual = Object.values(input.geracao).reduce((a: number, b: number) => a + b, 0);
-      const consumoAnual = Object.values(input.consumoLocal).reduce((a: number, b: number) => a + b, 0);
+      // Validação de entrada para evitar erro "Cannot convert undefined or null to object"
+      if (!input) {
+        throw new Error('Dados de entrada são obrigatórios para cálculo do Grupo B');
+      }
+
+      if (!input.geracao || typeof input.geracao !== 'object') {
+        throw new Error('Dados de geração mensal são obrigatórios e devem ser um objeto');
+      }
+
+      if (!input.consumoLocal || typeof input.consumoLocal !== 'object') {
+        throw new Error('Dados de consumo mensal são obrigatórios e devem ser um objeto');
+      }
+
+      // Log da chamada com dados resumidos (com validação adicional)
+      const geracaoAnual = Object.values(input.geracao || {}).reduce((a: number, b: number) => a + b, 0);
+      const consumoAnual = Object.values(input.consumoLocal || {}).reduce((a: number, b: number) => a + b, 0);
+      
+      console.log('[SimplePvlibService DEBUG] Payload original Grupo B:', JSON.stringify(input, null, 2));
       
       console.log('[SimplePvlibService] Iniciando cálculo financeiro Grupo B:', {
         investimento: input.financeiros.capex,
@@ -142,6 +157,8 @@ export class SimplePvlibServiceClient {
 
       // Converter input para snake_case
       const snakeCaseInput = objectCamelToSnake(input);
+      
+      console.log('[SimplePvlibService DEBUG] Payload convertido para snake_case Grupo B:', JSON.stringify(snakeCaseInput, null, 2));
 
       // Salvar payload em disco para debug
       try {
@@ -168,13 +185,16 @@ export class SimplePvlibServiceClient {
         timeout: 60000 // 60 segundos
       });
 
+      // Extrair dados reais do wrapper SuccessResponse
+      const actualData = response.data.data || response.data;
+
       // Validar resposta usando o mapper
-      if (!GrupoBFinancialMapper.validatePythonResponse(response.data)) {
+      if (!GrupoBFinancialMapper.validatePythonResponse(actualData)) {
         throw new Error('Resposta do serviço Python não tem estrutura válida para Grupo B');
       }
 
       // Converter resposta usando o mapper
-      const resultado = GrupoBFinancialMapper.fromPythonResponse(response.data);
+      const resultado = GrupoBFinancialMapper.fromPythonResponse(actualData);
 
       // Log de sucesso
       console.log('[SimplePvlibService] Cálculo Grupo B concluído com sucesso:', {
@@ -229,11 +249,30 @@ export class SimplePvlibServiceClient {
 
   async calculateGrupoAFinancials(input: GrupoAConfig): Promise<ResultadosCodigoA> {
     try {
-      // Log da chamada com dados resumidos
-      const geracaoAnual = Object.values(input.geracao).reduce((a: number, b: number) => a + b, 0);
-      const consumoForaPonta = Object.values(input.consumoLocal.foraPonta).reduce((a: number, b: number) => a + b, 0);
-      const consumoPonta = Object.values(input.consumoLocal.ponta).reduce((a: number, b: number) => a + b, 0);
+      // Validação de entrada para evitar erro "Cannot convert undefined or null to object"
+      if (!input) {
+        throw new Error('Dados de entrada são obrigatórios para cálculo do Grupo A');
+      }
+
+      if (!input.geracao || typeof input.geracao !== 'object') {
+        throw new Error('Dados de geração mensal são obrigatórios e devem ser um objeto');
+      }
+
+      if (!input.consumoLocal || typeof input.consumoLocal !== 'object') {
+        throw new Error('Dados de consumo mensal são obrigatórios e devem ser um objeto');
+      }
+
+      if (!input.consumoLocal.foraPonta || !input.consumoLocal.ponta) {
+        throw new Error('Dados de consumo devem conter "foraPonta" e "ponta"');
+      }
+
+      // Log da chamada com dados resumidos (com validação adicional)
+      const geracaoAnual = Object.values(input.geracao || {}).reduce((a: number, b: number) => a + b, 0);
+      const consumoForaPonta = Object.values(input.consumoLocal?.foraPonta || {}).reduce((a: number, b: number) => a + b, 0);
+      const consumoPonta = Object.values(input.consumoLocal?.ponta || {}).reduce((a: number, b: number) => a + b, 0);
       const consumoTotal = consumoForaPonta + consumoPonta;
+      
+      console.log('[SimplePvlibService DEBUG] Payload original Grupo A:', JSON.stringify(input, null, 2));
       
       console.log('[SimplePvlibService] Iniciando cálculo financeiro Grupo A:', {
         investimento: input.financeiros.capex,
@@ -247,6 +286,8 @@ export class SimplePvlibServiceClient {
 
       // Converter input para snake_case (trata ponta/fora-ponta corretamente)
       const snakeCaseInput = objectCamelToSnake(input);
+      
+      console.log('[SimplePvlibService DEBUG] Payload convertido para snake_case Grupo A:', JSON.stringify(snakeCaseInput, null, 2));
 
       // Salvar payload em disco para debug
       try {

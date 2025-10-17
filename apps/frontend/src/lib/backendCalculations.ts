@@ -57,28 +57,8 @@ export class BackendCalculationService {
     try {
 
       
-      // Fazer a chamada para a nova API standalone (formato correto para o backend)
-      const response = await apiClient.calculations.solarSystemStandalone({
-        coordinates: params.coordinates,
-        consumption: {
-          monthly: params.financialParams?.consumoMensal || Array(12).fill(CalculationConstants.CONSUMPTION_DEFAULTS.DEFAULT_MONTHLY_CONSUMPTION_KWH)
-        },
-        systemParameters: {
-          moduleType: "monocristalino",
-          installationType: "telhado_inclinado", 
-          orientation: params.systemParams.orientacao ? "sul" : "norte",
-          tilt: params.systemParams.inclinacao || CalculationConstants.FINANCIAL_DEFAULTS.DEFAULT_TILT_DEGREES,
-          shadings: params.systemParams.perdas || 0
-        },
-        economicParameters: {
-          investmentAmount: params.financialParams?.totalInvestment || 25000,
-          financingRate: 0.12,
-          systemLifespan: params.financialParams?.vidaUtil || 25,
-          maintenanceCost: 200
-        }
-      });
-
-      const result = response.data;
+      // Removida chamada para solar-system
+      const result = null;
 
       // Usar o logger para processar e exibir logs
       const logger = new FrontendCalculationLogger('backend-calc');

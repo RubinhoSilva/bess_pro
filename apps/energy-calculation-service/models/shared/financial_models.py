@@ -3,9 +3,21 @@ Modelos Pydantic para cálculos financeiros de sistemas fotovoltaicos
 Grupo A e Grupo B
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ValidationInfo
 from typing import List, Dict, Optional, Any
 import re
+import logging
+
+# Configurar logger para validação Pydantic
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# Adicionar handler para arquivo de log de validação
+file_handler = logging.FileHandler('debug_logs/pydantic_validation.log', mode='a')
+file_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
 
 
 class FinancialInput(BaseModel):
@@ -149,11 +161,15 @@ class MonthlyDataModel(BaseModel):
     nov: float = Field(..., ge=0, description="Valor para novembro em kWh")
     dez: float = Field(..., ge=0, description="Valor para dezembro em kWh")
     
-    @validator('*')
-    def validate_non_negative(cls, v):
+    @field_validator('*')
+    @classmethod
+    def validate_non_negative(cls, v, info: ValidationInfo):
         """Valida que todos os valores são não-negativos"""
+        logger.debug(f"Validando campo {info.field_name}: valor={v}")
         if v < 0:
-            raise ValueError("Valores mensais devem ser não-negativos")
+            logger.error(f"Valor negativo detectado em {info.field_name}: {v}")
+            raise ValueError(f"Valor mensal em {info.field_name} deve ser não-negativo, recebido: {v}")
+        logger.debug(f"✓ Campo {info.field_name} validado: {v}")
         return v
     
     def to_list(self) -> List[float]:
@@ -186,69 +202,115 @@ class FioBParamsModel(BaseModel):
     schedule: Dict[int, float] = Field(..., description="Cronograma de percentual do Fio B não compensado por ano")
     base_year: int = Field(..., description="Ano base para o cronograma")
     
-    @validator('schedule')
+    @field_validator('schedule')
+    @classmethod
     def validate_schedule(cls, v):
         """Valida estrutura e valores do cronograma"""
+        logger.debug(f"Validando cronograma Fio B: {v}")
+        
         if not v:
+            logger.error("Cronograma Fio B está vazio")
             raise ValueError("Cronograma não pode ser vazio")
         
         for year, percentage in v.items():
+            logger.debug(f"Validando ano {year}: percentual={percentage}")
             if not isinstance(year, int) or year < 2000 or year > 2100:
+                logger.error(f"Ano inválido no cronograma: {year}")
                 raise ValueError(f"Ano inválido: {year}")
             if not isinstance(percentage, (int, float)) or percentage < 0 or percentage > 1:
+                logger.error(f"Percentual inválido para ano {year}: {percentage}")
                 raise ValueError(f"Percentual inválido para ano {year}: {percentage}")
         
+        logger.debug("✓ Cronograma Fio B validado com sucesso")
         return v
 
 
 class RemoteConsumptionGrupoBModel(BaseModel):
     """
     Modelo para autoconsumo remoto Grupo B
-    
+
     Configuração para simulação de autoconsumo remoto para consumidores
     do Grupo B (residencial, rural e outras baixas tensões).
     """
-    
+
     enabled: bool = Field(default=False, description="Habilitar autoconsumo remoto Grupo B")
-    percentage: float = Field(..., ge=0, le=100, description="Percentual de créditos destinados ao Grupo B")
-    data: MonthlyDataModel = Field(..., description="Dados de consumo mensal remoto em kWh")
-    tarifa_total: float = Field(..., gt=0, description="Tarifa total de energia em R$/kWh")
-    fio_b_value: float = Field(..., ge=0, description="Valor do Fio B em R$/kWh")
+    percentage: float = Field(default=0, ge=0, le=100, description="Percentual de créditos destinados ao Grupo B")
+    data: Optional[MonthlyDataModel] = Field(default=None, description="Dados de consumo mensal remoto em kWh")
+    tarifa_total: float = Field(default=0, ge=0, description="Tarifa total de energia em R$/kWh")
+    fio_b_value: float = Field(default=0, ge=0, description="Valor do Fio B em R$/kWh")
+
+    @model_validator(mode='after')
+    def validate_enabled_fields(self):
+        """Valida que campos obrigatórios estão preenchidos quando enabled=True"""
+        if self.enabled:
+            if self.percentage <= 0:
+                raise ValueError("percentage deve ser maior que 0 quando enabled=True")
+            if self.data is None:
+                raise ValueError("data é obrigatório quando enabled=True")
+            if self.tarifa_total <= 0:
+                raise ValueError("tarifa_total deve ser maior que 0 quando enabled=True")
+        return self
 
 
 class RemoteConsumptionGrupoAModel(BaseModel):
     """
     Modelo para autoconsumo remoto Grupo A
-    
+
     Configuração para simulação de autoconsumo remoto para consumidores
     do Grupo A (média e alta tensão) com tarifação horossazonal.
     """
-    
+
     enabled: bool = Field(default=False, description="Habilitar autoconsumo remoto Grupo A")
-    percentage: float = Field(..., ge=0, le=100, description="Percentual de créditos destinados ao Grupo A")
-    data_off_peak: MonthlyDataModel = Field(..., description="Consumo fora ponta mensal em kWh")
-    data_peak: MonthlyDataModel = Field(..., description="Consumo ponta mensal em kWh")
-    tarifas: Dict[str, float] = Field(..., description="Tarifas de energia (offPeak, peak) em R$/kWh")
-    tusd: Dict[str, float] = Field(..., description="TUSD (offPeak, peak) em R$/kWh")
-    te: Dict[str, float] = Field(..., description="TE (offPeak, peak) em R$/kWh")
-    
-    @validator('tarifas', 'tusd', 'te')
-    def validate_tariff_structure(cls, v):
+    percentage: float = Field(default=0, ge=0, le=100, description="Percentual de créditos destinados ao Grupo A")
+    data_off_peak: Optional[MonthlyDataModel] = Field(default=None, description="Consumo fora ponta mensal em kWh")
+    data_peak: Optional[MonthlyDataModel] = Field(default=None, description="Consumo ponta mensal em kWh")
+    tarifas: Dict[str, float] = Field(default_factory=lambda: {"off_peak": 0, "peak": 0}, description="Tarifas de energia (off_peak, peak) em R$/kWh")
+    tusd: Dict[str, float] = Field(default_factory=lambda: {"off_peak": 0, "peak": 0}, description="TUSD (off_peak, peak) em R$/kWh")
+    te: Dict[str, float] = Field(default_factory=lambda: {"off_peak": 0, "peak": 0}, description="TE (off_peak, peak) em R$/kWh")
+
+    @field_validator('tarifas', 'tusd', 'te')
+    @classmethod
+    def validate_tariff_structure(cls, v, info: ValidationInfo):
         """Valida estrutura dos dicionários de tarifas"""
-        required_keys = {'offPeak', 'peak'}
-        
+        logger.debug(f"Validando estrutura de tarifas em {info.field_name}: {v}")
+        required_keys = {'off_peak', 'peak'}
+
         if not isinstance(v, dict):
+            logger.error(f"Tarifas em {info.field_name} não é um dicionário: {type(v)}")
             raise ValueError("Tarifas devem ser um dicionário")
-        
+
         missing_keys = required_keys - set(v.keys())
         if missing_keys:
+            logger.error(f"Chaves obrigatórias ausentes em {info.field_name}: {missing_keys}")
             raise ValueError(f"Chaves obrigatórias ausentes: {missing_keys}")
-        
+
         for key, value in v.items():
+            logger.debug(f"Validando tarifa {info.field_name}.{key}: {value}")
             if not isinstance(value, (int, float)) or value < 0:
+                logger.error(f"Valor inválido para {info.field_name}.{key}: {value}")
                 raise ValueError(f"Valor inválido para {key}: {value}")
-        
+
+        logger.debug(f"✓ Estrutura de tarifas {info.field_name} validada com sucesso")
         return v
+
+    @model_validator(mode='after')
+    def validate_enabled_fields(self):
+        """Valida que campos obrigatórios estão preenchidos quando enabled=True"""
+        if self.enabled:
+            if self.percentage <= 0:
+                raise ValueError("percentage deve ser maior que 0 quando enabled=True")
+            if self.data_off_peak is None:
+                raise ValueError("data_off_peak é obrigatório quando enabled=True")
+            if self.data_peak is None:
+                raise ValueError("data_peak é obrigatório quando enabled=True")
+            # Validar que tarifas não são zeradas
+            if all(v == 0 for v in self.tarifas.values()):
+                raise ValueError("tarifas devem ter valores > 0 quando enabled=True")
+            if all(v == 0 for v in self.tusd.values()):
+                raise ValueError("tusd devem ter valores > 0 quando enabled=True")
+            if all(v == 0 for v in self.te.values()):
+                raise ValueError("te devem ter valores > 0 quando enabled=True")
+        return self
 
 
 class ConsumoLocalGrupoAModel(BaseModel):
@@ -274,7 +336,8 @@ class TarifasGrupoAModel(BaseModel):
     fora_ponta: Dict[str, float] = Field(..., description="Tarifas fora ponta (te, tusd) em R$/kWh")
     ponta: Dict[str, float] = Field(..., description="Tarifas ponta (te, tusd) em R$/kWh")
     
-    @validator('fora_ponta', 'ponta')
+    @field_validator('fora_ponta', 'ponta')
+    @classmethod
     def validate_energy_tariffs(cls, v):
         """Valida estrutura das tarifas de energia"""
         required_keys = {'te', 'tusd'}
@@ -308,14 +371,8 @@ class GrupoBFinancialRequest(BaseModel):
     remoto_a_verde: RemoteConsumptionGrupoAModel = Field(..., description="Autoconsumo remoto Grupo A Verde")
     remoto_a_azul: RemoteConsumptionGrupoAModel = Field(..., description="Autoconsumo remoto Grupo A Azul")
     
-    @validator('remoto_b', 'remoto_a_verde', 'remoto_a_azul')
-    def validate_remote_percentages_sum(cls, v, values):
-        """Valida que soma dos percentuais remotos não ultrapassa 100%"""
-        # Esta validação será feita em nível de request completo
-        return v
-    
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "financeiros": {
                     "capex": 50000.0,
@@ -368,9 +425,9 @@ class GrupoBFinancialRequest(BaseModel):
                         "mai": 18, "jun": 17, "jul": 18, "ago": 19,
                         "set": 20, "out": 22, "nov": 20, "dez": 18
                     },
-                    "tarifas": {"offPeak": 0.48, "peak": 2.20},
-                    "tusd": {"offPeak": 0.16121, "peak": 1.6208},
-                    "te": {"offPeak": 0.34334, "peak": 0.55158}
+                    "tarifas": {"off_peak": 0.48, "peak": 2.20},
+                    "tusd": {"off_peak": 0.16121, "peak": 1.6208},
+                    "te": {"off_peak": 0.34334, "peak": 0.55158}
                 },
                 "remoto_a_azul": {
                     "enabled": False,
@@ -385,9 +442,9 @@ class GrupoBFinancialRequest(BaseModel):
                         "mai": 18, "jun": 17, "jul": 18, "ago": 19,
                         "set": 20, "out": 22, "nov": 20, "dez": 18
                     },
-                    "tarifas": {"offPeak": 0.48, "peak": 2.20},
-                    "tusd": {"offPeak": 0.16121, "peak": 1.6208},
-                    "te": {"offPeak": 0.34334, "peak": 0.55158}
+                    "tarifas": {"off_peak": 0.48, "peak": 2.20},
+                    "tusd": {"off_peak": 0.16121, "peak": 1.6208},
+                    "te": {"off_peak": 0.34334, "peak": 0.55158}
                 }
             }
         }
@@ -405,17 +462,18 @@ class GrupoAFinancialRequest(BaseModel):
     geracao: MonthlyDataModel = Field(..., description="Dados de geração mensal em kWh")
     consumo_local: ConsumoLocalGrupoAModel = Field(..., description="Dados de consumo local mensal em kWh")
     tarifas: TarifasGrupoAModel = Field(..., description="Estrutura de tarifas Grupo A")
-    te: Dict[str, float] = Field(..., description="TE por período (foraPonta, ponta) em R$/kWh")
+    te: Dict[str, float] = Field(..., description="TE por período (fora_ponta, ponta) em R$/kWh")
     fator_simultaneidade_local: float = Field(..., ge=0, le=1, description="Fator de simultaneidade local")
     fio_b: FioBParamsModel = Field(..., description="Parâmetros do Fio B")
     remoto_b: RemoteConsumptionGrupoBModel = Field(..., description="Autoconsumo remoto Grupo B")
     remoto_a_verde: RemoteConsumptionGrupoAModel = Field(..., description="Autoconsumo remoto Grupo A Verde")
     remoto_a_azul: RemoteConsumptionGrupoAModel = Field(..., description="Autoconsumo remoto Grupo A Azul")
     
-    @validator('te')
+    @field_validator('te')
+    @classmethod
     def validate_te_structure(cls, v):
         """Valida estrutura do dicionário TE"""
-        required_keys = {'foraPonta', 'ponta'}
+        required_keys = {'fora_ponta', 'ponta'}
         
         if not isinstance(v, dict):
             raise ValueError("TE deve ser um dicionário")
@@ -427,7 +485,7 @@ class GrupoAFinancialRequest(BaseModel):
         return v
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "financeiros": {
                     "capex": 150000.0,
@@ -460,7 +518,7 @@ class GrupoAFinancialRequest(BaseModel):
                     "fora_ponta": {"te": 0.34334, "tusd": 0.16121},
                     "ponta": {"te": 0.55158, "tusd": 1.6208}
                 },
-                "te": {"foraPonta": 0.34334, "ponta": 0.55158},
+                "te": {"fora_ponta": 0.34334, "ponta": 0.55158},
                 "fator_simultaneidade_local": 0.35,
                 "fio_b": {
                     "schedule": {2025: 0.45, 2026: 0.60, 2027: 0.75, 2028: 0.90},
@@ -490,9 +548,9 @@ class GrupoAFinancialRequest(BaseModel):
                         "mai": 54, "jun": 51, "jul": 53, "ago": 57,
                         "set": 61, "out": 66, "nov": 59, "dez": 55
                     },
-                    "tarifas": {"offPeak": 0.48, "peak": 2.20},
-                    "tusd": {"offPeak": 0.16121, "peak": 1.6208},
-                    "te": {"offPeak": 0.34334, "peak": 0.55158}
+                    "tarifas": {"off_peak": 0.48, "peak": 2.20},
+                    "tusd": {"off_peak": 0.16121, "peak": 1.6208},
+                    "te": {"off_peak": 0.34334, "peak": 0.55158}
                 },
                 "remoto_a_azul": {
                     "enabled": False,
@@ -507,12 +565,31 @@ class GrupoAFinancialRequest(BaseModel):
                         "mai": 54, "jun": 51, "jul": 53, "ago": 57,
                         "set": 61, "out": 66, "nov": 59, "dez": 55
                     },
-                    "tarifas": {"offPeak": 0.48, "peak": 2.20},
-                    "tusd": {"offPeak": 0.16121, "peak": 1.6208},
-                    "te": {"offPeak": 0.34334, "peak": 0.55158}
+                    "tarifas": {"off_peak": 0.48, "peak": 2.20},
+                    "tusd": {"off_peak": 0.16121, "peak": 1.6208},
+                    "te": {"off_peak": 0.34334, "peak": 0.55158}
                 }
             }
         }
+
+
+class FinancialSummary(BaseModel):
+    """
+    Modelo para resumo financeiro com valores brutos
+    
+    Apresenta os principais indicadores financeiros como valores numéricos
+    para processamento e cálculos no backend.
+    """
+    
+    vpl: float = Field(..., description="Valor Presente Líquido em R$")
+    tir: float = Field(..., description="Taxa Interna de Retorno (decimal, ex: 0.155 para 15.5%)")
+    pi: float = Field(..., description="Índice de lucratividade (decimal)")
+    payback_simples: float = Field(..., description="Payback simples em anos")
+    payback_descontado: float = Field(..., description="Payback descontado em anos")
+    lcoe: float = Field(..., description="LCOE em R$/kWh")
+    roi_simples: float = Field(..., description="ROI simples (decimal)")
+    economia_total_nominal: float = Field(..., description="Economia total nominal em R$")
+    economia_total_valor_presente: float = Field(..., description="Economia total valor presente em R$")
 
 
 class FinancialSummaryFormatted(BaseModel):
@@ -559,13 +636,13 @@ class ResultadosCodigoBResponse(BaseModel):
     
     somas_iniciais: Dict[str, str] = Field(..., description="Somas iniciais formatadas")
     comparativo_custo_abatimento: Dict[str, str] = Field(..., description="Comparativo de custos formatado")
-    financeiro: FinancialSummaryFormatted = Field(..., description="Resumo financeiro formatado")
+    financeiro: FinancialSummary = Field(..., description="Resumo financeiro com valores brutos")
     consumo_ano1: Dict[str, Any] = Field(..., description="Dados de consumo do primeiro ano")
     tabela_resumo_anual: List[Dict[str, Any]] = Field(..., description="Tabela resumo anual")
     tabela_fluxo_caixa: List[CashFlowRow] = Field(..., description="Tabela de fluxo de caixa")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "somas_iniciais": {
                     "geracao_anual": "5.400 kWh",
@@ -633,7 +710,7 @@ class ResultadosCodigoAResponse(BaseModel):
     dados_sensibilidade: Dict[str, List[float]] = Field(..., description="Dados de análise de sensibilidade")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "somas_iniciais": {
                     "geracao_anual": "21.600 kWh",

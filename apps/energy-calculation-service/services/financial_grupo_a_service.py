@@ -71,7 +71,7 @@ class FinancialGrupoAService:
             
             # 5. Aplicar fator de equivalência
             fator_equivalencia = self._calculate_fator_equivalencia(
-                request.te['foraPonta'], request.te['ponta']
+                request.te['fora_ponta'], request.te['ponta']
             )
             
             # 6. Abater consumo com créditos separados

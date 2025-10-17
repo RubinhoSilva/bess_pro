@@ -10,7 +10,7 @@ class MaxMinValue(BaseModel):
     mes_numero: int = Field(..., ge=1, le=12, description="Número do mês (1-12)")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "valor": 6.14,
                 "mes": "Dezembro", 
@@ -73,7 +73,7 @@ class IrradiationAnalysisResponse(BaseModel):
     registros_processados: int = Field(..., description="Número de registros processados")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "media_anual": 4.14,
                 "maximo": {
@@ -154,7 +154,7 @@ class InverterResults(BaseModel):
     utilizacao_percentual: float = Field(..., description="% de utilização da capacidade")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "inverter_id": "sel_inv_001",
                 "fabricante": "WEG",
@@ -197,7 +197,7 @@ class AguaTelhadoResults(BaseModel):
     dc_power_series: Optional[Any] = Field(None, exclude=True, description="Série temporal DC (interno)")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "agua_id": "agua_001",
                 "nome": "Água Principal",
@@ -262,7 +262,7 @@ class ModuleCalculationResponse(BaseModel):
     periodo_dados: PeriodAnalysis = Field(..., description="Período dos dados utilizados")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "num_modulos": 8,
                 "potencia_total_kw": 4.32,
@@ -316,7 +316,7 @@ class HealthCheckResponse(BaseModel):
     uptime_seconds: Optional[float] = Field(None, description="Tempo de atividade em segundos")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "status": "healthy",
                 "version": "1.0.0",
@@ -338,7 +338,7 @@ class CacheStatsResponse(BaseModel):
     max_size_mb: int = Field(..., description="Tamanho máximo permitido em MB")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "total_files": 25,
                 "total_size_mb": 156.7,
@@ -358,7 +358,7 @@ class ErrorResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Timestamp do erro")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "error": "Erro de validação: Latitude deve estar entre -90 e 90",
                 "details": {
@@ -376,7 +376,7 @@ class MessageResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Timestamp da resposta")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "message": "Cache limpo com sucesso. 15 arquivos removidos.",
                 "timestamp": "2024-01-15T10:30:00Z"

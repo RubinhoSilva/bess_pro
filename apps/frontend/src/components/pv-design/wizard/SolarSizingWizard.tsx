@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { ChevronLeft, ChevronRight, Sun, User, Zap, MapPin, Settings, Calculator, CheckCircle, Home, Compass } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sun, User, Zap, MapPin, Settings, Calculator, CheckCircle, Home, Compass, Loader2 } from 'lucide-react';
 import { useDimensioningOperations } from '@/hooks/dimensioning';
 import { AdvancedSolarCalculator, SolarCalculationOptions } from '@/lib/solarCalculations';
 import { AdvancedFinancialInput } from '@/types/financial';
@@ -15,6 +15,9 @@ import { PVDimensioningService } from '@/lib/pvDimensioning';
 import { SystemCalculations } from '@/lib/systemCalculations';
 import { useQuery } from '@tanstack/react-query';
 import { moduleService } from '@/services/ModuleService';
+import { useGrupoBFinancialCalculation } from '@/hooks/financial-calculation-hooks';
+import { useGrupoAFinancialCalculation } from '@/hooks/financial-calculation-hooks';
+import { convertToGrupoBInput, convertToGrupoAInput } from '@/lib/financial-utils';
 
 // Import existing form components
 import CustomerDataForm from '../form-sections/CustomerDataForm';
@@ -118,6 +121,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     isSaving
   } = useDimensioningOperations(dimensioningId || undefined);
 
+  // Hooks para cálculos financeiros especializados
+  const grupoBCalculation = useGrupoBFinancialCalculation();
+  const grupoACalculation = useGrupoAFinancialCalculation();
+
   // Buscar módulos solares para obter dados completos
   const { data: solarModulesData } = useQuery({
     queryKey: ['modules'],
@@ -160,7 +167,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
       const debugFinancialInput = { financialInput };
 
-      const response = await apiClient.solarAnalysis.calculateAdvancedFinancial(financialInput);
+      // Removida chamada para calculateAdvancedFinancial
 
       // Extrair apenas os dados da API Python, não o wrapper do backend
       const apiData = response.data.data || response.data;
@@ -730,34 +737,65 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       };
       const debugFinancialParams = { financialParams: debugFinancialInfo };
 
-      // Usar API Python para cálculos financeiros básicos
-      const basicFinancialInput = {
-        investimento_inicial: totalInvestment,
-        geracao_mensal: geracaoEstimadaMensal,
-        consumo_mensal: totalConsumoMensal,
-        tarifa_energia: tarifaB,
-        custo_fio_b: custoFioB,
-        vida_util: currentDimensioning.vidaUtil || 25,
-        taxa_desconto: currentDimensioning.taxaDesconto || 8.0,
-        inflacao_energia: currentDimensioning.inflacaoEnergia || 4.5,
-        degradacao_modulos: 0.5,
-        custo_om: totalInvestment * 0.01,
-        inflacao_om: 4.0,
-        modalidade_tarifaria: 'convencional'
-      };
+      // Cálculos financeiros especializados por grupo tarifário
+      let financialResults: any;
       
-      setIsCalculating(true);
-      const financialApiResponse = await apiClient.solarAnalysis.calculateAdvancedFinancial(basicFinancialInput);
-      const financialResults = financialApiResponse.data;
-
-      if (financialResults) {
-        const economiaAnual = (financialResults as any).economiaAnual || 0;
-        const payback = financialResults.payback || 0;
-        const vpl = financialResults.vpl || 0;
-        const tir = financialResults.tir || 0;
+      try {
+        if (currentDimensioning.grupoTarifario === 'B') {
+          console.log('[Financial] Calculando Grupo B...');
+          
+          const calculatedData = {
+            investimentoInicial: totalInvestment,
+            geracaoMensal: geracaoEstimadaMensal || Array(12).fill(0),
+            consumoMensal: totalConsumoMensal || Array(12).fill(0)
+          };
+          
+          console.log('[Financial DEBUG] Dados calculados Grupo B:', calculatedData);
+          
+          const input = convertToGrupoBInput(currentDimensioning, calculatedData);
+          
+          console.log('[Financial DEBUG] Input convertido Grupo B:', JSON.stringify(input, null, 2));
+          
+          financialResults = await grupoBCalculation.mutateAsync(input);
+          console.log('[Financial] Resultado Grupo B:', financialResults);
+          
+        } else if (currentDimensioning.grupoTarifario === 'A') {
+          console.log('[Financial] Calculando Grupo A...');
+          
+          const calculatedData = {
+            investimentoInicial: totalInvestment,
+            geracaoMensal: geracaoEstimadaMensal || Array(12).fill(0),
+            consumoMensal: totalConsumoMensal || Array(12).fill(0)
+          };
+          
+          console.log('[Financial DEBUG] Dados calculados Grupo A:', calculatedData);
+          
+          const input = convertToGrupoAInput(currentDimensioning, calculatedData);
+          
+          console.log('[Financial DEBUG] Input convertido Grupo A:', JSON.stringify(input, null, 2));
+          
+          financialResults = await grupoACalculation.mutateAsync(input);
+          console.log('[Financial] Resultado Grupo A:', financialResults);
+          
+        } else {
+          throw new Error('Grupo tarifário não definido');
+        }
         
-        const debugFinancialResults = { economiaAnual, payback, vpl, tir };
-      }
+        // Armazenar resultado no calculationResults
+        setCalculationResults((prev: any) => ({
+          ...prev,
+          financialResultsGrupo: financialResults, // Novo campo
+          grupoTarifario: currentDimensioning.grupoTarifario
+        }));
+        
+        } catch (error) {
+          console.error('[Financial] Erro no cálculo financeiro:', error);
+          toast({
+            title: "Erro no cálculo financeiro",
+            description: "Não foi possível calcular os indicadores financeiros. Verifique os dados e tente novamente.",
+            variant: "destructive"
+          });
+        }
 
       // Advanced financial analysis
       // Calcular custo fio B conforme Lei 14.300/2022
@@ -787,22 +825,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         modalidadeTarifaria: 'convencional'
       };
 
-      // Usar API Python para cálculos financeiros
-      const advancedFinancialApiResponse = await apiClient.solarAnalysis.calculateAdvancedFinancial({
-        investimento_inicial: advancedFinancialInput.investimentoInicial,
-        geracao_mensal: advancedFinancialInput.geracaoMensal,
-        consumo_mensal: advancedFinancialInput.consumoMensal,
-        tarifa_energia: advancedFinancialInput.tarifaEnergia,
-        custo_fio_b: advancedFinancialInput.custoFioB,
-        vida_util: advancedFinancialInput.vidaUtil,
-        taxa_desconto: advancedFinancialInput.taxaDesconto,
-        inflacao_energia: advancedFinancialInput.inflacaoEnergia,
-        degradacao_modulos: advancedFinancialInput.degradacaoModulos,
-        custo_om: advancedFinancialInput.custoOm,
-        inflacao_om: advancedFinancialInput.inflacaoOm,
-        modalidade_tarifaria: advancedFinancialInput.modalidadeTarifaria || 'convencional'
-      });
-      const advancedFinancialResults = advancedFinancialApiResponse.data;
+      // Removida chamada para calculateAdvancedFinancial
+      const advancedFinancialResults = null;
 
       // Mapear 'cenarios' (Python) para 'scenarios' (Frontend)
       const scenarioAnalysis = (advancedFinancialResults as any)?.cenarios || null;
@@ -1255,15 +1279,23 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
               </span>
             </div>
 
+            {/* Loading indicator durante cálculo financeiro */}
+            {(grupoBCalculation.isPending || grupoACalculation.isPending) && (
+              <div className="flex items-center gap-2 text-sm text-blue-600 order-4">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Calculando análise financeira...</span>
+              </div>
+            )}
+
             <Button
               onClick={handleNext}
-              disabled={!validateStep(currentStep) || isSaving || isCalculating}
+              disabled={!validateStep(currentStep) || isSaving || isCalculating || grupoBCalculation.isPending || grupoACalculation.isPending}
               className="w-full sm:w-auto order-3 bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600"
             >
-              {isCalculating ? (
+              {isCalculating || grupoBCalculation.isPending || grupoACalculation.isPending ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Calculando...
+                  {grupoBCalculation.isPending || grupoACalculation.isPending ? 'Calculando análise financeira...' : 'Calculando...'}
                 </div>
               ) : isSaving ? (
                 <div className="flex items-center gap-2">

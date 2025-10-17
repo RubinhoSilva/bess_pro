@@ -2,7 +2,7 @@
 Modelos de requisição para cálculos de BESS (Battery Energy Storage System)
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Literal
 from datetime import time
 
@@ -98,7 +98,8 @@ class PerfilConsumo(BaseModel):
         description="Curva de consumo horária típica (24 valores em % do consumo diário)"
     )
 
-    @validator('curva_horaria')
+    @field_validator('curva_horaria')
+    @classmethod
     def validate_curva(cls, v):
         if v is not None:
             soma = sum(v)
@@ -220,7 +221,8 @@ class BessDimensioningRequest(BaseModel):
         description="Vida útil estimada do sistema em anos"
     )
 
-    @validator('consumo_mensal_kwh')
+    @field_validator('consumo_mensal_kwh')
+    @classmethod
     def validate_consumo(cls, v):
         if any(c < 0 for c in v):
             raise ValueError('Consumo mensal não pode ser negativo')
@@ -342,7 +344,8 @@ class BessSimulationRequest(BaseModel):
         description="Limite de demanda para peak shaving (kW)"
     )
 
-    @validator('curva_consumo_horaria')
+    @field_validator('curva_consumo_horaria')
+    @classmethod
     def validate_curva_consumo(cls, v):
         if any(c < 0 for c in v):
             raise ValueError('Consumo horário não pode ser negativo')

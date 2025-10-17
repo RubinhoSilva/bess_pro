@@ -197,9 +197,7 @@ export const apiClient = {
 
   // Calculations
   calculations: {
-    // NOVO: Endpoint standalone sem projeto
-    solarSystemStandalone: (data: any) =>
-      api.post(`/calculations/solar-system`, data),
+
 
     financial: (projectId: string, data: any) =>
       api.post(`/calculations/projects/${projectId}/financial-analysis`, data),
@@ -236,9 +234,7 @@ export const apiClient = {
     analyzeMonthlyIrradiation: (data: any) =>
       api.post('/solar-analysis/analyze-monthly-irradiation', data),
 
-    // Análise financeira avançada via Python
-    calculateAdvancedFinancial: (data: any) =>
-      api.post('/solar-analysis/calculate-advanced-financial', data),
+
 
     // Dados de análise aprimorados
     getEnhancedAnalysisData: (params: any) =>

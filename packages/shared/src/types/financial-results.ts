@@ -144,18 +144,18 @@ export interface ResultadosCodigoB {
   somasIniciais: InitialSums;
 
   /** 
-   * Comparativo de custos de abatimento
-   * @description Análise entre custo Fio B e custo de disponibilidade
-   */
+    * Comparativo de custos de abatimento
+    * @description Análise entre custo sem sistema e custo com sistema
+    */
   comparativoCustoAbatimento: {
-    /** Custo anual com Fio B formatado */
-    custoFioB: string;
+    /** Custo anual sem sistema formatado */
+    custoSemSistema: string;
     
-    /** Custo anual de disponibilidade formatado */
-    custoDisponibilidade: string;
+    /** Custo anual com sistema formatado */
+    custoComSistema: string;
     
-    /** Indica qual custo é maior */
-    maiorCusto: string;
+    /** Economia anual calculada */
+    economiaAnual: string;
   };
 
   /** 
@@ -165,66 +165,60 @@ export interface ResultadosCodigoB {
   financeiro: FinancialIndicators;
 
   /** 
-   * Consumo detalhado do primeiro ano
-   * @description Estrutura completa com geração local e remota
-   */
+    * Consumo detalhado do primeiro ano
+    * @description Estrutura completa com consumo e geração local
+    */
   consumoAno1: {
+    /** Consumo local em kWh */
+    consumoLocal: number;
+    
     /** Geração total do sistema em kWh */
     geracao: number;
     
-    /** Consumo local da unidade principal em kWh */
-    local: number;
+    /** Autoconsumo instantâneo em kWh */
+    autoconsumoInstantaneo: number;
     
-    /** Consumo remoto do Grupo B em kWh */
-    remotoB: number;
-    
-    /** Consumo remoto do Grupo A Verde em kWh */
-    remotoAVerde: number;
-    
-    /** Consumo remoto do Grupo A Azul em kWh */
-    remotoAAzul: number;
+    /** Percentual abatido do consumo */
+    percentualAbatido: number;
   };
 
   /** 
-   * Tabela resumo anual
-   * @description Array com dados anuais do projeto
-   */
+    * Tabela resumo anual
+    * @description Array com dados anuais do projeto
+    */
   tabelaResumoAnual: Array<{
     /** Ano do projeto */
     ano: number;
     
     /** Geração anual em kWh */
-    geracaoAnual: number;
-    
-    /** Consumo local em kWh */
-    consumoLocal: number;
+    geracao: number;
     
     /** Economia anual em Reais */
-    economiaAnual: number;
+    economia: number;
     
-    /** Economia acumulada em Reais */
-    economiaAcumulada: number;
+    /** Custos de operação e manutenção em Reais */
+    custosOm: number;
   }>;
 
   /** 
-   * Tabela de fluxo de caixa
-   * @description Array com fluxos financeiros anuais
-   */
+    * Tabela de fluxo de caixa
+    * @description Array com fluxos financeiros anuais
+    */
   tabelaFluxoCaixa: Array<{
     /** Ano do projeto */
     ano: number;
     
-    /** Fluxo de caixa operacional em Reais */
-    fluxoOperacional: number;
+    /** Fluxo nominal em Reais */
+    fluxoNominal: number;
     
-    /** Fluxo de caixa líquido em Reais */
-    fluxoLiquido: number;
+    /** Fluxo acumulado nominal em Reais */
+    fluxoAcumuladoNominal: number;
     
-    /** Fluxo de caixa acumulado em Reais */
-    fluxoAcumulado: number;
+    /** Fluxo descontado em Reais */
+    fluxoDescontado: number;
     
-    /** Valor presente do fluxo em Reais */
-    valorPresente: number;
+    /** Fluxo acumulado descontado em Reais */
+    fluxoAcumuladoDescontado: number;
   }>;
 }
 
@@ -376,8 +370,32 @@ export function isResultadosCodigoB(data: any): data is ResultadosCodigoB {
   }
 
   // Verificar campos específicos do Grupo B
-  const grupoBFields = ['custoFioB', 'custoDisponibilidade', 'maiorCusto'];
+  const grupoBFields = ['custoSemSistema', 'custoComSistema', 'economiaAnual'];
   if (!grupoBFields.every(field => field in data.comparativoCustoAbatimento)) {
+    return false;
+  }
+
+  // Verificar campos de consumoAno1
+  const consumoAno1Fields = ['consumoLocal', 'geracao', 'autoconsumoInstantaneo', 'percentualAbatido'];
+  if (!consumoAno1Fields.every(field => field in data.consumoAno1)) {
+    return false;
+  }
+
+  // Verificar se tabelaResumoAnual é array e tem campos corretos
+  if (!Array.isArray(data.tabelaResumoAnual) || data.tabelaResumoAnual.length === 0) {
+    return false;
+  }
+  const tabelaResumoFields = ['ano', 'geracao', 'economia', 'custosOm'];
+  if (!tabelaResumoFields.every(field => field in data.tabelaResumoAnual[0])) {
+    return false;
+  }
+
+  // Verificar se tabelaFluxoCaixa é array e tem campos corretos
+  if (!Array.isArray(data.tabelaFluxoCaixa) || data.tabelaFluxoCaixa.length === 0) {
+    return false;
+  }
+  const tabelaFluxoFields = ['ano', 'fluxoNominal', 'fluxoAcumuladoNominal', 'fluxoDescontado', 'fluxoAcumuladoDescontado'];
+  if (!tabelaFluxoFields.every(field => field in data.tabelaFluxoCaixa[0])) {
     return false;
   }
 

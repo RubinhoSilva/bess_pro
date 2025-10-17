@@ -1,18 +1,23 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 import logging
+import json
 from contextlib import asynccontextmanager
 
 from core.config import settings
 from core.exceptions import SolarAPIException
 from api.v1.router import api_router
 
-# Configurar logging
+# Configurar logging detalhado
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('debug_logs/detailed_api.log', mode='a')
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -43,12 +48,38 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Middleware para logar payload bruto antes da validação Pydantic
+@app.middleware("http")
+async def log_payload_middleware(request: Request, call_next):
+    # Logar apenas requisições POST para endpoints financeiros
+    if request.method == "POST" and "/financial" in request.url.path:
+        try:
+            # Ler e logar o body bruto
+            body = await request.body()
+            logger.info("="*80)
+            logger.info(f"[MIDDLEWARE] PAYLOAD BRUTO RECEBIDO - {request.method} {request.url.path}")
+            logger.info("JSON EXATO COMO CHEGOU:")
+            logger.info(body.decode('utf-8'))
+            logger.info("="*80)
+            
+            # Recriar o request com o body original
+            async def receive():
+                return {"type": "http.request", "body": body}
+            
+            request = Request(request.scope, receive)
+            
+        except Exception as e:
+            logger.error(f"[MIDDLEWARE] Erro ao logar payload: {e}")
+    
+    response = await call_next(request)
+    return response
+
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_HOSTS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 

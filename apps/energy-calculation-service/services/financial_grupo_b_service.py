@@ -12,13 +12,22 @@ from typing import List, Dict, Optional, Any, Tuple
 from models.shared.financial_models import (
     GrupoBFinancialRequest,
     ResultadosCodigoBResponse,
+    FinancialSummary,
     FinancialSummaryFormatted,
     CashFlowRow
 )
 from utils.format_utils import format_currency, format_percentage
 
-# Configure logger
+# Configure logger detalhado
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# Adicionar handler para arquivo de log detalhado
+file_handler = logging.FileHandler('debug_logs/financial_grupo_b_detailed.log', mode='a')
+file_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
 
 
 class FinancialGrupoBService:
@@ -52,23 +61,61 @@ class FinancialGrupoBService:
         Log em cada etapa principal.
         """
         try:
-            # 1. Log início com CAPEX
-            self.logger.info(f"INÍCIO CÁLCULO GRUPO B - CAPEX: R$ {request.financeiros.capex:,.2f}")
+            # 1. Log início com CAPEX e dados completos
+            self.logger.info("="*80)
+            self.logger.info("INÍCIO CÁLCULO FINANCEIRO GRUPO B - DETALHADO")
+            self.logger.info("="*80)
+            self.logger.info(f"CAPEX: R$ {request.financeiros.capex:,.2f}")
+            self.logger.info(f"Anos: {request.financeiros.anos}")
+            self.logger.info(f"Taxa desconto: {request.financeiros.taxa_desconto}%")
+            self.logger.info(f"Inflação energia: {request.financeiros.inflacao_energia}%")
+            self.logger.info(f"Degradação: {request.financeiros.degradacao}%")
+            self.logger.info(f"Fator simultaneidade: {request.fator_simultaneidade}")
+            self.logger.info(f"Tipo conexão: {request.tipo_conexao}")
+            self.logger.info(f"Tarifa base: R$ {request.tarifa_base}")
+            
+            # Log dados de geração e consumo
+            self.logger.info("DADOS DE GERAÇÃO (kWh/mês):")
+            geracao_list = request.geracao.to_list()
+            for i, val in enumerate(geracao_list):
+                self.logger.info(f"  Mês {i+1}: {val:.2f} kWh")
+            
+            self.logger.info("DADOS DE CONSUMO LOCAL (kWh/mês):")
+            consumo_list = request.consumo_local.to_list()
+            for i, val in enumerate(consumo_list):
+                self.logger.info(f"  Mês {i+1}: {val:.2f} kWh")
+            
+            # Log dados remotos
+            self.logger.info(f"Remoto B enabled: {request.remoto_b.enabled}")
+            if request.remoto_b.enabled:
+                self.logger.info(f"Remoto B percentage: {request.remoto_b.percentage}%")
+                self.logger.info(f"Remoto B tarifa: R$ {request.remoto_b.tarifa_total}")
             
             # 2. Validar dados de entrada
+            self.logger.info("VALIDANDO DADOS DE ENTRADA...")
             self._validate_request(request)
+            self.logger.info("✓ Validação concluída com sucesso")
             
             # 3. Converter MonthlyData para arrays
+            self.logger.info("CONVERTENDO DADOS MENSAIS...")
             geracao = request.geracao.to_list()
             consumo_local = request.consumo_local.to_list()
+            self.logger.info(f"✓ Geração total anual: {sum(geracao):.2f} kWh")
+            self.logger.info(f"✓ Consumo total anual: {sum(consumo_local):.2f} kWh")
             
             # 4. Calcular autoconsumo instantâneo
+            self.logger.info("CALCULANDO AUTOCONSUMO INSTANTÂNEO...")
+            self.logger.info(f"Fórmula: min(geracao, consumo) * fator_simultaneidade ({request.fator_simultaneidade})")
             autoconsumo_instantaneo = self._calculate_autoconsumo_instantaneo(
                 geracao, consumo_local, request.fator_simultaneidade
             )
+            self.logger.info(f"✓ Autoconsumo instantâneo total: {sum(autoconsumo_instantaneo):.2f} kWh")
             
             # 5. Calcular créditos mensais
+            self.logger.info("CALCULANDO CRÉDITOS DE ENERGIA...")
+            self.logger.info("Fórmula: max(0, geracao - autoconsumo_instantaneo)")
             creditos = self._calculate_creditos_grupo_b(geracao, autoconsumo_instantaneo)
+            self.logger.info(f"✓ Créditos totais: {sum(creditos):.2f} kWh")
             
             # 6. Aplicar Fio B aos créditos
             creditos_liquidos_por_ano = self._apply_fio_b(
@@ -508,16 +555,16 @@ class FinancialGrupoBService:
         }
         
         # 3. Financeiro
-        financeiro = FinancialSummaryFormatted(
-            vpl=format_currency(indicadores['vpl']),
-            tir=format_percentage(indicadores['tir']) if indicadores['tir'] > 0 else "N/A",
-            pi=f"{(indicadores['vpl'] + capex) / capex:.2f}" if capex > 0 else "N/A",
-            payback_simples=f"{indicadores['payback_simples']:.2f} anos",
-            payback_descontado=f"{indicadores['payback_descontado']:.2f} anos",
-            lcoe=format_currency(capex / sum(geracao) * 1000) + "/kWh" if sum(geracao) > 0 else "N/A",
-            roi_simples=format_percentage(((sum(abatimentos_local['economia_mensal']) - capex * request.financeiros.oma_first_pct) / capex) * 100),
-            economia_total_nominal=format_currency(sum(abatimentos_local['economia_mensal']) * request.financeiros.anos),
-            economia_total_valor_presente=format_currency(indicadores['vpl'])
+        financeiro = FinancialSummary(
+            vpl=float(indicadores['vpl']),
+            tir=float(indicadores['tir']) if indicadores['tir'] > 0 else 0.0,
+            pi=float((indicadores['vpl'] + capex) / capex) if capex > 0 else 0.0,
+            payback_simples=float(indicadores['payback_simples']),
+            payback_descontado=float(indicadores['payback_descontado']),
+            lcoe=float(capex / sum(geracao) * 1000) if sum(geracao) > 0 else 0.0,
+            roi_simples=float(((sum(abatimentos_local['economia_mensal']) - capex * request.financeiros.oma_first_pct) / capex) * 100 / 100),
+            economia_total_nominal=float(sum(abatimentos_local['economia_mensal']) * request.financeiros.anos),
+            economia_total_valor_presente=float(indicadores['vpl'])
         )
         
         # 4. Consumo ano 1
