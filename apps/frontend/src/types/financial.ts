@@ -9,7 +9,10 @@ export type {
   GrupoConfig,
   GrupoBConfig,
   GrupoAConfig,
-  CommonTypes
+  CommonTypes,
+  ResultadosCodigoB,
+  isResultadosCodigoB,
+  objectSnakeToCamel
 } from '@bess-pro/shared';
 
 export { 
@@ -201,6 +204,5 @@ export type {
 
 export {
   FINANCIAL_DEFAULTS,
-  objectSnakeToCamel,
   objectCamelToSnake
 };

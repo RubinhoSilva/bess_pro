@@ -7,6 +7,7 @@ import {
   CalculateFinancialsResponse,
   GetFinancialResultsResponse,
 } from '../types/financial';
+import { ResultadosCodigoB, isResultadosCodigoB, objectSnakeToCamel } from '@bess-pro/shared';
 
 /**
  * Hook para calcular an�lise financeira avan�ada de um projeto
@@ -223,6 +224,11 @@ export function useGrupoAFinancialCalculation(options?: {
       return response.data;
     },
     onSuccess: (data) => {
+      // Log para debug: estrutura completa dos dados retornados
+      console.log('[useGrupoAFinancialCalculation] Dados retornados:', JSON.stringify(data, null, 2));
+      console.log('[useGrupoAFinancialCalculation] Chaves dos dados:', Object.keys(data));
+      console.log('[useGrupoAFinancialCalculation] Tipo de data:', typeof data);
+      
       toast.success('Cálculo financeiro Grupo A realizado com sucesso!');
       onSuccess?.(data);
     },
@@ -255,7 +261,7 @@ export function useGrupoAFinancialCalculation(options?: {
  * @returns Mutation hook com função de cálculo e estado
  */
 export function useGrupoBFinancialCalculation(options?: {
-  onSuccess?: (data: any) => void;
+  onSuccess?: (data: ResultadosCodigoB) => void;
   onError?: (error: any) => void;
 }) {
   const { onSuccess, onError } = options || {};
@@ -265,9 +271,12 @@ export function useGrupoBFinancialCalculation(options?: {
       const response = await apiClient.calculations.calculateGrupoBFinancials(input);
       return response.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data) => {    
+      // Extrair apenas o data da resposta (se tiver wrapper)
+      const dataOnly = data.data.data || data;
+      
       toast.success('Cálculo financeiro Grupo B realizado com sucesso!');
-      onSuccess?.(data);
+      onSuccess?.(dataOnly);
     },
     onError: (error: any) => {
       let message = 'Erro ao calcular análise financeira Grupo B';

@@ -1,23 +1,63 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTheme, getChartColors } from '@/hooks/use-theme';
-import { ResultadosCodigoA } from '@bess-pro/shared';
+import { useGrupoAFinancialCalculation } from '@/hooks/financial-calculation-hooks';
+import { convertToGrupoAInput } from '@/lib/financial-utils';
+import toast from 'react-hot-toast';
 
 /**
  * Componente para exibir resultados financeiros do Grupo A
  * @description Renderiza todos os dados financeiros especializados para consumidores do Grupo A
- * @param results Dados de resultados financeiros do Grupo A
+ * @param calculationData Dados de cálculo para o Grupo A
+ * @param config Configurações do projeto
  */
-interface GrupoAFinancialResultsProps {
-  results: ResultadosCodigoA;
+interface CalculationData {
+  investimentoInicial: number;
+  geracaoMensal: number[];
+  consumoMensal: number[];
 }
 
-const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ results }) => {
+interface GrupoAFinancialResultsProps {
+  calculationData: CalculationData;
+  config: any;
+}
+
+const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ calculationData, config }) => {
   const { isDark } = useTheme();
   const colors = getChartColors(isDark);
+  const [financialResults, setFinancialResults] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const grupoACalculation = useGrupoAFinancialCalculation({
+    onSuccess: (data) => {
+      console.log('[GrupoAFinancialResults] Dados retornados:', JSON.stringify(data, null, 2));
+      setFinancialResults(data);
+      setIsLoading(false);
+    },
+    onError: (error) => {
+      console.error('[GrupoAFinancialResults] Erro no cálculo:', error);
+      toast.error('Erro ao calcular análise financeira do Grupo A');
+      setIsLoading(false);
+    }
+  });
+
+  // Fazer chamada API quando os dados de cálculo mudam
+  useEffect(() => {
+    if (calculationData && config) {
+      setIsLoading(true);
+      try {
+        const input = convertToGrupoAInput(config, calculationData);
+        console.log('[GrupoAFinancialResults] Input convertido:', JSON.stringify(input, null, 2));
+        grupoACalculation.mutateAsync(input);
+      } catch (error) {
+        console.error('[GrupoAFinancialResults] Erro ao converter input:', error);
+        setIsLoading(false);
+      }
+    }
+  }, [calculationData, config, grupoACalculation.mutateAsync]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -41,10 +81,47 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ results
   };
 
   // Preparar dados para o gráfico de sensibilidade
-  const sensibilidadeChartData = results.dadosSensibilidade.multiplicadoresTarifa.map((multiplicador, index) => ({
+  const sensibilidadeChartData = financialResults?.dadosSensibilidade?.multiplicadoresTarifa?.map((multiplicador: any, index: number) => ({
     multiplicador: `${(multiplicador * 100).toFixed(0)}%`,
-    vpl: results.dadosSensibilidade.vplMatrix[index]
-  }));
+    vpl: financialResults?.dadosSensibilidade?.vplMatrix?.[index] || 0
+  })) || [];
+
+  // Exibir loading enquanto os dados financeiros são carregados
+  if (isLoading) {
+    return (
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-6"
+      >
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mr-4"></div>
+            <p className="text-muted-foreground">Calculando análise financeira do Grupo A...</p>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  // Exibir mensagem se não houver dados financeiros
+  if (!financialResults) {
+    return (
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-6"
+      >
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <p className="text-muted-foreground">Nenhum dado financeiro disponível</p>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -66,25 +143,29 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ results
               <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Geração Anual</p>
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {results.somasIniciais.geracaoAnual}
+                  {financialResults?.somasIniciais?.geracaoAnual ||
+                    `${(financialResults?.geracaoAnual || calculationData?.geracaoMensal?.reduce((a: number, b: number) => a + b, 0) || 0).toLocaleString('pt-BR')} kWh`}
                 </p>
               </div>
               <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Consumo Fora Ponta</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {results.somasIniciais.consumoForaPonta}
+                  {financialResults?.somasIniciais?.consumoForaPonta ||
+                    `${(calculationData?.consumoMensal?.reduce((total: number, val: number) => total + val, 0) * 0.8 || 0).toLocaleString('pt-BR')} kWh`}
                 </p>
               </div>
               <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Consumo Ponta</p>
                 <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                  {results.somasIniciais.consumoPonta}
+                  {financialResults?.somasIniciais?.consumoPonta ||
+                    `${(calculationData?.consumoMensal?.reduce((total: number, val: number) => total + val, 0) * 0.2 || 0).toLocaleString('pt-BR')} kWh`}
                 </p>
               </div>
               <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">CAPEX</p>
                 <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                  {results.somasIniciais.capex}
+                  {financialResults?.somasIniciais?.capex ||
+                    `${calculationData?.investimentoInicial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}
                 </p>
               </div>
             </div>
@@ -104,50 +185,51 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ results
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="text-center p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">VPL</p>
-                <p className={`text-xl font-bold ${results.financeiro.vpl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {results.financeiro.vpl.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                <p className={`text-xl font-bold ${(financialResults?.vpl || financialResults?.financeiro?.vpl || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {((financialResults?.vpl || financialResults?.financeiro?.vpl || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
               </div>
               <div className="text-center p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">TIR</p>
                 <p className="text-xl font-bold text-cyan-600 dark:text-cyan-400">
-                  {results.financeiro.tir === 0 ? 'N/A' : `${(results.financeiro.tir * 100).toFixed(2)}%`}
+                  {(financialResults?.tir || financialResults?.financeiro?.tir || 0) === 0 ? 'N/A' : `${((financialResults?.tir || financialResults?.financeiro?.tir || 0) * 100).toFixed(2)}%`}
                 </p>
               </div>
               <div className="text-center p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">PI</p>
-                <p className={`text-xl font-bold ${results.financeiro.pi >= 1 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {results.financeiro.pi.toFixed(2)}
+                <p className={`text-xl font-bold ${(financialResults?.pi || financialResults?.financeiro?.pi || 0) >= 1 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {((financialResults?.pi || financialResults?.financeiro?.pi || 0)).toFixed(2)}
                 </p>
               </div>
               <div className="text-center p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Payback Simples</p>
                 <p className="text-xl font-bold text-amber-600 dark:text-amber-400">
-                  {results.financeiro.paybackSimples.toFixed(2)} anos
+                  {((financialResults?.paybackSimples || financialResults?.financeiro?.paybackSimples || 0)).toFixed(2)} anos
                 </p>
               </div>
               <div className="text-center p-4 bg-lime-50 dark:bg-lime-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Payback Descontado</p>
                 <p className="text-xl font-bold text-lime-600 dark:text-lime-400">
-                  {results.financeiro.paybackDescontado.toFixed(2)} anos
+                  {((financialResults?.paybackDescontado || financialResults?.financeiro?.paybackDescontado || 0)).toFixed(2)} anos
                 </p>
               </div>
               <div className="text-center p-4 bg-rose-50 dark:bg-rose-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">LCOE</p>
                 <p className="text-xl font-bold text-rose-600 dark:text-rose-400">
-                  {results.financeiro.lcoe.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/kWh
+                  {((financialResults?.lcoe || financialResults?.financeiro?.lcoe || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/kWh
                 </p>
               </div>
               <div className="text-center p-4 bg-violet-50 dark:bg-violet-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">ROI Simples</p>
-                <p className={`text-xl font-bold ${results.financeiro.roiSimples >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {(results.financeiro.roiSimples * 100).toFixed(2)}%
+                <p className={`text-xl font-bold ${(financialResults?.roiSimples || financialResults?.financeiro?.roiSimples || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {((financialResults?.roiSimples || financialResults?.financeiro?.roiSimples || 0) * 100).toFixed(2)}%
                 </p>
               </div>
               <div className="text-center p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Economia Total VP</p>
                 <p className="text-xl font-bold text-sky-600 dark:text-sky-400">
-                  {results.financeiro.economiaTotalValorPresente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  {financialResults?.financeiro?.economiaTotalValorPresente?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ||
+                    `${(financialResults?.economiaTotalValorPresente || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}
                 </p>
               </div>
             </div>
@@ -168,31 +250,34 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ results
               <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Geração</p>
                 <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                  {results.consumoAno1.geracao.toLocaleString('pt-BR')} kWh
+                  {(financialResults?.consumoAno1?.geracao ||
+                    calculationData?.geracaoMensal?.reduce((a: number, b: number) => a + b, 0) || 0).toLocaleString('pt-BR')} kWh
                 </p>
               </div>
               <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Local Fora Ponta</p>
                 <p className="text-xl font-bold text-green-600 dark:text-green-400">
-                  {results.consumoAno1.localForaPonta.toLocaleString('pt-BR')} kWh
+                  {(financialResults?.consumoAno1?.localForaPonta ||
+                    (calculationData?.consumoMensal?.reduce((total: number, val: number) => total + val, 0) * 0.8) || 0).toLocaleString('pt-BR')} kWh
                 </p>
               </div>
               <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Local Ponta</p>
                 <p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
-                  {results.consumoAno1.localPonta.toLocaleString('pt-BR')} kWh
+                  {(financialResults?.consumoAno1?.localPonta ||
+                    (calculationData?.consumoMensal?.reduce((total: number, val: number) => total + val, 0) * 0.2) || 0).toLocaleString('pt-BR')} kWh
                 </p>
               </div>
               <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Remoto Fora Ponta</p>
                 <p className="text-xl font-bold text-purple-600 dark:text-purple-400">
-                  {results.consumoAno1.remotoForaPonta.toLocaleString('pt-BR')} kWh
+                  {(financialResults?.consumoAno1?.remotoForaPonta || 0).toLocaleString('pt-BR')} kWh
                 </p>
               </div>
               <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Remoto Ponta</p>
                 <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                  {results.consumoAno1.remotoPonta.toLocaleString('pt-BR')} kWh
+                  {(financialResults?.consumoAno1?.remotoPonta || 0).toLocaleString('pt-BR')} kWh
                 </p>
               </div>
             </div>
@@ -285,14 +370,14 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ results
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {results.tabelaResumoAnual.map((item, index) => (
+                  {(financialResults?.tabelaResumoAnual || financialResults?.cashFlow || []).map((item: any, index: number) => (
                     <TableRow key={index}>
                       <TableCell className="text-center font-medium">{item.ano}</TableCell>
-                      <TableCell className="text-center">{item.geracaoAnual.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</TableCell>
-                      <TableCell className="text-center">{item.consumoForaPonta.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</TableCell>
-                      <TableCell className="text-center">{item.consumoPonta.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</TableCell>
-                      <TableCell className="text-center">{item.economiaAnual.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                      <TableCell className="text-center">{item.economiaAcumulada.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-center">{(item.geracaoAnual || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-center">{(item.consumoForaPonta || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-center">{(item.consumoPonta || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-center">{(item.economiaAnual || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-center">{(item.economiaAcumulada || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -323,13 +408,13 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ results
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {results.tabelaFluxoCaixa.map((item, index) => (
+                  {(financialResults?.tabelaFluxoCaixa || financialResults?.cashFlow || []).map((item: any, index: number) => (
                     <TableRow key={index}>
                       <TableCell className="text-center font-medium">{item.ano}</TableCell>
-                      <TableCell className="text-center">{item.fluxoOperacional.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                      <TableCell className="text-center">{item.fluxoLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                      <TableCell className="text-center">{item.fluxoAcumulado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                      <TableCell className="text-center">{item.valorPresente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-center">{(item.fluxoOperacional || item.fluxoLiquido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-center">{(item.fluxoLiquido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-center">{(item.fluxoAcumulado || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-center">{(item.valorPresente || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

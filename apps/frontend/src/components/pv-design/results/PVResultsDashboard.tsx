@@ -15,7 +15,6 @@ import { AdvancedFinancialAnalysis } from './AdvancedFinancialAnalysis';
 import AdvancedPDFGenerator from '../report/AdvancedPDFGenerator';
 import { useDimensioningOperations } from '@/hooks/dimensioning';
 import { ProposalDocument } from '../proposal/ProposalDocument';
-import { isResultadosCodigoB, isResultadosCodigoA } from '@bess-pro/shared';
 import GrupoBFinancialResults from './GrupoBFinancialResults';
 import GrupoAFinancialResults from './GrupoAFinancialResults';
 
@@ -127,9 +126,6 @@ const validateAndNormalizeResults = (results: any) => {
   if (!results) {
     return null;
   }
-
-  // Log dos dados recebidos para debug
-  const debugResultsData = { results };
 
   const normalized: any = {
     ...results,
@@ -312,34 +308,9 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
       // 6. Pega todas as páginas
       const pages = proposalElement.querySelectorAll('.proposal-page');
 
-      const debugPagesCount = { pagesCount: pages.length };
-
       if (pages.length === 0) {
         throw new Error('Nenhuma página encontrada no documento');
       }
-
-      // Log detalhado de cada página antes da captura
-      pages.forEach((page, index) => {
-        const element = page as HTMLElement;
-        const rect = element.getBoundingClientRect();
-        const debugPageInfo = {
-          offsetWidth: element.offsetWidth,
-          offsetHeight: element.offsetHeight,
-          scrollWidth: element.scrollWidth,
-          scrollHeight: element.scrollHeight,
-          clientWidth: element.clientWidth,
-          clientHeight: element.clientHeight,
-          computedHeight: window.getComputedStyle(element).height,
-          computedOverflow: window.getComputedStyle(element).overflow,
-          boundingRect: {
-            width: rect.width,
-            height: rect.height,
-            top: rect.top,
-            left: rect.left
-          }
-        };
-        const debugPageDetails = { pageDetails: debugPageInfo };
-      });
 
       // 7. Cria o PDF
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -350,8 +321,6 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
        // 8. Processa cada página
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i] as HTMLElement;
-
-        const debugPageProcessing = { processingPage: i };
 
         // Ajusta o scrollWidth para páginas muito largas (como a Page 6)
         const captureWidth = Math.min(page.scrollWidth, 792); // Limita a largura máxima
@@ -366,13 +335,6 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
           windowHeight: captureHeight,
           logging: true, // Ativa logs do html2canvas
         });
-
-        const debugCanvasData = {
-          canvasWidth: canvas.width,
-          canvasHeight: canvas.height,
-          dataURLLength: canvas.toDataURL('image/png').length
-        };
-        const debugCanvasInfo = { canvasInfo: debugCanvasData };
 
         const imgData = canvas.toDataURL('image/png');
         const imgProps = pdf.getImageProperties(imgData);
@@ -460,11 +422,11 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
   );
 };
 
-export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({ 
-  results, 
-  onGenerateProposal, 
-  onBackToWizard, 
-  onNewCalculation 
+export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
+  results,
+  onGenerateProposal,
+  onBackToWizard,
+  onNewCalculation
 }) => {
   const [currentDimensioning] = useState<any>({});
   
@@ -484,11 +446,38 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
     );
   }
 
+  // Função para verificar se existem dados financeiros
+  const hasFinancialData = (data: any): boolean => {
+    if (!data) return false;
+    
+    // Verificar indicadores financeiros principais
+    return (
+      data.vpl !== undefined ||
+      data.tir !== undefined ||
+      data.paybackSimples !== undefined ||
+      data.paybackDescontado !== undefined ||
+      data.economiaAnualMedia !== undefined ||
+      data.lcoe !== undefined ||
+      data.roiSimples !== undefined ||
+      data.payback !== undefined ||
+      // Verificar dados de cash flow
+      (data.cashFlow && data.cashFlow.length > 0) ||
+      (data.fluxoCaixa && data.fluxoCaixa.length > 0) ||
+      // Verificar dados do advancedFinancial
+      (data.advancedFinancial && (
+        data.advancedFinancial.vpl !== undefined ||
+        data.advancedFinancial.tir !== undefined ||
+        data.advancedFinancial.paybackSimples !== undefined ||
+        data.advancedFinancial.cashFlow && data.advancedFinancial.cashFlow.length > 0
+      ))
+    );
+  };
+
   // Verificações críticas para componentes que dependem de arrays
-  const hasFinancialData = validatedResults.fluxoCaixa.length > 0;
+  const hasFinancialDataCheck = hasFinancialData(validatedResults);
   const hasGenerationData = validatedResults.geracaoEstimadaMensal.length > 0;
   
-  if (!hasFinancialData && !hasGenerationData) {
+  if (!hasFinancialDataCheck && !hasGenerationData) {
     return (
       <DataErrorFallback 
         message="Dados financeiros e de geração não disponíveis. Verifique os parâmetros de entrada."
@@ -528,7 +517,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
           </Section>
 
           {/* Advanced Solar Analysis */}
-          {validatedResults.advancedSolar && (
+          {/* {validatedResults.advancedSolar && (
             <Section title="Análise Solar Avançada" delay={2}>
               <AdvancedSolarAnalysis results={{
                 ...validatedResults,
@@ -547,32 +536,50 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
                 }
               }} />
             </Section>
-          )}
+          )} */}
 
           {/* Financial Analysis */}
-          {validatedResults.advancedFinancial && (
+          {/* {validatedResults.advancedFinancial && (
             <Section title="Análise Financeira" delay={3}>
               <AdvancedFinancialAnalysis results={validatedResults} />
             </Section>
-          )}
+          )} */}
 
           {/* Grupo B Financial Results */}
-          {validatedResults && isResultadosCodigoB(validatedResults) && (
+          {/* {validatedResults && validatedResults.grupoTarifario === 'B' && ( */}
             <Section title="Resultados Financeiros - Grupo B" delay={3}>
-              <GrupoBFinancialResults results={validatedResults} />
+              <GrupoBFinancialResults
+                calculationData={{
+                  investimentoInicial: validatedResults.totalInvestment,
+                  geracaoMensal: validatedResults.geracaoEstimadaMensal || Array(12).fill(0),
+                  consumoMensal: validatedResults.formData?.energyBills?.reduce((acc: number[], bill: any) => {
+                    return acc.concat(bill.consumoMensal || Array(12).fill(0));
+                  }, []) || Array(12).fill(0)
+                }}
+                config={validatedResults.formData}
+              />
             </Section>
-          )}
+          {/* )} */}
 
           {/* Grupo A Financial Results */}
-          {validatedResults && isResultadosCodigoA(validatedResults) && (
-            <Section title="Resultados Financeiros - Grupo A" delay={3}>
-              <GrupoAFinancialResults results={validatedResults} />
-            </Section>
-          )}
+          {/* {validatedResults && validatedResults.grupoTarifario === 'A' && ( */}
+            {/* <Section title="Resultados Financeiros - Grupo A" delay={3}>
+              <GrupoAFinancialResults
+                calculationData={{
+                  investimentoInicial: validatedResults.totalInvestment,
+                  geracaoMensal: validatedResults.geracaoEstimadaMensal || Array(12).fill(0),
+                  consumoMensal: validatedResults.formData?.energyBills?.reduce((acc: number[], bill: any) => {
+                    return acc.concat(bill.consumoMensal || Array(12).fill(0));
+                  }, []) || Array(12).fill(0)
+                }}
+                config={validatedResults.formData}
+              />
+            </Section> */}
+          {/* )} */}
 
-          <Section title="Gráficos de Desempenho" delay={4}>
+          {/* <Section title="Gráficos de Desempenho" delay={4}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {hasFinancialData ? (
+              {hasFinancialDataCheck ? (
                 <PaybackChart results={{
                   cash_flow: validatedResults.fluxoCaixa.map((item: any, index: number) => ({
                     ano: Number(item?.ano) || index + 1,
@@ -594,10 +601,10 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
               )}
               <EconomyProjectionChart results={validatedResults} />
             </div>
-          </Section>
+          </Section> */}
 
-          <Section title="Projeção de Economia" delay={5}>
-            {hasFinancialData || hasGenerationData ? (
+          {/* <Section title="Projeção de Economia" delay={5}>
+            {hasFinancialDataCheck || hasGenerationData ? (
               <AnnualSavingsChart results={validatedResults} />
             ) : (
               <div className="flex items-center justify-center min-h-[300px] border border-dashed border-gray-300 rounded-lg">
@@ -607,9 +614,9 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
                 </div>
               </div>
             )}
-          </Section>
+          </Section> */}
           
-          <Section title="Análise Técnica Detalhada" delay={6}>
+          {/* <Section title="Análise Técnica Detalhada" delay={6}>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
               <div className="lg:col-span-3">
                 {hasGenerationData ? (
@@ -624,7 +631,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
                 )}
               </div>
             </div>
-          </Section>
+          </Section> */}
           
 
 
