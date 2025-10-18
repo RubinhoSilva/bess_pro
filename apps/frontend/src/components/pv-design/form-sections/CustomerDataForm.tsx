@@ -12,12 +12,12 @@ import { energyCompanyService, EnergyCompany } from '@/lib/energyCompanyService'
 import toast from 'react-hot-toast';
 
 interface CustomerDataFormProps {
-  formData: any;
+  customerData: any;
   onFormChange: (field: string, value: any) => void;
   isLeadLocked?: boolean; // Nova prop para bloquear edição do lead
 }
 
-const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormChange, isLeadLocked = false }) => {
+const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ customerData, onFormChange, isLeadLocked = false }) => {  
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -157,10 +157,10 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
 
 
   useEffect(() => {
-    if (formData.customer?.name) {
-      setSearchTerm(formData.customer.name);
+    if (customerData.customer?.name) {
+      setSearchTerm(customerData.customer.name);
     }
-  }, [formData.customer]);
+  }, [customerData.customer]);
 
   // Carregar concessionárias de energia
   useEffect(() => {
@@ -358,10 +358,10 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
             id="dimensioning-name"
             type="text"
             placeholder="Ex: Dimensionamento Principal, Proposta A, etc."
-            value={formData.dimensioningName || ''}
+            value={customerData.dimensioningName || ''}
             onChange={(e) => onFormChange('dimensioningName', e.target.value)}
             className={`bg-background border-border text-foreground ${
-              !formData.dimensioningName?.trim() 
+              !customerData.dimensioningName?.trim()
                 ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
                 : 'border-green-300 focus:border-green-500 focus:ring-green-200'
             }`}
@@ -372,7 +372,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
         </div>
 
         {/* Informações do cliente selecionado */}
-        {formData.customer && (
+        {customerData.customer && (
           <div className="p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-medium text-blue-400">Cliente Selecionado</h4>
@@ -383,10 +383,10 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
               )}
             </div>
             <div className="text-sm text-blue-300 space-y-1">
-              <p><strong>Nome:</strong> {formData.customer.name}</p>
-              {formData.customer.email && <p><strong>Email:</strong> {formData.customer.email}</p>}
-              {formData.customer.company && <p><strong>Empresa:</strong> {formData.customer.company}</p>}
-              <p><strong>Tipo:</strong> {formData.customer.type === 'client' ? 'Cliente' : 'Lead'}</p>
+              <p><strong>Nome:</strong> {customerData.customer.name}</p>
+              {customerData.customer.email && <p><strong>Email:</strong> {customerData.customer.email}</p>}
+              {customerData.customer.company && <p><strong>Empresa:</strong> {customerData.customer.company}</p>}
+              <p><strong>Tipo:</strong> {customerData.customer.type === 'client' ? 'Cliente' : 'Lead'}</p>
             </div>
           </div>
         )}
@@ -400,7 +400,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
               onFormChange('energyBills', []);
               onFormChange('energyBillsA', []);
             }} 
-            value={formData.grupoTarifario || 'B'}
+            value={customerData.grupoTarifario || 'B'}
           >
             <SelectTrigger className="bg-background border-border text-foreground">
               <SelectValue placeholder="Selecione o grupo tarifário" />
@@ -412,7 +412,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
           </Select>
         </div>
 
-        {formData.grupoTarifario === 'A' && (
+        {customerData.grupoTarifario === 'A' && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -422,7 +422,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
             <Label className="text-foreground">Subgrupo Tarifário</Label>
             <Select 
               onValueChange={(v) => onFormChange('subgrupoTarifario', v)} 
-              value={formData.subgrupoTarifario || ''}
+              value={customerData.subgrupoTarifario || ''}
             >
               <SelectTrigger className="bg-background border-border text-foreground">
                 <SelectValue placeholder="Selecione o subgrupo tarifário" />
@@ -445,7 +445,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
               min="0" 
               max="100" 
               step="1" 
-              value={formData.fatorSimultaneidade || 100} 
+              value={customerData.fatorSimultaneidade || 100}
               onChange={(e) => onFormChange('fatorSimultaneidade', parseInt(e.target.value) || 100)} 
               className="bg-background border-border text-foreground"
               placeholder="0-100"
@@ -457,7 +457,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
         </div>
 
         <AnimatePresence>
-          {formData.grupoTarifario === 'B' && (
+          {customerData.grupoTarifario === 'B' && (
             <motion.div 
               initial={{ opacity: 0, height: 0 }} 
               animate={{ opacity: 1, height: 'auto' }} 
@@ -467,7 +467,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
               <div className="space-y-2">
                 <Label htmlFor="tarifaEnergiaB" className="text-foreground">Tarifa de Energia (R$/kWh)</Label>
                 <CustomCurrencyInput
-                  value={formData.tarifaEnergiaB}
+                  value={customerData.tarifaEnergiaB}
                   onValueChange={(value) => onFormChange('tarifaEnergiaB', value)}
                   placeholder="R$ 0,00"
                   className="bg-background border-border text-foreground"
@@ -476,7 +476,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
               <div className="space-y-2">
                 <Label htmlFor="custoFioB" className="text-foreground">Custo Fio B (R$/kWh)</Label>
                 <CustomCurrencyInput
-                  value={formData.custoFioB}
+                  value={customerData.custoFioB}
                   onValueChange={(value) => onFormChange('custoFioB', value)}
                   placeholder="R$ 0,0000"
                   className="bg-background border-border text-foreground"
@@ -492,7 +492,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   <div className="space-y-2">
                     <Label htmlFor="concessionaria">Concessionária de Energia</Label>
                     <Select 
-                      value={formData.concessionaria || ''} 
+                      value={customerData.concessionaria || ''}
                       onValueChange={(value) => onFormChange('concessionaria', value)}
                       disabled={loadingCompanies}
                     >
@@ -526,7 +526,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   <div className="space-y-2">
                     <Label htmlFor="tipoRede">Tipo de Rede</Label>
                     <Select 
-                      value={formData.tipoRede || ''} 
+                      value={customerData.tipoRede || ''}
                       onValueChange={(value) => onFormChange('tipoRede', value)}
                     >
                       <SelectTrigger className="bg-background border-border text-foreground">
@@ -543,7 +543,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   <div className="space-y-2">
                     <Label htmlFor="tensaoRede">Tensão de Rede (V)</Label>
                     <Select 
-                      value={formData.tensaoRede || ''} 
+                      value={customerData.tensaoRede || ''}
                       onValueChange={(value) => onFormChange('tensaoRede', value)}
                     >
                       <SelectTrigger className="bg-background border-border text-foreground">
@@ -562,7 +562,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                   <div className="space-y-2">
                     <Label htmlFor="tipoTelhado">Tipo de Telhado</Label>
                     <Select 
-                      value={formData.tipoTelhado || ''} 
+                      value={customerData.tipoTelhado || ''}
                       onValueChange={(value) => onFormChange('tipoTelhado', value)}
                     >
                       <SelectTrigger className="bg-background border-border text-foreground">
@@ -579,25 +579,10 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="fatorSimultaneidade" className="text-foreground">Fator de Simultaneidade (%)</Label>
-                <Input 
-                  id="fatorSimultaneidade" 
-                  type="number" 
-                  min="0" 
-                  max="100" 
-                  step="1" 
-                  value={formData.fatorSimultaneidade || 100} 
-                  onChange={(e) => onFormChange('fatorSimultaneidade', parseInt(e.target.value) || 100)} 
-                  className="bg-background border-border text-foreground"
-                  placeholder="0-100"
-                />
-              </div>
-
             </motion.div>
           )}
           
-          {formData.grupoTarifario === 'A' && (
+          {customerData.grupoTarifario === 'A' && (
             <motion.div 
               initial={{ opacity: 0, height: 0 }} 
               animate={{ opacity: 1, height: 'auto' }} 
@@ -608,7 +593,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                 <div className="space-y-2">
                   <Label htmlFor="tarifaEnergiaPontaA" className="text-foreground">Tarifa Ponta (R$/kWh)</Label>
                   <CustomCurrencyInput
-                    value={formData.tarifaEnergiaPontaA}
+                    value={customerData.tarifaEnergiaPontaA}
                     onValueChange={(value) => onFormChange('tarifaEnergiaPontaA', value)}
                     placeholder="R$ 0,00"
                     className="bg-background border-border text-foreground"
@@ -617,7 +602,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                 <div className="space-y-2">
                   <Label htmlFor="tarifaEnergiaForaPontaA" className="text-foreground">Tarifa Fora Ponta (R$/kWh)</Label>
                   <CustomCurrencyInput
-                    value={formData.tarifaEnergiaForaPontaA}
+                    value={customerData.tarifaEnergiaForaPontaA}
                     onValueChange={(value) => onFormChange('tarifaEnergiaForaPontaA', value)}
                     placeholder="R$ 0,00"
                     className="bg-background border-border text-foreground"
@@ -629,7 +614,7 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                 <div className="space-y-2">
                   <Label htmlFor="tePontaA" className="text-foreground">TE Ponta (R$/kWh)</Label>
                   <CustomCurrencyInput
-                    value={formData.tePontaA}
+                    value={customerData.tePontaA}
                     onValueChange={(value) => onFormChange('tePontaA', value)}
                     placeholder="R$ 0,00"
                     className="bg-background border-border text-foreground"
@@ -638,27 +623,12 @@ const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ formData, onFormCha
                 <div className="space-y-2">
                   <Label htmlFor="teForaPontaA" className="text-foreground">TE Fora Ponta (R$/kWh)</Label>
                   <CustomCurrencyInput
-                    value={formData.teForaPontaA}
+                    value={customerData.teForaPontaA}
                     onValueChange={(value) => onFormChange('teForaPontaA', value)}
                     placeholder="R$ 0,00"
                     className="bg-background border-border text-foreground"
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="fatorSimultaneidade" className="text-foreground">Fator de Simultaneidade (%)</Label>
-                <Input 
-                  id="fatorSimultaneidade" 
-                  type="number" 
-                  min="0" 
-                  max="100" 
-                  step="1" 
-                  value={formData.fatorSimultaneidade || 100} 
-                  onChange={(e) => onFormChange('fatorSimultaneidade', parseInt(e.target.value) || 100)} 
-                  className="bg-background border-border text-foreground"
-                  placeholder="0-100"
-                />
               </div>
 
             </motion.div>

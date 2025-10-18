@@ -144,6 +144,21 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   const currentDimensioning = useMemo(() => ({
     dimensioningName: customerData?.dimensioningName || '',
     customer: customerData?.customer,
+    // Campos do CustomerDataForm que agora estão no customerData
+    grupoTarifario: customerData?.grupoTarifario || 'B',
+    subgrupoTarifario: customerData?.subgrupoTarifario || '',
+    concessionaria: customerData?.concessionaria || '',
+    tipoRede: customerData?.tipoRede || '',
+    tensaoRede: customerData?.tensaoRede || '',
+    tipoTelhado: customerData?.tipoTelhado || '',
+    fatorSimultaneidade: customerData?.fatorSimultaneidade || 100,
+    tarifaEnergiaB: customerData?.tarifaEnergiaB || 0,
+    custoFioB: customerData?.custoFioB || 0,
+    tarifaEnergiaPontaA: customerData?.tarifaEnergiaPontaA || 0,
+    tarifaEnergiaForaPontaA: customerData?.tarifaEnergiaForaPontaA || 0,
+    tePontaA: customerData?.tePontaA || 0,
+    teForaPontaA: customerData?.teForaPontaA || 0,
+    // Dados de localização
     irradiacaoMensal: locationData?.irradiacaoMensal || Array(12).fill(5.0),
     latitude: locationData?.location?.latitude,
     longitude: locationData?.location?.longitude,
@@ -155,6 +170,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     orientacao: locationData?.azimute,
     considerarSombreamento: locationData?.considerarSombreamento,
     sombreamento: locationData?.sombreamento,
+    // Dados do sistema
     potenciaModulo: systemData?.potenciaModulo || 550,
     eficienciaSistema: systemData?.eficienciaSistema || 85,
     numeroModulos: systemData?.numeroModulos || 0,
@@ -166,12 +182,20 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     perdaSujeira: systemData?.perdaSujeira,
     perdaInversor: systemData?.perdaInversor,
     perdaOutras: systemData?.perdaOutras,
+    // Campos do SystemParametersForm
+    fabricanteModulo: systemData?.fabricanteModulo || '',
+    moduloSelecionado: systemData?.moduloSelecionado || '',
+    vidaUtil: systemData?.vidaUtil || 25,
+    degradacaoAnual: systemData?.degradacaoAnual || 0.5,
+    // Dados do telhado
     aguasTelhado: roofData?.aguasTelhado || [],
+    // Dados de energia
     energyBills: energyData?.energyBills || [{
       id: crypto.randomUUID(),
       name: 'Unidade Geradora',
       consumoMensal: Array(12).fill(500)
     }],
+    // Dados do orçamento
     custoEquipamento: budgetData?.custoEquipamento || 0,
     custoMateriais: budgetData?.custoMateriais || 0,
     custoMaoDeObra: budgetData?.custoMaoDeObra || 0,
@@ -181,7 +205,14 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     cardInterest: budgetData?.cardInterest,
     financingInstallments: budgetData?.financingInstallments,
     financingInterest: budgetData?.financingInterest,
-    grupoTarifario: 'B' as const,
+    // Campos do FinancialForm
+    inflacaoEnergia: budgetData?.inflacaoEnergia || 5.0,
+    taxaDesconto: budgetData?.taxaDesconto || 8.0,
+    custoOperacao: budgetData?.custoOperacao || 1.0,
+    valorResidual: budgetData?.valorResidual || 10.0,
+    percentualFinanciado: budgetData?.percentualFinanciado || 0,
+    taxaJuros: budgetData?.taxaJuros || 12.0,
+    prazoFinanciamento: budgetData?.prazoFinanciamento || 5,
   }), [customerData, locationData, systemData, roofData, energyData, budgetData]);
 
   // Hooks para cálculos financeiros especializados
@@ -213,7 +244,14 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
   const handleFormChange = (field: string, value: any) => {
     // Mapear campo para a atualização correta no store
-    if (field === 'dimensioningName' || field === 'customer') {
+    if (field === 'dimensioningName' || field === 'customer' ||
+        field === 'grupoTarifario' || field === 'subgrupoTarifario' ||
+        field === 'concessionaria' || field === 'tipoRede' ||
+        field === 'tensaoRede' || field === 'tipoTelhado' ||
+        field === 'fatorSimultaneidade' || field === 'tarifaEnergiaB' ||
+        field === 'custoFioB' || field === 'tarifaEnergiaPontaA' ||
+        field === 'tarifaEnergiaForaPontaA' || field === 'tePontaA' ||
+        field === 'teForaPontaA') {
       updateCustomerData({ [field]: value });
     } else if (field === 'energyBills' || field === 'energyBillsA') {
       updateEnergyData({ [field]: value });
@@ -222,12 +260,18 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
                field.includes('endereco') || field.includes('cidade') || field.includes('estado')) {
       updateLocationData({ [field]: value });
     } else if (field.includes('modulo') || field.includes('inversor') || field.includes('potencia') ||
-               field.includes('eficiencia') || field.includes('perda')) {
+               field.includes('eficiencia') || field.includes('perda') ||
+               field === 'fabricanteModulo' || field === 'moduloSelecionado' ||
+               field === 'vidaUtil' || field === 'degradacaoAnual') {
       updateSystemData({ [field]: value });
     } else if (field === 'aguasTelhado') {
       updateRoofData({ [field]: value });
     } else if (field.includes('custo') || field.includes('bdi') || field.includes('payment') ||
-               field.includes('installments') || field.includes('interest')) {
+               field.includes('installments') || field.includes('interest') ||
+               field === 'inflacaoEnergia' || field === 'taxaDesconto' ||
+               field === 'custoOperacao' || field === 'valorResidual' ||
+               field === 'percentualFinanciado' || field === 'taxaJuros' ||
+               field === 'prazoFinanciamento') {
       updateBudgetData({ [field]: value });
     }
   };
@@ -595,7 +639,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       case 'customer':
         return (
           <CustomerDataForm
-            formData={currentDimensioning}
+            customerData={customerData}
             onFormChange={handleFormChange}
             isLeadLocked={!!customerData?.customer && (customerData.customer as any).type === 'lead'}
           />

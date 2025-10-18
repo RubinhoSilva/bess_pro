@@ -16,6 +16,22 @@ export interface ICustomerData {
     id?: string;
   };
   dimensioningName: string;
+  // Campos de tarifação e instalação
+  grupoTarifario: string;
+  subgrupoTarifario: string;
+  concessionaria: string;
+  tipoRede: string;
+  tensaoRede: string;
+  tipoTelhado: string;
+  fatorSimultaneidade: number;
+  // Campos de tarifas Grupo B
+  tarifaEnergiaB: number;
+  custoFioB: number;
+  // Campos de tarifas Grupo A
+  tarifaEnergiaPontaA: number;
+  tarifaEnergiaForaPontaA: number;
+  tePontaA: number;
+  teForaPontaA: number;
 }
 
 export interface IEnergyData {
@@ -54,6 +70,11 @@ export interface ISystemData {
   perdaSujeira?: number;
   perdaInversor?: number;
   perdaOutras?: number;
+  // Campos do SystemParametersForm
+  fabricanteModulo?: string;
+  moduloSelecionado?: string;
+  vidaUtil?: number;
+  degradacaoAnual?: number;
 }
 
 export interface IBudgetData {
@@ -66,6 +87,14 @@ export interface IBudgetData {
   cardInterest?: number;
   financingInstallments?: number;
   financingInterest?: number;
+  // Campos do FinancialForm
+  inflacaoEnergia?: number;
+  taxaDesconto?: number;
+  custoOperacao?: number;
+  valorResidual?: number;
+  percentualFinanciado?: number;
+  taxaJuros?: number;
+  prazoFinanciamento?: number;
 }
 
 export interface IResultsData {
@@ -150,7 +179,6 @@ interface IProjectActions {
   clearValidationErrors: () => void;
   
   // Ações de persistência (otimizadas para nova arquitetura)
-  loadProject: (projectData: any, source?: string) => void;
   clearProject: () => void;
   isProjectSaved: () => boolean;
   
@@ -201,7 +229,22 @@ const initialState: IProjectState = {
   isSaving: false,
   
   // Dados por etapa
-  customer: null,
+  customer: {
+    dimensioningName: '',
+    grupoTarifario: 'B',
+    subgrupoTarifario: '',
+    concessionaria: '',
+    tipoRede: '',
+    tensaoRede: '',
+    tipoTelhado: '',
+    fatorSimultaneidade: 100,
+    tarifaEnergiaB: 0,
+    custoFioB: 0,
+    tarifaEnergiaPontaA: 0,
+    tarifaEnergiaForaPontaA: 0,
+    tePontaA: 0,
+    teForaPontaA: 0
+  },
   energy: null,
   location: null,
   system: null,
@@ -485,62 +528,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           });
         },
         
-        // Ações de persistência (compatíveis com ProjectContext)
-        loadProject: (projectData: any, source: string = 'manual') => {
-          set((state) => {
-            state.projectId = projectData.id || null;
-            state.projectName = projectData.projectName || '';
-            state.projectType = projectData.projectType || ProjectType.PV;
-            state.leadId = projectData.leadId || null;
-            state.address = projectData.address || '';
-            state.isProjectLoaded = true;
-            state.projectStateSource = source;
-            state.dimensioningId = projectData.id || null;
-            
-            // Mapear dados para a nova estrutura
-            state.customer = {
-              dimensioningName: projectData.projectName || '',
-              customer: projectData.projectData?.customer
-            };
-            
-            state.energy = {
-              energyBills: projectData.projectData?.energyBills,
-              energyBillsA: projectData.projectData?.energyBillsA
-            };
-            
-            state.location = {
-              location: projectData.projectData?.location,
-              irradiacaoMensal: projectData.projectData?.irradiacaoMensal,
-              inclinacao: projectData.projectData?.inclinacao,
-              azimute: projectData.projectData?.azimute,
-              considerarSombreamento: projectData.projectData?.considerarSombreamento,
-              sombreamento: projectData.projectData?.sombreamento
-            };
-            
-            state.system = {
-              selectedModuleId: projectData.projectData?.selectedModuleId,
-              selectedInverters: projectData.projectData?.selectedInverters,
-              potenciaModulo: projectData.projectData?.potenciaModulo,
-              numeroModulos: projectData.projectData?.numeroModulos,
-              eficienciaSistema: projectData.projectData?.eficienciaSistema
-            };
-            
-            state.budget = {
-              custoEquipamento: projectData.projectData?.custoEquipamento,
-              custoMateriais: projectData.projectData?.custoMateriais,
-              custoMaoDeObra: projectData.projectData?.custoMaoDeObra,
-              bdi: projectData.projectData?.bdi,
-              paymentMethod: projectData.projectData?.paymentMethod,
-              cardInstallments: projectData.projectData?.cardInstallments,
-              cardInterest: projectData.projectData?.cardInterest,
-              financingInstallments: projectData.projectData?.financingInstallments,
-              financingInterest: projectData.projectData?.financingInterest
-            };
-          });
-          
-          toast.success(`Projeto "${projectData.projectName}" carregado com sucesso!`);
-        },
-        
         clearProject: () => {
           set(() => ({ ...initialState }));
         },
@@ -667,7 +654,20 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               // Etapa 1: Dados do cliente
               customer: {
                 dimensioningName: response.data.data.projectName,
-                customer: projectData.customer
+                customer: projectData.customer,
+                grupoTarifario: projectData.grupoTarifario || 'B',
+                subgrupoTarifario: projectData.subgrupoTarifario || '',
+                concessionaria: projectData.concessionaria || '',
+                tipoRede: projectData.tipoRede || '',
+                tensaoRede: projectData.tensaoRede || '',
+                tipoTelhado: projectData.tipoTelhado || '',
+                fatorSimultaneidade: projectData.fatorSimultaneidade || 100,
+                tarifaEnergiaB: projectData.tarifaEnergiaB || 0,
+                custoFioB: projectData.custoFioB || 0,
+                tarifaEnergiaPontaA: projectData.tarifaEnergiaPontaA || 0,
+                tarifaEnergiaForaPontaA: projectData.tarifaEnergiaForaPontaA || 0,
+                tePontaA: projectData.tePontaA || 0,
+                teForaPontaA: projectData.teForaPontaA || 0
               },
               
               // Etapa 2: Dados de energia
