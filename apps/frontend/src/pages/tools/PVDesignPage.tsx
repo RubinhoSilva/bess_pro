@@ -1,32 +1,41 @@
+// React/Next.js imports
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Sun, BarChart, FilePlus } from 'lucide-react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { useProject } from '@/contexts/ProjectContext';
-import { useDimensioningOperations } from '@/hooks/dimensioning';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
 
+// External libraries
+import { motion, AnimatePresence } from 'framer-motion';
+import { shallow } from 'zustand/shallow';
+import { ArrowLeft, Sun } from 'lucide-react';
+
+// Internal components
+import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { useToast } from '@/components/ui/use-toast';
 import SolarSizingWizard from '../../components/pv-design/wizard/SolarSizingWizard';
 import { PVResultsDashboard } from '../../components/pv-design/results/PVResultsDashboard';
+
+// Hooks
+import { usePVDimensioningNavigation } from '@/hooks/usePVDimensioningNavigation';
+
+// Store and selectors
+import { usePVDimensioningStore } from '@/store/pv-dimensioning-store';
+
+// Services and utilities
 import { apiClient } from '@/lib/api';
-import { useToast } from '@/components/ui/use-toast';
-import { createEnergyBillB } from '@/types/energy-bill-types';
 
 type ViewType = 'wizard' | 'results';
 
-// Componente interno que tem acesso ao DimensioningContext
 function PVDesignPageContent() {
   const [currentView, setCurrentView] = useState<ViewType>('wizard');
   const [calculationResults, setCalculationResults] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const location = useLocation();
-  const { currentProject } = useProject();
-  const [dimensioningId, setDimensioningId] = useState<string | null>(null);
-  const [currentDimensioning, setCurrentDimensioning] = useState<any>({});
-  const { saveAsync: saveDimensioning } = useDimensioningOperations(dimensioningId || undefined);
+  const routerLocation = useLocation();
+  
+  // Hook de navegação do dimensionamento
+  const { resetWizard } = usePVDimensioningNavigation();
+  
   const { toast } = useToast();
 
   // Carregar dados do projeto quando houver projectId na URL
@@ -37,27 +46,28 @@ function PVDesignPageContent() {
       loadProjectData(projectId);
     } else {
       // Limpa o dimensionamento quando acessar diretamente sem parâmetros
-      setDimensioningId(null);
+      resetWizard();
     }
-  }, [searchParams]);
+  }, [searchParams, resetWizard]);
 
   // Carregar lead pré-selecionado quando vem do CRM
   useEffect(() => {
-    const selectedLead = location.state?.selectedLead;
+    const selectedLead = routerLocation.state?.selectedLead;
     
     if (selectedLead) {
-      
       // Marcar que é um carregamento explícito
       sessionStorage.setItem('continueDimensioning', 'true');
       
-      setCurrentDimensioning((prev: any) => ({ ...prev, customer: selectedLead }));
+      // Atualiza a store com os dados do lead
+      const { updateCustomerData } = usePVDimensioningStore.getState();
+      updateCustomerData({ customer: selectedLead });
       
       toast({
         title: "Lead selecionado!",
         description: `Dimensionamento iniciado para ${selectedLead.name}`,
       });
     }
-  }, [location.state, toast]);
+  }, [routerLocation.state, toast]);
 
   const loadProjectData = async (projectId: string) => {
     setIsLoading(true);
@@ -66,111 +76,16 @@ function PVDesignPageContent() {
       const project = response.data?.data || response.data;
       
       if (project.projectData?.dimensioningName) {
-        // Converter dados do projeto para o formato do dimensionamento
-        const dimensioningData = {
-          id: project.id,
-          dimensioningName: project.projectData.dimensioningName,
-          customer: project.projectData.customer,
-          project: {
-            id: project.id,
-            name: project.projectName
-          },
-          projectName: project.projectName,
-          
-          // Dados de localização
-          endereco: project.address,
-          cidade: project.projectData.cidade,
-          estado: project.projectData.estado,
-          latitude: project.projectData.latitude,
-          longitude: project.projectData.longitude,
-          irradiacaoMensal: project.projectData.irradiacaoMensal || Array(12).fill(4.5),
-          
-          // Sistema fotovoltaico
-          potenciaModulo: project.projectData.potenciaModulo || 550,
-          numeroModulos: project.projectData.numeroModulos || 0,
-          eficienciaSistema: project.projectData.eficienciaSistema || 85,
-          selectedModuleId: project.projectData.selectedModuleId,
-          moduloSelecionado: project.projectData.selectedModuleId || project.projectData.moduloSelecionado || '',
-          fabricanteModulo: project.projectData.fabricanteModulo || '',
-          fabricanteModuloNome: project.projectData.fabricanteModuloNome || '',
-          modeloModulo: project.projectData.modeloModulo || '',
-          eficienciaModulo: project.projectData.eficienciaModulo || 0,
-          tensaoModulo: project.projectData.tensaoModulo || 0,
-          correnteModulo: project.projectData.correnteModulo || 0,
-          
-          // Inversores
-          inverters: project.projectData.inverters || [{
-            id: crypto.randomUUID(),
-            selectedInverterId: '',
-            quantity: 1
-          }],
-          totalInverterPower: project.projectData.totalInverterPower || 0,
-          
-          // Consumo energético
-          energyBills: project.projectData.energyBills || [createEnergyBillB({
-            name: 'Unidade Geradora',
-            consumoMensal: Array(12).fill(500)
-          })],
-          energyBillsA: project.projectData.energyBillsA || [],
-          
-          // Parâmetros tarifários
-          grupoTarifario: project.projectData.grupoTarifario || 'B',
-          tarifaEnergiaB: project.projectData.tarifaEnergiaB || null,
-          custoFioB: project.projectData.custoFioB || null,
-          tarifaEnergiaPontaA: project.projectData.tarifaEnergiaPontaA,
-          tarifaEnergiaForaPontaA: project.projectData.tarifaEnergiaForaPontaA,
-          tePontaA: project.projectData.tePontaA,
-          teForaPontaA: project.projectData.teForaPontaA,
-          fatorSimultaneidade: project.projectData.fatorSimultaneidade,
-          
-          // Dados da instalação
-          concessionaria: project.projectData.concessionaria,
-          tipoRede: project.projectData.tipoRede,
-          tensaoRede: project.projectData.tensaoRede,
-          tipoTelhado: project.projectData.tipoTelhado,
-          
-          // Custos e financeiro
-          custoEquipamento: project.projectData.custoEquipamento || 0,
-          custoMateriais: project.projectData.custoMateriais || 0,
-          custoMaoDeObra: project.projectData.custoMaoDeObra || 0,
-          bdi: project.projectData.bdi || 25,
-          taxaDesconto: project.projectData.taxaDesconto || 8,
-          inflacaoEnergia: project.projectData.inflacaoEnergia || 4.5,
-          vidaUtil: project.projectData.vidaUtil || 25,
-          
-          // Condições de pagamento
-          paymentMethod: project.projectData.paymentMethod || 'vista',
-          cardInstallments: project.projectData.cardInstallments || 12,
-          cardInterest: project.projectData.cardInterest || 1.99,
-          financingInstallments: project.projectData.financingInstallments || 60,
-          financingInterest: project.projectData.financingInterest || 1.49,
-          
-          // Dimensionamento de cabos
-          cableSizing: project.projectData.cableSizing || [],
-          
-          // Dados adicionais
-          modelo3dUrl: project.projectData.modelo3dUrl,
-          googleSolarData: project.projectData.googleSolarData,
-          mountingAreas: project.projectData.mountingAreas,
-          measurements: project.projectData.measurements,
-          
-          // Required properties for DimensioningData interface
-          aguasTelhado: project.projectData.aguasTelhado || [],
-          selectedInverters: project.projectData.selectedInverters || [],
-          totalMpptChannels: project.projectData.totalMpptChannels || 0,
-          
-          createdAt: project.createdAt || project.savedAt,
-          updatedAt: project.updatedAt || project.savedAt
-        };
-
-        setCurrentDimensioning(dimensioningData);
+        // Atualiza a store com os dados carregados
+        await usePVDimensioningStore.getState().loadDimensioning(projectId);
         
         toast({
           title: "Dimensionamento carregado",
-          description: `"${dimensioningData.dimensioningName}" foi carregado com sucesso.`
+          description: `"${project.projectData.dimensioningName}" foi carregado com sucesso.`
         });
       }
     } catch (error) {
+      console.error('Erro ao carregar projeto:', error);
       toast({
         variant: "destructive",
         title: "Erro ao carregar projeto",
@@ -181,13 +96,7 @@ function PVDesignPageContent() {
     }
   };
 
-  const handleCalculationComplete = (results: any) => {
-    setCalculationResults(results);
-    setCurrentView('results');
-  };
-
   const handleNewProject = () => {
-    // Reset calculation results and go back to wizard
     setCalculationResults(null);
     setCurrentView('wizard');
   };
@@ -243,8 +152,6 @@ function PVDesignPageContent() {
             </motion.div>
           )}
 
-
-
           {currentView === 'results' && calculationResults && (
             <motion.div
               key="results"
@@ -266,7 +173,6 @@ function PVDesignPageContent() {
   );
 }
 
-// Componente principal - Provider removido (agora usa Zustand)
 export default function PVDesignPage() {
   return <PVDesignPageContent />;
 }

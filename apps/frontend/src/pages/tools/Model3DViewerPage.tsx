@@ -1,22 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Settings, Save, Share2, Download } from 'lucide-react';
 import { Viewer3D } from '@/components/viewer-3d/Viewer3D';
 import { useDimensioningOperations } from '@/hooks/dimensioning';
+import { usePVDimensioningStore } from '@/store/pv-dimensioning-store';
 import toast from 'react-hot-toast';
 
-// Componente interno que tem acesso ao DimensioningContext
+// Componente interno que usa Zustand store
 function Model3DViewerPageContent() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [dimensioningId, setDimensioningId] = useState<string | null>(null);
-  const [currentDimensioning, setCurrentDimensioning] = useState<any>({});
-  const { saveAsync: saveDimensioning } = useDimensioningOperations(dimensioningId || undefined);
   
+  // Estados locais necessários para o funcionamento do viewer
   const [measurements, setMeasurements] = useState<any[]>([]);
   const [areas, setAreas] = useState<any[]>([]);
   const [selectedAreaId, setSelectedAreaId] = useState<string>();
+  
+  // Usar store Zustand em vez de estado local
+  const dimensioningId = usePVDimensioningStore((state) => state.dimensioningId);
+  const customerData = usePVDimensioningStore((state) => state.customer);
+  const locationData = usePVDimensioningStore((state) => state.location);
+  const roofData = usePVDimensioningStore((state) => state.roof);
+  
+  // Ações da store
+  const { updateRoofData } = usePVDimensioningStore();
+  
+  const { saveAsync: saveDimensioning } = useDimensioningOperations(dimensioningId || undefined);
+
+  // Combinar dados da store para compatibilidade com código existente
+  const currentDimensioning = useMemo(() => ({
+    modelo3dUrl: roofData?.modelo3dUrl,
+    latitude: locationData?.location?.latitude,
+    longitude: locationData?.location?.longitude,
+    mountingAreas: roofData?.aguasTelhado || []
+  }), [roofData, locationData]);
 
   // Get initial model URL from query params
   const initialModelUrl = searchParams.get('model') || currentDimensioning.modelo3dUrl;
@@ -57,12 +75,11 @@ function Model3DViewerPageContent() {
   };
 
   const handleSaveProject = () => {
-    // Update dimensioning data with 3D data
-    setCurrentDimensioning((prev: any) => ({ ...prev,
-      mountingAreas: areas,
-      measurements: measurements,
+    // Update dimensioning data with 3D data usando a store
+    updateRoofData({
+      aguasTelhado: areas,
       modelo3dUrl: initialModelUrl
-    }));
+    });
     
     toast.success('Dados 3D salvos no projeto');
   };

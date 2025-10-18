@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Save, FolderOpen, Trash2, Search, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/auth-hooks';
-import { useProject } from '@/contexts/ProjectContext';
+import { usePVDimensioningStore } from '@/store/pv-dimensioning-store';
 import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } from '@/hooks/project-hooks';
 import { ProjectType } from '@/types/project';
 
@@ -25,7 +25,7 @@ interface ProjectManagerProps {
 export const ProjectManager: React.FC<ProjectManagerProps> = ({ projectType }) => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { currentProject, loadProject, projectName: currentProjectName } = useProject();
+  const { loadProject, projectName: currentProjectName } = usePVDimensioningStore();
   const [isSaveOpen, setIsSaveOpen] = useState(false);
   const [isLoadOpen, setIsLoadOpen] = useState(false);
   const [projectName, setProjectName] = useState('');
@@ -68,14 +68,35 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({ projectType }) =
       const projectData = {
         projectName: projectName.trim(),
         projectType: projectType,
-        projectData: currentProject,
+        projectData: {
+          // Obter dados da nova estrutura
+          customer: usePVDimensioningStore.getState().customer?.customer,
+          energyBills: usePVDimensioningStore.getState().energy?.energyBills,
+          energyBillsA: usePVDimensioningStore.getState().energy?.energyBillsA,
+          location: usePVDimensioningStore.getState().location?.location,
+          irradiacaoMensal: usePVDimensioningStore.getState().location?.irradiacaoMensal,
+          selectedModuleId: usePVDimensioningStore.getState().system?.selectedModuleId,
+          selectedInverters: usePVDimensioningStore.getState().system?.selectedInverters,
+          potenciaModulo: usePVDimensioningStore.getState().system?.potenciaModulo,
+          numeroModulos: usePVDimensioningStore.getState().system?.numeroModulos,
+          eficienciaSistema: usePVDimensioningStore.getState().system?.eficienciaSistema,
+          custoEquipamento: usePVDimensioningStore.getState().budget?.custoEquipamento,
+          custoMateriais: usePVDimensioningStore.getState().budget?.custoMateriais,
+          custoMaoDeObra: usePVDimensioningStore.getState().budget?.custoMaoDeObra,
+          bdi: usePVDimensioningStore.getState().budget?.bdi,
+          paymentMethod: usePVDimensioningStore.getState().budget?.paymentMethod,
+          cardInstallments: usePVDimensioningStore.getState().budget?.cardInstallments,
+          cardInterest: usePVDimensioningStore.getState().budget?.cardInterest,
+          financingInstallments: usePVDimensioningStore.getState().budget?.financingInstallments,
+          financingInterest: usePVDimensioningStore.getState().budget?.financingInterest,
+        },
         // Adicione outros campos conforme necessário
       };
 
       // Se há um ID no projeto atual, atualiza; senão, cria novo
-      if ((currentProject as any).id) {
+      if (usePVDimensioningStore.getState().projectId) {
         await updateProjectMutation.mutateAsync({
-          id: (currentProject as any).id,
+          id: usePVDimensioningStore.getState().projectId || '',
           data: projectData
         });
       } else {

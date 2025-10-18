@@ -1,25 +1,15 @@
-import React, { useState, useMemo } from 'react';
+// React & Next.js
+import React, { useMemo } from 'react';
+
+// Bibliotecas externas
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import { ChevronLeft, ChevronRight, Sun, User, Zap, MapPin, Settings, Calculator, CheckCircle, Home, Compass, Loader2 } from 'lucide-react';
+
+// Componentes internos
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { ChevronLeft, ChevronRight, Sun, User, Zap, MapPin, Settings, Calculator, CheckCircle, Home, Compass, Loader2 } from 'lucide-react';
-import { useDimensioningOperations } from '@/hooks/dimensioning';
-import { AdvancedSolarCalculator, SolarCalculationOptions } from '@/lib/solarCalculations';
-import { AdvancedFinancialInput } from '@/types/financial';
-import { apiClient } from '@/lib/api';
-import { useCalculationLogger } from '@/hooks/useCalculationLogger';
-import { BackendCalculationService, shouldUseBackendCalculations } from '@/lib/backendCalculations';
-import { FrontendCalculationLogger } from '@/lib/calculationLogger';
-import { PVDimensioningService } from '@/lib/pvDimensioning';
-import { SystemCalculations } from '@/lib/systemCalculations';
-import { useQuery } from '@tanstack/react-query';
-import { moduleService } from '@/services/ModuleService';
-import { useGrupoBFinancialCalculation } from '@/hooks/financial-calculation-hooks';
-import { useGrupoAFinancialCalculation } from '@/hooks/financial-calculation-hooks';
-import { convertToGrupoBInput, convertToGrupoAInput } from '@/lib/financial-utils';
-
-// Import existing form components
 import CustomerDataForm from '../form-sections/CustomerDataForm';
 import ConsumptionForm from '../form-sections/ConsumptionForm';
 import LocationForm from '../form-sections/LocationForm';
@@ -28,6 +18,32 @@ import { WaterSelectionForm } from '../form-sections/WaterSelectionForm';
 import FinancialForm from '../form-sections/FinancialForm';
 import PaymentConditionsForm from '../form-sections/PaymentConditionsForm';
 import { PVResultsDashboard } from '../results/PVResultsDashboard';
+
+// Hooks
+import { useDimensioningOperations } from '@/hooks/dimensioning';
+import { useGrupoBFinancialCalculation } from '@/hooks/financial-calculation-hooks';
+import { useGrupoAFinancialCalculation } from '@/hooks/financial-calculation-hooks';
+
+// Utilitários
+import { convertToGrupoBInput } from '@/lib/financial-utils';
+
+// Serviços
+import { moduleService } from '@/services/ModuleService';
+
+// Store & Seletores
+import { usePVDimensioningStore } from '@/store/pv-dimensioning-store';
+import {
+  selectNavigationState,
+  selectCustomerData,
+  selectEnergyData,
+  selectLocationData,
+  selectSystemData,
+  selectRoofData,
+  selectBudgetData,
+  selectResultsData,
+  selectLoadingState,
+  selectMetadataState
+} from '@/store/selectors/pv-dimensioning-selectors';
 
 interface SolarSizingWizardProps {
   onComplete?: (results: any) => void;
@@ -87,39 +103,86 @@ const steps = [
 ];
 
 const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBack }) => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [calculationResults, setCalculationResults] = useState<any>(null);
-  const [isCalculating, setIsCalculating] = useState(false);
   const { toast } = useToast();
-  const [dimensioningId, setDimensioningId] = useState<string | null>(null);
-  const [currentDimensioning, setCurrentDimensioning] = useState<any>({
-    dimensioningName: '',
-    irradiacaoMensal: Array(12).fill(5.0),
-    potenciaModulo: 550,
-    eficienciaSistema: 85,
-    numeroModulos: 0,
-    custoEquipamento: 0,
-    custoMateriais: 0,
-    custoMaoDeObra: 0,
-    bdi: 25,
-    tarifaEnergiaB: null,
-    custoFioB: null,
-    selectedInverters: [],
-    totalInverterPower: 0,
-    totalMpptChannels: 0,
-    aguasTelhado: [],
-    energyBills: [{
+  
+  // Usar store Zustand com seletores otimizados
+  const navigationState = usePVDimensioningStore(selectNavigationState);
+  const customerData = usePVDimensioningStore(selectCustomerData);
+  const energyData = usePVDimensioningStore(selectEnergyData);
+  const locationData = usePVDimensioningStore(selectLocationData);
+  const systemData = usePVDimensioningStore(selectSystemData);
+  const roofData = usePVDimensioningStore(selectRoofData);
+  const budgetData = usePVDimensioningStore(selectBudgetData);
+  const resultsData = usePVDimensioningStore(selectResultsData);
+  const loadingState = usePVDimensioningStore(selectLoadingState);
+  const metadataState = usePVDimensioningStore(selectMetadataState);
+  
+  // Ações do store
+  const {
+    goToStep,
+    nextStep,
+    previousStep,
+    updateCustomerData,
+    updateEnergyData,
+    updateLocationData,
+    updateSystemData,
+    updateRoofData,
+    updateBudgetData,
+    updateResultsData,
+    validateCurrentStep,
+    saveDimensioning,
+    calculateSystem,
+    calculateFinancials
+  } = usePVDimensioningStore();
+  
+  const {
+    saveAsync,
+    isSaving
+  } = useDimensioningOperations(metadataState.dimensioningId || undefined);
+  
+  // Combinar dados para compatibilidade com código existente
+  const currentDimensioning = useMemo(() => ({
+    dimensioningName: customerData?.dimensioningName || '',
+    customer: customerData?.customer,
+    irradiacaoMensal: locationData?.irradiacaoMensal || Array(12).fill(5.0),
+    latitude: locationData?.location?.latitude,
+    longitude: locationData?.location?.longitude,
+    endereco: locationData?.location?.address,
+    cidade: locationData?.location?.cidade,
+    estado: locationData?.location?.estado,
+    fonteDados: locationData?.fonteDados,
+    inclinacao: locationData?.inclinacao,
+    orientacao: locationData?.azimute,
+    considerarSombreamento: locationData?.considerarSombreamento,
+    sombreamento: locationData?.sombreamento,
+    potenciaModulo: systemData?.potenciaModulo || 550,
+    eficienciaSistema: systemData?.eficienciaSistema || 85,
+    numeroModulos: systemData?.numeroModulos || 0,
+    selectedModuleId: systemData?.selectedModuleId,
+    selectedInverters: systemData?.selectedInverters || [],
+    perdaSombreamento: systemData?.perdaSombreamento,
+    perdaMismatch: systemData?.perdaMismatch,
+    perdaCabeamento: systemData?.perdaCabeamento,
+    perdaSujeira: systemData?.perdaSujeira,
+    perdaInversor: systemData?.perdaInversor,
+    perdaOutras: systemData?.perdaOutras,
+    aguasTelhado: roofData?.aguasTelhado || [],
+    energyBills: energyData?.energyBills || [{
       id: crypto.randomUUID(),
       name: 'Unidade Geradora',
       consumoMensal: Array(12).fill(500)
     }],
+    custoEquipamento: budgetData?.custoEquipamento || 0,
+    custoMateriais: budgetData?.custoMateriais || 0,
+    custoMaoDeObra: budgetData?.custoMaoDeObra || 0,
+    bdi: budgetData?.bdi || 25,
+    paymentMethod: budgetData?.paymentMethod,
+    cardInstallments: budgetData?.cardInstallments,
+    cardInterest: budgetData?.cardInterest,
+    financingInstallments: budgetData?.financingInstallments,
+    financingInterest: budgetData?.financingInterest,
     grupoTarifario: 'B' as const,
-  });
-
-  const {
-    saveAsync,
-    isSaving
-  } = useDimensioningOperations(dimensioningId || undefined);
+  }), [customerData, locationData, systemData, roofData, energyData, budgetData]);
 
   // Hooks para cálculos financeiros especializados
   const grupoBCalculation = useGrupoBFinancialCalculation();
@@ -135,42 +198,58 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
   // Buscar módulo completo selecionado pelo ID
   const selectedModuleFull = useMemo(() => {
-    const moduleId = currentDimensioning.moduloSelecionado || currentDimensioning.selectedModuleId;
+    const moduleId = systemData?.selectedModuleId;
     if (!moduleId || solarModules.length === 0) return undefined;
     return solarModules.find((m: any) => m.id === moduleId);
-  }, [currentDimensioning.moduloSelecionado, currentDimensioning.selectedModuleId, solarModules]);
+  }, [systemData?.selectedModuleId, solarModules]);
 
   // Calculate total investment
   const totalInvestment = useMemo(() => {
-    const subtotal = (currentDimensioning.custoEquipamento || 0) +
-      (currentDimensioning.custoMateriais || 0) +
-      (currentDimensioning.custoMaoDeObra || 0);
-    return subtotal * (1 + (currentDimensioning.bdi || 0) / 100);
-  }, [currentDimensioning.custoEquipamento, currentDimensioning.custoMateriais, currentDimensioning.custoMaoDeObra, currentDimensioning.bdi]);
+    const subtotal = (budgetData?.custoEquipamento || 0) +
+      (budgetData?.custoMateriais || 0) +
+      (budgetData?.custoMaoDeObra || 0);
+    return subtotal * (1 + (budgetData?.bdi || 0) / 100);
+  }, [budgetData?.custoEquipamento, budgetData?.custoMateriais, budgetData?.custoMaoDeObra, budgetData?.bdi]);
 
   const handleFormChange = (field: string, value: any) => {
-    setCurrentDimensioning((prev: any) => ({ ...prev, [field]: value }));
+    // Mapear campo para a atualização correta no store
+    if (field === 'dimensioningName' || field === 'customer') {
+      updateCustomerData({ [field]: value });
+    } else if (field === 'energyBills' || field === 'energyBillsA') {
+      updateEnergyData({ [field]: value });
+    } else if (field.includes('latitude') || field.includes('longitude') || field.includes('irradiacao') ||
+               field.includes('fonteDados') || field.includes('inclinacao') || field.includes('azimute') ||
+               field.includes('endereco') || field.includes('cidade') || field.includes('estado')) {
+      updateLocationData({ [field]: value });
+    } else if (field.includes('modulo') || field.includes('inversor') || field.includes('potencia') ||
+               field.includes('eficiencia') || field.includes('perda')) {
+      updateSystemData({ [field]: value });
+    } else if (field === 'aguasTelhado') {
+      updateRoofData({ [field]: value });
+    } else if (field.includes('custo') || field.includes('bdi') || field.includes('payment') ||
+               field.includes('installments') || field.includes('interest')) {
+      updateBudgetData({ [field]: value });
+    }
   };
 
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1:
-        return !!currentDimensioning.dimensioningName?.trim() && !!currentDimensioning.customer;
+        return !!customerData?.dimensioningName?.trim() && !!customerData?.customer;
       case 2:
-        return currentDimensioning.energyBills?.length > 0 &&
-          currentDimensioning.energyBills.some((bill: any) => bill.consumoMensal.some((consumo: number) => consumo > 0));
+        return (energyData?.energyBills?.length || 0) > 0 &&
+          energyData?.energyBills?.some((bill: any) => bill.consumoMensal.some((consumo: number) => consumo > 0)) || false;
       case 3:
         // Validação mais rigorosa: deve ter coordenadas E dados de irradiação PVGIS
-        const hasCoordinates = !!currentDimensioning.latitude && !!currentDimensioning.longitude;
-        const hasValidIrradiation = currentDimensioning.irradiacaoMensal?.length === 12 &&
-          currentDimensioning.irradiacaoMensal.some((value: number) => value > 0);
+        const hasCoordinates = !!locationData?.location?.latitude && !!locationData?.location?.longitude;
+        const hasValidIrradiation = locationData?.irradiacaoMensal?.length === 12 &&
+          locationData.irradiacaoMensal.some((value: number) => value > 0);
         return hasCoordinates && hasValidIrradiation;
       case 4:
-        const hasModule = currentDimensioning.moduloSelecionado || currentDimensioning.selectedModuleId;
+        const hasModule = systemData?.selectedModuleId;
         // Verificar tanto o formato novo (selectedInverters) quanto o legado (inversorSelecionado/inverters)
-        const hasInverter = currentDimensioning.inversorSelecionado ||
-          (currentDimensioning.selectedInverters && currentDimensioning.selectedInverters.length > 0);
-        return !!(hasModule && hasInverter && currentDimensioning.potenciaModulo > 0 && currentDimensioning.eficienciaSistema > 0);
+        const hasInverter = systemData?.selectedInverters && systemData.selectedInverters.length > 0;
+        return !!(hasModule && hasInverter && (systemData?.potenciaModulo || 0) > 0 && (systemData?.eficienciaSistema || 0) > 0);
       case 5:
         // Águas de telhado é opcional, sempre válido
         return true;
@@ -182,12 +261,12 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   };
 
   const handleNext = async () => {
-    if (!validateStep(currentStep)) {
+    if (!validateStep(navigationState.currentStep)) {
       let description = "Por favor, preencha todos os campos obrigatórios antes de continuar.";
 
-      if (currentStep === 3) {
+      if (navigationState.currentStep === 3) {
         description = "É obrigatório selecionar uma localização e buscar os dados PVGIS antes de prosseguir.";
-      } else if (currentStep === 4) {
+      } else if (navigationState.currentStep === 4) {
         description = "É obrigatório selecionar um módulo solar e um inversor antes de prosseguir.";
       }
 
@@ -200,16 +279,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     }
 
     // Auto-save progress - bloquear avanço se falhar
-    if (currentDimensioning.customer && currentDimensioning.dimensioningName?.trim()) {
+    if (customerData?.customer && customerData?.dimensioningName?.trim()) {
       try {
-        const result = await saveAsync(currentDimensioning);
-        // Atualizar o ID se for um novo dimensionamento
-        if (result?.data?.data?.id && !dimensioningId) {
-          setDimensioningId(result.data.data.id);
-        }
+        await saveDimensioning();
       } catch (error: any) {
-        const debugSaveError = { error };
-
         let errorMessage = "Erro ao salvar o progresso.";
 
         if (error?.response?.status === 429) {
@@ -231,72 +304,44 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       }
     }
 
-    if (currentStep === 6) {
+    if (navigationState.currentStep === 6) {
       // Calculate results before going to step 7
       await handleCalculate();
     } else {
-      setCurrentStep(prev => Math.min(prev + 1, steps.length));
+      nextStep();
     }
   };
 
   const handlePrevious = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    previousStep();
   };
 
   const handleStepClick = (stepNumber: number) => {
-    // Allow going backwards to any completed step
-    if (stepNumber < currentStep) {
-      setCurrentStep(stepNumber);
-      return;
-    }
-
-    // Allow staying on current step
-    if (stepNumber === currentStep) {
-      return;
-    }
-
-    // For moving forward, validate all intermediate steps
-    if (stepNumber > currentStep) {
-      // Check if all steps up to the target step can be validated
-      for (let step = currentStep; step < stepNumber; step++) {
-        if (!validateStep(step)) {
-          toast({
-            variant: "destructive",
-            title: "Dados incompletos",
-            description: `Por favor, complete o passo ${step} antes de continuar para o passo ${stepNumber}.`
-          });
-          return;
-        }
-      }
-
-      // If validation passed, allow the jump
-      setCurrentStep(stepNumber);
-    }
+    goToStep(stepNumber);
   };
 
   const handleCalculate = async () => {
-    setIsCalculating(true);
+    // Usar a ação do store para definir estado de cálculo
+    const state = usePVDimensioningStore.getState();
+    usePVDimensioningStore.setState({ isCalculating: true });
 
     try {
       // Validation
-
-      if (!currentDimensioning.irradiacaoMensal || currentDimensioning.irradiacaoMensal.length !== 12) {
+      if (!locationData?.irradiacaoMensal || locationData.irradiacaoMensal.length !== 12) {
         throw new Error("Dados de irradiação mensal são obrigatórios.");
       }
 
-      const somaIrradiacao = currentDimensioning.irradiacaoMensal.reduce((a: number, b: number) => a + b, 0);
+      const somaIrradiacao = locationData.irradiacaoMensal.reduce((a: number, b: number) => a + b, 0);
       const irradiacaoMediaAnual = somaIrradiacao / 12;
 
-      if (irradiacaoMediaAnual <= 0 || !currentDimensioning.potenciaModulo || currentDimensioning.potenciaModulo <= 0) {
+      if (irradiacaoMediaAnual <= 0 || !systemData?.potenciaModulo || systemData.potenciaModulo <= 0) {
         throw new Error("Potência do módulo e irradiação devem ser maiores que zero.");
       }
 
-      const totalConsumoMensal = currentDimensioning.energyBills?.reduce((acc: number[], bill: any) => {
+      const totalConsumoMensal = energyData?.energyBills?.reduce((acc: number[], bill: any) => {
         bill.consumoMensal.forEach((consumo: number, index: number) => {
           const valorAnterior = acc[index] || 0;
           acc[index] = valorAnterior + consumo;
-
-          const mes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][index];
         });
         return acc;
       }, Array(12).fill(0)) || Array(12).fill(0);
@@ -307,17 +352,15 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       // Determinar potência desejada baseada no modo selecionado
       let potenciaDesejadaKwp: number;
 
-      if (currentDimensioning.numeroModulos && currentDimensioning.numeroModulos > 0) {
+      if (systemData?.numeroModulos && systemData.numeroModulos > 0) {
         // Modo: número de módulos fixo
-        potenciaDesejadaKwp = (currentDimensioning.numeroModulos * currentDimensioning.potenciaModulo) / 1000;
+        potenciaDesejadaKwp = (systemData.numeroModulos * systemData.potenciaModulo) / 1000;
       } else {
         // Modo: dimensionamento automático baseado no consumo
-
         const consumoMedioDiario = consumoTotalAnual / 365;
-        const eficienciaDecimal = (currentDimensioning.eficienciaSistema || 85) / 100;
+        const eficienciaDecimal = (systemData?.eficienciaSistema || 85) / 100;
         const irradiacaoEfetiva = irradiacaoMediaAnual * eficienciaDecimal;
         potenciaDesejadaKwp = consumoMedioDiario / irradiacaoEfetiva;
-
       }
 
       // Se os dados não estão calculados, chamar a rota novamente
@@ -325,45 +368,35 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       let apiResult = null;
 
       // Verificar se há dados das águas de telhado para usar nos cálculos
-      const hasAguasTelhado = currentDimensioning.aguasTelhado &&
-        currentDimensioning.aguasTelhado.length > 0 &&
-        currentDimensioning.aguasTelhado.some((agua: any) => agua.geracaoAnual > 0);
+      const hasAguasTelhado = roofData?.aguasTelhado &&
+        roofData.aguasTelhado.length > 0 &&
+        roofData.aguasTelhado.some((agua: any) => agua.geracaoAnual > 0);
 
       if (hasAguasTelhado) {
         // Usar dados das águas de telhado para cálculos financeiros
-        const totalModulosAguas = currentDimensioning.aguasTelhado.reduce((total: number, agua: any) => total + agua.numeroModulos, 0);
-        const totalGeracaoAguas = currentDimensioning.aguasTelhado.reduce((total: number, agua: any) => total + (agua.geracaoAnual || 0), 0);
-        const totalAreaAguas = currentDimensioning.aguasTelhado.reduce((total: number, agua: any) => total + (agua.areaCalculada || 0), 0);
-
-        const debugAguasData = {
-          totalModulos: totalModulosAguas,
-          totalGeracao: `${totalGeracaoAguas.toFixed(0)} kWh/ano`,
-          totalArea: `${totalAreaAguas.toFixed(2)} m²`,
-          numeroAguas: currentDimensioning.aguasTelhado.length
-        };
+        const totalModulosAguas = roofData.aguasTelhado.reduce((total: number, agua: any) => total + agua.numeroModulos, 0);
+        const totalGeracaoAguas = roofData.aguasTelhado.reduce((total: number, agua: any) => total + (agua.geracaoAnual || 0), 0);
+        const totalAreaAguas = roofData.aguasTelhado.reduce((total: number, agua: any) => total + (agua.areaCalculada || 0), 0);
 
         // Sobrescrever variáveis com dados das águas de telhado
         numeroModulos = totalModulosAguas;
         geracaoEstimadaAnual = totalGeracaoAguas;
         areaEstimada = totalAreaAguas;
-        potenciaPico = (numeroModulos * (currentDimensioning.potenciaModulo || 550)) / 1000;
+        potenciaPico = (numeroModulos * (systemData?.potenciaModulo || 550)) / 1000;
         geracaoEstimadaMensal = Array(12).fill(geracaoEstimadaAnual / 12);
       }
 
       // Calcular perdas totais do sistema
-      const perdasSistema = (currentDimensioning.perdaSombreamento || 3) +
-        (currentDimensioning.perdaMismatch || 2) +
-        (currentDimensioning.perdaCabeamento || 2) +
-        (currentDimensioning.perdaSujeira || 5) +
-        (currentDimensioning.perdaInversor || 3) +
-        (currentDimensioning.perdaOutras || 0);
+      const perdasSistema = (systemData?.perdaSombreamento || 3) +
+        (systemData?.perdaMismatch || 2) +
+        (systemData?.perdaCabeamento || 2) +
+        (systemData?.perdaSujeira || 5) +
+        (systemData?.perdaInversor || 3) +
+        (systemData?.perdaOutras || 0);
 
       // Se não há águas de telhado, chamar API para calcular dados
       if (!hasAguasTelhado) {
-        // Chamar a mesma rota que funciona no resumo: /api/v1/solar-analysis/calculate-advanced-modules
-
         try {
-          //TODO REFACTOR: mover essa chamada para um serviço dedicado
           const response = await fetch('http://localhost:8010/api/v1/solar-analysis/calculate-advanced-modules', {
             method: 'POST',
             headers: {
@@ -371,10 +404,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
               'Authorization': `Bearer ${localStorage.getItem('auth-token') || sessionStorage.getItem('auth-token')}`
             },
             body: JSON.stringify({
-              lat: currentDimensioning.latitude || -23.7621,
-              lon: currentDimensioning.longitude || -53.3116,
-              tilt: currentDimensioning.inclinacao || 23,
-              azimuth: currentDimensioning.orientacao || 180,
+              lat: locationData?.location?.latitude || -23.7621,
+              lon: locationData?.location?.longitude || -53.3116,
+              tilt: locationData?.inclinacao || 23,
+              azimuth: locationData?.azimute || 180,
               modelo_decomposicao: "louche",
               modelo_transposicao: "perez",
               consumo_anual_kwh: consumoTotalAnual || 6000,
@@ -391,18 +424,15 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
                   voc_stc: selectedModuleFull.specifications?.voc,
                   isc_stc: selectedModuleFull.specifications?.isc,
                   eficiencia: selectedModuleFull.specifications?.efficiency,
-                  // Coeficientes de temperatura Sandia
                   alpha_sc: selectedModuleFull.parameters?.advanced?.alphaSc || selectedModuleFull.parameters?.temperature?.tempCoeffPmax,
                   beta_oc: selectedModuleFull.parameters?.advanced?.betaOc || selectedModuleFull.parameters?.temperature?.tempCoeffVoc,
                   gamma_r: selectedModuleFull.parameters?.advanced?.gammaR || selectedModuleFull.parameters?.temperature?.tempCoeffIsc,
-                  // Parâmetros do modelo de diodo único
                   cells_in_series: selectedModuleFull.specifications?.numberOfCells,
                   a_ref: selectedModuleFull.parameters?.diode?.aRef,
                   il_ref: selectedModuleFull.parameters?.diode?.iLRef,
                   io_ref: selectedModuleFull.parameters?.diode?.iORef,
                   rs: selectedModuleFull.parameters?.diode?.rS,
                   rsh_ref: selectedModuleFull.parameters?.diode?.rShRef,
-                  // Parâmetros opcionais
                   material: selectedModuleFull.parameters?.spectral?.material,
                   technology: selectedModuleFull.specifications?.technology,
                   a0: selectedModuleFull.parameters?.sapm?.a0,
@@ -415,12 +445,12 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
                   b2: selectedModuleFull.parameters?.sapm?.b2,
                   b3: selectedModuleFull.parameters?.sapm?.b3,
                   b4: selectedModuleFull.parameters?.sapm?.b4,
-                  b5: 0, // Not in the current structure
-                  dtc: 0 // Not in the current structure
+                  b5: 0,
+                  dtc: 0
                 };
               })() : null,
-              inversor: currentDimensioning.selectedInverters?.[0] ? (() => {
-                const inv = currentDimensioning.selectedInverters[0].inverter;
+              inversor: systemData?.selectedInverters?.[0] ? (() => {
+                const inv = systemData.selectedInverters[0].inverter;
                 return {
                   fabricante: inv.manufacturer.name,
                   modelo: inv.model,
@@ -436,57 +466,38 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
           apiResult = await response.json();
 
           if (apiResult.success && apiResult.data) {
-            // Usar os dados reais da API
             potenciaPico = apiResult.data.potencia_total_kw;
             numeroModulos = apiResult.data.num_modulos;
             areaEstimada = apiResult.data.area_necessaria_m2;
             geracaoEstimadaAnual = apiResult.data.energia_total_anual_kwh;
-            geracaoEstimadaMensal = Array(12).fill(geracaoEstimadaAnual / 12); // TODO REFACTOR: usar valores mensais reais da API
-
+            geracaoEstimadaMensal = Array(12).fill(geracaoEstimadaAnual / 12);
           } else {
             throw new Error('API retornou erro');
           }
         } catch (error) {
           console.error('Erro ao chamar API de dimensionamento solar:', error);
         }
-      } 
-
-      // Financial calculations
-      const tarifaB = currentDimensioning.tarifaEnergiaB || 0.8;
-      const custoFioB = currentDimensioning.custoFioB || (tarifaB * 0.3);
+      }
 
       // Cálculos financeiros especializados por grupo tarifário
       let financialResults: any;
 
       try {
-        if (currentDimensioning.grupoTarifario === 'B') {
-          const calculatedData = {
-            investimentoInicial: totalInvestment,
-            geracaoMensal: geracaoEstimadaMensal || Array(12).fill(0),
-            consumoMensal: totalConsumoMensal || Array(12).fill(0)
-          };
-          const input = convertToGrupoBInput(currentDimensioning, calculatedData);
-
-          financialResults = await grupoBCalculation.mutateAsync(input);
-        } else if (currentDimensioning.grupoTarifario === 'A') {
-          const calculatedData = {
-            investimentoInicial: totalInvestment,
-            geracaoMensal: geracaoEstimadaMensal || Array(12).fill(0),
-            consumoMensal: totalConsumoMensal || Array(12).fill(0)
-          };
-
-          const input = convertToGrupoAInput(currentDimensioning, calculatedData);
-          financialResults = await grupoACalculation.mutateAsync(input);
-        } else {
-          throw new Error('Grupo tarifário não definido');
-        }
+        const calculatedData = {
+          investimentoInicial: totalInvestment,
+          geracaoMensal: geracaoEstimadaMensal || Array(12).fill(0),
+          consumoMensal: totalConsumoMensal || Array(12).fill(0)
+        };
+        
+        financialResults = await grupoBCalculation.mutateAsync(convertToGrupoBInput(currentDimensioning, calculatedData));
 
         // Armazenar resultado no calculationResults
-        setCalculationResults((prev: any) => ({
-          ...prev,
-          financialResultsGrupo: financialResults, // Novo campo
-          grupoTarifario: currentDimensioning.grupoTarifario
-        }));
+        updateResultsData({
+          calculationResults: {
+            ...resultsData?.calculationResults,
+            financialResults: financialResults
+          }
+        });
 
       } catch (error) {
         console.error('[Financial] Erro no cálculo financeiro:', error);
@@ -497,18 +508,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         });
       }
 
-      // Advanced financial analysis
-      // Calcular custo fio B conforme Lei 14.300/2022
-      const anoAtual = new Date().getFullYear();
-      let percentualFioB = 0;
-      if (anoAtual >= 2025 && anoAtual <= 2028) {
-        percentualFioB = 0.15; // Período de transição gradual
-      } else if (anoAtual >= 2029) {
-        percentualFioB = 0.90; // Tarifa completa menos impostos
-      }     
-
       // Financial calculations completed - re-enable button
-      setIsCalculating(false);
+      usePVDimensioningStore.setState({ isCalculating: false });
 
       let results: any = {
         formData: currentDimensioning,
@@ -520,8 +521,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         consumoTotalAnual,
         totalInvestment,
         advancedSolar: {
-          irradiacaoMensal: currentDimensioning.irradiacaoMensal || Array(12).fill(4.5),
-          irradiacaoInclinada: currentDimensioning.irradiacaoMensal || Array(12).fill(4.5),
+          irradiacaoMensal: locationData?.irradiacaoMensal || Array(12).fill(4.5),
+          irradiacaoInclinada: locationData?.irradiacaoMensal || Array(12).fill(4.5),
           fatorTemperatura: Array(12).fill(1.0),
           perdas: apiResult?.data?.perdas_detalhadas || {
             temperatura: Array(12).fill(8),
@@ -534,9 +535,9 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
             total: Array(12).fill(22)
           },
           performance: {
-            prMedio: apiResult?.data?.pr_medio || 85, // Performance Ratio da API
-            yieldEspecifico: apiResult?.data?.yield_especifico || (geracaoEstimadaAnual / potenciaPico), // kWh/kWp da API
-            fatorCapacidade: apiResult?.data?.fator_capacidade || ((geracaoEstimadaAnual / (potenciaPico * 8760)) * 100) // % da API
+            prMedio: apiResult?.data?.pr_medio || 85,
+            yieldEspecifico: apiResult?.data?.yield_especifico || (geracaoEstimadaAnual / potenciaPico),
+            fatorCapacidade: apiResult?.data?.fator_capacidade || ((geracaoEstimadaAnual / (potenciaPico * 8760)) * 100)
           },
           geracaoEstimada: {
             mensal: geracaoEstimadaMensal || Array(12).fill(geracaoEstimadaAnual / 12),
@@ -546,14 +547,11 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         },
         advancedFinancial: null,
         fluxoCaixa: [],
-        selectedInverters: [],
-        selectedModule: null
+        selectedInverters: systemData?.selectedInverters || [],
+        selectedModule: systemData?.selectedModuleId
       };
 
-
       // Adicionar outros dados financeiros
-      results.selectedInverters = currentDimensioning.selectedInverters || [];
-      results.selectedModule = currentDimensioning.moduloSelecionado;
       Object.assign(results, financialResults);
 
       // Mapear economia_anual_media para economiaAnualEstimada para compatibilidade
@@ -567,8 +565,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       const custoKwpWizard = totalInvestment / (potenciaPico || 1);
       const geracaoMensalWizard = (geracaoEstimadaAnual || 0) / 12;
 
-      setCalculationResults(results);
-      setCurrentStep(7);
+      updateResultsData({ calculationResults: results });
+      goToStep(7);
 
       if (onComplete) {
         onComplete(results);
@@ -586,12 +584,12 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         description: error.message || "Ocorreu um erro inesperado. Verifique os dados e tente novamente."
       });
     } finally {
-      setIsCalculating(false);
+      usePVDimensioningStore.setState({ isCalculating: false });
     }
   };
 
   const renderStepContent = () => {
-    const step = steps[currentStep - 1];
+    const step = steps[navigationState.currentStep - 1];
 
     switch (step.component) {
       case 'customer':
@@ -599,7 +597,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
           <CustomerDataForm
             formData={currentDimensioning}
             onFormChange={handleFormChange}
-            isLeadLocked={!!currentDimensioning.customer && !!currentDimensioning.customer.type && currentDimensioning.customer.type === 'lead'}
+            isLeadLocked={!!customerData?.customer && (customerData.customer as any).type === 'lead'}
           />
         );
 
@@ -623,38 +621,41 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         return (
           <div className="space-y-6">
             <SystemParametersForm
-              formData={currentDimensioning}
+              formData={{
+                ...currentDimensioning,
+                selectedInverters: (systemData?.selectedInverters || []).map(inv => ({
+                  ...inv,
+                  selectedAt: new Date()
+                }))
+              }}
               onFormChange={handleFormChange}
             />
           </div>
         );
 
       case 'roof':
-        // Verificar se há dados calculados no sistema
-        const hasSystemCalculated = (currentDimensioning.numeroModulosCalculado && currentDimensioning.numeroModulosCalculado > 0) ||
-          (currentDimensioning.numeroModulos && currentDimensioning.numeroModulos > 0) ||
-          ((currentDimensioning as any).potenciaPico && (currentDimensioning as any).potenciaPico > 0);
-
         return (
           <div className="space-y-6">
-            {/* Configuração das Orientações com MPPT */}
             <WaterSelectionForm
-              aguasTelhado={currentDimensioning.aguasTelhado || []}
-              selectedInverters={currentDimensioning.selectedInverters || []}
+              aguasTelhado={roofData?.aguasTelhado || []}
+              selectedInverters={(systemData?.selectedInverters || []).map(inv => ({
+                ...inv,
+                selectedAt: new Date()
+              }))}
               onAguasChange={(aguas) => handleFormChange('aguasTelhado', aguas)}
-              latitude={currentDimensioning.latitude}
-              longitude={currentDimensioning.longitude}
-              potenciaModulo={currentDimensioning.potenciaModulo || 550}
-              consumoAnualTotal={currentDimensioning.energyBills?.reduce((acc: number, bill: any) => {
+              latitude={locationData?.location?.latitude}
+              longitude={locationData?.location?.longitude}
+              potenciaModulo={systemData?.potenciaModulo || 550}
+              consumoAnualTotal={energyData?.energyBills?.reduce((acc: number, bill: any) => {
                 return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
               }, 0) || 0}
-              fonteDados={currentDimensioning.fonteDados}
-              perdaSombreamento={currentDimensioning.perdaSombreamento}
-              perdaMismatch={currentDimensioning.perdaMismatch}
-              perdaCabeamento={currentDimensioning.perdaCabeamento}
-              perdaSujeira={currentDimensioning.perdaSujeira}
-              perdaInversor={currentDimensioning.perdaInversor}
-              perdaOutras={currentDimensioning.perdaOutras}
+              fonteDados={locationData?.fonteDados === 'manual' ? undefined : locationData?.fonteDados}
+              perdaSombreamento={systemData?.perdaSombreamento}
+              perdaMismatch={systemData?.perdaMismatch}
+              perdaCabeamento={systemData?.perdaCabeamento}
+              perdaSujeira={systemData?.perdaSujeira}
+              perdaInversor={systemData?.perdaInversor}
+              perdaOutras={systemData?.perdaOutras}
               selectedModule={selectedModuleFull}
             />
           </div>
@@ -663,8 +664,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       case 'summary':
         return (
           <div className="space-y-6">
-            {/* Divisão por Orientações */}
-            {currentDimensioning.aguasTelhado && currentDimensioning.aguasTelhado.length > 0 && (
+            {roofData?.aguasTelhado && roofData.aguasTelhado.length > 0 && (
               <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
@@ -674,7 +674,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {currentDimensioning.aguasTelhado.map((agua: any, index: number) => (
+                    {roofData.aguasTelhado.map((agua: any, index: number) => (
                       <div key={agua.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="font-semibold text-gray-800 dark:text-gray-200">{agua.nome}</h4>
@@ -691,7 +691,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
                           </div>
                           <div className="text-center">
                             <div className="text-lg font-semibold text-purple-600">
-                              {((agua.numeroModulos * (currentDimensioning.potenciaModulo || 550)) / 1000).toFixed(2)} kWp
+                              {((agua.numeroModulos * (systemData?.potenciaModulo || 550)) / 1000).toFixed(2)} kWp
                             </div>
                             <div className="text-xs text-gray-500">Potência</div>
                           </div>
@@ -728,13 +728,13 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         );
 
       case 'results':
-        return calculationResults ? (
+        return resultsData?.calculationResults ? (
           <PVResultsDashboard
-            results={calculationResults}
-            onBackToForm={() => setCurrentStep(5)}
+            results={resultsData.calculationResults as any}
+            onBackToForm={() => goToStep(5)}
             onNewCalculation={() => {
-              setCalculationResults(null);
-              setCurrentStep(1);
+              updateResultsData({ calculationResults: undefined });
+              goToStep(1);
             }}
           />
         ) : (
@@ -776,9 +776,9 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         <div className="mb-8">
           <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-6">
             {steps.map((step, index) => {
-              const isActive = step.id === currentStep;
-              const isCompleted = step.id < currentStep;
-              const isAccessible = step.id <= currentStep || step.id === currentStep + 1;
+              const isActive = step.id === navigationState.currentStep;
+              const isCompleted = step.id < navigationState.currentStep;
+              const isAccessible = step.id <= navigationState.currentStep || step.id === navigationState.currentStep + 1;
 
               return (
                 <button
@@ -813,7 +813,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
           <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2 mb-4">
             <div
               className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${(currentStep / steps.length) * 100}%` }}
+              style={{ width: `${(navigationState.currentStep / steps.length) * 100}%` }}
             />
           </div>
         </div>
@@ -821,7 +821,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         {/* Step Content */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={currentStep}
+            key={navigationState.currentStep}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -833,21 +833,21 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         </AnimatePresence>
 
         {/* Navigation */}
-        {currentStep < 7 && (
+        {navigationState.currentStep < 7 && (
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t dark:border-slate-700">
             <Button
-              onClick={currentStep === 1 ? onBack : handlePrevious}
+              onClick={navigationState.currentStep === 1 ? onBack : handlePrevious}
               variant="outline"
               disabled={isSaving}
               className="w-full sm:w-auto order-2 sm:order-1"
             >
               <ChevronLeft className="w-4 h-4 mr-2" />
-              {currentStep === 1 ? 'Voltar' : 'Anterior'}
+              {navigationState.currentStep === 1 ? 'Voltar' : 'Anterior'}
             </Button>
 
             <div className="flex items-center gap-2 order-1 sm:order-2">
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                Passo {currentStep} de {steps.length}
+                Passo {navigationState.currentStep} de {steps.length}
               </span>
             </div>
 
@@ -861,10 +861,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
             <Button
               onClick={handleNext}
-              disabled={!validateStep(currentStep) || isSaving || isCalculating || grupoBCalculation.isPending || grupoACalculation.isPending}
+              disabled={!validateStep(navigationState.currentStep) || isSaving || loadingState.isCalculating || grupoBCalculation.isPending || grupoACalculation.isPending}
               className="w-full sm:w-auto order-3 bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600"
             >
-              {isCalculating || grupoBCalculation.isPending || grupoACalculation.isPending ? (
+              {loadingState.isCalculating || grupoBCalculation.isPending || grupoACalculation.isPending ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   {grupoBCalculation.isPending || grupoACalculation.isPending ? 'Calculando análise financeira...' : 'Calculando...'}
@@ -874,7 +874,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Salvando...
                 </div>
-              ) : currentStep === 6 ? (
+              ) : navigationState.currentStep === 6 ? (
                 <>
                   Calcular Resultados
                   <Calculator className="w-4 h-4 ml-2" />
@@ -890,10 +890,10 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         )}
 
         {/* Results Navigation */}
-        {currentStep === 7 && calculationResults && (
+        {navigationState.currentStep === 7 && resultsData?.calculationResults && (
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-6 border-t dark:border-slate-700">
             <Button
-              onClick={() => setCurrentStep(6)}
+              onClick={() => goToStep(6)}
               variant="outline"
               className="w-full sm:w-auto"
             >
@@ -903,8 +903,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
             <Button
               onClick={() => {
-                setCalculationResults(null);
-                setCurrentStep(1);
+                updateResultsData({ calculationResults: undefined });
+                goToStep(1);
               }}
               variant="outline"
               className="w-full sm:w-auto"

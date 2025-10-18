@@ -1,0 +1,1054 @@
+import { create } from 'zustand';
+import { persist, subscribeWithSelector } from 'zustand/middleware';
+import { immer } from 'zustand/middleware/immer';
+import { ProjectType, ProjectData, CreateProjectData } from '@/types/project';
+import { EnergyBillA, EnergyBillB } from '@/types/energy-bill-types';
+import { apiClient } from '@/lib/api';
+import toast from 'react-hot-toast';
+
+// Interfaces baseadas no documento de arquitetura
+export interface ICustomerData {
+  customer?: {
+    name: string;
+    email: string;
+    phone?: string;
+    company?: string;
+    id?: string;
+  };
+  dimensioningName: string;
+}
+
+export interface IEnergyData {
+  energyBills?: EnergyBillB[];
+  energyBillsA?: EnergyBillA[];
+}
+
+export interface ILocationData {
+  location?: {
+    latitude: number;
+    longitude: number;
+    address: string;
+    estado?: string;
+    cidade?: string;
+  };
+  irradiacaoMensal?: number[];
+  fonteDados?: 'pvgis' | 'nasa' | 'manual';
+  inclinacao?: number;
+  azimute?: number;
+  considerarSombreamento?: boolean;
+  sombreamento?: number[];
+}
+
+export interface ISystemData {
+  selectedModuleId?: string;
+  selectedInverters?: Array<{
+    inverter: any;
+    quantity: number;
+  }>;
+  potenciaModulo?: number;
+  numeroModulos?: number;
+  eficienciaSistema?: number;
+  perdaSombreamento?: number;
+  perdaMismatch?: number;
+  perdaCabeamento?: number;
+  perdaSujeira?: number;
+  perdaInversor?: number;
+  perdaOutras?: number;
+}
+
+export interface IBudgetData {
+  custoEquipamento?: number;
+  custoMateriais?: number;
+  custoMaoDeObra?: number;
+  bdi?: number;
+  paymentMethod?: 'vista' | 'cartao' | 'financiamento';
+  cardInstallments?: number;
+  cardInterest?: number;
+  financingInstallments?: number;
+  financingInterest?: number;
+}
+
+export interface IResultsData {
+  calculationResults?: {
+    potenciaPico?: number;
+    numeroModulos?: number;
+    areaEstimada?: number;
+    geracaoEstimadaAnual?: number;
+    geracaoEstimadaMensal?: number[];
+    totalInvestment?: number;
+    financialResults?: any;
+  };
+}
+
+// Estado principal da store
+export interface IProjectState {
+  // Estado de navegação
+  currentStep: number;
+  completedSteps: Set<number>;
+  canAdvance: boolean;
+  canGoBack: boolean;
+  
+  // Estado de carregamento
+  isLoading: boolean;
+  isCalculating: boolean;
+  dimensioningId: string | null;
+  
+  // Estado de validação
+  validationErrors: Record<number, string[]>;
+  isValid: boolean;
+  
+  // Metadados
+  lastSavedAt: Date | null;
+  isDirty: boolean;
+  autoSaveEnabled: boolean;
+  
+  // Estado do projeto (otimizado para nova arquitetura)
+  isProjectLoaded: boolean;
+  projectId: string | null;
+  projectName: string;
+  projectType: ProjectType;
+  leadId: string | null;
+  address: string;
+  projectStateSource: string | null;
+  isSaving: boolean;
+  
+  // Dados por etapa (baseado no documento de arquitetura)
+  customer: ICustomerData | null;
+  energy: IEnergyData | null;
+  location: ILocationData | null;
+  system: ISystemData | null;
+  roof: any;
+  budget: IBudgetData | null;
+  results: IResultsData | null;
+  
+  // Propriedades internas para controle de concorrência (não persistidas)
+  _autoSaveTimeout: NodeJS.Timeout | null;
+  _isSaving: boolean;
+  _lastSaveAttempt: Date | null;
+}
+
+// Interface para ações da store
+interface IProjectActions {
+  // Ações de navegação
+  goToStep: (step: number) => void;
+  nextStep: () => void;
+  previousStep: () => void;
+  resetWizard: () => void;
+  
+  // Ações de dados
+  updateCustomerData: (data: Partial<ICustomerData>) => void;
+  updateEnergyData: (data: Partial<IEnergyData>) => void;
+  updateLocationData: (data: Partial<ILocationData>) => void;
+  updateSystemData: (data: Partial<ISystemData>) => void;
+  updateRoofData: (data: any) => void;
+  updateBudgetData: (data: Partial<IBudgetData>) => void;
+  updateResultsData: (data: Partial<IResultsData>) => void;
+  
+  // Ações de validação
+  validateCurrentStep: () => boolean;
+  validateAllSteps: () => Record<number, string[]>;
+  clearValidationErrors: () => void;
+  
+  // Ações de persistência (otimizadas para nova arquitetura)
+  loadProject: (projectData: any, source?: string) => void;
+  clearProject: () => void;
+  isProjectSaved: () => boolean;
+  
+  // Ações adicionais da nova arquitetura
+  saveDimensioning: () => Promise<void>;
+  loadDimensioning: (id: string) => Promise<void>;
+  autoSave: () => void;
+  
+  // Ações de cálculo
+  calculateSystem: () => Promise<void>;
+  calculateFinancials: () => Promise<void>;
+  
+  // Ações de recuperação
+  recoverFromBackup: () => void;
+  createBackup: () => void;
+}
+
+// Estado inicial
+const initialState: IProjectState = {
+  // Estado de navegação
+  currentStep: 1,
+  completedSteps: new Set(),
+  canAdvance: false,
+  canGoBack: false,
+  
+  // Estado de carregamento
+  isLoading: false,
+  isCalculating: false,
+  dimensioningId: null,
+  
+  // Estado de validação
+  validationErrors: {},
+  isValid: false,
+  
+  // Metadados
+  lastSavedAt: null,
+  isDirty: false,
+  autoSaveEnabled: true,
+  
+  // Estado do projeto (otimizado para nova arquitetura)
+  isProjectLoaded: false,
+  projectId: null,
+  projectName: '',
+  projectType: ProjectType.PV,
+  leadId: null,
+  address: '',
+  projectStateSource: null,
+  isSaving: false,
+  
+  // Dados por etapa
+  customer: null,
+  energy: null,
+  location: null,
+  system: null,
+  roof: null,
+  budget: null,
+  results: null,
+  
+  // Propriedades internas para controle de concorrência (não persistidas)
+  _autoSaveTimeout: null,
+  _isSaving: false,
+  _lastSaveAttempt: null,
+};
+
+// Tipo combinado da store
+type IProjectStore = IProjectState & IProjectActions;
+
+export const usePVDimensioningStore = create<IProjectStore>()(
+  subscribeWithSelector(
+    persist(
+      immer((set, get) => ({
+        // Estado inicial
+        ...initialState,
+        
+        // Ações de navegação
+        goToStep: (step) => {
+          const state = get();
+          
+          // Validar se pode ir para o passo
+          if (step < 1 || step > 7) {
+            console.error('Passo inválido:', step);
+            return;
+          }
+          
+          // Validar dependências
+          if (!state.canGoBack && step < state.currentStep) {
+            console.warn('Não pode voltar para passos anteriores sem concluir');
+            return;
+          }
+          
+          // Validar passos anteriores
+          for (let i = 1; i < step; i++) {
+            if (!state.completedSteps.has(i)) {
+              console.warn(`Passo ${i} não foi concluído`);
+              return;
+            }
+          }
+          
+          set((state) => {
+            state.currentStep = step;
+            state.canAdvance = false;
+            state.canGoBack = step > 1;
+          });
+          
+          // Auto-salvar se habilitado
+          if (state.autoSaveEnabled && state.isDirty) {
+            get().saveDimensioning();
+          }
+        },
+        
+        nextStep: () => {
+          const state = get();
+          if (state.canAdvance) {
+            get().goToStep(state.currentStep + 1);
+          }
+        },
+        
+        previousStep: () => {
+          const state = get();
+          if (state.canGoBack) {
+            get().goToStep(state.currentStep - 1);
+          }
+        },
+        
+        resetWizard: () => {
+          set(() => ({ ...initialState }));
+        },
+        
+        // Ações de dados
+        updateCustomerData: (data) => {
+          set((state) => {
+            state.customer = { ...state.customer, ...data } as ICustomerData;
+            state.isDirty = true;
+          });
+          
+          // Validar passo atual
+          get().validateCurrentStep();
+          
+          // Auto-salvar se habilitado
+          if (get().autoSaveEnabled && get().dimensioningId) {
+            get().autoSave();
+          }
+        },
+        
+        updateEnergyData: (data) => {
+          set((state) => {
+            state.energy = { ...state.energy, ...data } as IEnergyData;
+            state.isDirty = true;
+          });
+          
+          // Validar passo atual
+          get().validateCurrentStep();
+          
+          // Auto-salvar se habilitado
+          if (get().autoSaveEnabled && get().dimensioningId) {
+            get().autoSave();
+          }
+        },
+        
+        updateLocationData: (data) => {
+          set((state) => {
+            state.location = { ...state.location, ...data } as ILocationData;
+            state.isDirty = true;
+          });
+          
+          // Validar passo atual
+          get().validateCurrentStep();
+          
+          // Auto-salvar se habilitado
+          if (get().autoSaveEnabled && get().dimensioningId) {
+            get().autoSave();
+          }
+        },
+        
+        updateSystemData: (data) => {
+          set((state) => {
+            state.system = { ...state.system, ...data } as ISystemData;
+            state.isDirty = true;
+          });
+          
+          // Validar passo atual
+          get().validateCurrentStep();
+          
+          // Auto-salvar se habilitado
+          if (get().autoSaveEnabled && get().dimensioningId) {
+            get().autoSave();
+          }
+        },
+        
+        updateRoofData: (data) => {
+          set((state) => {
+            state.roof = { ...state.roof, ...data };
+            state.isDirty = true;
+          });
+          
+          // Validar passo atual
+          get().validateCurrentStep();
+          
+          // Auto-salvar se habilitado
+          if (get().autoSaveEnabled && get().dimensioningId) {
+            get().autoSave();
+          }
+        },
+        
+        updateBudgetData: (data) => {
+          set((state) => {
+            state.budget = { ...state.budget, ...data } as IBudgetData;
+            state.isDirty = true;
+          });
+          
+          // Validar passo atual
+          get().validateCurrentStep();
+          
+          // Auto-salvar se habilitado
+          if (get().autoSaveEnabled && get().dimensioningId) {
+            get().autoSave();
+          }
+        },
+        
+        updateResultsData: (data) => {
+          set((state) => {
+            state.results = { ...state.results, ...data } as IResultsData;
+          });
+        },
+        
+        // Ações de validação
+        validateCurrentStep: () => {
+          const state = get();
+          const step = state.currentStep;
+          const errors: string[] = [];
+          
+          switch (step) {
+            case 1:
+              if (!state.customer?.dimensioningName?.trim()) {
+                errors.push('Nome do dimensionamento é obrigatório');
+              }
+              if (!state.customer?.customer?.name?.trim()) {
+                errors.push('Nome do cliente é obrigatório');
+              }
+              if (!state.customer?.customer?.email?.trim()) {
+                errors.push('Email do cliente é obrigatório');
+              }
+              break;
+              
+            case 2:
+              if (!state.energy?.energyBills?.length) {
+                errors.push('É necessário adicionar pelo menos uma conta de energia');
+              }
+              if (state.energy?.energyBills?.every(bill => 
+                !bill.consumoMensal.some(c => c > 0)
+              )) {
+                errors.push('Pelo menos uma conta deve ter consumo > 0');
+              }
+              break;
+              
+            case 3:
+              if (!state.location?.location?.latitude || !state.location?.location?.longitude) {
+                errors.push('Coordenadas de localização são obrigatórias');
+              }
+              if (!state.location?.irradiacaoMensal || state.location.irradiacaoMensal.length !== 12 ||
+                  !state.location.irradiacaoMensal.some(v => v > 0)) {
+                errors.push('Dados de irradiação mensal são obrigatórios');
+              }
+              break;
+              
+            case 4:
+              if (!state.system?.selectedModuleId) {
+                errors.push('Seleção de módulo é obrigatória');
+              }
+              if (!state.system?.selectedInverters?.length) {
+                errors.push('Seleção de inversor é obrigatória');
+              }
+              if (!state.system?.potenciaModulo || state.system.potenciaModulo <= 0) {
+                errors.push('Potência do módulo deve ser > 0');
+              }
+              break;
+              
+            case 5:
+              // Águas de telhado é opcional
+              break;
+              
+            case 6:
+              const subtotal = (state.budget?.custoEquipamento || 0) +
+                             (state.budget?.custoMateriais || 0) +
+                             (state.budget?.custoMaoDeObra || 0);
+              const total = subtotal * (1 + (state.budget?.bdi || 0) / 100);
+              if (total <= 0) {
+                errors.push('Investimento total deve ser > 0');
+              }
+              break;
+              
+            case 7:
+              // Resultados são calculados, não há validação
+              break;
+          }
+          
+          set((state) => {
+            state.validationErrors[step] = errors;
+            state.isValid = errors.length === 0;
+            state.canAdvance = errors.length === 0 && step < 7;
+            state.completedSteps = errors.length === 0
+              ? new Set(Array.from(state.completedSteps).concat([step]))
+              : state.completedSteps;
+          });
+          
+          return errors.length === 0;
+        },
+        
+        validateAllSteps: () => {
+          const allErrors: Record<number, string[]> = {};
+          
+          // Salvar estado atual
+          const currentStep = get().currentStep;
+          
+          // Validar todas as etapas
+          for (let step = 1; step <= 7; step++) {
+            // Temporariamente mudar para a etapa sendo validada
+            get().goToStep(step);
+            allErrors[step] = get().validationErrors[step] || [];
+          }
+          
+          // Restaurar etapa original
+          get().goToStep(currentStep);
+          
+          return allErrors;
+        },
+        
+        clearValidationErrors: () => {
+          set((state) => {
+            state.validationErrors = {};
+            state.isValid = false;
+          });
+        },
+        
+        // Ações de persistência (compatíveis com ProjectContext)
+        loadProject: (projectData: any, source: string = 'manual') => {
+          set((state) => {
+            state.projectId = projectData.id || null;
+            state.projectName = projectData.projectName || '';
+            state.projectType = projectData.projectType || ProjectType.PV;
+            state.leadId = projectData.leadId || null;
+            state.address = projectData.address || '';
+            state.isProjectLoaded = true;
+            state.projectStateSource = source;
+            state.dimensioningId = projectData.id || null;
+            
+            // Mapear dados para a nova estrutura
+            state.customer = {
+              dimensioningName: projectData.projectName || '',
+              customer: projectData.projectData?.customer
+            };
+            
+            state.energy = {
+              energyBills: projectData.projectData?.energyBills,
+              energyBillsA: projectData.projectData?.energyBillsA
+            };
+            
+            state.location = {
+              location: projectData.projectData?.location,
+              irradiacaoMensal: projectData.projectData?.irradiacaoMensal,
+              inclinacao: projectData.projectData?.inclinacao,
+              azimute: projectData.projectData?.azimute,
+              considerarSombreamento: projectData.projectData?.considerarSombreamento,
+              sombreamento: projectData.projectData?.sombreamento
+            };
+            
+            state.system = {
+              selectedModuleId: projectData.projectData?.selectedModuleId,
+              selectedInverters: projectData.projectData?.selectedInverters,
+              potenciaModulo: projectData.projectData?.potenciaModulo,
+              numeroModulos: projectData.projectData?.numeroModulos,
+              eficienciaSistema: projectData.projectData?.eficienciaSistema
+            };
+            
+            state.budget = {
+              custoEquipamento: projectData.projectData?.custoEquipamento,
+              custoMateriais: projectData.projectData?.custoMateriais,
+              custoMaoDeObra: projectData.projectData?.custoMaoDeObra,
+              bdi: projectData.projectData?.bdi,
+              paymentMethod: projectData.projectData?.paymentMethod,
+              cardInstallments: projectData.projectData?.cardInstallments,
+              cardInterest: projectData.projectData?.cardInterest,
+              financingInstallments: projectData.projectData?.financingInstallments,
+              financingInterest: projectData.projectData?.financingInterest
+            };
+          });
+          
+          toast.success(`Projeto "${projectData.projectName}" carregado com sucesso!`);
+        },
+        
+        clearProject: () => {
+          set(() => ({ ...initialState }));
+        },
+        
+        isProjectSaved: () => {
+          return !!get().projectId;
+        },
+        
+        // Ações adicionais da nova arquitetura
+        saveDimensioning: async () => {
+          const state = get();
+          
+          if (!state.customer?.dimensioningName?.trim()) {
+            toast.error("Nome do dimensionamento é obrigatório");
+            return;
+          }
+          
+          if (!state.customer?.customer?.id) {
+            toast.error("Cliente é obrigatório");
+            return;
+          }
+          
+          set((state) => ({ ...state, isLoading: true }));
+          
+          try {
+            const payload = {
+              projectName: state.customer.dimensioningName,
+              projectType: 'pv',
+              leadId: state.customer.customer.id || '',
+              projectData: {
+                // Dados do cliente
+                customer: state.customer.customer,
+                dimensioningName: state.customer.dimensioningName,
+                
+                // Dados de energia
+                energyBills: state.energy?.energyBills,
+                energyBillsA: state.energy?.energyBillsA,
+                
+                // Dados de localização
+                endereco: state.location?.location?.address,
+                cidade: state.location?.location?.cidade,
+                estado: state.location?.location?.estado,
+                latitude: state.location?.location?.latitude,
+                longitude: state.location?.location?.longitude,
+                irradiacaoMensal: state.location?.irradiacaoMensal,
+                inclinacao: state.location?.inclinacao,
+                azimute: state.location?.azimute,
+                considerarSombreamento: state.location?.considerarSombreamento,
+                sombreamento: state.location?.sombreamento,
+                
+                // Dados do sistema
+                selectedModuleId: state.system?.selectedModuleId,
+                selectedInverters: state.system?.selectedInverters,
+                potenciaModulo: state.system?.potenciaModulo,
+                numeroModulos: state.system?.numeroModulos,
+                eficienciaSistema: state.system?.eficienciaSistema,
+                perdaSombreamento: state.system?.perdaSombreamento,
+                perdaMismatch: state.system?.perdaMismatch,
+                perdaCabeamento: state.system?.perdaCabeamento,
+                perdaSujeira: state.system?.perdaSujeira,
+                perdaInversor: state.system?.perdaInversor,
+                perdaOutras: state.system?.perdaOutras,
+                
+                // Dados do telhado
+                aguasTelhado: state.roof?.aguasTelhado,
+                
+                // Dados do orçamento
+                custoEquipamento: state.budget?.custoEquipamento,
+                custoMateriais: state.budget?.custoMateriais,
+                custoMaoDeObra: state.budget?.custoMaoDeObra,
+                bdi: state.budget?.bdi,
+                paymentMethod: state.budget?.paymentMethod,
+                cardInstallments: state.budget?.cardInstallments,
+                cardInterest: state.budget?.cardInterest,
+                financingInstallments: state.budget?.financingInstallments,
+                financingInterest: state.budget?.financingInterest,
+                
+                // Dados dos resultados
+                calculationResults: state.results?.calculationResults,
+              }
+            };
+            
+            let response;
+            if (state.dimensioningId) {
+              response = await apiClient.projects.update(state.dimensioningId, payload);
+            } else {
+              response = await apiClient.projects.create(payload);
+            }
+            
+            set((state) => ({
+              ...state,
+              dimensioningId: response.data.data.id,
+              projectId: response.data.data.id,
+              lastSavedAt: new Date(),
+              isDirty: false,
+              isLoading: false
+            }));
+            
+            toast.success(state.dimensioningId
+              ? "Dimensionamento atualizado com sucesso"
+              : "Dimensionamento salvo com sucesso");
+            
+          } catch (error: any) {
+            console.error('Erro ao salvar dimensionamento:', error);
+            set((state) => ({ ...state, isLoading: false }));
+            
+            toast.error(error.message || "Ocorreu um erro ao salvar o dimensionamento");
+          }
+        },
+        
+        loadDimensioning: async (id) => {
+          set((state) => ({ ...state, isLoading: true }));
+          
+          try {
+            const response = await apiClient.projects.get(id);
+            const projectData = response.data.data.projectData;
+            
+            // Carregar dados em cada etapa
+            set((state) => ({
+              ...state,
+              dimensioningId: id,
+              projectId: id,
+              
+              // Etapa 1: Dados do cliente
+              customer: {
+                dimensioningName: response.data.data.projectName,
+                customer: projectData.customer
+              },
+              
+              // Etapa 2: Dados de energia
+              energy: {
+                energyBills: projectData.energyBills,
+                energyBillsA: projectData.energyBillsA
+              },
+              
+              // Etapa 3: Dados de localização
+              location: {
+                address: projectData.endereco || projectData.address,
+                cidade: projectData.cidade,
+                estado: projectData.estado,
+                latitude: projectData.latitude,
+                longitude: projectData.longitude,
+                irradiacaoMensal: projectData.irradiacaoMensal,
+                fonteDados: projectData.fonteDados,
+                inclinacao: projectData.inclinacao,
+                azimute: projectData.azimute,
+                considerarSombreamento: projectData.considerarSombreamento,
+                sombreamento: projectData.sombreamento
+              },
+              
+              // Etapa 4: Dados do sistema
+              system: {
+                selectedModuleId: projectData.selectedModuleId,
+                selectedInverters: projectData.selectedInverters,
+                potenciaModulo: projectData.potenciaModulo,
+                numeroModulos: projectData.numeroModulos,
+                eficienciaSistema: projectData.eficienciaSistema,
+                perdaSombreamento: projectData.perdaSombreamento,
+                perdaMismatch: projectData.perdaMismatch,
+                perdaCabeamento: projectData.perdaCabeamento,
+                perdaSujeira: projectData.perdaSujeira,
+                perdaInversor: projectData.perdaInversor,
+                perdaOutras: projectData.perdaOutras
+              },
+              
+              // Etapa 5: Dados do telhado
+              roof: {
+                aguasTelhado: projectData.aguasTelhado
+              },
+              
+              // Etapa 6: Dados do orçamento
+              budget: {
+                custoEquipamento: projectData.custoEquipamento,
+                custoMateriais: projectData.custoMateriais,
+                custoMaoDeObra: projectData.custoMaoDeObra,
+                bdi: projectData.bdi,
+                paymentMethod: projectData.paymentMethod,
+                cardInstallments: projectData.cardInstallments,
+                cardInterest: projectData.cardInterest,
+                financingInstallments: projectData.financingInstallments,
+                financingInterest: projectData.financingInterest
+              },
+              
+              // Etapa 7: Dados dos resultados
+              results: {
+                calculationResults: projectData.calculationResults
+              },
+              
+              lastSavedAt: new Date(),
+              isDirty: false,
+              isLoading: false
+            }));
+            
+            // Validar todas as etapas
+            get().validateAllSteps();
+            
+            // Determinar última etapa concluída
+            const completedSteps = new Set<number>();
+            for (let step = 1; step <= 7; step++) {
+              get().goToStep(step);
+              if (get().isValid) {
+                completedSteps.add(step);
+              }
+            }
+            
+            set((state) => ({
+              ...state,
+              completedSteps
+            }));
+            
+            // Ir para a última etapa não concluída
+            let nextStep = 1;
+            for (let step = 1; step <= 7; step++) {
+              if (!completedSteps.has(step)) {
+                nextStep = step;
+                break;
+              }
+            }
+            get().goToStep(nextStep);
+            
+            toast.success("Dimensionamento carregado com sucesso");
+            
+          } catch (error: any) {
+            console.error('Erro ao carregar dimensionamento:', error);
+            set((state) => ({ ...state, isLoading: false }));
+            
+            toast.error(error.message || "Ocorreu um erro ao carregar o dimensionamento");
+          }
+        },
+        
+        autoSave: () => {
+          const state = get();
+          if (state.autoSaveEnabled && state.isDirty && state.dimensioningId) {
+            // Cancelar timeout anterior se existir
+            if ((state as any)._autoSaveTimeout) {
+              clearTimeout((state as any)._autoSaveTimeout);
+            }
+            
+            // Verificar se já há uma operação de salvamento em andamento
+            if (!(state as any)._isSaving) {
+              (state as any)._autoSaveTimeout = setTimeout(async () => {
+                const currentState = get();
+                // Verificar novamente se ainda precisa salvar e se não está salvando
+                if (currentState.isDirty && currentState.dimensioningId && !(currentState as any)._isSaving) {
+                  try {
+                    // Marcar como salvando para evitar concorrência
+                    set((state) => { (state as any)._isSaving = true; });
+                    await get().saveDimensioning();
+                  } catch (error) {
+                    console.error('Erro no auto-salvamento:', error);
+                  } finally {
+                    // Limpar flag de salvamento
+                    set((state) => { (state as any)._isSaving = false; });
+                  }
+                }
+              }, 2000); // 2 segundos conforme especificado no documento
+            }
+          }
+        },
+        
+        // Ações de cálculo
+        calculateSystem: async () => {
+          const state = get();
+          
+          if (!state.validateCurrentStep()) {
+            toast.error("Complete todos os campos obrigatórios antes de calcular");
+            return;
+          }
+          
+          set((state) => ({ ...state, isCalculating: true }));
+          
+          try {
+            // Preparar dados para API
+            const requestData = {
+              lat: state.location?.location?.latitude || -23.7621,
+              lon: state.location?.location?.longitude || -53.3116,
+              tilt: state.location?.inclinacao || 23,
+              azimuth: state.location?.azimute || 180,
+              modelo_decomposicao: "louche",
+              modelo_transposicao: "perez",
+              consumo_anual_kwh: state.energy?.energyBills?.reduce(
+                (total, bill) => total + bill.consumoMensal.reduce((sum, c) => sum + c, 0), 0
+              ) || 6000,
+              modulo: state.system?.selectedModuleId ? {
+                // Obter dados completos do módulo
+                fabricante: "Canadian Solar",
+                modelo: "CS6P-550MS",
+                potencia_nominal_w: state.system?.potenciaModulo || 550,
+                // ... demais parâmetros
+              } : null,
+              inversor: state.system?.selectedInverters?.[0] ? {
+                fabricante: state.system.selectedInverters[0].inverter.manufacturer.name,
+                modelo: state.system.selectedInverters[0].inverter.model,
+                potencia_saida_ca_w: state.system.selectedInverters[0].inverter.power.ratedACPower,
+                tipo_rede: state.system.selectedInverters[0].inverter.electrical.gridType
+              } : null,
+              perdas_sistema: (state.system?.perdaSombreamento || 3) +
+                              (state.system?.perdaMismatch || 2) +
+                              (state.system?.perdaCabeamento || 2) +
+                              (state.system?.perdaSujeira || 5) +
+                              (state.system?.perdaInversor || 3) +
+                              (state.system?.perdaOutras || 0),
+              fator_seguranca: 1.1
+            };
+            
+            const response = await fetch('http://localhost:8010/api/v1/solar-analysis/calculate-advanced-modules', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('auth-token') || sessionStorage.getItem('auth-token')}`
+              },
+              body: JSON.stringify(requestData)
+            });
+            
+            const apiResult = await response.json();
+            
+            if (apiResult.success && apiResult.data) {
+              // Atualizar dados do sistema com resultados
+              set((state) => ({
+                ...state,
+                system: {
+                  ...state.system,
+                  numeroModulosCalculado: apiResult.data.num_modulos,
+                  potenciaPicoCalculado: apiResult.data.potencia_total_kw,
+                  areaCalculada: apiResult.data.area_necessaria_m2,
+                  geracaoAnualCalculada: apiResult.data.energia_total_anual_kwh
+                }
+              }));
+              
+              toast.success("Sistema dimensionado com sucesso");
+            } else {
+              throw new Error('API retornou erro');
+            }
+            
+          } catch (error: any) {
+            console.error('Erro no cálculo do sistema:', error);
+            toast.error(error.message || "Ocorreu um erro ao calcular o sistema");
+          } finally {
+            set((state) => ({ ...state, isCalculating: false }));
+          }
+        },
+        
+        calculateFinancials: async () => {
+          const state = get();
+          
+          if (!state.validateCurrentStep()) {
+            toast.error("Complete todos os campos obrigatórios antes de calcular");
+            return;
+          }
+          
+          set((state) => ({ ...state, isCalculating: true }));
+          
+          try {
+            // Calcular investimento total
+            const subtotal = (state.budget?.custoEquipamento || 0) +
+                           (state.budget?.custoMateriais || 0) +
+                           (state.budget?.custoMaoDeObra || 0);
+            const totalInvestment = subtotal * (1 + (state.budget?.bdi || 0) / 100);
+            
+            // Preparar dados para cálculo financeiro
+            const financialData = {
+              financeiros: {
+                capex: totalInvestment,
+                anos: 25,
+                taxa_desconto: 8.0,
+                inflacao_energia: 4.5,
+                degradacao: 0.5,
+                salvage_pct: 0.1,
+                oma_first_pct: 0.015,
+                oma_inflacao: 4.0
+              },
+              geracao: {
+                Jan: state.results?.calculationResults?.geracaoEstimadaMensal?.[0] || 0,
+                Fev: state.results?.calculationResults?.geracaoEstimadaMensal?.[1] || 0,
+                Mar: state.results?.calculationResults?.geracaoEstimadaMensal?.[2] || 0,
+                Abr: state.results?.calculationResults?.geracaoEstimadaMensal?.[3] || 0,
+                Mai: state.results?.calculationResults?.geracaoEstimadaMensal?.[4] || 0,
+                Jun: state.results?.calculationResults?.geracaoEstimadaMensal?.[5] || 0,
+                Jul: state.results?.calculationResults?.geracaoEstimadaMensal?.[6] || 0,
+                Ago: state.results?.calculationResults?.geracaoEstimadaMensal?.[7] || 0,
+                Set: state.results?.calculationResults?.geracaoEstimadaMensal?.[8] || 0,
+                Out: state.results?.calculationResults?.geracaoEstimadaMensal?.[9] || 0,
+                Nov: state.results?.calculationResults?.geracaoEstimadaMensal?.[10] || 0,
+                Dez: state.results?.calculationResults?.geracaoEstimadaMensal?.[11] || 0
+              },
+              consumo_local: {
+                Jan: state.energy?.energyBills?.[0]?.consumoMensal[0] || 0,
+                Fev: state.energy?.energyBills?.[0]?.consumoMensal[1] || 0,
+                Mar: state.energy?.energyBills?.[0]?.consumoMensal[2] || 0,
+                Abr: state.energy?.energyBills?.[0]?.consumoMensal[3] || 0,
+                Mai: state.energy?.energyBills?.[0]?.consumoMensal[4] || 0,
+                Jun: state.energy?.energyBills?.[0]?.consumoMensal[5] || 0,
+                Jul: state.energy?.energyBills?.[0]?.consumoMensal[6] || 0,
+                Ago: state.energy?.energyBills?.[0]?.consumoMensal[7] || 0,
+                Set: state.energy?.energyBills?.[0]?.consumoMensal[8] || 0,
+                Out: state.energy?.energyBills?.[0]?.consumoMensal[9] || 0,
+                Nov: state.energy?.energyBills?.[0]?.consumoMensal[10] || 0,
+                Dez: state.energy?.energyBills?.[0]?.consumoMensal[11] || 0
+              },
+              tarifa_base: 0.85,
+              fio_b: {
+                schedule: {
+                  2025: 0.45,
+                  2026: 0.60,
+                  2027: 0.75,
+                  2028: 0.90
+                },
+                base_year: 2025
+              },
+              tipo_conexao: "Monofasico",
+              fator_simultaneidade: 0.25
+            };
+            
+            // Chamar API de cálculo financeiro
+            const response = await fetch('http://localhost:8010/api/v1/financial/calculate-grupo-b', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('auth-token') || sessionStorage.getItem('auth-token')}`
+              },
+              body: JSON.stringify(financialData)
+            });
+            
+            const financialResult = await response.json();
+            
+            if (financialResult.success) {
+              // Atualizar dados dos resultados
+              get().updateResultsData({
+                calculationResults: {
+                  ...state.results?.calculationResults,
+                  financialResults: financialResult.data
+                }
+              });
+              
+              toast.success("Indicadores financeiros calculados com sucesso");
+            } else {
+              throw new Error('API retornou erro');
+            }
+            
+          } catch (error: any) {
+            console.error('Erro no cálculo financeiro:', error);
+            toast.error(error.message || "Ocorreu um erro ao calcular os indicadores financeiros");
+          } finally {
+            set((state) => ({ ...state, isCalculating: false }));
+          }
+        },
+        
+        // Ações de recuperação
+        recoverFromBackup: () => {
+          const backup = localStorage.getItem('pv-dimensioning-backup');
+          if (backup) {
+            try {
+              const backupData = JSON.parse(backup);
+              set((state) => ({
+                ...state,
+                ...backupData,
+                isDirty: true
+              }));
+              
+              toast.success("Estado recuperado do backup automático");
+            } catch (error) {
+              console.error('Erro ao recuperar do backup:', error);
+            }
+          }
+        },
+        
+        createBackup: () => {
+          const state = get();
+          const backupData = {
+            customer: state.customer,
+            energy: state.energy,
+            location: state.location,
+            system: state.system,
+            roof: state.roof,
+            budget: state.budget,
+            results: state.results,
+            currentStep: state.currentStep,
+            completedSteps: Array.from(state.completedSteps),
+            dimensioningId: state.dimensioningId
+          };
+          
+          localStorage.setItem('pv-dimensioning-backup', JSON.stringify(backupData));
+        }
+      })),
+      {
+        name: 'pv-dimensioning-storage',
+        partialize: (state) => ({
+          customer: state.customer,
+          energy: state.energy,
+          location: state.location,
+          system: state.system,
+          roof: state.roof,
+          budget: state.budget,
+          results: state.results,
+          currentStep: state.currentStep,
+          completedSteps: Array.from(state.completedSteps),
+          dimensioningId: state.dimensioningId,
+          lastSavedAt: state.lastSavedAt,
+          autoSaveEnabled: state.autoSaveEnabled
+          // Propriedades internas não são incluídas na persistência
+        }),
+        onRehydrateStorage: () => (state) => {
+          // Desserializar completedSteps de volta para Set
+          if (state && state.completedSteps) {
+            state.completedSteps = new Set(state.completedSteps);
+          }
+        }
+      }
+    ),
+  )
+);

@@ -33,7 +33,6 @@ import CalendarPage from './pages/calendar/CalendarPage'
 
 // Components
 import { ProtectedRoute } from './components/providers/protected-route'
-import { ProjectProvider } from './contexts/ProjectContext'
 
 function App() {
   const { isAuthenticated } = useAuthStore()
@@ -76,8 +75,7 @@ function App() {
         path="/dashboard/*" 
         element={
           <ProtectedRoute>
-            <ProjectProvider>
-              <DashboardLayout>
+            <DashboardLayout>
                 <Routes>
                   <Route index element={<Navigate to="services" replace />} />
                   <Route path="services" element={<DashboardHomePage />} />
@@ -123,7 +121,6 @@ function App() {
                   {/* Add more dashboard routes here */}
                 </Routes>
               </DashboardLayout>
-            </ProjectProvider>
           </ProtectedRoute>
         } 
       />
