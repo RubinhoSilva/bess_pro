@@ -2,13 +2,19 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin } from 'lucide-react';
 import PVGISIntegration from './PVGISIntegration';
+import { ILocationData } from '@/store/pv-dimensioning-store';
 
 interface LocationFormProps {
-  formData: any;
+  locationData: ILocationData | null;
   onFormChange: (field: string, value: any) => void;
 }
 
-const LocationForm: React.FC<LocationFormProps> = ({ formData, onFormChange }) => {
+const LocationForm: React.FC<LocationFormProps> = ({ locationData, onFormChange }) => {
+  // Garantir que locationData nunca seja nulo
+  const safeLocationData = locationData || {};
+  
+  // Log para depurar o fluxo de dados
+  console.log('[LocationForm] Inicializando com locationData:', safeLocationData);
   const handlePVGISData = (data: {
     irradiacaoMensal: number[];
     latitude: number;
@@ -40,10 +46,10 @@ const LocationForm: React.FC<LocationFormProps> = ({ formData, onFormChange }) =
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <PVGISIntegration 
+        <PVGISIntegration
           onDataReceived={handlePVGISData}
           onFormChange={onFormChange}
-          formData={formData}
+          formData={safeLocationData}
         />
       </CardContent>
     </Card>

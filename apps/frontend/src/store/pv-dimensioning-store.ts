@@ -354,12 +354,28 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         },
         
         updateLocationData: (data) => {
+          console.log('[store] updateLocationData chamado com:', data);
+          
           set((state) => {
-            state.location = { ...state.location, ...data } as ILocationData;
+            // Se data contém um objeto location, precisamos mesclar corretamente
+            if (data.location) {
+              // Mesclar o objeto location aninhado
+              state.location = {
+                ...state.location,
+                location: {
+                  ...state.location?.location,
+                  ...data.location
+                }
+              } as ILocationData;
+            } else {
+              // Para outros campos (irradiacaoMensal, fonteDados, etc.)
+              state.location = { ...state.location, ...data } as ILocationData;
+            }
             state.isDirty = true;
           });
           
           // Validar passo atual
+          console.log('[store] Chamando validateCurrentStep após atualizar locationData');
           get().validateCurrentStep();
           
           // Auto-salvar se habilitado
@@ -425,6 +441,9 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           const step = state.currentStep;
           const errors: string[] = [];
           
+          console.log('[store] validateCurrentStep - step:', step);
+          console.log('[store] validateCurrentStep - locationData:', state.location);
+          
           switch (step) {
             case 1:
               if (!state.customer?.dimensioningName?.trim()) {
@@ -442,7 +461,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               if (!state.energy?.energyBills?.length) {
                 errors.push('É necessário adicionar pelo menos uma conta de energia');
               }
-              if (state.energy?.energyBills?.every(bill => 
+              if (state.energy?.energyBills?.every(bill =>
                 !bill.consumoMensal.some(c => c > 0)
               )) {
                 errors.push('Pelo menos uma conta deve ter consumo > 0');
@@ -450,6 +469,10 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               break;
               
             case 3:
+              console.log('[store] validateCurrentStep - Step 3 - latitude:', state.location?.location?.latitude);
+              console.log('[store] validateCurrentStep - Step 3 - longitude:', state.location?.location?.longitude);
+              console.log('[store] validateCurrentStep - Step 3 - irradiacaoMensal:', state.location?.irradiacaoMensal);
+              
               if (!state.location?.location?.latitude || !state.location?.location?.longitude) {
                 errors.push('Coordenadas de localização são obrigatórias');
               }
@@ -498,6 +521,10 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               ? new Set(Array.from(state.completedSteps).concat([step]))
               : state.completedSteps;
           });
+          
+          console.log('[store] validateCurrentStep - errors:', errors);
+          console.log('[store] validateCurrentStep - isValid:', errors.length === 0);
+          console.log('[store] validateCurrentStep - canAdvance:', errors.length === 0 && step < 7);
           
           return errors.length === 0;
         },
