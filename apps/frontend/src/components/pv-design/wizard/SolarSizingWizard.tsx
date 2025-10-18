@@ -648,7 +648,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       case 'energy':
         return (
           <ConsumptionForm
-            formData={currentDimensioning}
+            energyData={energyData}
+            customerData={customerData}
             onFormChange={handleFormChange}
           />
         );

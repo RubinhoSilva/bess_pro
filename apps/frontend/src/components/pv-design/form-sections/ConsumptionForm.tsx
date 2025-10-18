@@ -20,7 +20,8 @@ interface GrupoATariffData {
 }
 
 interface ConsumptionFormProps {
-  formData: any;
+  energyData: any;
+  customerData: any;
   onFormChange: (field: string, value: any) => void;
 }
 
@@ -115,17 +116,27 @@ const EnergyBillComponent: React.FC<{
   );
 };
 
-const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChange }) => {
-  const energyBills = formData.energyBills || [];
-  const energyBillsA = formData.energyBillsA || [];
+const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerData, onFormChange }) => {
+  // Logs para depurar inicialização e persistência dos dados
+  console.log('[ConsumptionForm] Inicializado com:', { 
+    energyData: energyData ? 'presente' : 'nulo', 
+    customerData: customerData ? 'presente' : 'nulo',
+    energyBillsCount: energyData?.energyBills?.length || 0,
+    energyBillsACount: energyData?.energyBillsA?.length || 0,
+    grupoTarifario: customerData?.grupoTarifario
+  });
+  
+  // Garantir que energyData nunca seja nulo (proteção similar ao CustomerDataForm)
+  const energyBills = energyData?.energyBills || [];
+  const energyBillsA = energyData?.energyBillsA || [];
   const [showAddAccountModal, setShowAddAccountModal] = useState(false);
 
   // Criar primeira conta automaticamente baseado no grupo selecionado na step 1
   useEffect(() => {
     const hasAnyAccount = energyBills.length > 0 || energyBillsA.length > 0;
     const hasCorrectAccountType = 
-      (formData.grupoTarifario === 'A' && energyBillsA.length > 0) ||
-      (formData.grupoTarifario === 'B' && energyBills.length > 0);
+      (customerData?.grupoTarifario === 'A' && energyBillsA.length > 0) ||
+      (customerData?.grupoTarifario === 'B' && energyBills.length > 0);
     
     if (!hasAnyAccount || !hasCorrectAccountType) {
       // Limpar contas existentes se houver tipo incorreto
@@ -137,14 +148,14 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
       }
       
       // Criar conta do tipo correto
-      if (formData.grupoTarifario === 'A') {
+      if (customerData?.grupoTarifario === 'A') {
         const newBill: EnergyBillA = createEnergyBillA({
           name: 'Unidade Geradora',
           consumoMensalPonta: Array(12).fill(500),
           consumoMensalForaPonta: Array(12).fill(500)
         });
         onFormChange('energyBillsA', [newBill]);
-      } else if (formData.grupoTarifario === 'B') {
+      } else if (customerData?.grupoTarifario === 'B') {
         const newBill: EnergyBillB = createEnergyBillB({
           name: 'Unidade Geradora',
           consumoMensal: Array(12).fill(500)
@@ -152,26 +163,33 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
         onFormChange('energyBills', [newBill]);
       }
     }
-  }, [formData.grupoTarifario, energyBills.length, energyBillsA.length]); // Executar quando mudar grupo ou contas
+  }, [customerData?.grupoTarifario, energyBills.length, energyBillsA.length]); // Executar quando mudar grupo ou contas
 
 
   const needsGrupoATariffData = () => {
-    const hasGrupoATariffData = formData.tarifaEnergiaPontaA || 
-                               formData.tarifaEnergiaForaPontaA ||
-                               formData.tePontaA || 
-                               formData.teForaPontaA ||
-                               formData.subgrupoTarifario;
+    const hasGrupoATariffData = customerData?.tarifaEnergiaPontaA || 
+                               customerData?.tarifaEnergiaForaPontaA ||
+                               customerData?.tePontaA || 
+                               customerData?.teForaPontaA ||
+                               customerData?.subgrupoTarifario;
     
-    return !hasGrupoATariffData;
+    // Manter visível quando o grupo na Step 1 for B (diferente do grupo A)
+    const isDifferentFromStep1 = customerData?.grupoTarifario === 'B';
+    
+    // Mostrar se não há dados OU se o grupo na Step 1 for diferente
+    return !hasGrupoATariffData || (energyBillsA.length > 0 && isDifferentFromStep1);
   };
 
   const needsGrupoBTariffData = () => {
-    const hasGrupoBTariffData = (formData.tarifaEnergiaB != null && formData.tarifaEnergiaB > 0) && 
-                               (formData.custoFioB != null && formData.custoFioB > 0);
+    const hasGrupoBTariffData = (customerData?.tarifaEnergiaB != null && customerData?.tarifaEnergiaB > 0) && 
+                               (customerData?.custoFioB != null && customerData?.custoFioB > 0);
     const hasGrupoBAccounts = energyBills.length > 0;
     
-    // Mostrar formulário se há contas B mas não há dados tarifários B significativos
-    return hasGrupoBAccounts && !hasGrupoBTariffData;
+    // Manter visível quando o grupo na Step 1 for A (diferente do grupo B)
+    const isDifferentFromStep1 = customerData?.grupoTarifario === 'A';
+    
+    // Mostrar se há contas B E (não há dados OU o grupo na Step 1 for diferente)
+    return hasGrupoBAccounts && (!hasGrupoBTariffData || isDifferentFromStep1);
   };
 
   const addNewBill = (tipo: 'A' | 'B') => {
@@ -204,7 +222,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
 
   const addFirstBill = () => {
     // Primeira conta segue o grupo escolhido em CustomerDataForm
-    if (formData.grupoTarifario === 'A') {
+    if (customerData?.grupoTarifario === 'A') {
       addNewBill('A');
     } else {
       addNewBill('B');
@@ -287,7 +305,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
         </div>
 
         {/* Seção do grupo selecionado na step 1 aparece primeiro */}
-        {formData.grupoTarifario === 'A' ? (
+        {customerData?.grupoTarifario === 'A' ? (
           <>
             {/* Seção Grupo A - sem configuração quando já foi preenchida na step 1 */}
             {energyBillsA.length > 0 && (
@@ -325,7 +343,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
                         <Input 
                           type="number"
                           step="0.01"
-                          value={formData.tarifaEnergiaB || ''}
+                          value={customerData?.tarifaEnergiaB || ''}
                           onChange={(e) => handleGrupoATariffChange('tarifaEnergiaB', parseFloat(e.target.value) || null)}
                           placeholder="0.75"
                         />
@@ -336,7 +354,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
                         <Input 
                           type="number"
                           step="0.01"
-                          value={formData.custoFioB || ''}
+                          value={customerData?.custoFioB || ''}
                           onChange={(e) => handleGrupoATariffChange('custoFioB', parseFloat(e.target.value) || null)}
                           placeholder="0.05"
                         />
@@ -396,7 +414,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">Subgrupo Tarifário</Label>
                         <Select 
-                          value={formData.subgrupoTarifario || 'verde'}
+                          value={customerData?.subgrupoTarifario || 'verde'}
                           onValueChange={(value) => handleGrupoATariffChange('subgrupoTarifario', value)}
                         >
                           <SelectTrigger>
@@ -415,7 +433,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
                         <Input 
                           type="number"
                           step="0.01"
-                          value={formData.tarifaEnergiaPontaA || 1.20}
+                          value={customerData?.tarifaEnergiaPontaA || 1.20}
                           onChange={(e) => handleGrupoATariffChange('tarifaEnergiaPontaA', parseFloat(e.target.value) || 0)}
                           placeholder="1.20"
                         />
@@ -426,7 +444,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
                         <Input 
                           type="number"
                           step="0.01"
-                          value={formData.tarifaEnergiaForaPontaA || 0.60}
+                          value={customerData?.tarifaEnergiaForaPontaA || 0.60}
                           onChange={(e) => handleGrupoATariffChange('tarifaEnergiaForaPontaA', parseFloat(e.target.value) || 0)}
                           placeholder="0.60"
                         />
@@ -438,7 +456,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
                         <Input 
                           type="number"
                           step="0.01"
-                          value={formData.tePontaA || 0.60}
+                          value={customerData?.tePontaA || 0.60}
                           onChange={(e) => handleGrupoATariffChange('tePontaA', parseFloat(e.target.value) || 0)}
                           placeholder="0.60"
                         />
@@ -449,7 +467,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ formData, onFormChang
                         <Input 
                           type="number"
                           step="0.01"
-                          value={formData.teForaPontaA || 0.40}
+                          value={customerData?.teForaPontaA || 0.40}
                           onChange={(e) => handleGrupoATariffChange('teForaPontaA', parseFloat(e.target.value) || 0)}
                           placeholder="0.40"
                         />

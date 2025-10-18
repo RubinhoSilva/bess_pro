@@ -626,10 +626,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               isLoading: false
             }));
             
-            toast.success(state.dimensioningId
-              ? "Dimensionamento atualizado com sucesso"
-              : "Dimensionamento salvo com sucesso");
-            
           } catch (error: any) {
             console.error('Erro ao salvar dimensionamento:', error);
             set((state) => ({ ...state, isLoading: false }));
