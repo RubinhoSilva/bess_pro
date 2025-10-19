@@ -17,86 +17,13 @@ import { useDimensioningOperations } from '@/hooks/dimensioning';
 import { ProposalDocument } from '../proposal/ProposalDocument';
 import GrupoBFinancialResults from './GrupoBFinancialResults';
 import GrupoAFinancialResults from './GrupoAFinancialResults';
+import { GrupoConfigAdapter } from '@/types/adapters/grupo-config-adapter';
+
+// Store imports
+import { usePVDimensioningStore } from '@/store/pv-dimensioning-store';
+import { selectResultsData, selectCustomerData, selectEnergyData, selectSystemData, selectRoofData, selectBudgetData } from '@/store/selectors/pv-dimensioning-selectors';
 
 interface PVResultsDashboardProps {
-  results: {
-    formData: any;
-    potenciaPico: number;
-    numeroModulos: number;
-    totalInvestment: number;
-    economiaAnualEstimada: number;
-    vpl: number;
-    tir: number;
-    payback: number;
-    fluxoCaixa: Array<{
-      ano: number;
-      economia: number;
-      fluxoLiquido: number;
-      custoSemFV: number;
-      custoComFV: number;
-    }>;
-    geracaoEstimadaMensal: number[];
-    selectedModule?: any;
-    selectedInverters?: any[];
-    // Advanced analysis results
-    advancedSolar?: {
-      irradiacaoMensal: number[];
-      irradiacaoInclinada: number[];
-      fatorTemperatura: number[];
-      perdas: {
-        temperatura: number[];
-        sombreamento: number[];
-        sujeira: number[];
-        angular: number[];
-        total: number[];
-      };
-      performance: {
-        prMedio: number;
-        yieldEspecifico: number;
-        fatorCapacidade: number;
-      };
-      geracaoEstimada: {
-        mensal: number[];
-        anual: number;
-        diarioMedio: number;
-      };
-    };
-    advancedFinancial?: {
-      vpl: number;
-      tir: number;
-      paybackSimples: number;
-      paybackDescontado: number;
-      economiaTotal25Anos: number;
-      economiaAnualMedia: number;
-      lucratividadeIndex: number;
-      cashFlow: Array<{
-        ano: number;
-        geracaoAnual: number;
-        economiaEnergia: number;
-        custosOM: number;
-        fluxoLiquido: number;
-        fluxoAcumulado: number;
-        valorPresente: number;
-      }>;
-      indicadores: {
-        yieldEspecifico: number;
-        custoNiveladoEnergia: number;
-        eficienciaInvestimento: number;
-        retornoSobreInvestimento: number;
-      };
-      sensibilidade: {
-        vplVariacaoTarifa: { tarifa: number; vpl: number }[];
-        vplVariacaoInflacao: { inflacao: number; vpl: number }[];
-        vplVariacaoDesconto: { desconto: number; vpl: number }[];
-      };
-      scenarios: {
-        base: any;
-        otimista: any;
-        conservador: any;
-        pessimista: any;
-      };
-    };
-  };
   onGenerateProposal?: () => void;
   onBackToWizard?: () => void;
   onBackToForm?: () => void;
@@ -354,8 +281,8 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
       proposalElement.style.cssText = originalStyles;
 
       // 10. Salva o PDF
-      const projectName = results.formData?.projectName ||
-                         results.formData?.customer?.name ||
+      const projectName = results.projectName ||
+                         results.customerName ||
                          'solar';
       pdf.save(`proposta-component-based-${projectName}-${Date.now()}.pdf`);
 
@@ -423,24 +350,31 @@ const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ re
 };
 
 export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
-  results,
   onGenerateProposal,
   onBackToWizard,
   onNewCalculation
 }) => {
+  // Obter dados diretamente do store
+  const resultsData = usePVDimensioningStore(selectResultsData);
+  const customerData = usePVDimensioningStore(selectCustomerData);
+  const energyData = usePVDimensioningStore(selectEnergyData);
+  const systemData = usePVDimensioningStore(selectSystemData);
+  const roofData = usePVDimensioningStore(selectRoofData);
+  const budgetData = usePVDimensioningStore(selectBudgetData);
+  
   const [currentDimensioning] = useState<any>({});
   
   // Validação inicial dos dados
-  if (!results) {
+  if (!resultsData?.calculationResults) {
     return <LoadingFallback />;
   }
 
-  const validatedResults = validateAndNormalizeResults(results);
+  const validatedResults = validateAndNormalizeResults(resultsData.calculationResults);
   
   if (!validatedResults) {
     return (
-      <DataErrorFallback 
-        message="Dados de resultado não encontrados ou inválidos" 
+      <DataErrorFallback
+        message="Dados de resultado não encontrados ou inválidos"
         onRetry={onNewCalculation}
       />
     );
@@ -511,7 +445,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
               geracaoEstimadaAnual: validatedResults.geracaoEstimadaMensal.reduce((a: number, b: number) => a + b, 0),
               selectedInverters: validatedResults.selectedInverters,
               selectedModule: validatedResults.selectedModule,
-              consumoTotalAnual: validatedResults.formData?.energyBills?.reduce((total: number, bill: any) => 
+              consumoTotalAnual: validatedResults.energyBills?.reduce((total: number, bill: any) =>
                 total + (Array.isArray(bill?.consumoMensal) ? bill.consumoMensal.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0) : 0), 0) || 0
             }} />
           </Section>
@@ -552,11 +486,25 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
                 calculationData={{
                   investimentoInicial: validatedResults.totalInvestment,
                   geracaoMensal: validatedResults.geracaoEstimadaMensal || Array(12).fill(0),
-                  consumoMensal: validatedResults.formData?.energyBills?.reduce((acc: number[], bill: any) => {
+                  consumoMensal: validatedResults.energyBills?.reduce((acc: number[], bill: any) => {
                     return acc.concat(bill.consumoMensal || Array(12).fill(0));
                   }, []) || Array(12).fill(0)
                 }}
-                config={validatedResults.formData}
+                config={GrupoConfigAdapter.toGrupoBConfig({
+                  tarifaEnergiaB: validatedResults.tarifaEnergiaB,
+                  custoFioB: validatedResults.custoFioB,
+                  tarifaEnergiaPontaA: validatedResults.tarifaEnergiaPontaA,
+                  tarifaEnergiaForaPontaA: validatedResults.tarifaEnergiaForaPontaA,
+                  tePontaA: validatedResults.tePontaA,
+                  teForaPontaA: validatedResults.teForaPontaA,
+                  subgrupoTarifario: validatedResults.subgrupoTarifario,
+                  grupoTarifario: validatedResults.grupoTarifario,
+                  investimentoInicial: validatedResults.totalInvestment,
+                  geracaoMensal: validatedResults.geracaoEstimadaMensal,
+                  consumoMensal: validatedResults.energyBills?.reduce((acc: number[], bill: any) => {
+                    return acc.concat(bill.consumoMensal || Array(12).fill(0));
+                  }, []) || Array(12).fill(0)
+                })}
               />
             </Section>
           {/* )} */}
@@ -568,11 +516,25 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
                 calculationData={{
                   investimentoInicial: validatedResults.totalInvestment,
                   geracaoMensal: validatedResults.geracaoEstimadaMensal || Array(12).fill(0),
-                  consumoMensal: validatedResults.formData?.energyBills?.reduce((acc: number[], bill: any) => {
+                  consumoMensal: validatedResults.energyBills?.reduce((acc: number[], bill: any) => {
                     return acc.concat(bill.consumoMensal || Array(12).fill(0));
                   }, []) || Array(12).fill(0)
                 }}
-                config={validatedResults.formData}
+                config={GrupoConfigAdapter.toGrupoBConfig({
+                  tarifaEnergiaB: validatedResults.tarifaEnergiaB,
+                  custoFioB: validatedResults.custoFioB,
+                  tarifaEnergiaPontaA: validatedResults.tarifaEnergiaPontaA,
+                  tarifaEnergiaForaPontaA: validatedResults.tarifaEnergiaForaPontaA,
+                  tePontaA: validatedResults.tePontaA,
+                  teForaPontaA: validatedResults.teForaPontaA,
+                  subgrupoTarifario: validatedResults.subgrupoTarifario,
+                  grupoTarifario: validatedResults.grupoTarifario,
+                  investimentoInicial: validatedResults.totalInvestment,
+                  geracaoMensal: validatedResults.geracaoEstimadaMensal,
+                  consumoMensal: validatedResults.energyBills?.reduce((acc: number[], bill: any) => {
+                    return acc.concat(bill.consumoMensal || Array(12).fill(0));
+                  }, []) || Array(12).fill(0)
+                })}
               />
             </Section> */}
           {/* )} */}

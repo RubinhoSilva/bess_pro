@@ -309,3 +309,57 @@ export const selectInvertersForMPPT = (state: IProjectState) => {
     tipoRede: inv.inverter.electrical.gridType || 'Desconhecido'
   }));
 };
+
+// Seletores para dados agregados das águas do telhado
+export const selectAggregatedRoofData = (state: IProjectState) => {
+  const aguasTelhado = state.roof?.aguasTelhado || [];
+  const potenciaModulo = state.system?.potenciaModulo || 550;
+  
+  // Calcular totais das águas do telhado
+  const totalModulos = aguasTelhado.reduce((total: number, agua: any) => total + (agua.numeroModulos || 0), 0);
+  const totalGeracao = aguasTelhado.reduce((total: number, agua: any) => total + (agua.geracaoAnual || 0), 0);
+  const totalArea = aguasTelhado.reduce((total: number, agua: any) => total + (agua.areaCalculada || 0), 0);
+  const potenciaPico = (totalModulos * potenciaModulo) / 1000; // kWp
+  
+  // Calcular consumo total anual
+  const consumoTotalAnual = state.energy?.energyBills?.reduce((acc: number, bill: any) => {
+    return acc + bill.consumoMensal.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0);
+  }, 0) || 0;
+  
+  // Calcular cobertura percentual
+  const cobertura = consumoTotalAnual > 0 ? (totalGeracao / consumoTotalAnual) * 100 : 0;
+  
+  return {
+    totalModulos,
+    totalGeracao,
+    totalArea,
+    potenciaPico,
+    consumoTotalAnual,
+    cobertura,
+    geracaoMensal: Array(12).fill(totalGeracao / 12), // Distribuição igual (pode ser melhorada depois)
+    aguasTelhado, // Manter array original para referência
+    calculado: aguasTelhado.some((agua: any) => agua.geracaoAnual > 0) // Verificar se já foi calculado
+  };
+};
+
+// Seletor específico para o SystemSummary
+export const selectSystemSummaryData = (state: IProjectState) => {
+  const aggregatedData = selectAggregatedRoofData(state);
+  
+  return {
+    potenciaPico: aggregatedData.potenciaPico,
+    numeroModulos: aggregatedData.totalModulos,
+    areaEstimada: aggregatedData.totalArea,
+    geracaoEstimadaAnual: aggregatedData.totalGeracao,
+    selectedInverters: state.system?.selectedInverters || [],
+    selectedModule: state.system?.selectedModuleId, // Apenas o ID, o componente buscará o objeto completo
+    consumoTotalAnual: aggregatedData.consumoTotalAnual,
+    cobertura: aggregatedData.cobertura
+  };
+};
+
+// Seletor para dados do cálculo (handleCalculate pode salvar apenas o flag)
+export const selectCalculationFlag = (state: IProjectState) => ({
+  calculado: !!state.results?.calculationResults?.potenciaPico,
+  calculadoEm: state.results?.calculationResults // Para possíveis metadados futuros
+});

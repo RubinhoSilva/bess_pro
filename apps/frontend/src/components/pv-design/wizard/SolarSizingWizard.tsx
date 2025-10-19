@@ -43,7 +43,8 @@ import {
   selectBudgetData,
   selectResultsData,
   selectLoadingState,
-  selectMetadataState
+  selectMetadataState,
+  selectAggregatedRoofData
 } from '@/store/selectors/pv-dimensioning-selectors';
 
 interface SolarSizingWizardProps {
@@ -117,6 +118,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   const resultsData = usePVDimensioningStore(selectResultsData);
   const loadingState = usePVDimensioningStore(selectLoadingState);
   const metadataState = usePVDimensioningStore(selectMetadataState);
+  const aggregatedRoofData = usePVDimensioningStore(selectAggregatedRoofData);
   
   // Ações do store
   const {
@@ -415,262 +417,29 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     usePVDimensioningStore.setState({ isCalculating: true });
 
     try {
-      // Validation
-      if (!locationData?.irradiacaoMensal || locationData.irradiacaoMensal.length !== 12) {
-        throw new Error("Dados de irradiação mensal são obrigatórios.");
+      // Verificar se há dados das águas de telhado já calculados usando o seletor
+      if (!aggregatedRoofData.calculado) {
+        throw new Error("É necessário calcular a geração nas orientações antes de prosseguir. Volte para a etapa de Orientações e clique em 'Atualizar Geração'.");
       }
 
-      const somaIrradiacao = locationData.irradiacaoMensal.reduce((a: number, b: number) => a + b, 0);
-      const irradiacaoMediaAnual = somaIrradiacao / 12;
-
-      if (irradiacaoMediaAnual <= 0 || !systemData?.potenciaModulo || systemData.potenciaModulo <= 0) {
-        throw new Error("Potência do módulo e irradiação devem ser maiores que zero.");
-      }
-
-      const totalConsumoMensal = energyData?.energyBills?.reduce((acc: number[], bill: any) => {
-        bill.consumoMensal.forEach((consumo: number, index: number) => {
-          const valorAnterior = acc[index] || 0;
-          acc[index] = valorAnterior + consumo;
-        });
-        return acc;
-      }, Array(12).fill(0)) || Array(12).fill(0);
-
-      // Calculate system sizing using our new detailed method
-      const consumoTotalAnual = totalConsumoMensal.reduce((a: number, b: number) => a + b, 0);
-
-      // Determinar potência desejada baseada no modo selecionado
-      let potenciaDesejadaKwp: number;
-
-      if (systemData?.numeroModulos && systemData.numeroModulos > 0) {
-        // Modo: número de módulos fixo
-        potenciaDesejadaKwp = (systemData.numeroModulos * systemData.potenciaModulo) / 1000;
-      } else {
-        // Modo: dimensionamento automático baseado no consumo
-        const consumoMedioDiario = consumoTotalAnual / 365;
-        const eficienciaDecimal = (systemData?.eficienciaSistema || 85) / 100;
-        const irradiacaoEfetiva = irradiacaoMediaAnual * eficienciaDecimal;
-        potenciaDesejadaKwp = consumoMedioDiario / irradiacaoEfetiva;
-      }
-
-      // Se os dados não estão calculados, chamar a rota novamente
-      let potenciaPico, numeroModulos, areaEstimada, geracaoEstimadaAnual, geracaoEstimadaMensal;
-      let apiResult = null;
-
-      // Verificar se há dados das águas de telhado para usar nos cálculos
-      const hasAguasTelhado = roofData?.aguasTelhado &&
-        roofData.aguasTelhado.length > 0 &&
-        roofData.aguasTelhado.some((agua: any) => agua.geracaoAnual > 0);
-
-      if (hasAguasTelhado) {
-        // Usar dados das águas de telhado para cálculos financeiros
-        const totalModulosAguas = roofData.aguasTelhado.reduce((total: number, agua: any) => total + agua.numeroModulos, 0);
-        const totalGeracaoAguas = roofData.aguasTelhado.reduce((total: number, agua: any) => total + (agua.geracaoAnual || 0), 0);
-        const totalAreaAguas = roofData.aguasTelhado.reduce((total: number, agua: any) => total + (agua.areaCalculada || 0), 0);
-
-        // Sobrescrever variáveis com dados das águas de telhado
-        numeroModulos = totalModulosAguas;
-        geracaoEstimadaAnual = totalGeracaoAguas;
-        areaEstimada = totalAreaAguas;
-        potenciaPico = (numeroModulos * (systemData?.potenciaModulo || 550)) / 1000;
-        geracaoEstimadaMensal = Array(12).fill(geracaoEstimadaAnual / 12);
-      }
-
-      // Calcular perdas totais do sistema
-      const perdasSistema = (systemData?.perdaSombreamento || 3) +
-        (systemData?.perdaMismatch || 2) +
-        (systemData?.perdaCabeamento || 2) +
-        (systemData?.perdaSujeira || 5) +
-        (systemData?.perdaInversor || 3) +
-        (systemData?.perdaOutras || 0);
-
-      // Se não há águas de telhado, chamar API para calcular dados
-      if (!hasAguasTelhado) {
-        try {
-          const response = await fetch('http://localhost:8010/api/v1/solar-analysis/calculate-advanced-modules', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('auth-token') || sessionStorage.getItem('auth-token')}`
-            },
-            body: JSON.stringify({
-              lat: locationData?.location?.latitude || -23.7621,
-              lon: locationData?.location?.longitude || -53.3116,
-              tilt: locationData?.inclinacao || 23,
-              azimuth: locationData?.azimute || 180,
-              modelo_decomposicao: "louche",
-              modelo_transposicao: "perez",
-              consumo_anual_kwh: consumoTotalAnual || 6000,
-              modulo: selectedModuleFull ? (() => {
-                return {
-                  fabricante: selectedModuleFull.manufacturer,
-                  modelo: selectedModuleFull.model,
-                  potencia_nominal_w: selectedModuleFull.nominalPower,
-                  largura_mm: selectedModuleFull.dimensions?.widthMm,
-                  altura_mm: selectedModuleFull.dimensions?.heightMm,
-                  peso_kg: selectedModuleFull.dimensions?.weightKg,
-                  vmpp: selectedModuleFull.specifications?.vmpp,
-                  impp: selectedModuleFull.specifications?.impp,
-                  voc_stc: selectedModuleFull.specifications?.voc,
-                  isc_stc: selectedModuleFull.specifications?.isc,
-                  eficiencia: selectedModuleFull.specifications?.efficiency,
-                  alpha_sc: selectedModuleFull.parameters?.advanced?.alphaSc || selectedModuleFull.parameters?.temperature?.tempCoeffPmax,
-                  beta_oc: selectedModuleFull.parameters?.advanced?.betaOc || selectedModuleFull.parameters?.temperature?.tempCoeffVoc,
-                  gamma_r: selectedModuleFull.parameters?.advanced?.gammaR || selectedModuleFull.parameters?.temperature?.tempCoeffIsc,
-                  cells_in_series: selectedModuleFull.specifications?.numberOfCells,
-                  a_ref: selectedModuleFull.parameters?.diode?.aRef,
-                  il_ref: selectedModuleFull.parameters?.diode?.iLRef,
-                  io_ref: selectedModuleFull.parameters?.diode?.iORef,
-                  rs: selectedModuleFull.parameters?.diode?.rS,
-                  rsh_ref: selectedModuleFull.parameters?.diode?.rShRef,
-                  material: selectedModuleFull.parameters?.spectral?.material,
-                  technology: selectedModuleFull.specifications?.technology,
-                  a0: selectedModuleFull.parameters?.sapm?.a0,
-                  a1: selectedModuleFull.parameters?.sapm?.a1,
-                  a2: selectedModuleFull.parameters?.sapm?.a2,
-                  a3: selectedModuleFull.parameters?.sapm?.a3,
-                  a4: selectedModuleFull.parameters?.sapm?.a4,
-                  b0: selectedModuleFull.parameters?.sapm?.b0,
-                  b1: selectedModuleFull.parameters?.sapm?.b1,
-                  b2: selectedModuleFull.parameters?.sapm?.b2,
-                  b3: selectedModuleFull.parameters?.sapm?.b3,
-                  b4: selectedModuleFull.parameters?.sapm?.b4,
-                  b5: 0,
-                  dtc: 0
-                };
-              })() : null,
-              inversor: systemData?.selectedInverters?.[0] ? (() => {
-                const inv = systemData.selectedInverters[0].inverter;
-                return {
-                  fabricante: inv.manufacturer.name,
-                  modelo: inv.model,
-                  potencia_saida_ca_w: inv.power.ratedACPower,
-                  tipo_rede: inv.electrical.gridType
-                };
-              })() : null,
-              perdas_sistema: perdasSistema,
-              fator_seguranca: 1.1
-            })
-          });
-
-          apiResult = await response.json();
-
-          if (apiResult.success && apiResult.data) {
-            potenciaPico = apiResult.data.potencia_total_kw;
-            numeroModulos = apiResult.data.num_modulos;
-            areaEstimada = apiResult.data.area_necessaria_m2;
-            geracaoEstimadaAnual = apiResult.data.energia_total_anual_kwh;
-            geracaoEstimadaMensal = Array(12).fill(geracaoEstimadaAnual / 12);
-          } else {
-            throw new Error('API retornou erro');
-          }
-        } catch (error) {
-          console.error('Erro ao chamar API de dimensionamento solar:', error);
-        }
-      }
-
-      // Cálculos financeiros especializados por grupo tarifário
-      let financialResults: any;
-
-      try {
-        const calculatedData = {
-          investimentoInicial: totalInvestment,
-          geracaoMensal: geracaoEstimadaMensal || Array(12).fill(0),
-          consumoMensal: totalConsumoMensal || Array(12).fill(0)
-        };
-        
-        financialResults = await grupoBCalculation.mutateAsync(convertToGrupoBInput(currentDimensioning, calculatedData));
-
-        // Armazenar resultado no calculationResults
-        updateResultsData({
-          calculationResults: {
-            ...resultsData?.calculationResults,
-            financialResults: financialResults
-          }
-        });
-
-      } catch (error) {
-        console.error('[Financial] Erro no cálculo financeiro:', error);
-        toast({
-          title: "Erro no cálculo financeiro",
-          description: "Não foi possível calcular os indicadores financeiros. Verifique os dados e tente novamente.",
-          variant: "destructive"
-        });
-      }
-
-      // Financial calculations completed - re-enable button
-      usePVDimensioningStore.setState({ isCalculating: false });
-
-      let results: any = {
-        formData: currentDimensioning,
-        potenciaPico,
-        numeroModulos,
-        areaEstimada,
-        geracaoEstimadaAnual,
-        geracaoEstimadaMensal,
-        consumoTotalAnual,
-        totalInvestment,
-        advancedSolar: {
-          irradiacaoMensal: locationData?.irradiacaoMensal || Array(12).fill(4.5),
-          irradiacaoInclinada: locationData?.irradiacaoMensal || Array(12).fill(4.5),
-          fatorTemperatura: Array(12).fill(1.0),
-          perdas: apiResult?.data?.perdas_detalhadas || {
-            temperatura: Array(12).fill(8),
-            sombreamento: Array(12).fill(3),
-            mismatch: Array(12).fill(2),
-            cabeamento: Array(12).fill(2),
-            sujeira: Array(12).fill(5),
-            inversor: Array(12).fill(3),
-            outras: Array(12).fill(0),
-            total: Array(12).fill(22)
-          },
-          performance: {
-            prMedio: apiResult?.data?.pr_medio || 85,
-            yieldEspecifico: apiResult?.data?.yield_especifico || (geracaoEstimadaAnual / potenciaPico),
-            fatorCapacidade: apiResult?.data?.fator_capacidade || ((geracaoEstimadaAnual / (potenciaPico * 8760)) * 100)
-          },
-          geracaoEstimada: {
-            mensal: geracaoEstimadaMensal || Array(12).fill(geracaoEstimadaAnual / 12),
-            anual: geracaoEstimadaAnual,
-            diarioMedio: apiResult?.data?.energia_diaria_media || (geracaoEstimadaAnual / 365)
-          }
-        },
-        advancedFinancial: null,
-        fluxoCaixa: [],
-        selectedInverters: systemData?.selectedInverters || [],
-        selectedModule: systemData?.selectedModuleId
-      };
-
-      // Adicionar outros dados financeiros
-      Object.assign(results, financialResults);
-
-      // Mapear economia_anual_media para economiaAnualEstimada para compatibilidade
-      if (financialResults?.economiaAnualMedia) {
-        results.economiaAnualEstimada = financialResults.economiaAnualMedia;
-      }
-
-      // Cálculos adicionais do resumo do wizard
-      const economiaAnualWizard = ((financialResults as any)?.economiaAnual || 0);
-      const economiaMensalWizard = economiaAnualWizard / 12;
-      const custoKwpWizard = totalInvestment / (potenciaPico || 1);
-      const geracaoMensalWizard = (geracaoEstimadaAnual || 0) / 12;
-
-      updateResultsData({ calculationResults: results });
+      // Apenas marcar que foi calculado e ir para a tela de resultados
+      updateResultsData({ calculationResults: { potenciaPico: aggregatedRoofData.potenciaPico } }); // Salvar potência calculada
       goToStep(7);
 
       if (onComplete) {
-        onComplete(results);
+        onComplete({ calculated: true });
       }
 
       toast({
-        title: "Cálculo concluído!",
-        description: "Resultados disponíveis na tela de resultados. Verifique o console do navegador (F12) para logs detalhados."
+        title: "Resultados preparados!",
+        description: "Todos os dados foram carregados das orientações configuradas."
       });
 
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Erro no cálculo",
-        description: error.message || "Ocorreu um erro inesperado. Verifique os dados e tente novamente."
+        title: "Erro ao preparar resultados",
+        description: error.message || "Ocorreu um erro inesperado."
       });
     } finally {
       usePVDimensioningStore.setState({ isCalculating: false });
@@ -796,7 +565,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       case 'results':
         return resultsData?.calculationResults ? (
           <PVResultsDashboard
-            results={resultsData.calculationResults as any}
             onBackToForm={() => goToStep(5)}
             onNewCalculation={() => {
               updateResultsData({ calculationResults: undefined });

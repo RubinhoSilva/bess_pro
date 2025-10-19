@@ -275,7 +275,6 @@ export function useGrupoBFinancialCalculation(options?: {
       // Extrair apenas o data da resposta (se tiver wrapper)
       const dataOnly = data.data.data || data;
       
-      toast.success('Cálculo financeiro Grupo B realizado com sucesso!');
       onSuccess?.(dataOnly);
     },
     onError: (error: any) => {
