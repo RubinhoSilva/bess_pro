@@ -8,14 +8,17 @@ import { DollarSign, Info, TrendingUp } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCurrency } from '@/lib/formatters';
 import { CustomCurrencyInput } from '@/components/ui/currency-input';
+import { IBudgetData } from '@/store/pv-dimensioning-store';
 
 interface FinancialFormProps {
-  formData: any;
+  budgetData: IBudgetData | null;
   onFormChange: (field: string, value: any) => void;
   totalInvestment: number;
 }
 
-const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, totalInvestment }) => {
+const FinancialForm: React.FC<FinancialFormProps> = ({ budgetData, onFormChange, totalInvestment }) => {
+  // Garantir que budgetData nunca seja nulo
+  const safeBudgetData = budgetData || {};
 
   return (
     <TooltipProvider>
@@ -47,7 +50,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                   </TooltipProvider>
                 </div>
                 <CustomCurrencyInput
-                  value={formData.custoEquipamento}
+                  value={safeBudgetData.custoEquipamento}
                   onValueChange={(value) => onFormChange('custoEquipamento', value)}
                   placeholder="R$ 0,00"
                 />
@@ -66,7 +69,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                   </Tooltip></TooltipProvider>
                 </div>
                 <CustomCurrencyInput
-                  value={formData.custoMateriais}
+                  value={safeBudgetData.custoMateriais}
                   onValueChange={(value) => onFormChange('custoMateriais', value)}
                   placeholder="R$ 0,00"
                 />
@@ -85,7 +88,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                   </Tooltip></TooltipProvider>
                 </div>
                 <CustomCurrencyInput
-                  value={formData.custoMaoDeObra}
+                  value={safeBudgetData.custoMaoDeObra}
                   onValueChange={(value) => onFormChange('custoMaoDeObra', value)}
                   placeholder="R$ 0,00"
                 />
@@ -93,7 +96,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
 
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>BDI: {formData.bdi || 0}%</Label>
+                  <Label>BDI: {safeBudgetData.bdi || 0}%</Label>
                   <TooltipProvider><Tooltip>
                     <TooltipTrigger asChild>
                       <Info className="w-4 h-4 text-gray-400 cursor-help" />
@@ -104,7 +107,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                   </Tooltip></TooltipProvider>
                 </div>
                 <Slider
-                  value={[formData.bdi || 0]}
+                  value={[safeBudgetData.bdi || 0]}
                   onValueChange={(values) => onFormChange('bdi', values[0])}
                   max={50}
                   min={0}
@@ -124,11 +127,11 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
               <div className="space-y-1 text-sm text-gray-800 dark:text-gray-200">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>{formatCurrency((formData.custoEquipamento || 0) + (formData.custoMateriais || 0) + (formData.custoMaoDeObra || 0))}</span>
+                  <span>{formatCurrency((safeBudgetData.custoEquipamento || 0) + (safeBudgetData.custoMateriais || 0) + (safeBudgetData.custoMaoDeObra || 0))}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>BDI ({formData.bdi || 0}%):</span>
-                  <span>{formatCurrency(((formData.custoEquipamento || 0) + (formData.custoMateriais || 0) + (formData.custoMaoDeObra || 0)) * (formData.bdi || 0) / 100)}</span>
+                  <span>BDI ({safeBudgetData.bdi || 0}%):</span>
+                  <span>{formatCurrency(((safeBudgetData.custoEquipamento || 0) + (safeBudgetData.custoMateriais || 0) + (safeBudgetData.custoMaoDeObra || 0)) * (safeBudgetData.bdi || 0) / 100)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg border-t border-gray-300 dark:border-gray-600 pt-1">
                   <span>Total:</span>
@@ -162,7 +165,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                   id="inflacaoEnergia"
                   type="number"
                   step="0.1"
-                  value={formData.inflacaoEnergia || 5.0}
+                  value={safeBudgetData.inflacaoEnergia || 5.0}
                   onChange={(e) => onFormChange('inflacaoEnergia', parseFloat(e.target.value) || 5.0)}
                   placeholder="5.0"
                 />
@@ -184,7 +187,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                   id="taxaDesconto"
                   type="number"
                   step="0.1"
-                  value={formData.taxaDesconto || 8.0}
+                  value={safeBudgetData.taxaDesconto || 8.0}
                   onChange={(e) => onFormChange('taxaDesconto', parseFloat(e.target.value) || 8.0)}
                   placeholder="8.0"
                 />
@@ -206,7 +209,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                   id="custoOperacao"
                   type="number"
                   step="0.1"
-                  value={formData.custoOperacao || 1.0}
+                  value={safeBudgetData.custoOperacao || 1.0}
                   onChange={(e) => onFormChange('custoOperacao', parseFloat(e.target.value) || 1.0)}
                   placeholder="1.0"
                 />
@@ -228,7 +231,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                   id="valorResidual"
                   type="number"
                   step="0.1"
-                  value={formData.valorResidual || 10.0}
+                  value={safeBudgetData.valorResidual || 10.0}
                   onChange={(e) => onFormChange('valorResidual', parseFloat(e.target.value) || 10.0)}
                   placeholder="10.0"
                 />
@@ -249,7 +252,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                   step="1"
                   max="100"
                   min="0"
-                  value={formData.percentualFinanciado || 0}
+                  value={safeBudgetData.percentualFinanciado || 0}
                   onChange={(e) => onFormChange('percentualFinanciado', parseFloat(e.target.value) || 0)}
                   placeholder="0"
                 />
@@ -268,7 +271,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                   </Tooltip></TooltipProvider>
                 </div>
                 <Select 
-                  value={formData.taxaJuros?.toString() || "12"} 
+                  value={safeBudgetData.taxaJuros?.toString() || "12"}
                   onValueChange={(value) => onFormChange('taxaJuros', parseFloat(value))}
                 >
                   <SelectTrigger>
@@ -292,7 +295,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
                   id="prazoFinanciamento"
                   type="number"
                   step="1"
-                  value={formData.prazoFinanciamento || 5}
+                  value={safeBudgetData.prazoFinanciamento || 5}
                   onChange={(e) => onFormChange('prazoFinanciamento', parseInt(e.target.value) || 5)}
                   placeholder="5"
                 />
@@ -300,25 +303,25 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ formData, onFormChange, t
             </div>
 
             {/* Cálculo do Financiamento */}
-            {formData.percentualFinanciado > 0 && (
+            {(safeBudgetData.percentualFinanciado || 0) > 0 && (
               <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                 <h4 className="font-semibold text-yellow-800 mb-2">Resumo do Financiamento</h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>Valor Financiado:</span>
-                    <span>{formatCurrency(totalInvestment * (formData.percentualFinanciado || 0) / 100)}</span>
+                    <span>{formatCurrency(totalInvestment * (safeBudgetData.percentualFinanciado || 0) / 100)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Entrada:</span>
-                    <span>{formatCurrency(totalInvestment * (100 - (formData.percentualFinanciado || 0)) / 100)}</span>
+                    <span>{formatCurrency(totalInvestment * (100 - (safeBudgetData.percentualFinanciado || 0)) / 100)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Parcela Mensal (aprox):</span>
                     <span>{formatCurrency(
-                      (totalInvestment * (formData.percentualFinanciado || 0) / 100) * 
-                      ((formData.taxaJuros || 12) / 100 / 12) * 
-                      Math.pow(1 + (formData.taxaJuros || 12) / 100 / 12, (formData.prazoFinanciamento || 5) * 12) /
-                      (Math.pow(1 + (formData.taxaJuros || 12) / 100 / 12, (formData.prazoFinanciamento || 5) * 12) - 1)
+                      (totalInvestment * (safeBudgetData.percentualFinanciado || 0) / 100) *
+                      ((safeBudgetData.taxaJuros || 12) / 100 / 12) *
+                      Math.pow(1 + (safeBudgetData.taxaJuros || 12) / 100 / 12, (safeBudgetData.prazoFinanciamento || 5) * 12) /
+                      (Math.pow(1 + (safeBudgetData.taxaJuros || 12) / 100 / 12, (safeBudgetData.prazoFinanciamento || 5) * 12) - 1)
                     )}</span>
                   </div>
                 </div>

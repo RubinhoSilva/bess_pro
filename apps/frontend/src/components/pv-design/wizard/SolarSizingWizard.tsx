@@ -782,12 +782,12 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
             )}
 
             <FinancialForm
-              formData={currentDimensioning}
+              budgetData={budgetData}
               onFormChange={handleFormChange}
               totalInvestment={totalInvestment}
             />
             <PaymentConditionsForm
-              formData={currentDimensioning}
+              budgetData={budgetData}
               onFormChange={handleFormChange}
             />
           </div>

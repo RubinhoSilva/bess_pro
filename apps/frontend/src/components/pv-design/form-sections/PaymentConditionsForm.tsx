@@ -5,13 +5,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { CreditCard } from 'lucide-react';
+import { IBudgetData } from '@/store/pv-dimensioning-store';
 
 interface PaymentConditionsFormProps {
-  formData: any;
+  budgetData: IBudgetData | null;
   onFormChange: (field: string, value: any) => void;
 }
 
-export default function PaymentConditionsForm({ formData, onFormChange }: PaymentConditionsFormProps) {
+export default function PaymentConditionsForm({ budgetData, onFormChange }: PaymentConditionsFormProps) {
+  // Garantir que budgetData nunca seja nulo
+  const safeBudgetData = budgetData || {};
   return (
     <Card className="bg-card/50 border-border backdrop-blur-sm">
       <CardHeader>
@@ -23,7 +26,7 @@ export default function PaymentConditionsForm({ formData, onFormChange }: Paymen
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label>Método de Pagamento</Label>
-          <Select onValueChange={(v) => onFormChange('paymentMethod', v)} value={formData.paymentMethod || 'vista'}>
+          <Select onValueChange={(v) => onFormChange('paymentMethod', v)} value={safeBudgetData.paymentMethod || 'vista'}>
             <SelectTrigger className="bg-background border-border text-foreground">
               <SelectValue />
             </SelectTrigger>
@@ -36,7 +39,7 @@ export default function PaymentConditionsForm({ formData, onFormChange }: Paymen
         </div>
 
         <AnimatePresence>
-          {formData.paymentMethod === 'cartao' && (
+          {safeBudgetData.paymentMethod === 'cartao' && (
             <motion.div 
               initial={{ opacity: 0, height: 0 }} 
               animate={{ opacity: 1, height: 'auto' }} 
@@ -49,7 +52,7 @@ export default function PaymentConditionsForm({ formData, onFormChange }: Paymen
                   <Input 
                     id="cardInstallments" 
                     type="number" 
-                    value={formData.cardInstallments || 12} 
+                    value={safeBudgetData.cardInstallments || 12}
                     onChange={(e) => onFormChange('cardInstallments', parseInt(e.target.value) || 12)} 
                     className="bg-background border-border text-foreground" 
                   />
@@ -60,7 +63,7 @@ export default function PaymentConditionsForm({ formData, onFormChange }: Paymen
                     id="cardInterest" 
                     type="number" 
                     step="0.01" 
-                    value={formData.cardInterest || 1.99} 
+                    value={safeBudgetData.cardInterest || 1.99}
                     onChange={(e) => onFormChange('cardInterest', parseFloat(e.target.value) || 1.99)} 
                     className="bg-background border-border text-foreground" 
                   />
@@ -69,7 +72,7 @@ export default function PaymentConditionsForm({ formData, onFormChange }: Paymen
             </motion.div>
           )}
 
-          {formData.paymentMethod === 'financiamento' && (
+          {safeBudgetData.paymentMethod === 'financiamento' && (
             <motion.div 
               initial={{ opacity: 0, height: 0 }} 
               animate={{ opacity: 1, height: 'auto' }} 
@@ -82,7 +85,7 @@ export default function PaymentConditionsForm({ formData, onFormChange }: Paymen
                   <Input 
                     id="financingInstallments" 
                     type="number" 
-                    value={formData.financingInstallments || 60} 
+                    value={safeBudgetData.financingInstallments || 60}
                     onChange={(e) => onFormChange('financingInstallments', parseInt(e.target.value) || 60)} 
                     className="bg-background border-border text-foreground" 
                   />
@@ -93,7 +96,7 @@ export default function PaymentConditionsForm({ formData, onFormChange }: Paymen
                     id="financingInterest" 
                     type="number" 
                     step="0.01" 
-                    value={formData.financingInterest || 1.49} 
+                    value={safeBudgetData.financingInterest || 1.49}
                     onChange={(e) => onFormChange('financingInterest', parseFloat(e.target.value) || 1.49)} 
                     className="bg-background border-border text-foreground" 
                   />
