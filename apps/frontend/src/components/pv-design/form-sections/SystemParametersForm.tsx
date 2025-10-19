@@ -51,6 +51,23 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ systemData,
   // Guard para prevenir múltiplas execuções do auto-select
   // CORREÇÃO DEFINITIVA: Previne loop infinito ao entrar na Step 4
   const hasAutoSelected = useRef(false);
+  
+  // Contador para rastrear renders
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  
+  // Memoizar callbacks para evitar recriação e loops infinitos
+  const handleInvertersChange = useCallback((inverters: any[]) => {
+    onFormChange('selectedInverters', inverters);
+  }, [onFormChange]);
+  
+  const handleTotalPowerChange = useCallback((totalPower: number) => {
+    onFormChange('potenciaInversorTotal', totalPower);
+  }, [onFormChange]);
+  
+  const handleTotalMpptChannelsChange = useCallback((totalChannels: number) => {
+    onFormChange('totalMpptChannels', totalChannels);
+  }, [onFormChange]);
 
   // Equipment data
   const { data: moduleManufacturers } = useQuery({
@@ -113,6 +130,8 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ systemData,
         fabricanteModuloNome: legacyModule.fabricante,
         modeloModulo: legacyModule.modelo
       });
+    } else {
+      console.log('[SystemParametersForm] handleModuleChange: módulo não encontrado', { moduleId });
     }
   }, [solarModules, onFormChange]);
 
@@ -129,9 +148,11 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ systemData,
   }, [refetchModules, handleModuleChange]);
 
   // Auto-select module quando há dados legados mas sem ID
-  // CORREÇÃO DEFINITIVA: useLayoutEffect + useRef guard para prevenir loop infinito
-  // Executa ANTES do paint do navegador e SOMENTE UMA VEZ
+  // CORREÇÃO DEFINITIVA: useRef + setTimeout para prevenir loop infinito
+  // Executa SOMENTE UMA VEZ quando os dados necessários estão disponíveis
   useLayoutEffect(() => {
+    
+    
     // Guard: prevenir múltiplas execuções
     if (hasAutoSelected.current) {
       return;
@@ -163,16 +184,33 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ systemData,
     }
 
     // Se encontrou um módulo, auto-preenche (batch update)
-    if (moduleByModel) {
-      handleModuleChange(moduleByModel.id);
+    if (moduleByModel) { 
+      const legacyModule = mapSolarModuleToLegacy(moduleByModel);
+      
+      // CORREÇÃO: Usar setTimeout para quebrar o ciclo síncrono de atualizações
+      setTimeout(() => {
+        // Batch update: uma única chamada com todos os dados do módulo
+        onFormChange('moduleData', {
+          moduloSelecionado: moduleByModel.id,
+          potenciaModulo: legacyModule.potenciaNominal,
+          eficienciaModulo: legacyModule.eficiencia,
+          tensaoModulo: legacyModule.voc,
+          correnteModulo: legacyModule.impp,
+          fabricanteModuloNome: legacyModule.fabricante,
+          modeloModulo: legacyModule.modelo
+        });
+      }, 0);
+      
       hasAutoSelected.current = true; // Marcar como executado para prevenir loops
+    } else {
+      console.log('[SystemParametersForm] useLayoutEffect: nenhum módulo encontrado');
     }
   }, [
     systemData.moduloSelecionado,
     systemData.modeloModulo,
     systemData.fabricanteModuloNome,
-    // REMOVIDO: solarModules das dependências para evitar loop
-    handleModuleChange
+    solarModules.length, // Usar apenas o length em vez de todo o array
+    onFormChange
   ]);
   return (
     <TooltipProvider>
@@ -269,9 +307,9 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ systemData,
             {/* Configuração de Inversores */}
             <MultipleInvertersSelector
               selectedInverters={systemData.selectedInverters || []}
-              onInvertersChange={(inverters) => onFormChange('selectedInverters', inverters)}
-              onTotalPowerChange={(totalPower) => onFormChange('potenciaInversorTotal', totalPower)}
-              onTotalMpptChannelsChange={(totalChannels) => onFormChange('totalMpptChannels', totalChannels)}
+              onInvertersChange={handleInvertersChange}
+              onTotalPowerChange={handleTotalPowerChange}
+              onTotalMpptChannelsChange={handleTotalMpptChannelsChange}
             />
             
             {/* Perdas Específicas do Sistema */}

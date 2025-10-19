@@ -1,5 +1,5 @@
 // React & Next.js
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 
 // Bibliotecas externas
 import { motion, AnimatePresence } from 'framer-motion';
@@ -278,7 +278,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
                field === 'prazoFinanciamento') {
       updateBudgetData({ [field]: value });
     }
-    // Campos do sistema são tratados diretamente pelo SystemParametersForm
   };
 
   const validateStep = (step: number): boolean => {
@@ -296,10 +295,25 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         
         return hasCoordinates && hasValidIrradiation;
       case 4:
-        const hasModule = systemData?.selectedModuleId;
-        // Verificar tanto o formato novo (selectedInverters) quanto o legado (inversorSelecionado/inverters)
-        const hasInverter = systemData?.selectedInverters && systemData.selectedInverters.length > 0;
-        return !!(hasModule && hasInverter && (systemData?.potenciaModulo || 0) > 0 && (systemData?.eficienciaSistema || 0) > 0);
+        // Log detalhado para debug da validação do passo 4
+        const hasModule = !!systemData?.selectedModuleId;
+        const hasInverter = !!(systemData?.selectedInverters && systemData.selectedInverters.length > 0);
+        const hasValidPotencia = (systemData?.potenciaModulo || 0) > 0;
+        const hasValidEficiencia = (systemData?.eficienciaSistema || 0) > 0;
+        
+        console.log('[SolarSizingWizard] validateStep passo 4:', {
+          hasModule,
+          hasInverter,
+          hasValidPotencia,
+          hasValidEficiencia,
+          selectedModuleId: systemData?.selectedModuleId,
+          selectedInverters: systemData?.selectedInverters,
+          potenciaModulo: systemData?.potenciaModulo,
+          eficienciaSistema: systemData?.eficienciaSistema,
+          moduloSelecionado: systemData?.moduloSelecionado
+        });
+        
+        return !!(hasModule && hasInverter && hasValidPotencia && hasValidEficiencia);
       case 5:
         // Águas de telhado é opcional, sempre válido
         return true;
@@ -369,6 +383,29 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   const handleStepClick = (stepNumber: number) => {
     goToStep(stepNumber);
   };
+
+  // Memoizar handleSystemFormChange para evitar recriação a cada render
+  // CORREÇÃO DEFINITIVA: Suporte a batch update para prevenir múltiplos re-renders
+  const handleSystemFormChange = useCallback((field: string, value: any) => {
+    console.log('[SolarSizingWizard] handleSystemFormChange chamado', { field, value });
+    if (field === 'moduleData') {
+      // Batch update: atualizar múltiplos campos de uma vez (7 campos → 1 atualização)
+      console.log('[SolarSizingWizard] handleSystemFormChange: batch update', value);
+      
+      // CORREÇÃO: Garantir que selectedModuleId seja definido corretamente
+      const moduleData = {
+        ...value,
+        selectedModuleId: value.moduloSelecionado // Garantir que selectedModuleId seja atualizado
+      };
+      
+      console.log('[SolarSizingWizard] handleSystemFormChange: moduleData corrigido', moduleData);
+      updateSystemData(moduleData);
+    } else {
+      // Update individual de campo
+      console.log('[SolarSizingWizard] handleSystemFormChange: individual update', { [field]: value });
+      updateSystemData({ [field]: value });
+    }
+  }, [updateSystemData]);
 
   const handleCalculate = async () => {
     // Usar a ação do store para definir estado de cálculo
@@ -669,12 +706,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         );
 
       case 'system':
-        // Função wrapper para converter o formato do onFormChange
-        const handleSystemFormChange = (field: string, value: any) => {
-          console.log(`[DEBUG] SystemFormChange: ${field} = ${JSON.stringify(value)}`);
-          updateSystemData({ [field]: value });
-        };
-        
         return (
           <div className="space-y-6">
             <SystemParametersForm
