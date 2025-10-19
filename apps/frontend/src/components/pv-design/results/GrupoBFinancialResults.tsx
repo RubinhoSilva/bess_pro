@@ -1,59 +1,128 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useGrupoBFinancialCalculation } from '@/hooks/financial-calculation-hooks';
 import { convertToGrupoBInput } from '@/lib/financial-utils';
 import { ResultadosCodigoB, isResultadosCodigoB, objectSnakeToCamel, GrupoBConfig } from '@bess-pro/shared';
+import { GrupoBAdapter, IGrupoBData } from '@/types/adapters/grupo-b-adapter';
 import toast from 'react-hot-toast';
 
 /**
  * Componente para exibir resultados financeiros do Grupo B
  * @description Renderiza todos os dados financeiros especializados para consumidores do Grupo B
- * @param calculationData Dados de cálculo para o Grupo B
- * @param config Configurações do projeto
  */
-interface CalculationData {
-  investimentoInicial: number;
-  geracaoMensal: number[];
-  consumoMensal: number[];
-}
-
 interface GrupoBFinancialResultsProps {
-  calculationData: CalculationData;
-  config: GrupoBConfig;
+  data: IGrupoBData;
 }
 
-const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ calculationData, config }) => {
+const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data }) => {
+  console.log('[GrupoBFinancialResults] Dados recebidos:', data);
+  
+  // Validar dados
+  const validation = GrupoBAdapter.validateGrupoBData(data);
+  if (!validation.isValid) {
+    console.error('[GrupoBFinancialResults] Dados inválidos:', validation.errors);
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-red-500" />
+            <p className="text-muted-foreground">Dados inválidos para cálculo financeiro</p>
+            <ul className="text-sm text-red-500 mt-2">
+              {validation.errors.map((error, index) => (
+                <li key={index}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Memoizar objeto de dados de cálculo para evitar re-renders
+  const calculationData = useMemo(() => ({
+    investimentoInicial: data.investimentoInicial,
+    geracaoMensal: data.geracaoMensal,
+    consumoMensal: data.consumoMensal
+  }), [data.investimentoInicial, data.geracaoMensal, data.consumoMensal]);
+  
+  // Memoizar objeto de configuração para evitar re-renders
+  const config = useMemo(() => ({
+    financeiros: {
+      capex: data.investimentoInicial,
+      anos: data.vidaUtil,
+      taxaDesconto: data.taxaDesconto,
+      inflacaoEnergia: data.inflacaoEnergia,
+      degradacao: data.degradacaoAnual,
+      salvagePct: data.valorResidual,
+      omaFirstPct: data.custoOperacao,
+      omaInflacao: 0.04
+    },
+    tarifaBase: data.tarifaEnergiaB,
+    fioB: {
+      schedule: {
+        2025: data.custoFioB,
+        2026: data.custoFioB + 0.15,
+        2027: data.custoFioB + 0.30,
+        2028: data.custoFioB + 0.45,
+        2029: data.custoFioB + 0.45
+      },
+      baseYear: 2025
+    }
+  }), [
+    data.investimentoInicial,
+    data.vidaUtil,
+    data.taxaDesconto,
+    data.inflacaoEnergia,
+    data.degradacaoAnual,
+    data.valorResidual,
+    data.custoOperacao,
+    data.tarifaEnergiaB,
+    data.custoFioB
+  ]);
   const [financialResults, setFinancialResults] = useState<ResultadosCodigoB | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // useRef para evitar chamadas duplicadas à API
+  const isCalculatingRef = useRef(false);
   
   const grupoBCalculation = useGrupoBFinancialCalculation({
     onSuccess: (data) => {
       console.log(data);
       setFinancialResults(data);
       setIsLoading(false);
+      isCalculatingRef.current = false;
     },
     onError: (error) => {
       console.error('[GrupoBFinancialResults] Erro no cálculo:', error);
       toast.error('Erro ao calcular análise financeira do Grupo B');
       setIsLoading(false);
+      isCalculatingRef.current = false;
     }
   });
 
   // Fazer chamada API quando os dados de cálculo mudam
   useEffect(() => {
+    // Evitar chamadas duplicadas
+    if (isCalculatingRef.current) {
+      return;
+    }
+    
     if (calculationData && config) {
       setIsLoading(true);
+      isCalculatingRef.current = true;
       try {
         const input = convertToGrupoBInput(config, calculationData);
         grupoBCalculation.mutateAsync(input);
       } catch (error) {
         console.error('[GrupoBFinancialResults] Erro ao converter input:', error);
         setIsLoading(false);
+        isCalculatingRef.current = false;
       }
     }
-  }, [calculationData, config, grupoBCalculation.mutateAsync]);
+  }, [calculationData, config]); // Removido grupoBCalculation.mutateAsync das dependências
 
   const containerVariants = {
     hidden: { opacity: 0 },

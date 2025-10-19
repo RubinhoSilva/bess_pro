@@ -5,8 +5,6 @@ import { ProjectType, ProjectData, CreateProjectData } from '@/types/project';
 import { EnergyBillA, EnergyBillB } from '@/types/energy-bill-types';
 import { apiClient } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { SelectedInverter, SolarModule } from '@bess-pro/shared';
-import type { AguaTelhado, IRoofData } from '@bess-pro/shared';
 
 // Interfaces baseadas no documento de arquitetura
 export interface ICustomerData {
@@ -493,7 +491,43 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         
         updateResultsData: (data) => {
           set((state) => {
-            state.results = { ...state.results, ...data } as IResultsData;
+            // Verificar se há mudanças reais para evitar loops infinitos
+            let hasChanges = false;
+            
+            // Verificar mudanças em campos de nível superior
+            Object.keys(data).forEach(key => {
+              if (key !== 'calculationResults') {
+                const typedKey = key as keyof IResultsData;
+                if (JSON.stringify(state.results?.[typedKey]) !== JSON.stringify(data[typedKey])) {
+                  hasChanges = true;
+                }
+              }
+            });
+            
+            // Verificar mudanças em calculationResults
+            if (data.calculationResults) {
+              const currentCalcResults = state.results?.calculationResults || {};
+              const newCalcResults = { ...currentCalcResults, ...data.calculationResults };
+              
+              if (JSON.stringify(currentCalcResults) !== JSON.stringify(newCalcResults)) {
+                hasChanges = true;
+              }
+            }
+            
+            // Se não houver mudanças, não atualizar
+            if (!hasChanges) {
+              return;
+            }
+            
+            // Atualizar apenas se houver mudanças
+            state.results = {
+              ...state.results,
+              ...data,
+              calculationResults: data.calculationResults ? {
+                ...state.results?.calculationResults,
+                ...data.calculationResults
+              } : state.results?.calculationResults
+            } as IResultsData;
           });
         },
         
@@ -1054,7 +1088,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               // Atualizar dados dos resultados
               get().updateResultsData({
                 calculationResults: {
-                  ...state.results?.calculationResults,
                   financialResults: financialResult.data
                 }
               });

@@ -11,21 +11,67 @@ import toast from 'react-hot-toast';
 /**
  * Componente para exibir resultados financeiros do Grupo A
  * @description Renderiza todos os dados financeiros especializados para consumidores do Grupo A
- * @param calculationData Dados de cálculo para o Grupo A
- * @param config Configurações do projeto
  */
-interface CalculationData {
+interface GrupoAFinancialResultsProps {
   investimentoInicial: number;
   geracaoMensal: number[];
   consumoMensal: number[];
+  // Dados financeiros
+  tarifaEnergiaPontaA?: number;
+  tarifaEnergiaForaPontaA?: number;
+  tePontaA?: number;
+  teForaPontaA?: number;
+  vidaUtil?: number;
+  taxaDesconto?: number;
+  inflacaoEnergia?: number;
+  degradacaoAnual?: number;
+  custoOperacao?: number;
+  valorResidual?: number;
 }
 
-interface GrupoAFinancialResultsProps {
-  calculationData: CalculationData;
-  config: any;
-}
-
-const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ calculationData, config }) => {
+const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({
+  investimentoInicial,
+  geracaoMensal,
+  consumoMensal,
+  tarifaEnergiaPontaA = 0.95,
+  tarifaEnergiaForaPontaA = 0.65,
+  tePontaA = 0.60,
+  teForaPontaA = 0.40,
+  vidaUtil = 25,
+  taxaDesconto = 0.08,
+  inflacaoEnergia = 0.045,
+  degradacaoAnual = 0.005,
+  custoOperacao = 0.015,
+  valorResidual = 0.10
+}) => {
+  // Criar objeto de dados de cálculo a partir das props
+  const calculationData = {
+    investimentoInicial,
+    geracaoMensal,
+    consumoMensal
+  };
+  
+  // Criar objeto de configuração a partir das props
+  const config = {
+    financeiros: {
+      capex: investimentoInicial,
+      anos: vidaUtil,
+      taxaDesconto,
+      inflacaoEnergia,
+      degradacao: degradacaoAnual,
+      salvagePct: valorResidual,
+      omaFirstPct: custoOperacao,
+      omaInflacao: 0.04
+    },
+    tarifas: {
+      ponta: tarifaEnergiaPontaA,
+      foraPonta: tarifaEnergiaForaPontaA
+    },
+    te: {
+      ponta: tePontaA,
+      foraPonta: teForaPontaA
+    }
+  };
   const { isDark } = useTheme();
   const colors = getChartColors(isDark);
   const [financialResults, setFinancialResults] = useState<any>(null);

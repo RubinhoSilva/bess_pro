@@ -118,8 +118,8 @@ export const selectRoofDataComplete = (state: IProjectState) => {
   return {
     aguasTelhado: state.roof?.aguasTelhado || [],
     selectedInverters: (state.system?.selectedInverters || []).map(inv => ({
-      ...inv,
-      selectedAt: new Date()
+      ...inv
+      // Removido selectedAt: new Date() para evitar loop infinito
     })),
     location: {
       latitude: state.location?.location?.latitude,
@@ -154,8 +154,8 @@ export const selectRoofDataCompleteWithModule = (solarModules: any[]) => (state:
   return {
     aguasTelhado: state.roof?.aguasTelhado || [],
     selectedInverters: (state.system?.selectedInverters || []).map(inv => ({
-      ...inv,
-      selectedAt: new Date()
+      ...inv
+      // Removido selectedAt: new Date() para evitar loop infinito
     })),
     location: {
       latitude: state.location?.location?.latitude,

@@ -37,6 +37,9 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
   roofData,
   onRoofChange
 }) => {
+  // Log para debug - verificar se o componente está sendo montado
+  console.log('[WaterSelectionForm] Componente montado com roofData:', roofData);
+  
   // Callback para atualizar águas do telhado
   const onAguasChange = (aguas: any[]) => {
     onRoofChange('aguasTelhado', aguas);
@@ -234,6 +237,51 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
       console.log('Dimensioning Data for Calculation:', dimensioningData);
       const dados = await SolarSystemService.calculateAdvancedFromDimensioning(dimensioningData);
       
+      console.log('Resultado do cálculo:', dados);
+      
+      // Salvar geração mensal no store para uso posterior
+      // A API retorna geracaoMensalKwh como objeto, precisamos converter para array
+      let geracaoMensalArray: number[] = [];
+      const dadosAny = dados as any; // Type assertion para evitar erros de TypeScript
+      
+      if (dadosAny.geracaoMensalKwh && typeof dadosAny.geracaoMensalKwh === 'object') {
+        // Converter objeto {Jan: 74, Fev: 61, ...} para array [74, 61, ...]
+        const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        geracaoMensalArray = meses.map(mes => dadosAny.geracaoMensalKwh[mes] || 0);
+        console.log('[WaterSelectionForm] Geração mensal convertida de objeto para array:', geracaoMensalArray);
+      } else if (dadosAny.geracao_mensal && Array.isArray(dadosAny.geracao_mensal)) {
+        // Caso a API retorne como array (fallback)
+        geracaoMensalArray = dadosAny.geracao_mensal;
+        console.log('[WaterSelectionForm] Geração mensal já está como array:', geracaoMensalArray);
+      } else {
+        console.warn('[WaterSelectionForm] Dados de geração mensal não encontrados:', {
+          geracaoMensalKwh: dadosAny.geracaoMensalKwh,
+          geracao_mensal: dadosAny.geracao_mensal
+        });
+      }
+      
+      // Salvar no store se tivermos dados válidos
+      if (geracaoMensalArray.length > 0) {
+        // Obter a store para atualizar os resultados
+        const store = usePVDimensioningStore.getState();
+        console.log('[WaterSelectionForm] Estado atual da store antes de salvar:', store.results);
+        console.log('[WaterSelectionForm] Dados de geração mensal a serem salvos:', geracaoMensalArray);
+        
+        store.updateResultsData({
+          calculationResults: {
+            geracaoEstimadaMensal: geracaoMensalArray
+          }
+        });
+        
+        // Verificar se foi salvo corretamente
+        const updatedStore = usePVDimensioningStore.getState();
+        console.log('[WaterSelectionForm] Estado da store após salvar:', updatedStore.results);
+        console.log('[WaterSelectionForm] Geração mensal salva no store com sucesso!');
+      }
+      
+      // Obter a energia total anual do cálculo
+      const energiaTotal = (dados as any).energia_total_anual_kwh || (dados as any).energiaAnualKwh || 0;
+      console.log('Energia total anual:', energiaTotal);
         
       // Distribuir os resultados proporcionalmente entre todas as águas que têm módulos
       const finalAguas = roofData.aguasTelhado.map(a => {
@@ -241,10 +289,9 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         if (modulos > 0) {
           // Calcular proporção desta água no sistema total
           const proporcao = modulos / totalModulos;
-          // Usar energiaAnualKwh (camelCase) - campo correto retornado pelo adapter
-          const energiaTotal = (dados as any).energiaAnualKwh || 0;
           const geracaoProporcional = Math.round(energiaTotal * proporcao * 100) / 100;
           
+          console.log(`Água ${a.nome}: ${modulos} módulos, proporção ${proporcao}, geração ${geracaoProporcional}`);
           
           return {
             ...a,
@@ -263,6 +310,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
 
       onAguasChange(finalAguas);
     } catch (error) {
+      console.error('Erro no cálculo de geração:', error);
       
       // Remover estado de carregamento de TODAS as águas
       const finalAguas = roofData.aguasTelhado.map(a => ({ ...a, isCalculando: false }));
