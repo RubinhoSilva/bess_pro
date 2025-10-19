@@ -255,66 +255,19 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       updateCustomerData({ [field]: value });
     } else if (field === 'energyBills' || field === 'energyBillsA') {
       updateEnergyData({ [field]: value });
-    } else if (field.includes('latitude') || field.includes('longitude') || field.includes('irradiacao') ||
-               field.includes('fonteDados') || field.includes('inclinacao') || field.includes('azimute') ||
+    } else if (field.includes('latitude') || field.includes('longitude') ||
                field.includes('endereco') || field.includes('cidade') || field.includes('estado')) {
       
-      // Log para depurar o fluxo de dados
-      console.log(`[SolarSizingWizard] Atualizando locationData: ${field} =`, value);
+      // Para campos de localização aninhados, criar estrutura correta
+      updateLocationData({
+        location: { [field]: value } as any
+      });
       
-      // Mapear campos para a estrutura correta do locationData
-      let mappedData: any = {};
+    } else if (field.includes('irradiacao') || field.includes('fonteDados') ||
+               field.includes('inclinacao') || field.includes('azimute')) {
       
-      // Para campos de localização, precisamos mesclar com os dados existentes
-      // para não sobrescrever os valores anteriores
-      const currentLocation = locationData?.location || {};
-      
-      if (field === 'latitude') {
-        mappedData = {
-          location: {
-            ...currentLocation,
-            latitude: value
-          }
-        };
-      } else if (field === 'longitude') {
-        mappedData = {
-          location: {
-            ...currentLocation,
-            longitude: value
-          }
-        };
-      } else if (field === 'cidade') {
-        mappedData = {
-          location: {
-            ...currentLocation,
-            cidade: value
-          }
-        };
-      } else if (field === 'estado') {
-        mappedData = {
-          location: {
-            ...currentLocation,
-            estado: value
-          }
-        };
-      } else if (field === 'endereco') {
-        mappedData = {
-          location: {
-            ...currentLocation,
-            address: value
-          }
-        };
-      } else {
-        // Para outros campos (irradiacao, fonteDados, inclinacao, azimute)
-        mappedData = { [field]: value };
-      }
-      
-      updateLocationData(mappedData);
-    } else if (field.includes('modulo') || field.includes('inversor') || field.includes('potencia') ||
-               field.includes('eficiencia') || field.includes('perda') ||
-               field === 'fabricanteModulo' || field === 'moduloSelecionado' ||
-               field === 'vidaUtil' || field === 'degradacaoAnual') {
-      updateSystemData({ [field]: value });
+      // Para outros campos de localização, passar diretamente
+      updateLocationData({ [field]: value });
     } else if (field === 'aguasTelhado') {
       updateRoofData({ [field]: value });
     } else if (field.includes('custo') || field.includes('bdi') || field.includes('payment') ||
@@ -325,6 +278,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
                field === 'prazoFinanciamento') {
       updateBudgetData({ [field]: value });
     }
+    // Campos do sistema são tratados diretamente pelo SystemParametersForm
   };
 
   const validateStep = (step: number): boolean => {
@@ -339,14 +293,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         const hasCoordinates = !!locationData?.location?.latitude && !!locationData?.location?.longitude;
         const hasValidIrradiation = locationData?.irradiacaoMensal?.length === 12 &&
           locationData.irradiacaoMensal.some((value: number) => value > 0);
-        
-        // Logs para depurar a validação
-        console.log('[validateStep] Step 3 - locationData:', locationData);
-        console.log('[validateStep] Step 3 - hasCoordinates:', hasCoordinates);
-        console.log('[validateStep] Step 3 - hasValidIrradiation:', hasValidIrradiation);
-        console.log('[validateStep] Step 3 - latitude:', locationData?.location?.latitude);
-        console.log('[validateStep] Step 3 - longitude:', locationData?.location?.longitude);
-        console.log('[validateStep] Step 3 - irradiacaoMensal:', locationData?.irradiacaoMensal);
         
         return hasCoordinates && hasValidIrradiation;
       case 4:
@@ -723,17 +669,17 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         );
 
       case 'system':
+        // Função wrapper para converter o formato do onFormChange
+        const handleSystemFormChange = (field: string, value: any) => {
+          console.log(`[DEBUG] SystemFormChange: ${field} = ${JSON.stringify(value)}`);
+          updateSystemData({ [field]: value });
+        };
+        
         return (
           <div className="space-y-6">
             <SystemParametersForm
-              formData={{
-                ...currentDimensioning,
-                selectedInverters: (systemData?.selectedInverters || []).map(inv => ({
-                  ...inv,
-                  selectedAt: new Date()
-                }))
-              }}
-              onFormChange={handleFormChange}
+              systemData={systemData}
+              onFormChange={handleSystemFormChange}
             />
           </div>
         );

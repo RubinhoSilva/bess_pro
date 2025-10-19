@@ -79,14 +79,14 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
     queryFn: () => manufacturerService.getManufacturers({}),
     staleTime: 15 * 60 * 1000,
   });
-  // Calcular totais diretamente
-  const calculateTotalPower = (inverters: SharedSelectedInverter[]) => {
+  // Calcular totais diretamente - movido para fora do componente para evitar recriação
+  const calculateTotalPower = React.useCallback((inverters: SharedSelectedInverter[]) => {
     return inverters.reduce((total, selected) => total + (selected.inverter.power.ratedACPower * selected.quantity), 0);
-  };
+  }, []);
 
-  const calculateTotalMpptChannels = (inverters: SharedSelectedInverter[]) => {
+  const calculateTotalMpptChannels = React.useCallback((inverters: SharedSelectedInverter[]) => {
     return inverters.reduce((total, selected) => total + (selected.inverter.mppt.numberOfMppts * selected.quantity), 0);
-  };
+  }, []);
 
   const validateInverterSelection = (inverters: SharedSelectedInverter[]) => {
     const errors: string[] = [];
@@ -150,7 +150,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
     
     onTotalPowerChange(totalPower);
     onTotalMpptChannelsChange(totalMppt);
-  }, [selectedInverters, calculateTotalPower, calculateTotalMpptChannels, onTotalPowerChange, onTotalMpptChannelsChange]);
+  }, [selectedInverters, calculateTotalPower, calculateTotalMpptChannels]);
 
   const handleAddInverter = () => {
     if (!selectedInverterId || !selectedManufacturerId) return;
@@ -236,11 +236,11 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="glass">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5" />
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Zap className="w-5 h-5 text-yellow-400" />
               Configuração de Inversores
             </CardTitle>
             <Button
@@ -257,7 +257,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Seleção de novo inversor */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg bg-gray-50">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border border-border/50 rounded-lg bg-card/30">
             <div className="space-y-2">
               <Label>Fabricante</Label>
               <Select value={selectedManufacturerId} onValueChange={setSelectedManufacturerId}>
@@ -335,18 +335,18 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
           {/* Lista de inversores selecionados */}
           {selectedInverters.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-medium text-sm text-gray-700">Inversores Selecionados</h4>
+              <h4 className="font-medium text-sm text-foreground">Inversores Selecionados</h4>
               {selectedInverters.map((selectedInverter) => {
                 const inverter = selectedInverter.inverter;
                 return (
-                  <div key={inverter.id} className="flex items-center justify-between p-3 border rounded-lg bg-white">
+                  <div key={inverter.id} className="flex items-center justify-between p-3 border border-border/50 rounded-lg bg-background">
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
                         <div>
                           <p className="font-medium text-sm">
                             {inverter.manufacturer.name} {inverter.model}
                           </p>
-                          <div className="flex items-center gap-4 text-xs text-gray-600 mt-1">
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
                             <span>{(inverter.power.ratedACPower / 1000).toFixed(1)}kW</span>
                             <span className="flex items-center gap-1">
                               <Cpu className="w-3 h-3" />
@@ -378,7 +378,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
 
                     <div className="flex items-center gap-3">
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-gray-500 font-medium">Qtd</span>
+                        <span className="text-xs text-muted-foreground font-medium">Qtd</span>
                         <div className="flex items-center gap-1">
                           <Button
                             variant="outline"

@@ -55,12 +55,11 @@ export interface ILocationData {
   sombreamento?: number[];
 }
 
+import { SelectedInverter as SharedSelectedInverter } from '@bess-pro/shared';
+
 export interface ISystemData {
   selectedModuleId?: string;
-  selectedInverters?: Array<{
-    inverter: any;
-    quantity: number;
-  }>;
+  selectedInverters?: SharedSelectedInverter[];
   potenciaModulo?: number;
   numeroModulos?: number;
   eficienciaSistema?: number;
@@ -75,6 +74,14 @@ export interface ISystemData {
   moduloSelecionado?: string;
   vidaUtil?: number;
   degradacaoAnual?: number;
+  // Campos adicionais necessários para compatibilidade
+  eficienciaModulo?: number;
+  tensaoModulo?: number;
+  correnteModulo?: number;
+  fabricanteModuloNome?: string;
+  modeloModulo?: string;
+  potenciaInversorTotal?: number;
+  totalMpptChannels?: number;
 }
 
 export interface IBudgetData {
@@ -145,7 +152,7 @@ export interface IProjectState {
   customer: ICustomerData | null;
   energy: IEnergyData | null;
   location: ILocationData | null;
-  system: ISystemData | null;
+  system: ISystemData;
   roof: any;
   budget: IBudgetData | null;
   results: IResultsData | null;
@@ -247,7 +254,32 @@ const initialState: IProjectState = {
   },
   energy: null,
   location: null,
-  system: null,
+  system: {
+    selectedModuleId: '',
+    selectedInverters: [],
+    potenciaModulo: 550,
+    numeroModulos: 0,
+    eficienciaSistema: 85,
+    perdaSombreamento: 3,
+    perdaMismatch: 2,
+    perdaCabeamento: 2,
+    perdaSujeira: 5,
+    perdaInversor: 3,
+    perdaOutras: 0,
+    // Campos do SystemParametersForm
+    fabricanteModulo: '',
+    moduloSelecionado: '',
+    vidaUtil: 25,
+    degradacaoAnual: 0.5,
+    // Campos adicionais necessários para compatibilidade
+    eficienciaModulo: 0,
+    tensaoModulo: 0,
+    correnteModulo: 0,
+    fabricanteModuloNome: '',
+    modeloModulo: '',
+    potenciaInversorTotal: 0,
+    totalMpptChannels: 0
+  },
   roof: null,
   budget: null,
   results: null,
@@ -353,9 +385,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           }
         },
         
-        updateLocationData: (data) => {
-          console.log('[store] updateLocationData chamado com:', data);
-          
+        updateLocationData: (data) => {          
           set((state) => {
             // Se data contém um objeto location, precisamos mesclar corretamente
             if (data.location) {
@@ -375,7 +405,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           });
           
           // Validar passo atual
-          console.log('[store] Chamando validateCurrentStep após atualizar locationData');
           get().validateCurrentStep();
           
           // Auto-salvar se habilitado
@@ -386,7 +415,36 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         
         updateSystemData: (data) => {
           set((state) => {
-            state.system = { ...state.system, ...data } as ISystemData;
+            //  Isso garante que duas atualizações com os mesmos valores resultem em objetos idênticos, evitando re-renders desnecessários e loops infinitos!
+            // Manter valores padrão para campos não especificados. Por algum motivo sem eles ali, da erro de deep
+            const defaultSystemData = {
+              selectedModuleId: '',
+              selectedInverters: [],
+              potenciaModulo: 550,
+              numeroModulos: 0,
+              eficienciaSistema: 85,
+              perdaSombreamento: 3,
+              perdaMismatch: 2,
+              perdaCabeamento: 2,
+              perdaSujeira: 5,
+              perdaInversor: 3,
+              perdaOutras: 0,
+              fabricanteModulo: '',
+              moduloSelecionado: '',
+              vidaUtil: 25,
+              degradacaoAnual: 0.5,
+              eficienciaModulo: 0,
+              tensaoModulo: 0,
+              correnteModulo: 0,
+              fabricanteModuloNome: '',
+              modeloModulo: '',
+              potenciaInversorTotal: 0,
+              totalMpptChannels: 0
+            };
+            
+            const newSystemData = { ...defaultSystemData, ...state.system, ...data } as ISystemData;
+            
+            state.system = newSystemData;
             state.isDirty = true;
           });
           
@@ -441,9 +499,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           const step = state.currentStep;
           const errors: string[] = [];
           
-          console.log('[store] validateCurrentStep - step:', step);
-          console.log('[store] validateCurrentStep - locationData:', state.location);
-          
           switch (step) {
             case 1:
               if (!state.customer?.dimensioningName?.trim()) {
@@ -469,10 +524,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               break;
               
             case 3:
-              console.log('[store] validateCurrentStep - Step 3 - latitude:', state.location?.location?.latitude);
-              console.log('[store] validateCurrentStep - Step 3 - longitude:', state.location?.location?.longitude);
-              console.log('[store] validateCurrentStep - Step 3 - irradiacaoMensal:', state.location?.irradiacaoMensal);
-              
               if (!state.location?.location?.latitude || !state.location?.location?.longitude) {
                 errors.push('Coordenadas de localização são obrigatórias');
               }
@@ -521,10 +572,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               ? new Set(Array.from(state.completedSteps).concat([step]))
               : state.completedSteps;
           });
-          
-          console.log('[store] validateCurrentStep - errors:', errors);
-          console.log('[store] validateCurrentStep - isValid:', errors.length === 0);
-          console.log('[store] validateCurrentStep - canAdvance:', errors.length === 0 && step < 7);
           
           return errors.length === 0;
         },
@@ -654,7 +701,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
             }));
             
           } catch (error: any) {
-            console.error('Erro ao salvar dimensionamento:', error);
             set((state) => ({ ...state, isLoading: false }));
             
             toast.error(error.message || "Ocorreu um erro ao salvar o dimensionamento");
@@ -716,17 +762,29 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               
               // Etapa 4: Dados do sistema
               system: {
-                selectedModuleId: projectData.selectedModuleId,
-                selectedInverters: projectData.selectedInverters,
-                potenciaModulo: projectData.potenciaModulo,
-                numeroModulos: projectData.numeroModulos,
-                eficienciaSistema: projectData.eficienciaSistema,
-                perdaSombreamento: projectData.perdaSombreamento,
-                perdaMismatch: projectData.perdaMismatch,
-                perdaCabeamento: projectData.perdaCabeamento,
-                perdaSujeira: projectData.perdaSujeira,
-                perdaInversor: projectData.perdaInversor,
-                perdaOutras: projectData.perdaOutras
+                // Valores padrão
+                selectedModuleId: projectData.selectedModuleId || '',
+                selectedInverters: projectData.selectedInverters || [],
+                potenciaModulo: projectData.potenciaModulo || 550,
+                numeroModulos: projectData.numeroModulos || 0,
+                eficienciaSistema: projectData.eficienciaSistema || 85,
+                perdaSombreamento: projectData.perdaSombreamento || 3,
+                perdaMismatch: projectData.perdaMismatch || 2,
+                perdaCabeamento: projectData.perdaCabeamento || 2,
+                perdaSujeira: projectData.perdaSujeira || 5,
+                perdaInversor: projectData.perdaInversor || 3,
+                perdaOutras: projectData.perdaOutras || 0,
+                fabricanteModulo: '',
+                moduloSelecionado: '',
+                vidaUtil: 25,
+                degradacaoAnual: 0.5,
+                eficienciaModulo: 0,
+                tensaoModulo: 0,
+                correnteModulo: 0,
+                fabricanteModuloNome: '',
+                modeloModulo: '',
+                potenciaInversorTotal: 0,
+                totalMpptChannels: 0
               },
               
               // Etapa 5: Dados do telhado
@@ -787,7 +845,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
             toast.success("Dimensionamento carregado com sucesso");
             
           } catch (error: any) {
-            console.error('Erro ao carregar dimensionamento:', error);
             set((state) => ({ ...state, isLoading: false }));
             
             toast.error(error.message || "Ocorreu um erro ao carregar o dimensionamento");

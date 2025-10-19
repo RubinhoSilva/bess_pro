@@ -13,8 +13,7 @@ const LocationForm: React.FC<LocationFormProps> = ({ locationData, onFormChange 
   // Garantir que locationData nunca seja nulo
   const safeLocationData = locationData || {};
   
-  // Log para depurar o fluxo de dados
-  console.log('[LocationForm] Inicializando com locationData:', safeLocationData);
+  // TODO: REFACTOR Verificar para tipar melhor os dados recebidos do PVGIS e enviados
   const handlePVGISData = (data: {
     irradiacaoMensal: number[];
     latitude: number;

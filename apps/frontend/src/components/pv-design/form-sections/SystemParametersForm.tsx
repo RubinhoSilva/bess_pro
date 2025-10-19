@@ -1,48 +1,31 @@
-import React, { useState, useEffect } from 'react';
+// React/Next.js imports
+import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
+
+// External libraries
+import { useQuery } from '@tanstack/react-query';
+import { Settings, Info, Plus } from 'lucide-react';
+
+// Internal components
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Settings, Info, Plus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useQuery } from '@tanstack/react-query';
-import { moduleService } from '@/services/ModuleService';
-import { inverterService } from '@/services/InverterService';
-import { manufacturerService } from '@/services/ManufacturerService';
 import { MultipleInvertersSelector } from './MultipleInvertersSelector';
 import { AddSolarModuleModal } from '../modals/AddSolarModuleModal';
-import { AddInverterModal } from '../modals/AddInverterModal';
-import { SolarModule, Manufacturer, SelectedInverter as SharedSelectedInverter } from '@bess-pro/shared';
-// MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO
-// import MultipleRoofAreasForm from './MultipleRoofAreasForm';
-// import { AguaTelhado } from '@/contexts/DimensioningContext';
+
+// Services
+import { moduleService } from '@/services/ModuleService';
+import { manufacturerService } from '@/services/ManufacturerService';
+
+// Types
+import { SolarModule, Manufacturer } from '@bess-pro/shared';
+import { ISystemData } from '@/store/pv-dimensioning-store';
 
 interface SystemParametersFormProps {
-  formData: SystemFormData;
+  systemData: ISystemData;
   onFormChange: (field: string, value: any) => void;
-}
-
-interface SystemFormData {
-  fabricanteModulo?: string;
-  moduloSelecionado?: string;
-  potenciaModulo?: number;
-  eficienciaModulo?: number;
-  tensaoModulo?: number;
-  correnteModulo?: number;
-  fabricanteModuloNome?: string;
-  modeloModulo?: string;
-  selectedInverters?: SharedSelectedInverter[];
-  potenciaInversorTotal?: number;
-  totalMpptChannels?: number;
-  perdaSombreamento?: number;
-  perdaMismatch?: number;
-  perdaCabeamento?: number;
-  perdaSujeira?: number;
-  perdaOutras?: number;
-  vidaUtil?: number;
-  degradacaoAnual?: number;
-  [key: string]: any;
 }
 
 // Função de mapeamento para compatibilidade com código legado
@@ -55,7 +38,6 @@ const mapSolarModuleToLegacy = (module: SolarModule) => {
     impp: module.specifications.impp || 0,
     fabricante: module.manufacturer.name,
     modelo: module.model,
-    // Adicionar outras propriedades se necessário
     isc: module.specifications.isc,
     vmpp: module.specifications.vmpp || 0,
     numeroCelulas: module.specifications.numberOfCells || 0,
@@ -63,12 +45,13 @@ const mapSolarModuleToLegacy = (module: SolarModule) => {
   };
 };
 
-
-
-const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, onFormChange }) => {
+const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ systemData, onFormChange }) => {
   const [showModuleModal, setShowModuleModal] = useState(false);
-  const [showInverterModal, setShowInverterModal] = useState(false);
-  
+
+  // Guard para prevenir múltiplas execuções do auto-select
+  // CORREÇÃO DEFINITIVA: Previne loop infinito ao entrar na Step 4
+  const hasAutoSelected = useRef(false);
+
   // Equipment data
   const { data: moduleManufacturers } = useQuery({
     queryKey: ['manufacturers'],
@@ -83,111 +66,127 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
 
   const solarModules = solarModulesData?.modules || [];
   const moduleManufacturersList = moduleManufacturers?.manufacturers || [];
-  
-
-
-  // Get available modules based on selected manufacturer
-  const getAvailableModules = () => {
-    if (!formData.fabricanteModulo) return [];
+  // Get available modules based on selected manufacturer - memoized to prevent unnecessary recalculations
+  const availableModules = useMemo(() => {
+    if (!systemData.fabricanteModulo) return [];
     
-    const selectedManufacturer = moduleManufacturersList.find((m: Manufacturer) => m.id === formData.fabricanteModulo);
+    const selectedManufacturer = moduleManufacturersList.find((m: Manufacturer) => m.id === systemData.fabricanteModulo);
     
     if (!selectedManufacturer) return [];
     
     return solarModules.filter((module: SolarModule) => {
       return module.manufacturer.id === selectedManufacturer.id;
     });
-  };
+  }, [systemData.fabricanteModulo, moduleManufacturersList, solarModules]);
 
-  // Update module data when selection changes
-  const handleModuleChange = (moduleId: string) => {
+  // Calcular eficiência resultante de forma memoizada para evitar recálculos
+  const eficienciaResultante = useMemo(() => {
+    const totalPerdas = (systemData.perdaSombreamento ?? 3) +
+                       (systemData.perdaMismatch ?? 2) +
+                       (systemData.perdaCabeamento ?? 2) +
+                       (systemData.perdaSujeira ?? 5) +
+                       (systemData.perdaOutras ?? 0);
+    const eficiencia = Math.max(0, 100 - totalPerdas);
+    return `${eficiencia.toFixed(1)}%`;
+  }, [
+    systemData.perdaSombreamento,
+    systemData.perdaMismatch,
+    systemData.perdaCabeamento,
+    systemData.perdaSujeira,
+    systemData.perdaOutras
+  ]);
+
+  // Update module data when selection changes - wrapped in useCallback to prevent recreation
+  // CORREÇÃO DEFINITIVA: Batch update para evitar múltiplos re-renders (7 atualizações → 1 atualização)
+  const handleModuleChange = useCallback((moduleId: string) => {
     const selectedModule = solarModules.find((m: SolarModule) => m.id === moduleId);
     if (selectedModule) {
       const legacyModule = mapSolarModuleToLegacy(selectedModule);
-      onFormChange('moduloSelecionado', moduleId);
-      onFormChange('potenciaModulo', legacyModule.potenciaNominal);
-      onFormChange('eficienciaModulo', legacyModule.eficiencia);
-      onFormChange('tensaoModulo', legacyModule.voc);
-      onFormChange('correnteModulo', legacyModule.impp);
-      onFormChange('fabricanteModuloNome', legacyModule.fabricante);
-      onFormChange('modeloModulo', legacyModule.modelo);
+
+      // Batch update: uma única chamada com todos os dados do módulo
+      onFormChange('moduleData', {
+        moduloSelecionado: moduleId,
+        potenciaModulo: legacyModule.potenciaNominal,
+        eficienciaModulo: legacyModule.eficiencia,
+        tensaoModulo: legacyModule.voc,
+        correnteModulo: legacyModule.impp,
+        fabricanteModuloNome: legacyModule.fabricante,
+        modeloModulo: legacyModule.modelo
+      });
     }
-  };
+  }, [solarModules, onFormChange]);
 
 
-  const handleModuleAdded = () => {
+  const handleModuleAdded = useCallback(() => {
     refetchModules();
-  };
+  }, [refetchModules]);
 
-  const handleModuleSelected = (moduleId: string) => {
+  const handleModuleSelected = useCallback((moduleId: string) => {
     // Wait for refetch to complete, then select the module
     refetchModules().then(() => {
       handleModuleChange(moduleId);
     });
-  };
+  }, [refetchModules, handleModuleChange]);
 
-  // Verificar se o módulo selecionado existe nos módulos disponíveis
-  useEffect(() => {
-    if (formData.moduloSelecionado && solarModules.length > 0) {
-      const selectedModule = solarModules.find((m: SolarModule) => m.id === formData.moduloSelecionado);
-      if (!selectedModule) {
-        // Módulo selecionado não encontrado na lista
-      }
+  // Auto-select module quando há dados legados mas sem ID
+  // CORREÇÃO DEFINITIVA: useLayoutEffect + useRef guard para prevenir loop infinito
+  // Executa ANTES do paint do navegador e SOMENTE UMA VEZ
+  useLayoutEffect(() => {
+    // Guard: prevenir múltiplas execuções
+    if (hasAutoSelected.current) {
+      return;
     }
-    
-    // Tentar encontrar o módulo pelo nome do modelo se não tiver ID
-    if (!formData.moduloSelecionado && formData.modeloModulo && solarModules.length > 0) {
-      // Searching for module by model name using shared types
-      
-      // Primeiro tenta busca exata
-      let moduleByModel = solarModules.find((m: SolarModule) => 
-        m.model === formData.modeloModulo && 
-        m.manufacturer.name === formData.fabricanteModuloNome
+
+    // Guard: só executa se não tiver módulo selecionado mas tiver dados legados para restaurar
+    if (systemData.moduloSelecionado || !systemData.modeloModulo || solarModules.length === 0) {
+      return;
+    }
+
+    // Tentar encontrar o módulo pelo nome do modelo
+    // Primeiro tenta busca exata
+    let moduleByModel = solarModules.find((m: SolarModule) =>
+      m.model === systemData.modeloModulo &&
+      m.manufacturer.name === systemData.fabricanteModuloNome
+    );
+
+    // Se não encontrar, tenta busca parcial pelo modelo
+    if (!moduleByModel && systemData.modeloModulo) {
+      moduleByModel = solarModules.find((m: SolarModule) =>
+        m.model.includes(systemData.modeloModulo!) ||
+        systemData.modeloModulo!.includes(m.model)
       );
-      
-      // Se não encontrar, tenta busca parcial pelo modelo
-      if (!moduleByModel && formData.modeloModulo) {
-        moduleByModel = solarModules.find((m: SolarModule) => 
-          m.model.includes(formData.modeloModulo!) || 
-          formData.modeloModulo!.includes(m.model)
-        );
-      }
-      
-      // Se ainda não encontrar, pega o primeiro módulo do fabricante
-      if (!moduleByModel && formData.fabricanteModuloNome) {
-        moduleByModel = solarModules.find((m: SolarModule) => m.manufacturer.name === formData.fabricanteModuloNome);
-      }
-      
-      if (moduleByModel) {
-        const legacyModule = mapSolarModuleToLegacy(moduleByModel);
-        // Auto-preencher o ID do módulo
-        onFormChange('moduloSelecionado', moduleByModel.id);
-        // Também atualiza os dados do módulo
-        onFormChange('potenciaModulo', legacyModule.potenciaNominal);
-        onFormChange('eficienciaModulo', legacyModule.eficiencia);
-        onFormChange('tensaoModulo', legacyModule.voc);
-        onFormChange('correnteModulo', legacyModule.impp);
-      }
     }
-  }, [formData.moduloSelecionado, formData.modeloModulo, formData.fabricanteModuloNome, solarModules]);
 
+    // Se ainda não encontrar, pega o primeiro módulo do fabricante
+    if (!moduleByModel && systemData.fabricanteModuloNome) {
+      moduleByModel = solarModules.find((m: SolarModule) => m.manufacturer.name === systemData.fabricanteModuloNome);
+    }
 
-
+    // Se encontrou um módulo, auto-preenche (batch update)
+    if (moduleByModel) {
+      handleModuleChange(moduleByModel.id);
+      hasAutoSelected.current = true; // Marcar como executado para prevenir loops
+    }
+  }, [
+    systemData.moduloSelecionado,
+    systemData.modeloModulo,
+    systemData.fabricanteModuloNome,
+    // REMOVIDO: solarModules das dependências para evitar loop
+    handleModuleChange
+  ]);
   return (
     <TooltipProvider>
-      <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
+      <Card className="glass">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
-            <Settings className="w-5 h-5 text-purple-500" /> 
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Settings className="w-5 h-5 text-purple-400" />
             Parâmetros do Sistema
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-
-
           {/* Parâmetros Gerais do Sistema */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700">Parâmetros Gerais</h3>
+            <h3 className="text-lg font-semibold text-foreground">Parâmetros Gerais</h3>
             
             {/* Seleção de Equipamentos */}
             <div className="space-y-4 p-4 border border-border/50 rounded-lg bg-card/30">
@@ -206,14 +205,12 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
               </div>
               
               <div className="grid grid-cols-1 gap-4">
-                {/* Módulo Solar - ocupando largura total */}
                 <div className="space-y-3">
-                  {/* Fabricante e Módulo na mesma linha */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
                     <div className="space-y-2">
                       <Label htmlFor="fabricanteModulo">Fabricante do Módulo</Label>
-                      <Select 
-                        value={formData.fabricanteModulo || ''} 
+                      <Select
+                        value={systemData.fabricanteModulo || ''}
                         onValueChange={(value) => {
                           onFormChange('fabricanteModulo', value);
                           onFormChange('moduloSelecionado', ''); // Reset module selection
@@ -234,17 +231,17 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                     
                      <div className="space-y-2">
                        <Label htmlFor="moduloSelecionado">Módulo Solar</Label>
-                       <Select 
-                         value={formData.moduloSelecionado || ''} 
+                       <Select
+                         value={systemData.moduloSelecionado || ''}
                          onValueChange={handleModuleChange}
-                         disabled={!formData.fabricanteModulo}
+                         disabled={!systemData.fabricanteModulo}
                        >
                          <SelectTrigger>
                            <SelectValue placeholder="Selecione o módulo" />
                          </SelectTrigger>
                          <SelectContent>
-                           {getAvailableModules().length > 0 ? (
-                             getAvailableModules().map((module: SolarModule): JSX.Element => {
+                           {availableModules.length > 0 ? (
+                             availableModules.map((module: SolarModule): JSX.Element => {
                                const legacyModule = mapSolarModuleToLegacy(module);
                                return (
                                  <SelectItem key={module.id} value={module.id}>
@@ -254,8 +251,8 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                              })
                            ) : (
                              <div className="p-2 text-sm text-gray-500 text-center">
-                               {formData.fabricanteModulo 
-                                 ? 'Nenhum módulo encontrado para este fabricante' 
+                               {systemData.fabricanteModulo
+                                 ? 'Nenhum módulo encontrado para este fabricante'
                                  : 'Selecione um fabricante primeiro'
                                }
                              </div>
@@ -271,7 +268,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
             
             {/* Configuração de Inversores */}
             <MultipleInvertersSelector
-              selectedInverters={formData.selectedInverters || []}
+              selectedInverters={systemData.selectedInverters || []}
               onInvertersChange={(inverters) => onFormChange('selectedInverters', inverters)}
               onTotalPowerChange={(totalPower) => onFormChange('potenciaInversorTotal', totalPower)}
               onTotalMpptChannelsChange={(totalChannels) => onFormChange('totalMpptChannels', totalChannels)}
@@ -300,7 +297,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                     min="0"
                     max="30"
                     step="0.1"
-                    value={formData.perdaSombreamento !== undefined ? formData.perdaSombreamento : ''}
+                    value={systemData.perdaSombreamento !== undefined ? systemData.perdaSombreamento : ''}
                     onChange={(e) => {
                       const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
                       onFormChange('perdaSombreamento', isNaN(value) ? 0 : value);
@@ -317,7 +314,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                     min="0"
                     max="10"
                     step="0.1"
-                    value={formData.perdaMismatch !== undefined ? formData.perdaMismatch : ''}
+                    value={systemData.perdaMismatch !== undefined ? systemData.perdaMismatch : ''}
                     onChange={(e) => {
                       const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
                       onFormChange('perdaMismatch', isNaN(value) ? 0 : value);
@@ -334,7 +331,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                     min="0"
                     max="10"
                     step="0.1"
-                    value={formData.perdaCabeamento !== undefined ? formData.perdaCabeamento : ''}
+                    value={systemData.perdaCabeamento !== undefined ? systemData.perdaCabeamento : ''}
                     onChange={(e) => {
                       const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
                       onFormChange('perdaCabeamento', isNaN(value) ? 0 : value);
@@ -351,7 +348,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                     min="0"
                     max="20"
                     step="0.1"
-                    value={formData.perdaSujeira !== undefined ? formData.perdaSujeira : ''}
+                    value={systemData.perdaSujeira !== undefined ? systemData.perdaSujeira : ''}
                     onChange={(e) => {
                       const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
                       onFormChange('perdaSujeira', isNaN(value) ? 0 : value);
@@ -370,7 +367,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                     min="0"
                     max="15"
                     step="0.1"
-                    value={formData.perdaOutras !== undefined ? formData.perdaOutras : ''}
+                    value={systemData.perdaOutras !== undefined ? systemData.perdaOutras : ''}
                     onChange={(e) => {
                       const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
                       onFormChange('perdaOutras', isNaN(value) ? 0 : value);
@@ -384,15 +381,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Eficiência Resultante:</span>
                   <span className="font-medium text-foreground">
-                    {(() => {
-                      const totalPerdas = (formData.perdaSombreamento ?? 3) + 
-                                         (formData.perdaMismatch ?? 2) + 
-                                         (formData.perdaCabeamento ?? 2) + 
-                                         (formData.perdaSujeira ?? 5) + 
-                                         (formData.perdaOutras ?? 0);
-                      const eficiencia = Math.max(0, 100 - totalPerdas);
-                      return `${eficiencia.toFixed(1)}%`;
-                    })()}
+                    {eficienciaResultante}
                   </span>
                 </div>
               </div>
@@ -404,7 +393,7 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                 <Input
                   id="vidaUtil"
                   type="number"
-                  value={formData.vidaUtil || 25}
+                  value={systemData.vidaUtil || 25}
                   onChange={(e) => onFormChange('vidaUtil', parseInt(e.target.value) || 25)}
                   placeholder="25"
                 />
@@ -416,26 +405,14 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
                   id="degradacaoAnual"
                   type="number"
                   step="0.1"
-                  value={formData.degradacaoAnual || 0.5}
+                  value={systemData.degradacaoAnual || 0.5}
                   onChange={(e) => onFormChange('degradacaoAnual', parseFloat(e.target.value) || 0.5)}
                   placeholder="0.5"
                 />
               </div>
-            </div>
-
-
+           </div>
           </div>
 
-          {/* MÚLTIPLAS ÁGUAS DE TELHADO - COMENTADO PARA USO FUTURO */}
-          {/* 
-          <div className="mt-6">
-            <MultipleRoofAreasForm
-              aguasTelhado={formData.aguasTelhado || []}
-              onAguasChange={(aguas: AguaTelhado[]) => onFormChange('aguasTelhado', aguas)}
-              potenciaModulo={formData.potenciaModulo || 550}
-            />
-          </div>
-          */}
         </CardContent>
       </Card>
 
@@ -447,14 +424,6 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ formData, o
         onModuleSelected={handleModuleSelected}
       />
 
-      <AddInverterModal
-        open={showInverterModal}
-        onOpenChange={setShowInverterModal}
-        onInverterAdded={() => {
-          // Refetch will happen automatically via useInverters hook
-        }}
-      />
-      
     </TooltipProvider>
   );
 };
