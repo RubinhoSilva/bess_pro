@@ -97,6 +97,7 @@ export * from './types/module';
 export * from './types/module/module.requests';
 export * from './types/inverter';
 export * from './types/manufacturer';
+export * from './types/roof-types';
 export type { 
   SystemCalculations as SystemSystemCalculations,
   FinancialCalculation as SystemFinancialCalculation,

@@ -109,6 +109,163 @@ export const selectLoadingStateShallow = (state: IProjectState) => ({
   isCalculating: state.isCalculating
 });
 
+// Seletor para IRoofData completo já formatado
+export const selectRoofDataComplete = (state: IProjectState) => {
+  // Obter módulos solares disponíveis (precisará ser injetado externamente ou via contexto)
+  // Por enquanto, vamos retornar undefined e o wizard continuará usando selectedModuleFull
+  // TODO: Implementar busca de módulos no store ou passar via parâmetro
+  
+  return {
+    aguasTelhado: state.roof?.aguasTelhado || [],
+    selectedInverters: (state.system?.selectedInverters || []).map(inv => ({
+      ...inv,
+      selectedAt: new Date()
+    })),
+    location: {
+      latitude: state.location?.location?.latitude,
+      longitude: state.location?.location?.longitude,
+      fonteDados: state.location?.fonteDados === 'manual' ? undefined : state.location?.fonteDados
+    },
+    system: {
+      potenciaModulo: state.system?.potenciaModulo || 550,
+      perdaSombreamento: state.system?.perdaSombreamento,
+      perdaMismatch: state.system?.perdaMismatch,
+      perdaCabeamento: state.system?.perdaCabeamento,
+      perdaSujeira: state.system?.perdaSujeira,
+      perdaInversor: state.system?.perdaInversor,
+      perdaOutras: state.system?.perdaOutras
+    },
+    energy: {
+      consumoAnualTotal: state.energy?.energyBills?.reduce((acc: number, bill: any) => {
+        return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
+      }, 0) || 0
+    },
+    selectedModule: undefined // O selectedModuleFull será injetado no wizard
+  };
+};
+
+// Seletor que aceita módulos externos para selectedModule
+export const selectRoofDataCompleteWithModule = (solarModules: any[]) => (state: IProjectState) => {
+  const moduleId = state.system?.selectedModuleId;
+  const selectedModule = moduleId && solarModules.length > 0
+    ? solarModules.find((m: any) => m.id === moduleId)
+    : undefined;
+
+  return {
+    aguasTelhado: state.roof?.aguasTelhado || [],
+    selectedInverters: (state.system?.selectedInverters || []).map(inv => ({
+      ...inv,
+      selectedAt: new Date()
+    })),
+    location: {
+      latitude: state.location?.location?.latitude,
+      longitude: state.location?.location?.longitude,
+      fonteDados: state.location?.fonteDados === 'manual' ? undefined : state.location?.fonteDados
+    },
+    system: {
+      potenciaModulo: state.system?.potenciaModulo || 550,
+      perdaSombreamento: state.system?.perdaSombreamento,
+      perdaMismatch: state.system?.perdaMismatch,
+      perdaCabeamento: state.system?.perdaCabeamento,
+      perdaSujeira: state.system?.perdaSujeira,
+      perdaInversor: state.system?.perdaInversor,
+      perdaOutras: state.system?.perdaOutras
+    },
+    energy: {
+      consumoAnualTotal: state.energy?.energyBills?.reduce((acc: number, bill: any) => {
+        return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
+      }, 0) || 0
+    },
+    selectedModule
+  };
+};
+
+// Seletor que aceita módulo externo para dimensioningData
+export const selectDimensioningDataWithModule = (selectedModule: any) => (state: IProjectState) => {
+  // Preparar dados do inversor para incluir em cada água
+  const selectedInverters = state.system?.selectedInverters || [];
+  const inverterData = selectedInverters.length > 0 ? {
+    fabricante: selectedInverters[0].inverter.manufacturer.name || 'Desconhecido',
+    modelo: selectedInverters[0].inverter.model || 'Modelo',
+    potencia_saida_ca_w: selectedInverters[0].inverter.power.ratedACPower || 0,
+    tipo_rede: selectedInverters[0].inverter.electrical.gridType || 'Desconhecido',
+    potencia_fv_max_w: selectedInverters[0].inverter.power.maxPVPower || 0,
+    tensao_cc_max_v: selectedInverters[0].inverter.power.maxDCVoltage || 0,
+    numero_mppt: selectedInverters[0].inverter.mppt.numberOfMppts || 1,
+    strings_por_mppt: selectedInverters[0].inverter.mppt.stringsPerMppt || 1,
+    eficiencia_max: selectedInverters[0].inverter.electrical.maxEfficiency || 0,
+    efficiency_dc_ac: ((selectedInverters[0].inverter.electrical.maxEfficiency || 0) / 100),
+    corrente_entrada_max_a: selectedInverters[0].inverter.power.maxInputCurrent || 0,
+    potencia_aparente_max_va: selectedInverters[0].inverter.power.maxApparentPower || 0,
+    // Parâmetros Sandia (se disponíveis no tipo compartilhado)
+    vdco: undefined, // Não disponível no tipo compartilhado atualmente
+    pso: undefined,
+    c0: undefined,
+    c1: undefined,
+    c2: undefined,
+    c3: undefined,
+    pnt: undefined
+  } : undefined;
+
+  const aguasTelhado = state.roof?.aguasTelhado || [];
+
+  return {
+    latitude: state.location?.location?.latitude,
+    longitude: state.location?.location?.longitude,
+    fonteDados: state.location?.fonteDados,
+    aguasTelhado: aguasTelhado.map((a: any) => ({
+      id: a.id,
+      nome: a.nome,
+      orientacao: a.orientacao,
+      inclinacao: a.inclinacao,
+      numeroModulos: a.numeroModulos || 0,
+      sombreamentoParcial: a.sombreamentoParcial || 0,
+      inversorId: a.inversorId,
+      mpptNumero: a.mpptNumero,
+      inversor: inverterData
+    })),
+    potenciaModulo: selectedModule ? selectedModule.nominalPower : state.system?.potenciaModulo,
+    energyBills: state.energy?.energyBills || [{
+      consumoMensal: [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500] // 6000 kWh/ano padrão
+    }],
+    selectedModules: selectedModule ? [({
+      fabricante: selectedModule.manufacturer.name,
+      modelo: selectedModule.model,
+      potencia_nominal_w: selectedModule.nominalPower,
+      largura_mm: selectedModule.dimensions.widthMm,
+      altura_mm: selectedModule.dimensions.heightMm,
+      peso_kg: selectedModule.dimensions.weightKg,
+      vmpp: selectedModule.specifications.vmpp,
+      impp: selectedModule.specifications.impp,
+      voc_stc: selectedModule.specifications.voc,
+      isc_stc: selectedModule.specifications.isc,
+      eficiencia: selectedModule.specifications.efficiency,
+      temp_coef_pmax: selectedModule.parameters.temperature.tempCoeffPmax,
+      alpha_sc: selectedModule.parameters.temperature.tempCoeffPmax / 100,
+      beta_oc: selectedModule.parameters.temperature.tempCoeffVoc / 100,
+      gamma_r: selectedModule.parameters.temperature.tempCoeffIsc / 100,
+      cells_in_series: selectedModule.specifications.numberOfCells,
+      a_ref: selectedModule.parameters.diode.aRef,
+      il_ref: selectedModule.parameters.diode.iLRef,
+      io_ref: selectedModule.parameters.diode.iORef,
+      rs: selectedModule.parameters.diode.rS,
+      rsh_ref: selectedModule.parameters.diode.rShRef,
+      material: selectedModule.parameters.spectral.material,
+      technology: selectedModule.specifications.technology
+    })] : [],
+    modelo_decomposicao: 'louche',
+    modelo_transposicao: 'perez',
+    perdas_sistema: ((state.system?.perdaSombreamento || 3) + (state.system?.perdaMismatch || 2) + (state.system?.perdaCabeamento || 2) + (state.system?.perdaSujeira || 5) + (state.system?.perdaInversor || 3) + (state.system?.perdaOutras || 0)),
+    fator_seguranca: 1.1,
+    perdaSombreamento: state.system?.perdaSombreamento,
+    perdaMismatch: state.system?.perdaMismatch,
+    perdaCabeamento: state.system?.perdaCabeamento,
+    perdaSujeira: state.system?.perdaSujeira,
+    perdaInversor: state.system?.perdaInversor,
+    perdaOutras: state.system?.perdaOutras
+  };
+};
+
 // Função auxiliar para criar seletores com shallow comparison
 export const createShallowSelector = <T>(selector: (state: IProjectState) => T) =>
   (state: IProjectState) => selector(state);
@@ -132,3 +289,23 @@ export const selectLocationAndSystem = createShallowSelector((state: IProjectSta
   system: state.system,
   isValid: state.isValid
 }));
+
+// Seletor para formatar inversores para cálculos MPPT
+export const selectInvertersForMPPT = (state: IProjectState) => {
+  const selectedInverters = state.system?.selectedInverters || [];
+  
+  return selectedInverters.map(inv => ({
+    id: inv.inverter.id,
+    fabricante: inv.inverter.manufacturer.name || 'Desconhecido',
+    modelo: inv.inverter.model || 'Modelo',
+    potenciaSaidaCA: inv.inverter.power.ratedACPower || 0,
+    potenciaFvMax: inv.inverter.power.maxPVPower || 0,
+    tensaoCcMax: inv.inverter.power.maxDCVoltage || 0,
+    numeroMppt: inv.inverter.mppt.numberOfMppts || 1,
+    stringsPorMppt: inv.inverter.mppt.stringsPerMppt || 1,
+    correnteEntradaMax: inv.inverter.power.maxInputCurrent || 0,
+    faixaMpptMin: inv.inverter.mppt.mpptRange ? parseInt(inv.inverter.mppt.mpptRange.split('-')[0]) : 0,
+    faixaMpptMax: inv.inverter.mppt.mpptRange ? parseInt(inv.inverter.mppt.mpptRange.split('-')[1]) : 0,
+    tipoRede: inv.inverter.electrical.gridType || 'Desconhecido'
+  }));
+};

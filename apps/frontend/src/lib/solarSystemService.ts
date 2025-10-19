@@ -587,175 +587,28 @@ export class SolarSystemService {
 
   /**
    * Calcula sistema avançado a partir dos dados do dimensionamento
+   * Função otimizada - sem dados defaults, passa os dados diretamente para a API
    */
   static async calculateAdvancedFromDimensioning(dimensioningData: any): Promise<AdvancedModuleCalculationResult> {
-    // Calcular consumo anual
-    const consumoAnual = dimensioningData.energyBills?.reduce((total: number, bill: any) => {
-      return total + bill.consumoMensal?.reduce((sum: number, consumo: number) => sum + consumo, 0) || 0;
-    }, 0) || 0;
-
-    // Preparar dados do módulo
+    
+    // Extrair dados diretamente sem defaults
     const moduloSelecionado = dimensioningData.selectedModules?.[0];
     const inversorSelecionado = dimensioningData.inverters?.[0];
+    
+    // Calcular consumo anual a partir dos dados mensais
+    const consumoAnual = dimensioningData.energyBills?.[0]?.consumoMensal?.reduce((sum: number, consumo: number) => sum + consumo, 0) || 0;
 
-    console.log('🔍 [solarSystemService.calculateAdvancedFromDimensioning] moduloSelecionado RECEBIDO:', JSON.stringify({
-      alphaSc: moduloSelecionado?.alphaSc,
-      betaOc: moduloSelecionado?.betaOc,
-      gammaR: moduloSelecionado?.gammaR,
-      alpha_sc: moduloSelecionado?.alpha_sc,
-      beta_oc: moduloSelecionado?.beta_oc,
-      gamma_r: moduloSelecionado?.gamma_r,
-      tempCoefPmax: moduloSelecionado?.tempCoefPmax,
-      tempCoefVoc: moduloSelecionado?.tempCoefVoc,
-      tempCoefIsc: moduloSelecionado?.tempCoefIsc
-    }, null, 2));
-
-    // Se não há módulo ou inversor selecionado, usar dados padrão
-    const modulo = moduloSelecionado ? {
-      fabricante: moduloSelecionado.fabricante || "Canadian Solar",
-      modelo: moduloSelecionado.modelo || "CS3W-540MS",
-      potencia_nominal_w: moduloSelecionado.potenciaNominal || moduloSelecionado.potencia_nominal_w || 540,
-      largura_mm: moduloSelecionado.larguraMm || moduloSelecionado.largura_mm || 2261,
-      altura_mm: moduloSelecionado.alturaMm || moduloSelecionado.altura_mm || 1134,
-      peso_kg: moduloSelecionado.pesoKg || moduloSelecionado.peso_kg,
-      vmpp: moduloSelecionado.vmpp,
-      impp: moduloSelecionado.impp,
-      voc_stc: moduloSelecionado.voc || moduloSelecionado.voc_stc,
-      isc_stc: moduloSelecionado.isc || moduloSelecionado.isc_stc,
-      eficiencia: moduloSelecionado.eficiencia,
-      temp_coef_pmax: moduloSelecionado.tempCoefPmax || moduloSelecionado.temp_coef_pmax,
-      // Coeficientes de temperatura Sandia
-      alpha_sc: moduloSelecionado.alpha_sc || moduloSelecionado.alphaSc || moduloSelecionado.tempCoefPmax,
-      beta_oc: moduloSelecionado.beta_oc || moduloSelecionado.betaOc || moduloSelecionado.tempCoefVoc,
-      gamma_r: moduloSelecionado.gamma_r || moduloSelecionado.gammaR || moduloSelecionado.tempCoefIsc,
-      // Parâmetros do modelo de diodo único
-      cells_in_series: moduloSelecionado.numeroCelulas || moduloSelecionado.cells_in_series,
-      a_ref: moduloSelecionado.aRef || moduloSelecionado.a_ref,
-      il_ref: moduloSelecionado.iLRef || moduloSelecionado.il_ref,
-      io_ref: moduloSelecionado.iORef || moduloSelecionado.io_ref,
-      rs: moduloSelecionado.rS || moduloSelecionado.rs,
-      rsh_ref: moduloSelecionado.rShRef || moduloSelecionado.rsh_ref,
-      // Parâmetros para modelo espectral
-      material: moduloSelecionado.material,
-      technology: moduloSelecionado.technology,
-      // Parâmetros SAPM térmicos
-      a0: moduloSelecionado.a0, a1: moduloSelecionado.a1, a2: moduloSelecionado.a2,
-      a3: moduloSelecionado.a3, a4: moduloSelecionado.a4,
-      b0: moduloSelecionado.b0, b1: moduloSelecionado.b1, b2: moduloSelecionado.b2,
-      b3: moduloSelecionado.b3, b4: moduloSelecionado.b4, b5: moduloSelecionado.b5,
-      dtc: moduloSelecionado.dtc
-    } : {
-      fabricante: "Canadian Solar",
-      modelo: "CS3W-540MS",
-      potencia_nominal_w: 540,
-      largura_mm: 2261, // Dimensões padronizadas
-      altura_mm: 1134,  // Dimensões padronizadas
-      vmpp: 41.4,
-      impp: 13.05,
-      eficiencia: 20.9,
-      temp_coef_pmax: -0.37,
-      peso_kg: 27.5,
-      // Parâmetros padrão para modelo espectral
-      material: "c-Si",
-      technology: "mono-Si",
-      // Parâmetros padrão do modelo de diodo único
-      a_ref: 1.8,
-      i_l_ref: 13.91,
-      i_o_ref: 3.712e-12,
-      r_s: 0.348,
-      r_sh_ref: 381.68,
-      // Coeficientes de temperatura padrão
-      alpha_sc: 0.0004,
-      beta_oc: -0.0028,
-      gamma_r: -0.0004,
-      // Parâmetros SAPM térmicos padrão
-      a0: -3.56, a1: -0.075, a2: 0.0, a3: 0.0, a4: 0.0,
-      b0: 0.0, b1: 0.0, b2: 0.0, b3: 0.0, b4: 0.0, b5: 0.0,
-      dtc: 3.0
-    };
-
-    console.log('✅ [solarSystemService.calculateAdvancedFromDimensioning] modulo CONSTRUÍDO:', JSON.stringify({
-      fabricante: modulo.fabricante,
-      modelo: modulo.modelo,
-      temp_coef_pmax: modulo.temp_coef_pmax,
-      alpha_sc: modulo.alpha_sc,
-      beta_oc: modulo.beta_oc,
-      gamma_r: modulo.gamma_r
-    }, null, 2));
-
-    const inversor = inversorSelecionado ? {
-      fabricante: inversorSelecionado.fabricante || "WEG",
-      modelo: inversorSelecionado.modelo || "SIW500H-M",
-      potencia_saida_ca_w: inversorSelecionado.potenciaFvMax || inversorSelecionado.potencia_saida_ca_w || inversorSelecionado.potenciaSaidaCA || 5000,
-      tipo_rede: inversorSelecionado.tipo_rede || inversorSelecionado.tipoRede || "Monofásico 220V",
-      potencia_fv_max_w: inversorSelecionado.potenciaFvMax,
-      tensao_cc_max_v: inversorSelecionado.tensaoCcMax,
-      numero_mppt: inversorSelecionado.numeroMppt,
-      strings_por_mppt: inversorSelecionado.stringsPorMppt,
-      eficiencia_max: inversorSelecionado.eficienciaMax,
-      // Parâmetros Sandia (usar valores do inversor se disponíveis)
-      vdco: inversorSelecionado.vdco,
-      pso: inversorSelecionado.pso,
-      c0: inversorSelecionado.c0,
-      c1: inversorSelecionado.c1,
-      c2: inversorSelecionado.c2,
-      c3: inversorSelecionado.c3,
-      pnt: inversorSelecionado.pnt
-    } : {
-      fabricante: "WEG",
-      modelo: "SIW500H-M",
-      potencia_saida_ca_w: 5000,
-      tipo_rede: "Monofásico 220V",
-      potencia_fv_max_w: 7500,
-      tensao_cc_max_v: 600,
-      numero_mppt: 2,
-      strings_por_mppt: 2,
-      eficiencia_max: 97.6,
-      // Parâmetros Sandia padrão para fallback
-      vdco: 480,
-      pso: 25,
-      c0: -0.000008,
-      c1: -0.000120,
-      c2: 0.001400,
-      c3: -0.020000,
-      pnt: 0.02
-    };
-
-    // ✅ PROCESSAR MÚLTIPLAS ÁGUAS DE TELHADO
-
-
-    // Validar e clampar tilt e azimuth apenas se não houver múltiplas águas
-    let tiltValue, azimuthValue;
-    if (dimensioningData.aguasTelhado && dimensioningData.aguasTelhado.length > 1) {
-
-      tiltValue = 20;
-      azimuthValue = 180;
-    } else {
-      tiltValue = dimensioningData.inclinacao || 20;
-      azimuthValue = dimensioningData.orientacao || 180;
-    }
-
-    // IMPORTANTE: tilt deve estar entre 0 e 90, azimuth entre 0 e 360
-    const validatedTilt = Math.max(0, Math.min(90, tiltValue));
-    const validatedAzimuth = Math.max(0, Math.min(360, azimuthValue));
-
-    if (validatedTilt !== tiltValue) {
-
-    }
-    if (validatedAzimuth !== azimuthValue) {
-
-    }
-
+    // Montar parâmetros diretamente com os dados recebidos
     const params: MultiInverterCalculationParams = {
-      lat: dimensioningData.latitude || -15.7942,
-      lon: dimensioningData.longitude || -47.8822,
-      origem_dados: (dimensioningData.fonteDados || 'pvgis').toUpperCase(),
+      lat: dimensioningData.latitude,
+      lon: dimensioningData.longitude,
+      origem_dados: dimensioningData.fonteDados?.toUpperCase() || 'PVGIS',
       startyear: 2015,
       endyear: 2020,
-      modelo_decomposicao: 'louche',
-      modelo_transposicao: 'perez',
+      modelo_decomposicao: dimensioningData.modelo_decomposicao || 'louche',
+      modelo_transposicao: dimensioningData.modelo_transposicao || 'perez',
       consumo_anual_kwh: consumoAnual,
-      modulo,
+      modulo: moduloSelecionado,
       perdas: {
         sujeira: dimensioningData.perdaSujeira ?? 0,
         sombreamento: dimensioningData.perdaSombreamento ?? 0,
@@ -763,23 +616,11 @@ export class SolarSystemService {
         fiacao: dimensioningData.perdaCabeamento ?? 0,
         outras: dimensioningData.perdaOutras ?? 0
       },
-      // Removido fator_seguranca pois não existe no formato Python
-      num_modules: dimensioningData.num_modules, // Incluir num_modules se fornecido
-      // ✅ Incluir águas de telhado se existirem
+      num_modules: dimensioningData.num_modules,
       aguasTelhado: dimensioningData.aguasTelhado
     };
 
-    // ===== DEBUG: PERDAS CALCULADAS E ENVIADAS PARA PVLIB =====
-    const perdasTotal = (dimensioningData.perdaSombreamento ?? 3) + 
-                       (dimensioningData.perdaMismatch ?? 2) + 
-                       (dimensioningData.perdaCabeamento ?? 2) + 
-                       (dimensioningData.perdaSujeira ?? 5) + 
-                       (dimensioningData.perdaOutras ?? 0);
-
-
-
-
-    return this.calculateAdvancedModules(params, inversor);
+    return this.calculateAdvancedModules(params, inversorSelecionado);
   }
 
 /**

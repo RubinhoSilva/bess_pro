@@ -39,6 +39,7 @@ import {
   selectLocationData,
   selectSystemData,
   selectRoofData,
+  selectRoofDataCompleteWithModule,
   selectBudgetData,
   selectResultsData,
   selectLoadingState,
@@ -226,6 +227,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     staleTime: 10 * 60 * 1000,
   });
   const solarModules = solarModulesData?.modules || [];
+  const roofDataComplete = usePVDimensioningStore(selectRoofDataCompleteWithModule(solarModules));
 
   // Buscar módulo completo selecionado pelo ID
   const selectedModuleFull = useMemo(() => {
@@ -719,26 +721,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         return (
           <div className="space-y-6">
             <WaterSelectionForm
-              aguasTelhado={roofData?.aguasTelhado || []}
-              selectedInverters={(systemData?.selectedInverters || []).map(inv => ({
-                ...inv,
-                selectedAt: new Date()
-              }))}
-              onAguasChange={(aguas) => handleFormChange('aguasTelhado', aguas)}
-              latitude={locationData?.location?.latitude}
-              longitude={locationData?.location?.longitude}
-              potenciaModulo={systemData?.potenciaModulo || 550}
-              consumoAnualTotal={energyData?.energyBills?.reduce((acc: number, bill: any) => {
-                return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
-              }, 0) || 0}
-              fonteDados={locationData?.fonteDados === 'manual' ? undefined : locationData?.fonteDados}
-              perdaSombreamento={systemData?.perdaSombreamento}
-              perdaMismatch={systemData?.perdaMismatch}
-              perdaCabeamento={systemData?.perdaCabeamento}
-              perdaSujeira={systemData?.perdaSujeira}
-              perdaInversor={systemData?.perdaInversor}
-              perdaOutras={systemData?.perdaOutras}
-              selectedModule={selectedModuleFull}
+              roofData={roofDataComplete}
+              onRoofChange={(field, value) => handleFormChange(field, value)}
             />
           </div>
         );

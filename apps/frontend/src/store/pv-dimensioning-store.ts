@@ -5,6 +5,8 @@ import { ProjectType, ProjectData, CreateProjectData } from '@/types/project';
 import { EnergyBillA, EnergyBillB } from '@/types/energy-bill-types';
 import { apiClient } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { SelectedInverter, SolarModule } from '@bess-pro/shared';
+import type { AguaTelhado, IRoofData } from '@bess-pro/shared';
 
 // Interfaces baseadas no documento de arquitetura
 export interface ICustomerData {
@@ -115,6 +117,8 @@ export interface IResultsData {
     financialResults?: any;
   };
 }
+
+
 
 // Estado principal da store
 export interface IProjectState {

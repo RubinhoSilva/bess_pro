@@ -62,6 +62,8 @@ export type { GrupoConfig } from './grupo-configs';
 // Configurações financeiras padrão
 export * from '../config/financial';
 
+export type { AguaTelhado, IRoofData } from './roof-types';
+
 // =================================================================================
 // EXEMPLOS DE USO
 // =================================================================================
