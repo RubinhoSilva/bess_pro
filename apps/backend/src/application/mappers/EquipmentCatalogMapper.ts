@@ -193,7 +193,7 @@ export class EquipmentCatalogMapper {
       name: request.name,
       type: 'BOTH' as any, // Default para compatibilidade
       teamId: request.teamId,
-      isDefault: false, // Default para compatibilidade
+      isPublic: false, // Default para compatibilidade
       description: request.description,
       website: request.website,
       country: request.address?.country,
