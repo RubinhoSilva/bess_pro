@@ -1,5 +1,6 @@
 import { api } from './api';
 import { CalculationConstants } from '@/constants/CalculationConstants';
+import { usePVDimensioningStore } from '@/store/pv-dimensioning-store';
 
 export interface SolarSystemCalculationParams {
   consumoAnual?: number;
@@ -595,8 +596,42 @@ export class SolarSystemService {
     const moduloSelecionado = dimensioningData.selectedModules?.[0];
     const inversorSelecionado = dimensioningData.inverters?.[0];
     
+    // CORREÇÃO: Usar a store para calcular consumo baseado no grupo tarifário
+    const store = usePVDimensioningStore.getState();
+    let consumoMensal: number[] = [];
+    
+    // Verificar se há dados de consumo e calcular baseado no grupo tarifário
+    if (dimensioningData.energyBills && dimensioningData.energyBills.length > 0) {
+      // Grupo B: usar consumoMensal diretamente
+      consumoMensal = Array(12).fill(0);
+      dimensioningData.energyBills.forEach((bill: any) => {
+        if (bill.consumoMensal && Array.isArray(bill.consumoMensal)) {
+          for (let i = 0; i < 12; i++) {
+            consumoMensal[i] += bill.consumoMensal[i] || 0;
+          }
+        }
+      });
+    } else if (dimensioningData.energyBillsA && dimensioningData.energyBillsA.length > 0) {
+      // Grupo A: somar ponta + fora ponta para cada mês
+      consumoMensal = Array(12).fill(0);
+      dimensioningData.energyBillsA.forEach((bill: any) => {
+        if (bill.consumoMensalPonta && Array.isArray(bill.consumoMensalPonta) &&
+            bill.consumoMensalForaPonta && Array.isArray(bill.consumoMensalForaPonta)) {
+          for (let i = 0; i < 12; i++) {
+            consumoMensal[i] += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+          }
+        }
+      });
+    }
+    
     // Calcular consumo anual a partir dos dados mensais
-    const consumoAnual = dimensioningData.energyBills?.[0]?.consumoMensal?.reduce((sum: number, consumo: number) => sum + consumo, 0) || 0;
+    const consumoAnual = consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
+    
+    console.log('[SolarSystemService] calculateAdvancedFromDimensioning - consumo calculado:', {
+      grupoTarifario: store.customer?.grupoTarifario,
+      consumoMensal,
+      consumoAnual
+    });
 
     // Montar parâmetros diretamente com os dados recebidos
     const params: MultiInverterCalculationParams = {
@@ -672,8 +707,23 @@ export class SolarSystemService {
       
       const inversores = Array.from(inversoresMap.values());
       
-      // Converter consumo_anual_kwh para consumo_mensal_kwh (distribuir igualmente)
-      const consumoMensalKwh = Array(12).fill(Math.round((params.consumo_anual_kwh || 0) / 12));
+      // CORREÇÃO: Converter consumo_anual_kwh para consumo_mensal_kwh usando dados reais
+      // Primeiro, tentar obter os dados mensais reais da store
+      const store = usePVDimensioningStore.getState();
+      let consumoMensalKwh: number[] = [];
+      
+      // Tentar obter dados mensais da store
+      if (store.energy?.energyBills?.length || store.energy?.energyBillsA?.length) {
+        consumoMensalKwh = store.calcularConsumoMensal();
+      } else {
+        // Fallback: distribuir igualmente (mantendo compatibilidade)
+        consumoMensalKwh = Array(12).fill(Math.round((params.consumo_anual_kwh || 0) / 12));
+      }
+      
+      console.log('[SolarSystemService] _processRoofWatersForCalculation - consumo mensal:', {
+        grupoTarifario: store.customer?.grupoTarifario,
+        consumoMensalKwh
+      });
       
       const processedParams = {
         // ✅ Campos obrigatórios no formato Python
@@ -712,8 +762,22 @@ export class SolarSystemService {
       return processedParams;
     }
 
-    // Fallback para sistema único - converter para formato Python também
-    const consumoMensalKwh = Array(12).fill(Math.round((params.consumo_anual_kwh || 0) / 12));
+    // CORREÇÃO: Fallback para sistema único - usar dados reais quando possível
+    const store = usePVDimensioningStore.getState();
+    let consumoMensalKwh: number[] = [];
+    
+    // Tentar obter dados mensais da store
+    if (store.energy?.energyBills?.length || store.energy?.energyBillsA?.length) {
+      consumoMensalKwh = store.calcularConsumoMensal();
+    } else {
+      // Fallback: distribuir igualmente (mantendo compatibilidade)
+      consumoMensalKwh = Array(12).fill(Math.round((params.consumo_anual_kwh || 0) / 12));
+    }
+    
+    console.log('[SolarSystemService] fallback - consumo mensal:', {
+      grupoTarifario: store.customer?.grupoTarifario,
+      consumoMensalKwh
+    });
     
     return {
       lat: params.lat,

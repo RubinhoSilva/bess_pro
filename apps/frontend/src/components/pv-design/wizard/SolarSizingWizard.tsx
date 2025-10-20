@@ -21,11 +21,6 @@ import { PVResultsDashboard } from '../results/PVResultsDashboard';
 
 // Hooks
 import { useDimensioningOperations } from '@/hooks/dimensioning';
-import { useGrupoBFinancialCalculation } from '@/hooks/financial-calculation-hooks';
-import { useGrupoAFinancialCalculation } from '@/hooks/financial-calculation-hooks';
-
-// Utilitários
-import { convertToGrupoBInput } from '@/lib/financial-utils';
 
 // Serviços
 import { moduleService } from '@/services/ModuleService';
@@ -218,10 +213,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     prazoFinanciamento: budgetData?.prazoFinanciamento || 5,
   }), [customerData, locationData, systemData, roofData, energyData, budgetData]);
 
-  // Hooks para cálculos financeiros especializados
-  const grupoBCalculation = useGrupoBFinancialCalculation();
-  const grupoACalculation = useGrupoAFinancialCalculation();
-
   // Buscar módulos solares para obter dados completos
   const { data: solarModulesData } = useQuery({
     queryKey: ['modules'],
@@ -284,52 +275,14 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     }
   };
 
-  const validateStep = (step: number): boolean => {
-    switch (step) {
-      case 1:
-        return !!customerData?.dimensioningName?.trim() && !!customerData?.customer;
-      case 2:
-        return (energyData?.energyBills?.length || 0) > 0 &&
-          energyData?.energyBills?.some((bill: any) => bill.consumoMensal.some((consumo: number) => consumo > 0)) || false;
-      case 3:
-        // Validação mais rigorosa: deve ter coordenadas E dados de irradiação PVGIS
-        const hasCoordinates = !!locationData?.location?.latitude && !!locationData?.location?.longitude;
-        const hasValidIrradiation = locationData?.irradiacaoMensal?.length === 12 &&
-          locationData.irradiacaoMensal.some((value: number) => value > 0);
-        
-        return hasCoordinates && hasValidIrradiation;
-      case 4:
-        // Log detalhado para debug da validação do passo 4
-        const hasModule = !!systemData?.selectedModuleId;
-        const hasInverter = !!(systemData?.selectedInverters && systemData.selectedInverters.length > 0);
-        const hasValidPotencia = (systemData?.potenciaModulo || 0) > 0;
-        const hasValidEficiencia = (systemData?.eficienciaSistema || 0) > 0;
-        
-        console.log('[SolarSizingWizard] validateStep passo 4:', {
-          hasModule,
-          hasInverter,
-          hasValidPotencia,
-          hasValidEficiencia,
-          selectedModuleId: systemData?.selectedModuleId,
-          selectedInverters: systemData?.selectedInverters,
-          potenciaModulo: systemData?.potenciaModulo,
-          eficienciaSistema: systemData?.eficienciaSistema,
-          moduloSelecionado: systemData?.moduloSelecionado
-        });
-        
-        return !!(hasModule && hasInverter && hasValidPotencia && hasValidEficiencia);
-      case 5:
-        // Águas de telhado é opcional, sempre válido
-        return true;
-      case 6:
-        return totalInvestment > 0;
-      default:
-        return true;
-    }
-  };
 
   const handleNext = async () => {
-    if (!validateStep(navigationState.currentStep)) {
+    console.log('[SolarSizingWizard] handleNext chamado, passo atual:', navigationState.currentStep);
+    
+    // VALIDAÇÃO CENTRALIZADA: Usar apenas validateCurrentStep da store
+    const isValid = validateCurrentStep();
+    
+    if (!isValid) {
       let description = "Por favor, preencha todos os campos obrigatórios antes de continuar.";
 
       if (navigationState.currentStep === 3) {
@@ -348,9 +301,12 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
     // Auto-save progress - bloquear avanço se falhar
     if (customerData?.customer && customerData?.dimensioningName?.trim()) {
+      console.log('[SolarSizingWizard] Tentando salvar dimensioning...');
       try {
         await saveDimensioning();
+        console.log('[SolarSizingWizard] Dimensioning salvo com sucesso');
       } catch (error: any) {
+        console.error('[SolarSizingWizard] Erro ao salvar dimensioning:', error);
         let errorMessage = "Erro ao salvar o progresso.";
 
         if (error?.response?.status === 429) {
@@ -370,12 +326,17 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         // Bloquear navegação - não continuar
         return;
       }
+    } else {
+      console.log('[SolarSizingWizard] Pulando salvamento - dados do cliente incompletos');
     }
 
+    console.log('[SolarSizingWizard] Verificando passo atual para decidir ação:', navigationState.currentStep);
+    
     if (navigationState.currentStep === 6) {
       // Calculate results before going to step 7
       await handleCalculate();
     } else {
+      console.log('[SolarSizingWizard] Chamando nextStep()');
       nextStep();
     }
   };
@@ -685,25 +646,12 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
               </span>
             </div>
 
-            {/* Loading indicator durante cálculo financeiro */}
-            {(grupoBCalculation.isPending || grupoACalculation.isPending) && (
-              <div className="flex items-center gap-2 text-sm text-blue-600 order-4">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Calculando análise financeira...</span>
-              </div>
-            )}
-
             <Button
               onClick={handleNext}
-              disabled={!validateStep(navigationState.currentStep) || isSaving || loadingState.isCalculating || grupoBCalculation.isPending || grupoACalculation.isPending}
+              disabled={!navigationState.canAdvance || isSaving || loadingState.isCalculating}
               className="w-full sm:w-auto order-3 bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600"
             >
-              {loadingState.isCalculating || grupoBCalculation.isPending || grupoACalculation.isPending ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  {grupoBCalculation.isPending || grupoACalculation.isPending ? 'Calculando análise financeira...' : 'Calculando...'}
-                </div>
-              ) : isSaving ? (
+              {isSaving ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Salvando...

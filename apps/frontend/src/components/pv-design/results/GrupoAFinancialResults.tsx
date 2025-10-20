@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTheme, getChartColors } from '@/hooks/use-theme';
 import { useGrupoAFinancialCalculation } from '@/hooks/financial-calculation-hooks';
 import { convertToGrupoAInput } from '@/lib/financial-utils';
+import { GrupoAAdapter, IGrupoAData } from '@/types/adapters/grupo-a-adapter';
 import toast from 'react-hot-toast';
 
 /**
@@ -13,97 +15,116 @@ import toast from 'react-hot-toast';
  * @description Renderiza todos os dados financeiros especializados para consumidores do Grupo A
  */
 interface GrupoAFinancialResultsProps {
-  investimentoInicial: number;
-  geracaoMensal: number[];
-  consumoMensal: number[];
-  // Dados financeiros
-  tarifaEnergiaPontaA?: number;
-  tarifaEnergiaForaPontaA?: number;
-  tePontaA?: number;
-  teForaPontaA?: number;
-  vidaUtil?: number;
-  taxaDesconto?: number;
-  inflacaoEnergia?: number;
-  degradacaoAnual?: number;
-  custoOperacao?: number;
-  valorResidual?: number;
+  data: IGrupoAData;
 }
 
-const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({
-  investimentoInicial,
-  geracaoMensal,
-  consumoMensal,
-  tarifaEnergiaPontaA = 0.95,
-  tarifaEnergiaForaPontaA = 0.65,
-  tePontaA = 0.60,
-  teForaPontaA = 0.40,
-  vidaUtil = 25,
-  taxaDesconto = 0.08,
-  inflacaoEnergia = 0.045,
-  degradacaoAnual = 0.005,
-  custoOperacao = 0.015,
-  valorResidual = 0.10
-}) => {
-  // Criar objeto de dados de cálculo a partir das props
-  const calculationData = {
-    investimentoInicial,
-    geracaoMensal,
-    consumoMensal
-  };
+const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ data }) => {
+  console.log('[GrupoAFinancialResults] Dados recebidos:', data);
   
-  // Criar objeto de configuração a partir das props
-  const config = {
+  // Validar dados
+  const validation = GrupoAAdapter.validateGrupoAData(data);
+  if (!validation.isValid) {
+    console.error('[GrupoAFinancialResults] Dados inválidos:', validation.errors);
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-red-500" />
+            <p className="text-muted-foreground">Dados inválidos para cálculo financeiro</p>
+            <ul className="text-sm text-red-500 mt-2">
+              {validation.errors.map((error, index) => (
+                <li key={index}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Memoizar objeto de dados de cálculo para evitar re-renders
+  const calculationData = useMemo(() => ({
+    investimentoInicial: data.investimentoInicial,
+    geracaoMensal: data.geracaoMensal,
+    consumoMensal: data.consumoMensal
+  }), [data.investimentoInicial, data.geracaoMensal, data.consumoMensal]);
+  
+  // Memoizar objeto de configuração para evitar re-renders
+  const config = useMemo(() => ({
     financeiros: {
-      capex: investimentoInicial,
-      anos: vidaUtil,
-      taxaDesconto,
-      inflacaoEnergia,
-      degradacao: degradacaoAnual,
-      salvagePct: valorResidual,
-      omaFirstPct: custoOperacao,
+      capex: data.investimentoInicial,
+      anos: data.vidaUtil,
+      taxaDesconto: data.taxaDesconto,
+      inflacaoEnergia: data.inflacaoEnergia,
+      degradacao: data.degradacaoAnual,
+      salvagePct: data.valorResidual,
+      omaFirstPct: data.custoOperacao,
       omaInflacao: 0.04
     },
     tarifas: {
-      ponta: tarifaEnergiaPontaA,
-      foraPonta: tarifaEnergiaForaPontaA
+      ponta: data.tarifaEnergiaPontaA,
+      foraPonta: data.tarifaEnergiaForaPontaA
     },
     te: {
-      ponta: tePontaA,
-      foraPonta: teForaPontaA
+      ponta: data.tePontaA,
+      foraPonta: data.teForaPontaA
     }
-  };
+  }), [
+    data.investimentoInicial,
+    data.vidaUtil,
+    data.taxaDesconto,
+    data.inflacaoEnergia,
+    data.degradacaoAnual,
+    data.valorResidual,
+    data.custoOperacao,
+    data.tarifaEnergiaPontaA,
+    data.tarifaEnergiaForaPontaA,
+    data.tePontaA,
+    data.teForaPontaA
+  ]);
   const { isDark } = useTheme();
   const colors = getChartColors(isDark);
   const [financialResults, setFinancialResults] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   
+  // useRef para evitar chamadas duplicadas à API
+  const isCalculatingRef = useRef(false);
+  
   const grupoACalculation = useGrupoAFinancialCalculation({
     onSuccess: (data) => {
-      console.log('[GrupoAFinancialResults] Dados retornados:', JSON.stringify(data, null, 2));
+      console.log(data);
       setFinancialResults(data);
       setIsLoading(false);
+      isCalculatingRef.current = false;
     },
     onError: (error) => {
       console.error('[GrupoAFinancialResults] Erro no cálculo:', error);
       toast.error('Erro ao calcular análise financeira do Grupo A');
       setIsLoading(false);
+      isCalculatingRef.current = false;
     }
   });
 
   // Fazer chamada API quando os dados de cálculo mudam
   useEffect(() => {
+    // Evitar chamadas duplicadas
+    if (isCalculatingRef.current) {
+      return;
+    }
+    
     if (calculationData && config) {
       setIsLoading(true);
+      isCalculatingRef.current = true;
       try {
         const input = convertToGrupoAInput(config, calculationData);
-        console.log('[GrupoAFinancialResults] Input convertido:', JSON.stringify(input, null, 2));
         grupoACalculation.mutateAsync(input);
       } catch (error) {
         console.error('[GrupoAFinancialResults] Erro ao converter input:', error);
         setIsLoading(false);
+        isCalculatingRef.current = false;
       }
     }
-  }, [calculationData, config, grupoACalculation.mutateAsync]);
+  }, [calculationData, config]); // Removido grupoACalculation.mutateAsync das dependências
 
   const containerVariants = {
     hidden: { opacity: 0 },

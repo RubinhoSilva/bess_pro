@@ -197,6 +197,7 @@ interface IProjectActions {
   autoSave: () => void;
   
   // Ações de cálculo
+  calcularConsumoMensal: () => number[];
   calculateSystem: () => Promise<void>;
   calculateFinancials: () => Promise<void>;
   
@@ -305,27 +306,34 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         // Ações de navegação
         goToStep: (step) => {
           const state = get();
+          console.log('[PVDimensioningStore] goToStep chamado:', {
+            passoDestino: step,
+            passoAtual: state.currentStep,
+            canGoBack: state.canGoBack,
+            completedSteps: Array.from(state.completedSteps)
+          });
           
           // Validar se pode ir para o passo
           if (step < 1 || step > 7) {
-            console.error('Passo inválido:', step);
+            console.error('[PVDimensioningStore] Passo inválido:', step);
             return;
           }
           
           // Validar dependências
           if (!state.canGoBack && step < state.currentStep) {
-            console.warn('Não pode voltar para passos anteriores sem concluir');
+            console.warn('[PVDimensioningStore] Não pode voltar para passos anteriores sem concluir');
             return;
           }
           
           // Validar passos anteriores
           for (let i = 1; i < step; i++) {
             if (!state.completedSteps.has(i)) {
-              console.warn(`Passo ${i} não foi concluído`);
+              console.warn(`[PVDimensioningStore] Passo ${i} não foi concluído`);
               return;
             }
           }
           
+          console.log('[PVDimensioningStore] Atualizando estado para passo:', step);
           set((state) => {
             state.currentStep = step;
             state.canAdvance = false;
@@ -340,8 +348,17 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         
         nextStep: () => {
           const state = get();
+          console.log('[PVDimensioningStore] nextStep chamado:', {
+            currentStep: state.currentStep,
+            canAdvance: state.canAdvance,
+            completedSteps: Array.from(state.completedSteps)
+          });
+          
           if (state.canAdvance) {
+            console.log('[PVDimensioningStore] Avançando para passo:', state.currentStep + 1);
             get().goToStep(state.currentStep + 1);
+          } else {
+            console.log('[PVDimensioningStore] Não é possível avançar - canAdvance é false');
           }
         },
         
@@ -537,6 +554,12 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           const step = state.currentStep;
           const errors: string[] = [];
           
+          console.log('[PVDimensioningStore] validateCurrentStep chamado:', {
+            passo: step,
+            canAdvance: state.canAdvance,
+            completedSteps: Array.from(state.completedSteps)
+          });
+          
           switch (step) {
             case 1:
               if (!state.customer?.dimensioningName?.trim()) {
@@ -551,13 +574,29 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               break;
               
             case 2:
-              if (!state.energy?.energyBills?.length) {
-                errors.push('É necessário adicionar pelo menos uma conta de energia');
-              }
-              if (state.energy?.energyBills?.every(bill =>
-                !bill.consumoMensal.some(c => c > 0)
-              )) {
-                errors.push('Pelo menos uma conta deve ter consumo > 0');
+              // Verificar contas do Grupo B
+              const hasGrupoB = (state.energy?.energyBills?.length || 0) > 0 &&
+                state.energy?.energyBills?.some(bill =>
+                  bill.consumoMensal.some(c => c > 0)
+                );
+              
+              // Verificar contas do Grupo A
+              const hasGrupoA = (state.energy?.energyBillsA?.length || 0) > 0 &&
+                state.energy?.energyBillsA?.some(bill =>
+                  bill.consumoMensalPonta.some(c => c > 0) ||
+                  bill.consumoMensalForaPonta.some(c => c > 0)
+                );
+              
+              console.log('[PVDimensioningStore] validateCurrentStep passo 2:', {
+                hasGrupoB,
+                hasGrupoA,
+                energyBillsCount: state.energy?.energyBills?.length || 0,
+                energyBillsACount: state.energy?.energyBillsA?.length || 0,
+                resultado: !!(hasGrupoB || hasGrupoA)
+              });
+              
+              if (!hasGrupoB && !hasGrupoA) {
+                errors.push('É necessário adicionar pelo menos uma conta de energia (Grupo A ou B) com consumo > 0');
               }
               break;
               
@@ -609,6 +648,14 @@ export const usePVDimensioningStore = create<IProjectStore>()(
             state.completedSteps = errors.length === 0
               ? new Set(Array.from(state.completedSteps).concat([step]))
               : state.completedSteps;
+          });
+          
+          console.log('[PVDimensioningStore] validateCurrentStep resultado:', {
+            passo: step,
+            isValid: errors.length === 0,
+            canAdvance: errors.length === 0 && step < 7,
+            errors,
+            completedSteps: Array.from(get().completedSteps)
           });
           
           return errors.length === 0;
@@ -919,6 +966,48 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           }
         },
         
+        // Função utilitária para calcular consumo baseado no grupo tarifário
+        calcularConsumoMensal: () => {
+          const state = get();
+          const grupoTarifario = state.customer?.grupoTarifario || 'B';
+          
+          console.log('[PVDimensioningStore] calcularConsumoMensal:', {
+            grupoTarifario,
+            hasEnergyBills: !!(state.energy?.energyBills?.length),
+            hasEnergyBillsA: !!(state.energy?.energyBillsA?.length)
+          });
+          
+          if (grupoTarifario === 'A' && state.energy?.energyBillsA?.length) {
+            // Grupo A: somar ponta + fora ponta para cada mês
+            const consumoMensal = Array(12).fill(0);
+            
+            state.energy.energyBillsA.forEach(bill => {
+              for (let i = 0; i < 12; i++) {
+                consumoMensal[i] += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+              }
+            });
+            
+            console.log('[PVDimensioningStore] consumo Grupo A calculado:', consumoMensal);
+            return consumoMensal;
+          } else if (state.energy?.energyBills?.length) {
+            // Grupo B: usar consumoMensal diretamente
+            const consumoMensal = Array(12).fill(0);
+            
+            state.energy.energyBills.forEach(bill => {
+              for (let i = 0; i < 12; i++) {
+                consumoMensal[i] += bill.consumoMensal[i] || 0;
+              }
+            });
+            
+            console.log('[PVDimensioningStore] consumo Grupo B calculado:', consumoMensal);
+            return consumoMensal;
+          }
+          
+          // Fallback: array zerado
+          console.log('[PVDimensioningStore] nenhum consumo encontrado, usando fallback');
+          return Array(12).fill(0);
+        },
+
         // Ações de cálculo
         calculateSystem: async () => {
           const state = get();
@@ -931,6 +1020,15 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           set((state) => ({ ...state, isCalculating: true }));
           
           try {
+            // Calcular consumo mensal baseado no grupo tarifário
+            const consumoMensal = get().calcularConsumoMensal();
+            const consumoAnual = consumoMensal.reduce((sum: number, c: number) => sum + c, 0);
+            
+            console.log('[PVDimensioningStore] calculateSystem - consumo calculado:', {
+              consumoMensal,
+              consumoAnual
+            });
+            
             // Preparar dados para API
             const requestData = {
               lat: state.location?.location?.latitude || -23.7621,
@@ -939,9 +1037,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               azimuth: state.location?.azimute || 180,
               modelo_decomposicao: "louche",
               modelo_transposicao: "perez",
-              consumo_anual_kwh: state.energy?.energyBills?.reduce(
-                (total, bill) => total + bill.consumoMensal.reduce((sum, c) => sum + c, 0), 0
-              ) || 6000,
+              consumo_anual_kwh: consumoAnual || 6000,
               modulo: state.system?.selectedModuleId ? {
                 // Obter dados completos do módulo
                 fabricante: "Canadian Solar",
@@ -1044,20 +1140,24 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 Nov: state.results?.calculationResults?.geracaoEstimadaMensal?.[10] || 0,
                 Dez: state.results?.calculationResults?.geracaoEstimadaMensal?.[11] || 0
               },
-              consumo_local: {
-                Jan: state.energy?.energyBills?.[0]?.consumoMensal[0] || 0,
-                Fev: state.energy?.energyBills?.[0]?.consumoMensal[1] || 0,
-                Mar: state.energy?.energyBills?.[0]?.consumoMensal[2] || 0,
-                Abr: state.energy?.energyBills?.[0]?.consumoMensal[3] || 0,
-                Mai: state.energy?.energyBills?.[0]?.consumoMensal[4] || 0,
-                Jun: state.energy?.energyBills?.[0]?.consumoMensal[5] || 0,
-                Jul: state.energy?.energyBills?.[0]?.consumoMensal[6] || 0,
-                Ago: state.energy?.energyBills?.[0]?.consumoMensal[7] || 0,
-                Set: state.energy?.energyBills?.[0]?.consumoMensal[8] || 0,
-                Out: state.energy?.energyBills?.[0]?.consumoMensal[9] || 0,
-                Nov: state.energy?.energyBills?.[0]?.consumoMensal[10] || 0,
-                Dez: state.energy?.energyBills?.[0]?.consumoMensal[11] || 0
-              },
+              // Usar a mesma função utilitária para calcular o consumo local
+              consumo_local: (() => {
+                const consumoMensal = get().calcularConsumoMensal();
+                return {
+                  Jan: consumoMensal[0] || 0,
+                  Fev: consumoMensal[1] || 0,
+                  Mar: consumoMensal[2] || 0,
+                  Abr: consumoMensal[3] || 0,
+                  Mai: consumoMensal[4] || 0,
+                  Jun: consumoMensal[5] || 0,
+                  Jul: consumoMensal[6] || 0,
+                  Ago: consumoMensal[7] || 0,
+                  Set: consumoMensal[8] || 0,
+                  Out: consumoMensal[9] || 0,
+                  Nov: consumoMensal[10] || 0,
+                  Dez: consumoMensal[11] || 0
+                };
+              })(),
               tarifa_base: 0.85,
               fio_b: {
                 schedule: {
