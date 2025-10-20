@@ -2,17 +2,11 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
 import { 
-  Sun, 
   Calculator, 
   Loader,
-  Home
 } from 'lucide-react';
-import { FrontendCalculationLogger } from '@/lib/calculationLogger';
-import { SystemCalculations, SystemCalculationResults } from '@/lib/systemCalculations';
-import { useSolarSystemCalculation } from '@/hooks/useSolarSystemCalculation';
+import { SystemCalculationResults } from '@/lib/systemCalculations';
 
 interface SystemSummaryProps {
   formData: any;
@@ -28,12 +22,7 @@ interface SystemSummaryProps {
   showDimensioningSlider?: boolean; // Nova prop para controlar se mostra o slider
 }
 
-const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '', onDimensioningChange, aguasTelhado = [], showDimensioningSlider = false }) => {
-  const debugInitialInfo = {
-    aguasTelhado: aguasTelhado.map(agua => ({ id: agua.id, nome: agua.nome, numeroModulos: agua.numeroModulos })),
-    formDataModulos: formData.numeroModulos,
-    formDataModulosCalculado: formData.numeroModulosCalculado
-  };
+const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '', onDimensioningChange, aguasTelhado = []}) => {
   // All hooks must be declared at the top level
   const [systemResults, setSystemResults] = useState<SystemCalculationResults | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -42,42 +31,14 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '',
   // Hooks Python removidos - cálculos não são mais chamados automaticamente
 
   // Variables that depend on formData
-  const hasConsumptionData = formData.energyBills && formData.energyBills.length > 0;
   const consumoTotalAnual = formData.energyBills?.reduce((acc: number, bill: any) => {
     return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
   }, 0) || 0;
-  const logger = new FrontendCalculationLogger(`system-summary-${Date.now()}`);
 
   // Sincronizar estado local com prop quando ela mudar (de fora)
   useEffect(() => {
     setLocalAguasTelhado(aguasTelhado);
   }, [aguasTelhado]);
-
-  // Calcular totais das águas de telhado usando estado local
-  const getTotalModulosDimensionados = () => {
-    const total = localAguasTelhado.reduce((total, agua) => total + agua.numeroModulos, 0);
-    const debugModulosInfo = {
-      localAguasTelhado: localAguasTelhado.map(agua => ({ 
-        id: agua.id, 
-        nome: agua.nome, 
-        numeroModulos: agua.numeroModulos 
-      })), 
-      total 
-    };
-    return total;
-  };
-
-  const getTotalGeracaoDimensionada = () => {
-    return localAguasTelhado.reduce((total, agua) => total + (agua.geracaoAnual || 0), 0);
-  };
-
-  const getTotalAreaDimensionada = () => {
-    return localAguasTelhado.reduce((total, agua) => total + (agua.areaCalculada || 0), 0);
-  };
-
-  const hasDimensionedSystem = () => {
-    return localAguasTelhado.length > 0 && localAguasTelhado.some(agua => agua.geracaoAnual);
-  };
 
   // useCallback hooks
   // Função de recálculo removida - não mais necessária sem chamadas Python automáticas
@@ -131,25 +92,12 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '',
 
   // Usar apenas dados dos cálculos locais
   const { 
-    potenciaPico,
-    numeroModulos, 
-    areaEstimada,
     geracaoEstimadaAnual,
-    irradiacaoMediaAnual,
     coberturaConsumo,
-    usedPVLIB
   } = systemResults;
   
   // Usar número de módulos dos cálculos locais
-  const finalNumeroModulos = numeroModulos;
   const finalCoberturaConsumo = coberturaConsumo;
-  
-  // Inversor selecionado
-  const inversorSelecionado = formData.inverters?.[0] || null;
-  const potenciaInversor = inversorSelecionado?.power || formData.potenciaInversor;
-  const modeloInversor = inversorSelecionado?.name || formData.modeloInversor;
-
-
 
   return (
     <Card className={`glass border-orange-400/30 ${className}`}>
