@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Loader2, Download } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { FileText, ArrowRight, ArrowLeft } from 'lucide-react';
 import SystemSummary from './SystemSummary';
 import { GenerationChart } from './GenerationChart';
@@ -18,10 +19,13 @@ import { ProposalDocument } from '../proposal/ProposalDocument';
 import GrupoBFinancialResults from './GrupoBFinancialResults';
 import GrupoAFinancialResults from './GrupoAFinancialResults';
 import { GrupoConfigAdapter } from '@/types/adapters/grupo-config-adapter';
+import { GrupoBAdapter, IGrupoBData } from '@/types/adapters/grupo-b-adapter';
+import { GrupoAAdapter, IGrupoAData } from '@/types/adapters/grupo-a-adapter';
+import { GrupoTarifarioDetector, GrupoTarifarioRender } from '@/utils/grupo-tarifario-detector';
 
 // Store imports
 import { usePVDimensioningStore } from '@/store/pv-dimensioning-store';
-import { selectResultsData, selectCustomerData, selectEnergyData, selectSystemData, selectRoofData, selectBudgetData } from '@/store/selectors/pv-dimensioning-selectors';
+import { selectResultsData, selectCustomerData, selectEnergyData, selectSystemData, selectRoofData, selectBudgetData, selectSystemSummaryData, selectAggregatedRoofData } from '@/store/selectors/pv-dimensioning-selectors';
 
 interface PVResultsDashboardProps {
   onGenerateProposal?: () => void;
@@ -362,6 +366,10 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
   const roofData = usePVDimensioningStore(selectRoofData);
   const budgetData = usePVDimensioningStore(selectBudgetData);
   
+  // Obter dados agregados das águas do telhado
+  const systemSummaryData = usePVDimensioningStore(selectSystemSummaryData);
+  const aggregatedRoofData = usePVDimensioningStore(selectAggregatedRoofData);
+  
   const [currentDimensioning] = useState<any>({});
   
   // Validação inicial dos dados
@@ -439,14 +447,14 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
         <div className="space-y-12">
           <Section title="Resumo do Sistema" delay={1}>
             <SystemSummary results={{
-              potenciaPico: validatedResults.potenciaPico,
-              numeroModulos: validatedResults.numeroModulos,
-              areaEstimada: 0,
-              geracaoEstimadaAnual: validatedResults.geracaoEstimadaMensal.reduce((a: number, b: number) => a + b, 0),
-              selectedInverters: validatedResults.selectedInverters,
-              selectedModule: validatedResults.selectedModule,
-              consumoTotalAnual: validatedResults.energyBills?.reduce((total: number, bill: any) =>
-                total + (Array.isArray(bill?.consumoMensal) ? bill.consumoMensal.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0) : 0), 0) || 0
+              potenciaPico: systemSummaryData.potenciaPico,
+              numeroModulos: systemSummaryData.numeroModulos,
+              areaEstimada: systemSummaryData.areaEstimada,
+              geracaoEstimadaAnual: systemSummaryData.geracaoEstimadaAnual,
+              selectedInverters: systemSummaryData.selectedInverters,
+              selectedModule: systemSummaryData.selectedModule,
+              consumoTotalAnual: systemSummaryData.consumoTotalAnual,
+              cobertura: systemSummaryData.cobertura
             }} />
           </Section>
 
@@ -479,65 +487,99 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             </Section>
           )} */}
 
-          {/* Grupo B Financial Results */}
-          {/* {validatedResults && validatedResults.grupoTarifario === 'B' && ( */}
-            <Section title="Resultados Financeiros - Grupo B" delay={3}>
-              <GrupoBFinancialResults
-                calculationData={{
-                  investimentoInicial: validatedResults.totalInvestment,
-                  geracaoMensal: validatedResults.geracaoEstimadaMensal || Array(12).fill(0),
-                  consumoMensal: validatedResults.energyBills?.reduce((acc: number[], bill: any) => {
-                    return acc.concat(bill.consumoMensal || Array(12).fill(0));
-                  }, []) || Array(12).fill(0)
-                }}
-                config={GrupoConfigAdapter.toGrupoBConfig({
-                  tarifaEnergiaB: validatedResults.tarifaEnergiaB,
-                  custoFioB: validatedResults.custoFioB,
-                  tarifaEnergiaPontaA: validatedResults.tarifaEnergiaPontaA,
-                  tarifaEnergiaForaPontaA: validatedResults.tarifaEnergiaForaPontaA,
-                  tePontaA: validatedResults.tePontaA,
-                  teForaPontaA: validatedResults.teForaPontaA,
-                  subgrupoTarifario: validatedResults.subgrupoTarifario,
-                  grupoTarifario: validatedResults.grupoTarifario,
-                  investimentoInicial: validatedResults.totalInvestment,
-                  geracaoMensal: validatedResults.geracaoEstimadaMensal,
-                  consumoMensal: validatedResults.energyBills?.reduce((acc: number[], bill: any) => {
-                    return acc.concat(bill.consumoMensal || Array(12).fill(0));
-                  }, []) || Array(12).fill(0)
-                })}
-              />
-            </Section>
-          {/* )} */}
+          {/* Detectar qual grupo tarifário renderizar */}
+          {(() => {
+            // Detectar qual grupo tarifário renderizar
+            const grupoTarifarioInfo = useMemo(() => {
+              return GrupoTarifarioDetector.detectarGrupoTarifario(customerData, energyData);
+            }, [customerData, energyData]);
 
-          {/* Grupo A Financial Results */}
-          {/* {validatedResults && validatedResults.grupoTarifario === 'A' && ( */}
-            {/* <Section title="Resultados Financeiros - Grupo A" delay={3}>
-              <GrupoAFinancialResults
-                calculationData={{
-                  investimentoInicial: validatedResults.totalInvestment,
-                  geracaoMensal: validatedResults.geracaoEstimadaMensal || Array(12).fill(0),
-                  consumoMensal: validatedResults.energyBills?.reduce((acc: number[], bill: any) => {
-                    return acc.concat(bill.consumoMensal || Array(12).fill(0));
-                  }, []) || Array(12).fill(0)
-                }}
-                config={GrupoConfigAdapter.toGrupoBConfig({
-                  tarifaEnergiaB: validatedResults.tarifaEnergiaB,
-                  custoFioB: validatedResults.custoFioB,
-                  tarifaEnergiaPontaA: validatedResults.tarifaEnergiaPontaA,
-                  tarifaEnergiaForaPontaA: validatedResults.tarifaEnergiaForaPontaA,
-                  tePontaA: validatedResults.tePontaA,
-                  teForaPontaA: validatedResults.teForaPontaA,
-                  subgrupoTarifario: validatedResults.subgrupoTarifario,
-                  grupoTarifario: validatedResults.grupoTarifario,
-                  investimentoInicial: validatedResults.totalInvestment,
-                  geracaoMensal: validatedResults.geracaoEstimadaMensal,
-                  consumoMensal: validatedResults.energyBills?.reduce((acc: number[], bill: any) => {
-                    return acc.concat(bill.consumoMensal || Array(12).fill(0));
-                  }, []) || Array(12).fill(0)
-                })}
-              />
-            </Section> */}
-          {/* )} */}
+            // Preparar dados para ambos os grupos (se necessário)
+            const grupoAData = useMemo(() => {
+              if (grupoTarifarioInfo.renderizar === GrupoTarifarioRender.GRUPO_A ||
+                  grupoTarifarioInfo.renderizar === GrupoTarifarioRender.AMBOS) {
+                return GrupoAAdapter.extractGrupoAData(customerData, energyData, systemData, budgetData, resultsData);
+              }
+              return null;
+            }, [customerData, energyData, systemData, budgetData, resultsData, grupoTarifarioInfo.renderizar]);
+
+            const grupoBData = useMemo(() => {
+              if (grupoTarifarioInfo.renderizar === GrupoTarifarioRender.GRUPO_B ||
+                  grupoTarifarioInfo.renderizar === GrupoTarifarioRender.AMBOS) {
+                return GrupoBAdapter.extractGrupoBData(customerData, energyData, systemData, budgetData, resultsData);
+              }
+              return null;
+            }, [customerData, energyData, systemData, budgetData, resultsData, grupoTarifarioInfo.renderizar]);
+
+            // Renderização condicional baseada no detector
+            const mensagemInformativa = GrupoTarifarioDetector.getMensagemInformativa(grupoTarifarioInfo);
+            
+            switch (grupoTarifarioInfo.renderizar) {
+              case GrupoTarifarioRender.GRUPO_A:
+                return (
+                  <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={3}>
+                    {mensagemInformativa && (
+                      <Alert className="mb-4">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>{mensagemInformativa}</AlertDescription>
+                      </Alert>
+                    )}
+                    <GrupoAFinancialResults data={grupoAData!} />
+                  </Section>
+                );
+                
+              case GrupoTarifarioRender.GRUPO_B:
+                return (
+                  <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={3}>
+                    {mensagemInformativa && (
+                      <Alert className="mb-4">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>{mensagemInformativa}</AlertDescription>
+                      </Alert>
+                    )}
+                    <GrupoBFinancialResults data={grupoBData!} />
+                  </Section>
+                );
+                
+              case GrupoTarifarioRender.AMBOS:
+                return (
+                  <>
+                    <Section title="Resultados Financeiros - Grupo A" delay={3}>
+                      <GrupoAFinancialResults data={grupoAData!} />
+                    </Section>
+                    <Section title="Resultados Financeiros - Grupo B" delay={4}>
+                      <GrupoBFinancialResults data={grupoBData!} />
+                    </Section>
+                    {mensagemInformativa && (
+                      <Section title="Análise Comparativa" delay={5}>
+                        <Alert>
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>{mensagemInformativa}</AlertDescription>
+                        </Alert>
+                      </Section>
+                    )}
+                  </>
+                );
+                
+              case GrupoTarifarioRender.NENHUM:
+              default:
+                return (
+                  <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={3}>
+                    <Card>
+                      <CardContent className="flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
+                          <p className="text-muted-foreground">{grupoTarifarioInfo.motivo}</p>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            {mensagemInformativa}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Section>
+                );
+            }
+          })()}
 
           {/* <Section title="Gráficos de Desempenho" delay={4}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

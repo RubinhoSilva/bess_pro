@@ -160,8 +160,7 @@ function PVDesignPageContent() {
               exit={{ opacity: 0, x: -100 }}
               transition={{ duration: 0.5 }}
             >
-              <PVResultsDashboard 
-                results={calculationResults}
+              <PVResultsDashboard
                 onBackToWizard={handleBackToWizard}
                 onNewCalculation={handleNewProject}
               />

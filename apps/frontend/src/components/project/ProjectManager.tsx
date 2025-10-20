@@ -25,7 +25,8 @@ interface ProjectManagerProps {
 export const ProjectManager: React.FC<ProjectManagerProps> = ({ projectType }) => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { loadProject, projectName: currentProjectName } = usePVDimensioningStore();
+  // Usar o método loadDimensioning que existe na store
+  const { projectName: currentProjectName, loadDimensioning } = usePVDimensioningStore();
   const [isSaveOpen, setIsSaveOpen] = useState(false);
   const [isLoadOpen, setIsLoadOpen] = useState(false);
   const [projectName, setProjectName] = useState('');
@@ -117,11 +118,22 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({ projectType }) =
     }
   };
 
-  const handleLoad = (project: any) => {
-    loadProject({
-      ...project.projectData,
-      id: project.id
-    }, 'manual');
+  const handleLoad = async (project: any) => {
+    try {
+      await loadDimensioning(project.id);
+      
+      toast({
+        title: 'Projeto carregado!',
+        description: `Você está editando "${project.name}".`
+      });
+      setIsLoadOpen(false);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: 'Erro ao carregar projeto',
+        description: error.message || 'Ocorreu um erro inesperado.'
+      });
+    }
     
     toast({ 
       title: 'Projeto carregado!', 
