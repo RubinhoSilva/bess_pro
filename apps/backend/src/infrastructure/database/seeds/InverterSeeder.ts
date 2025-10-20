@@ -11,7 +11,7 @@ export class InverterSeeder {
         manufacturerId: getManufacturerId('CHINT' as ManufacturerKey),
         modelo: 'CPS SCA3.6KTL-PS2/EU',
         tipoRede: 'bifasico-220v',
-        potenciaSaidaCA: 6120, //Potência Nominal CA (W)
+        potenciaSaidaCA: 3000, //Potência Nominal CA (W)
         potenciaMaxima: 6120, //Potência FV Max (W)
         correnteEntradaMax: 20, //Corrente Entrada Máx (A)
         numeroMppt: 1, //Número de MPPTs

@@ -9,11 +9,13 @@ export interface IInverterDocument extends Document {
   
   // Dados de entrada (CC/FV)
   potenciaFvMax?: number;
+  potenciaMaxima?: number;
   tensaoCcMax?: number;
   numeroMppt?: number;
   stringsPorMppt?: number;
   faixaMppt?: string;
   correnteEntradaMax?: number;
+  eficienciaMaxima?: number;
   
   // Dados de saída (CA)
   potenciaAparenteMax?: number;
@@ -80,6 +82,15 @@ const InverterSchema = new Schema<IInverterDocument>({
     required: true,
     min: 0,
     index: true
+  },
+  potenciaMaxima: {
+    type: Number,
+    min: 0
+  },
+  eficienciaMaxima: {
+    type: Number,
+    min: 0,
+    max: 100
   },
   tipoRede: {
     type: String,

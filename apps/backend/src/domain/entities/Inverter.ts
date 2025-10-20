@@ -25,7 +25,7 @@ export interface InverterData extends SoftDeleteProps {
   frequenciaNominal?: number; // ex: 60 (Hz)
   
   // Eficiência
-  eficienciaMax?: number; // Eficiência máxima (%)
+  eficienciaMaxima?: number; // Eficiência máxima (%)
   eficienciaEuropeia?: number; // Eficiência europeia (%)
   eficienciaMppt?: number; // Eficiência MPPT (%)
   
@@ -102,7 +102,7 @@ export class Inverter extends BaseEntity {
   get correnteEntradaMax(): number | undefined { return this.data.correnteEntradaMax; }
   get potenciaAparenteMax(): number | undefined { return this.data.potenciaAparenteMax; }
   get correnteSaidaMax(): number | undefined { return this.data.correnteSaidaMax; }
-  get eficienciaMax(): number | undefined { return this.data.eficienciaMax; }
+  get eficienciaMaxima(): number | undefined { return this.data.eficienciaMaxima; }
   get eficienciaEuropeia(): number | undefined { return this.data.eficienciaEuropeia; }
   get eficienciaMppt(): number | undefined { return this.data.eficienciaMppt; }
   get tensaoSaidaNominal(): string | undefined { return this.data.tensaoSaidaNominal; }
@@ -158,11 +158,11 @@ export class Inverter extends BaseEntity {
   }
 
   public calculateEfficiencyAtLoad(loadPercentage: number): number | undefined {
-    if (this.data.eficienciaMax) {
+    if (this.data.eficienciaMaxima) {
       // Simplified efficiency curve - real implementation would use manufacturer curves
       const optimumLoad = 0.5; // 50% load typically has peak efficiency
       const efficiencyFactor = 1 - Math.pow(loadPercentage - optimumLoad, 2) * 0.1;
-      return Math.min(this.data.eficienciaMax * efficiencyFactor, this.data.eficienciaMax);
+      return Math.min(this.data.eficienciaMaxima * efficiencyFactor, this.data.eficienciaMaxima);
     }
     return undefined;
   }

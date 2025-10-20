@@ -66,7 +66,7 @@ export class InverterMapper {
         maxInputCurrentPerMppt: inverter.correnteEntradaMax,
       } as MPPTConfiguration,
       electrical: {
-        maxEfficiency: inverter.eficienciaMax,
+        maxEfficiency: inverter.eficienciaMaxima,
         europeanEfficiency: inverter.eficienciaEuropeia,
         mpptEfficiency: inverter.eficienciaMppt,
         gridType,

@@ -77,7 +77,7 @@ export class SharedToInverterMapper {
       faixaMppt: request.mppt.mpptRange,
       
       // Electrical Specifications
-      eficienciaMax: request.electrical.maxEfficiency,
+      eficienciaMaxima: request.electrical.maxEfficiency,
       eficienciaEuropeia: request.electrical.europeanEfficiency,
       eficienciaMppt: request.electrical.mpptEfficiency,
       tipoRede: request.electrical.gridType,
