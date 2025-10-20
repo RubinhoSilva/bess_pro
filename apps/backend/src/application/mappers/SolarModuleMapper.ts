@@ -5,13 +5,13 @@ import { SystemUsers } from '../../domain/constants/SystemUsers';
 
 export class SolarModuleMapper {
   
-  static toSharedSolarModule(module: SolarModule): SharedSolarModule {
+  static toSharedSolarModule(module: SolarModule, manufacturerName?: string): SharedSolarModule {
     const areaM2 = module.calculateArea();
     
-    // Criar um objeto manufacturer básico (em um sistema real, buscaríamos do repository)
+    // Criar um objeto manufacturer básico
     const manufacturer: Manufacturer = {
       id: module.manufacturerId,
-      name: 'Fabricante', // Será preenchido posteriormente com busca ao repository
+      name: manufacturerName || module.manufacturerName || 'Fabricante não encontrado',
       type: ManufacturerType.SOLAR_MODULE,
       contact: {
         email: undefined,
@@ -113,26 +113,37 @@ export class SolarModuleMapper {
     };
   }
 
-  static toResponseDto(module: SolarModule): SolarModuleResponseDto {
-    return this.toSharedSolarModule(module);
+  static toResponseDto(module: SolarModule, manufacturerName?: string): SolarModuleResponseDto {
+    return this.toSharedSolarModule(module, manufacturerName);
   }
 
   static toListResponseDto(
-    modules: SolarModule[], 
+    modules: SolarModule[],
     total: number,
     page?: number,
-    pageSize?: number
+    pageSize?: number,
+    manufacturerMap?: Map<string, string>
   ): SolarModuleListResponseDto {
     return {
-      modules: modules.map(module => this.toResponseDto(module)),
-      total,
-      page,
-      pageSize,
-      totalPages: pageSize ? Math.ceil(total / pageSize) : undefined,
+      modules: modules.map(module => {
+        const manufacturerName = manufacturerMap?.get(module.manufacturerId);
+        return this.toResponseDto(module, manufacturerName);
+      }),
+      pagination: {
+        page: page || 1,
+        limit: pageSize || 20,
+        total,
+        totalPages: pageSize ? Math.ceil(total / pageSize) : 0,
+        hasNext: page && pageSize ? page * pageSize < total : false,
+        hasPrev: page ? page > 1 : false,
+      }
     };
   }
 
-  static toResponseDtoList(modules: SolarModule[]): SolarModuleResponseDto[] {
-    return modules.map(module => this.toResponseDto(module));
+  static toResponseDtoList(modules: SolarModule[], manufacturerMap?: Map<string, string>): SolarModuleResponseDto[] {
+    return modules.map(module => {
+      const manufacturerName = manufacturerMap?.get(module.manufacturerId);
+      return this.toResponseDto(module, manufacturerName);
+    });
   }
 }

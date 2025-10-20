@@ -5,11 +5,11 @@ import { SystemUsers } from '../../domain/constants/SystemUsers';
 
 export class InverterMapper {
   
-  static toSharedInverter(inverter: Inverter): SharedInverter {
+  static toSharedInverter(inverter: Inverter, manufacturerName?: string): SharedInverter {
     // Criar um objeto manufacturer básico
     const manufacturer: Manufacturer = {
       id: inverter.manufacturerId || '',
-      name: inverter.fabricante || '',
+      name: manufacturerName || inverter.fabricante || 'Fabricante não encontrado',
       type: ManufacturerType.INVERTER,
       contact: {
         email: undefined,
@@ -106,27 +106,38 @@ export class InverterMapper {
     };
   }
 
-  static toResponseDto(inverter: Inverter, _moduleReferencePower?: number): InverterResponseDto {
-    return this.toSharedInverter(inverter);
+  static toResponseDto(inverter: Inverter, manufacturerName?: string, _moduleReferencePower?: number): InverterResponseDto {
+    return this.toSharedInverter(inverter, manufacturerName);
   }
 
   static toListResponseDto(
-    inverters: Inverter[], 
+    inverters: Inverter[],
     total: number,
     page?: number,
     pageSize?: number,
+    manufacturerMap?: Map<string, string>,
     _moduleReferencePower?: number
   ): InverterListResponseDto {
     return {
-      inverters: inverters.map(inverter => this.toResponseDto(inverter)),
-      total,
-      page,
-      pageSize,
-      totalPages: pageSize ? Math.ceil(total / pageSize) : undefined,
+      inverters: inverters.map(inverter => {
+        const manufacturerName = manufacturerMap?.get(inverter.manufacturerId || '');
+        return this.toResponseDto(inverter, manufacturerName, _moduleReferencePower);
+      }),
+      pagination: {
+        page: page || 1,
+        limit: pageSize || 20,
+        total,
+        totalPages: pageSize ? Math.ceil(total / pageSize) : 0,
+        hasNext: page && pageSize ? page * pageSize < total : false,
+        hasPrev: page ? page > 1 : false,
+      }
     };
   }
 
-  static toResponseDtoList(inverters: Inverter[], _moduleReferencePower?: number): InverterResponseDto[] {
-    return inverters.map(inverter => this.toResponseDto(inverter));
+  static toResponseDtoList(inverters: Inverter[], manufacturerMap?: Map<string, string>, _moduleReferencePower?: number): InverterResponseDto[] {
+    return inverters.map(inverter => {
+      const manufacturerName = manufacturerMap?.get(inverter.manufacturerId || '');
+      return this.toResponseDto(inverter, manufacturerName, _moduleReferencePower);
+    });
   }
 }

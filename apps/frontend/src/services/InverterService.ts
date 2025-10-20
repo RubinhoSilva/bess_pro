@@ -1,14 +1,15 @@
 import api from '../lib/api';
-import { 
-  Inverter, 
-  PaginatedInverters 
+import {
+  Inverter,
+  PaginatedInverters
 } from '@bess-pro/shared';
-import { 
-  InverterFilters, 
-  CreateInverterRequest, 
+import {
+  InverterFilters,
+  CreateInverterRequest,
   UpdateInverterRequest
 } from '@bess-pro/shared';
 import { ErrorHandler } from '../errors/ErrorHandler';
+import { useAuthStore } from '../store/auth-store';
 
 export class InverterService {
   private static instance: InverterService;
@@ -31,7 +32,8 @@ export class InverterService {
   // CRUD operations
   async getInverters(filters?: InverterFilters): Promise<PaginatedInverters> {
     try {
-      const response = await api.get('/equipment/inverters', { params: { filters } });
+      
+      const response = await api.get('/equipment/inverters', { params: { filters: filters } });
       return response.data.data;
     } catch (error) {
       this.handleError(error, 'getInverters');
@@ -48,7 +50,7 @@ export class InverterService {
   }
 
   async createInverter(inverterData: CreateInverterRequest): Promise<Inverter> {
-    try {
+    try {     
       const response = await api.post('/equipment/inverters', inverterData);
       return response.data.data;
     } catch (error) {
@@ -121,12 +123,13 @@ export class InverterService {
   // Search and filter helpers
   async searchInverters(query: string, limit: number = 10): Promise<Inverter[]> {
     try {
+      
       const filters: InverterFilters = {
         searchTerm: query,
       };
 
-      const response = await api.get('/equipment/inverters', { 
-        params: { 
+      const response = await api.get('/equipment/inverters', {
+        params: {
           filters,
           pagination: { page: 1, limit }
         }
@@ -141,10 +144,10 @@ export class InverterService {
   async getInvertersByManufacturer(manufacturerId: string): Promise<Inverter[]> {
     try {
       const filters: InverterFilters = {
-        manufacturerId,
+        manufacturerId
       };
 
-      const response = await api.get('/equipment/inverters', { 
+      const response = await api.get('/equipment/inverters', {
         params: { filters }
       });
       

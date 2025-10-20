@@ -4,6 +4,7 @@ import { ISolarModuleRepository } from '../../../domain/repositories/ISolarModul
 import { ModuleFilters } from '@bess-pro/shared';
 import { SolarModuleListResponseDto } from '../../dtos/output/SolarModuleResponseDto';
 import { SolarModuleMapper } from '../../mappers/SolarModuleMapper';
+import { IManufacturerRepository } from '@/domain/repositories/IManufacturerRepository';
 
 interface GetSolarModulesQuery {
   filters?: ModuleFilters;
@@ -14,7 +15,8 @@ interface GetSolarModulesQuery {
 export class GetSolarModulesUseCase implements IUseCase<GetSolarModulesQuery, Result<SolarModuleListResponseDto>> {
    
   constructor(
-    private solarModuleRepository: ISolarModuleRepository
+    private solarModuleRepository: ISolarModuleRepository,
+    private manufacturerRepository: IManufacturerRepository
   ) {}
 
   async execute(query: GetSolarModulesQuery): Promise<Result<SolarModuleListResponseDto>> {
@@ -45,13 +47,28 @@ export class GetSolarModulesUseCase implements IUseCase<GetSolarModulesQuery, Re
         pageSize
       });
 
-      console.log(`Found ${total} solar modules matching filters.`);
+      // Obter todos os IDs de fabricantes únicos para busca em lote
+      const manufacturerIds = [...new Set(modules.map(module => module.manufacturerId))];
+      
+      // Buscar todos os fabricantes em lote
+      const manufacturers = await Promise.all(
+        manufacturerIds.map(async id => {
+          const manufacturer = await this.manufacturerRepository.findById(id);
+          return { id, name: manufacturer?.name || 'Fabricante não encontrado' };
+        })
+      );
+      
+      // Criar mapa de fabricantes para acesso rápido
+      const manufacturerMap = new Map(
+        manufacturers.map(m => [m.id, m.name])
+      );
       
       const responseDto = SolarModuleMapper.toListResponseDto(
         modules,
         total,
         page,
-        pageSize
+        pageSize,
+        manufacturerMap
       );
       
       return Result.success(responseDto);

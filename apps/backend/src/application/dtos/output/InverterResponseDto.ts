@@ -4,8 +4,12 @@ export type InverterResponseDto = SharedInverter;
 
 export interface InverterListResponseDto {
   inverters: InverterResponseDto[];
-  total: number;
-  page?: number;
-  pageSize?: number;
-  totalPages?: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 }

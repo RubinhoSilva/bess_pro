@@ -436,7 +436,8 @@ export class ContainerSetup {
 
     container.registerFactory(ServiceTokens.GetSolarModulesUseCase, () => {
       return new GetSolarModulesUseCase(
-        container.resolve(ServiceTokens.SolarModuleRepository)
+        container.resolve(ServiceTokens.SolarModuleRepository),
+        container.resolve(ServiceTokens.ManufacturerRepository)
       );
     });
 
@@ -469,7 +470,8 @@ export class ContainerSetup {
 
     container.registerFactory(ServiceTokens.GetInvertersUseCase, () => {
       return new GetInvertersUseCase(
-        container.resolve(ServiceTokens.InverterRepository)
+        container.resolve(ServiceTokens.InverterRepository),
+        container.resolve(ServiceTokens.ManufacturerRepository)
       );
     });
 

@@ -5,6 +5,7 @@ export interface SolarModuleData extends SoftDeleteProps {
   id?: string;
   teamId: string;
   manufacturerId: string;
+  manufacturerName?: string;
   isDefault?: boolean;
   modelo: string;
   potenciaNominal: number; // Watts
@@ -82,6 +83,7 @@ export class SolarModule extends BaseEntity {
   get teamId(): string { return this.data.teamId; }
   get isDefault(): boolean { return this.data.isDefault || false; }
   get manufacturerId(): string { return this.data.manufacturerId; }
+  get manufacturerName(): string | undefined { return this.data.manufacturerName; }
   get modelo(): string { return this.data.modelo; }
   get potenciaNominal(): number { return this.data.potenciaNominal; }
   get larguraMm(): number | undefined { return this.data.larguraMm; }

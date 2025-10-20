@@ -4,16 +4,12 @@ export type SolarModuleResponseDto = SharedSolarModule;
 
 export interface SolarModuleListResponseDto {
   modules: SolarModuleResponseDto[];
-  total: number;
-  page?: number;
-  pageSize?: number;
-  totalPages?: number;
-}
-
-export interface SolarModuleListResponseDto {
-  modules: SolarModuleResponseDto[];
-  total: number;
-  page?: number;
-  pageSize?: number;
-  totalPages?: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 }
