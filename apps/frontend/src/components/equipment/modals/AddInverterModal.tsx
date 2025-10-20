@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,17 +12,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Plus } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { inverterService } from '@/services/InverterService';
-import { type CreateInverterRequest, ManufacturerType, Manufacturer, Inverter } from '@bess-pro/shared';
-import { toast } from 'react-hot-toast';
+import { manufacturerService } from '@/services/ManufacturerService';
+import { type CreateInverterRequest, ManufacturerType, Manufacturer } from '@bess-pro/shared';
+import { useToast } from '@/components/ui/use-toast';
+import { CalculationConstants } from '@/constants/CalculationConstants';
 
 interface AddInverterModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onInverterAdded?: (inverter: any) => void;
   onInverterSelected?: (inverterId: string) => void;
-  initialData?: Inverter | null;
+  initialData?: any; // Dados iniciais para modo de edição
 }
 
 const NETWORK_TYPES = [
@@ -32,114 +34,83 @@ const NETWORK_TYPES = [
   { value: 'trifasico-380v', label: 'Trifásico 380V' },
 ];
 
-const MANUFACTURERS = [
-  'WEG',
-  'Fronius',
-  'SMA', 
-  'ABB',
-  'Sungrow',
-  'Goodwe',
-  'Growatt',
-  'Huawei',
-  'SolarEdge',
-  'Enphase',
-  'Canadian Solar',
-  'Outro'
-];
 
 export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInverterSelected, initialData }: AddInverterModalProps) {
+  const { toast } = useToast();
+  
+  // Buscar fabricantes da API
+  const { data: manufacturersData, isLoading: loadingManufacturers } = useQuery({
+    queryKey: ['manufacturers'],
+    queryFn: () => manufacturerService.getManufacturers({}),
+    staleTime: 15 * 60 * 1000,
+  });
+  
+  const manufacturers = manufacturersData?.manufacturers || [];
   const [formData, setFormData] = useState<CreateInverterRequest>({
     manufacturerId: '',
     model: '',
     power: {
-      ratedACPower: 0,
-      maxPVPower: 0,
-      shortCircuitVoltageMax: 0,
-      maxInputCurrent: 0,
-      maxApparentPower: 0,
+      ratedACPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_POWER_W,
+      maxPVPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_PV_MAX_W,
+      shortCircuitVoltageMax: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_DC_MAX_V,
+      maxInputCurrent: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_INPUT_MAX_A,
+      maxApparentPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_APPARENT_POWER_VA,
     },
     mppt: {
-      numberOfMppts: 0,
-      stringsPerMppt: 0,
+      numberOfMppts: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_MPPT_COUNT,
+      stringsPerMppt: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_STRINGS_PER_MPPT,
     },
     electrical: {
-      maxEfficiency: 0,
-      gridType: 'monofasico',
+      maxEfficiency: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_EFFICIENCY,
+      gridType: CalculationConstants.FORM_DEFAULTS.INVERTER_FORM.DEFAULT_GRID_TYPE as any,
     },
     metadata: {
-      warranty: 5,
-      certifications: [],
-      connectionType: 'on-grid',
+      warranty: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_WARRANTY_YEARS,
+      certifications: [...CalculationConstants.FORM_DEFAULTS.INVERTER_FORM.DEFAULT_CERTIFICATIONS],
+      connectionType: CalculationConstants.FORM_DEFAULTS.INVERTER_FORM.DEFAULT_CONNECTION_TYPE,
     }
   });
 
   const [manufacturerName, setManufacturerName] = useState('');
 
-  // Carregar dados iniciais se for edição
-  React.useEffect(() => {
+  // Carregar dados iniciais no modo de edição
+  useEffect(() => {
     if (initialData) {
-      // DEBUG: Log para verificar estrutura dos dados
-      console.log('=== DEBUG AddInverterModal ===');
-      console.log('initialData:', initialData);
-      console.log('initialData.manufacturer:', initialData.manufacturer);
-      console.log('initialData.model:', initialData.model);
-      console.log('==================================');
-      
-      // Mapear dados do inversor para o formulário
-      setFormData({
-        manufacturerId: initialData.manufacturer?.id || '',
+
+      // Mapear dados iniciais para o formulário
+      const mappedData = {
+        manufacturerId: initialData.manufacturer?.id || initialData.manufacturer || '',
         model: initialData.model || '',
         power: {
-          ratedACPower: initialData.power?.ratedACPower || 0,
-          maxPVPower: initialData.power?.maxPVPower || 0,
-          shortCircuitVoltageMax: initialData.power?.shortCircuitVoltageMax || 0,
-          maxInputCurrent: initialData.power?.maxInputCurrent || 0,
-          maxApparentPower: initialData.power?.maxApparentPower || 0,
+          ratedACPower: initialData.power?.ratedACPower || CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_POWER_W,
+          maxPVPower: initialData.power?.maxPVPower || CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_PV_MAX_W,
+          shortCircuitVoltageMax: initialData.power?.shortCircuitVoltageMax || CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_DC_MAX_V,
+          maxInputCurrent: initialData.power?.maxInputCurrent || CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_INPUT_MAX_A,
+          maxApparentPower: initialData.power?.maxApparentPower || CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_APPARENT_POWER_VA,
         },
         mppt: {
-          numberOfMppts: initialData.mppt?.numberOfMppts || 0,
-          stringsPerMppt: initialData.mppt?.stringsPerMppt || 0,
+          numberOfMppts: initialData.mppt?.numberOfMppts || CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_MPPT_COUNT,
+          stringsPerMppt: initialData.mppt?.stringsPerMppt || CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_STRINGS_PER_MPPT,
         },
         electrical: {
-          maxEfficiency: initialData.electrical?.maxEfficiency || 0,
-          gridType: initialData.electrical?.gridType || 'monofasico',
+          maxEfficiency: initialData.electrical?.maxEfficiency || CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_EFFICIENCY,
+          gridType: initialData.electrical?.gridType || CalculationConstants.FORM_DEFAULTS.INVERTER_FORM.DEFAULT_GRID_TYPE,
         },
         metadata: {
-          warranty: initialData.metadata?.warranty || 5,
-          certifications: initialData.metadata?.certifications || [],
-          connectionType: initialData.metadata?.connectionType || 'on-grid',
+          warranty: initialData.metadata?.warranty || CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_WARRANTY_YEARS,
+          certifications: initialData.metadata?.certifications || CalculationConstants.FORM_DEFAULTS.INVERTER_FORM.DEFAULT_CERTIFICATIONS,
+          connectionType: initialData.metadata?.connectionType || CalculationConstants.FORM_DEFAULTS.INVERTER_FORM.DEFAULT_CONNECTION_TYPE,
         }
-      });
-      setManufacturerName(initialData.manufacturer.name);
-    } else {
-      // Resetar formulário para criação
-      setFormData({
-        manufacturerId: '',
-        model: '',
-        power: {
-          ratedACPower: 0,
-          maxPVPower: 0,
-          shortCircuitVoltageMax: 0,
-          maxInputCurrent: 0,
-          maxApparentPower: 0,
-        },
-        mppt: {
-          numberOfMppts: 0,
-          stringsPerMppt: 0,
-        },
-        electrical: {
-          maxEfficiency: 0,
-          gridType: 'monofasico',
-        },
-        metadata: {
-          warranty: 5,
-          certifications: [],
-          connectionType: 'on-grid',
-        }
-      });
-      setManufacturerName('');
+      };
+
+      setFormData(mappedData);
+      
+      // Para o inversor, precisamos definir o manufacturerName também
+      if (initialData.manufacturer) {
+        setManufacturerName(initialData.manufacturer.name || initialData.manufacturer);
+      }
     }
-  }, [initialData, open]);
+  }, [initialData]);
 
   const queryClient = useQueryClient();
   
@@ -147,10 +118,17 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
     mutationFn: (data: CreateInverterRequest) => inverterService.createInverter(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inverters'] });
-      toast.success('Inversor criado com sucesso!');
+      toast({
+        title: "Sucesso",
+        description: "Inversor criado com sucesso!",
+      });
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Erro ao criar inversor');
+      toast({
+        title: "Erro",
+        description: error.message || 'Erro ao criar inversor',
+        variant: "destructive",
+      });
     },
   });
 
@@ -158,7 +136,11 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
     e.preventDefault();
     
     if (!manufacturerName || !formData.model || !formData.power.ratedACPower) {
-      toast.error('Preencha todos os campos obrigatórios');
+      toast({
+        title: "Erro",
+        description: 'Preencha todos os campos obrigatórios',
+        variant: "destructive",
+      });
       return;
     }
 
@@ -167,25 +149,41 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
         ...formData,
         manufacturerId: manufacturerName
       };
-
-      let result;
-      if (initialData) {
-        // TODO: Implementar atualização do inversor
-        // result = await updateInverter.mutateAsync({ id: initialData.id, data: dataToSubmit });
-        toast('Funcionalidade de edição em desenvolvimento');
-        onOpenChange(false);
-        return;
-      } else {
-        result = await createInverter.mutateAsync(dataToSubmit);
-        onInverterAdded?.(result);
-        
-        // Auto-select the newly added inverter
-        if (onInverterSelected && result?.id) {
-          onInverterSelected(result.id);
-        }
+      const newInverter = await createInverter.mutateAsync(dataToSubmit);
+      onInverterAdded?.(newInverter);
+      
+      // Auto-select the newly added inverter
+      if (onInverterSelected && newInverter?.id) {
+        onInverterSelected(newInverter.id);
       }
       
       onOpenChange(false);
+      
+      // Reset form
+      setFormData({
+        manufacturerId: '',
+        model: '',
+        power: {
+          ratedACPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_POWER_W,
+          maxPVPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_PV_MAX_W,
+          shortCircuitVoltageMax: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_DC_MAX_V,
+          maxInputCurrent: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_INPUT_MAX_A,
+          maxApparentPower: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_APPARENT_POWER_VA,
+        },
+        mppt: {
+          numberOfMppts: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_MPPT_COUNT,
+          stringsPerMppt: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_STRINGS_PER_MPPT,
+        },
+        electrical: {
+          maxEfficiency: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_EFFICIENCY,
+          gridType: CalculationConstants.FORM_DEFAULTS.INVERTER_FORM.DEFAULT_GRID_TYPE as any,
+        },
+        metadata: {
+          warranty: CalculationConstants.INVERTER_DEFAULTS.DEFAULT_INVERTER_WARRANTY_YEARS,
+          certifications: [...CalculationConstants.FORM_DEFAULTS.INVERTER_FORM.DEFAULT_CERTIFICATIONS],
+          connectionType: CalculationConstants.FORM_DEFAULTS.INVERTER_FORM.DEFAULT_CONNECTION_TYPE,
+        }
+      });
     } catch (error) {
     }
   };
@@ -228,15 +226,31 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Fabricante *</Label>
-              <Input 
-                value={manufacturerName} 
-                onChange={e => {
-                  setManufacturerName(e.target.value);
-                  setFormData(prev => ({ ...prev, manufacturerId: e.target.value }));
-                }} 
-                className="bg-background border-border" 
-                placeholder="Ex: Fronius"
-              />
+              <Select
+                value={formData.manufacturerId}
+                onValueChange={(value) => {
+                  setFormData(prev => ({ ...prev, manufacturerId: value }));
+                  setManufacturerName(manufacturers.find(m => m.id === value)?.name || '');
+                }}
+                disabled={loadingManufacturers}
+              >
+                <SelectTrigger className="bg-background border-border">
+                  <SelectValue placeholder={loadingManufacturers ? "Carregando..." : "Selecione o fabricante"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {loadingManufacturers ? (
+                    <SelectItem value="loading" disabled>Carregando fabricantes...</SelectItem>
+                  ) : manufacturers.length === 0 ? (
+                    <SelectItem value="no-manufacturers" disabled>Nenhum fabricante encontrado</SelectItem>
+                  ) : (
+                    manufacturers.map((manufacturer: any) => (
+                      <SelectItem key={manufacturer.id} value={manufacturer.id}>
+                        {manufacturer.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Modelo *</Label>
@@ -371,7 +385,7 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
               disabled={createInverter.isPending || !formData.manufacturerId || !formData.model || !formData.power.ratedACPower}
             >
               {createInverter.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {initialData ? 'Salvar Alterações' : 'Adicionar Inversor'}
+              {initialData ? 'Atualizar Inversor' : 'Adicionar Inversor'}
             </Button>
           </DialogFooter>
         </form>

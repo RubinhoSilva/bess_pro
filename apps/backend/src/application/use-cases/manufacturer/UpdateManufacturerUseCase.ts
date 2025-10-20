@@ -22,7 +22,7 @@ export class UpdateManufacturerUseCase implements IUseCase<{id: string, data: Up
       }
 
       // Verificar se é fabricante padrão e não pode ser alterado
-      if (existingManufacturer.isDefault) {
+      if (existingManufacturer.isPublic) {
         return Result.failure('Fabricantes padrão não podem ser alterados');
       }
 

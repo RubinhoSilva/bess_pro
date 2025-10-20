@@ -12,7 +12,7 @@ export interface ManufacturerData extends SoftDeleteProps {
   name: string;
   type: ManufacturerType;
   teamId?: string;
-  isDefault: boolean;
+  isPublic: boolean;
   description?: string;
   website?: string;
   country?: string;
@@ -51,7 +51,7 @@ export class Manufacturer extends BaseEntity {
   get name(): string { return this.data.name; }
   get type(): ManufacturerType { return this.data.type; }
   get teamId(): string | undefined { return this.data.teamId; }
-  get isDefault(): boolean { return this.data.isDefault; }
+  get isPublic(): boolean { return this.data.isPublic; }
   get description(): string | undefined { return this.data.description; }
   get website(): string | undefined { return this.data.website; }
   get country(): string | undefined { return this.data.country; }
@@ -68,11 +68,11 @@ export class Manufacturer extends BaseEntity {
   }
 
   public isDeletable(): boolean {
-    return !this.data.isDefault;
+    return !this.data.isPublic;
   }
 
   public isAccessibleByTeam(teamId?: string): boolean {
-    if (this.data.isDefault) {
+    if (this.data.isPublic) {
       return true;
     }
     return this.data.teamId === teamId;
@@ -84,7 +84,7 @@ export class Manufacturer extends BaseEntity {
 
   public update(updates: Partial<ManufacturerData>): Manufacturer {
     // Não permitir alterar isDefault para false em fabricantes padrão
-    if (this.data.isDefault && updates.isDefault === false) {
+    if (this.data.isPublic && updates.isPublic === false) {
       throw new Error('Não é possível alterar fabricantes padrão para não padrão');
     }
 

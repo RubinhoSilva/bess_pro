@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Package, Unplug, Settings, Plus, Upload, Download, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { EquipmentManager } from '@/components/equipment/EquipmentManager';
+import { EquipmentManagerRefactored } from '@/components/equipment/EquipmentManagerRefactored';
 import { ManufacturerManager } from '@/components/equipment/ManufacturerManager';
 import { useQuery } from '@tanstack/react-query';
 import { moduleService } from '@/services/ModuleService';
@@ -237,7 +237,7 @@ export default function EquipmentPage() {
             </CardHeader>
             
             <CardContent>
-              <EquipmentManager onUpdate={() => {
+              <EquipmentManagerRefactored onUpdate={() => {
                 // Callback para quando equipamentos são atualizados
               }} />
             </CardContent>

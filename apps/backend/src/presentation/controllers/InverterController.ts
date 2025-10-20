@@ -76,7 +76,7 @@ export class InverterController extends BaseController {
 
   async findAll(req: Request, res: Response): Promise<Response> {
     try {
-      const teamId = this.extractTeamIdOptional(req) || 'system'; // Allow public access with default
+      const teamId = this.extractTeamId(req); // Allow public access with default
       const query: GetInvertersQuery = {
         teamId,
         // InverterFilters (shared types)

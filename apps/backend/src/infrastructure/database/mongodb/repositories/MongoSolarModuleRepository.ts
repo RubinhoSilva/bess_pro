@@ -216,19 +216,19 @@ export class MongoSolarModuleRepository implements ISolarModuleRepository {
   private buildCustomFilters(filters: SolarModuleFilters): any {
     const customFilters: any = {};
 
-    // Filtro de acesso público + time (teamId é opcional)
+    // Filtro de acesso: teamId informado (do token) OU público
     let accessFilter: any;
     if (filters.teamId) {
-      // Se tem teamId, busca públicos + do time
+      // Se tem teamId, busca do time + públicos
       accessFilter = {
         $or: [
-          { isDefault: true },
-          { teamId: filters.teamId }
+          { teamId: filters.teamId },  // Equipamentos do time do usuário
+          { teamId: SystemUsers.PUBLIC_EQUIPMENT }       // Equipamentos públicos
         ]
       };
     } else {
       // Se não tem teamId, busca apenas públicos
-      accessFilter = { isDefault: true };
+      accessFilter = { teamId: SystemUsers.PUBLIC_EQUIPMENT };
     }
     
     // Filtro de fabricante

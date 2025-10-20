@@ -12,17 +12,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Plus } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { moduleService } from '@/services/ModuleService';
-import { type CreateModuleRequest, CellType, CellTechnology, SolarModule } from '@bess-pro/shared';
-import { toast } from 'react-hot-toast';
+import { manufacturerService } from '@/services/ManufacturerService';
+import { type CreateModuleRequest, CellType, CellTechnology } from '@bess-pro/shared';
+import { useToast } from '@/components/ui/use-toast';
+import { CalculationConstants } from '@/constants/CalculationConstants';
 
 interface AddSolarModuleModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onModuleAdded?: (module: any) => void;
   onModuleSelected?: (moduleId: string) => void;
-  initialData?: SolarModule | null;
+  initialData?: any; // Dados iniciais para modo de edição
 }
 
 const CELL_TYPES = [
@@ -34,21 +36,18 @@ const CELL_TYPES = [
   'Bifacial'
 ];
 
-const MANUFACTURERS = [
-  'Jinko Solar',
-  'Canadian Solar',
-  'Trina Solar',
-  'Risen Energy',
-  'JA Solar',
-  'LONGi Solar',
-  'BYD',
-  'GCL',
-  'Hanwha Q CELLS',
-  'First Solar',
-  'Outro'
-];
 
 export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModuleSelected, initialData }: AddSolarModuleModalProps) {
+  const { toast } = useToast();
+  
+  // Buscar fabricantes da API
+  const { data: manufacturersData, isLoading: loadingManufacturers } = useQuery({
+    queryKey: ['manufacturers'],
+    queryFn: () => manufacturerService.getManufacturers({}),
+    staleTime: 15 * 60 * 1000,
+  });
+  
+  const manufacturers = manufacturersData?.manufacturers || [];
   const [formData, setFormData] = useState<CreateModuleRequest>({
     manufacturer: '',
     model: '',
@@ -59,9 +58,9 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
       vmpp: 0,
       impp: 0,
       efficiency: 0,
-      cellType: 'monocrystalline',
+      cellType: CalculationConstants.FORM_DEFAULTS.MODULE_FORM.DEFAULT_CELL_TYPE,
       numberOfCells: 0,
-      technology: 'perc',
+      technology: CalculationConstants.FORM_DEFAULTS.MODULE_FORM.DEFAULT_CELL_TECHNOLOGY,
     },
     parameters: {
       temperature: {
@@ -70,11 +69,11 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
         tempCoeffIsc: 0,
       },
       diode: {
-        aRef: 1.8,
-        iLRef: 0,
-        iORef: 2.5e-12,
-        rS: 0,
-        rShRef: 0,
+        aRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_A_REF,
+        iLRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IL_REF_A,
+        iORef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IO_REF_A,
+        rS: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_RS_OHM,
+        rShRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_RSH_REF_OHM,
       },
       sapm: {
         a0: 0,
@@ -94,9 +93,9 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
         technology: '',
       },
       advanced: {
-        alphaSc: 0,
-        betaOc: 0,
-        gammaR: 0,
+        alphaSc: Math.abs(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX) / 100, // Converter %/°C para /°C
+        betaOc: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC / 100, // Converter %/°C para /°C
+        gammaR: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC / 100, // Converter %/°C para /°C
       },
     },
     dimensions: {
@@ -112,158 +111,95 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
     teamId: '', // Will be set by service
   });
 
-  // Carregar dados iniciais se for edição
-  React.useEffect(() => {
+  // Temp string values for temperature coefficients (to allow free typing)
+  const [tempCoefPmaxStr, setTempCoefPmaxStr] = useState<string>(
+    (CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX).toString()
+  );
+  const [tempCoefVocStr, setTempCoefVocStr] = useState<string>(
+    (CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC).toString()
+  );
+  const [tempCoefIscStr, setTempCoefIscStr] = useState<string>(
+    (CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC).toString()
+  );
+
+  // Carregar dados iniciais no modo de edição
+  useEffect(() => {
     if (initialData) {
-      // DEBUG: Log para verificar estrutura dos dados
-      console.log('=== DEBUG AddSolarModuleModal ===');
-      console.log('initialData:', initialData);
-      console.log('initialData.manufacturer:', initialData.manufacturer);
-      console.log('initialData.model:', initialData.model);
-      console.log('=====================================');
-      
-      // Mapear dados do módulo para o formulário
-      setFormData({
-        manufacturer: initialData.manufacturer?.name || '',
+
+      // Mapear dados iniciais para o formulário
+      const mappedData = {
+        manufacturer: initialData.manufacturer?.id || initialData.manufacturer || '',
         model: initialData.model || '',
-        nominalPower: initialData.nominalPower,
+        nominalPower: initialData.nominalPower || 0,
         specifications: {
-          voc: initialData.specifications.voc || 0,
-          isc: initialData.specifications.isc || 0,
-          vmpp: initialData.specifications.vmpp || 0,
-          impp: initialData.specifications.impp || 0,
-          efficiency: initialData.specifications.efficiency || 0,
-          cellType: initialData.specifications.cellType || 'monocrystalline',
-          numberOfCells: initialData.specifications.numberOfCells || 0,
-          technology: initialData.specifications.technology || 'perc',
+          voc: initialData.specifications?.voc || 0,
+          isc: initialData.specifications?.isc || 0,
+          vmpp: initialData.specifications?.vmpp || 0,
+          impp: initialData.specifications?.impp || 0,
+          efficiency: initialData.specifications?.efficiency || 0,
+          cellType: initialData.specifications?.cellType || CalculationConstants.FORM_DEFAULTS.MODULE_FORM.DEFAULT_CELL_TYPE,
+          numberOfCells: initialData.specifications?.numberOfCells || 0,
+          technology: initialData.specifications?.technology || CalculationConstants.FORM_DEFAULTS.MODULE_FORM.DEFAULT_CELL_TECHNOLOGY,
         },
         parameters: {
           temperature: {
-            tempCoeffPmax: initialData.parameters.temperature.tempCoeffPmax || 0,
-            tempCoeffVoc: initialData.parameters.temperature.tempCoeffVoc || 0,
-            tempCoeffIsc: initialData.parameters.temperature.tempCoeffIsc || 0,
+            tempCoeffPmax: initialData.parameters?.temperature?.tempCoeffPmax || 0,
+            tempCoeffVoc: initialData.parameters?.temperature?.tempCoeffVoc || 0,
+            tempCoeffIsc: initialData.parameters?.temperature?.tempCoeffIsc || 0,
           },
           diode: {
-            aRef: initialData.parameters.diode.aRef || 1.8,
-            iLRef: initialData.parameters.diode.iLRef || 0,
-            iORef: initialData.parameters.diode.iORef || 2.5e-12,
-            rS: initialData.parameters.diode.rS || 0,
-            rShRef: initialData.parameters.diode.rShRef || 0,
+            aRef: initialData.parameters?.diode?.aRef || CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_A_REF,
+            iLRef: initialData.parameters?.diode?.iLRef || CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IL_REF_A,
+            iORef: initialData.parameters?.diode?.iORef || CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IO_REF_A,
+            rS: initialData.parameters?.diode?.rS || CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_RS_OHM,
+            rShRef: initialData.parameters?.diode?.rShRef || CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_RSH_REF_OHM,
           },
           sapm: {
-            a0: initialData.parameters.sapm.a0 || 0,
-            a1: initialData.parameters.sapm.a1 || 0,
-            a2: initialData.parameters.sapm.a2 || 0,
-            a3: initialData.parameters.sapm.a3 || 0,
-            a4: initialData.parameters.sapm.a4 || 0,
-            b0: initialData.parameters.sapm.b0 || 0,
-            b1: initialData.parameters.sapm.b1 || 0,
-            b2: initialData.parameters.sapm.b2 || 0,
-            b3: initialData.parameters.sapm.b3 || 0,
-            b4: initialData.parameters.sapm.b4 || 0,
+            a0: initialData.parameters?.sapm?.a0 || 0,
+            a1: initialData.parameters?.sapm?.a1 || 0,
+            a2: initialData.parameters?.sapm?.a2 || 0,
+            a3: initialData.parameters?.sapm?.a3 || 0,
+            a4: initialData.parameters?.sapm?.a4 || 0,
+            b0: initialData.parameters?.sapm?.b0 || 0,
+            b1: initialData.parameters?.sapm?.b1 || 0,
+            b2: initialData.parameters?.sapm?.b2 || 0,
+            b3: initialData.parameters?.sapm?.b3 || 0,
+            b4: initialData.parameters?.sapm?.b4 || 0,
           },
           spectral: {
-            am: initialData.parameters.spectral.am || 1.5,
-            material: initialData.parameters.spectral.material || '',
-            technology: initialData.parameters.spectral.technology || '',
+            am: initialData.parameters?.spectral?.am || 1.5,
+            material: initialData.parameters?.spectral?.material || '',
+            technology: initialData.parameters?.spectral?.technology || '',
           },
           advanced: {
-            alphaSc: initialData.parameters.advanced.alphaSc || 0,
-            betaOc: initialData.parameters.advanced.betaOc || 0,
-            gammaR: initialData.parameters.advanced.gammaR || 0,
+            alphaSc: initialData.parameters?.advanced?.alphaSc || Math.abs(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX) / 100,
+            betaOc: initialData.parameters?.advanced?.betaOc || CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC / 100,
+            gammaR: initialData.parameters?.advanced?.gammaR || CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC / 100,
           },
         },
         dimensions: {
-          widthMm: initialData.dimensions.widthMm || 0,
-          heightMm: initialData.dimensions.heightMm || 0,
-          thicknessMm: initialData.dimensions.thicknessMm || 0,
-          weightKg: initialData.dimensions.weightKg || 0,
+          widthMm: initialData.dimensions?.widthMm || 0,
+          heightMm: initialData.dimensions?.heightMm || 0,
+          thicknessMm: initialData.dimensions?.thicknessMm || 0,
+          weightKg: initialData.dimensions?.weightKg || 0,
         },
         metadata: {
-          warranty: initialData.metadata.warranty || 25,
-          certifications: initialData.metadata.certifications || [],
+          warranty: initialData.metadata?.warranty || 25,
+          certifications: initialData.metadata?.certifications || [],
         },
         teamId: '', // Will be set by service
-      });
+      };
+
+      setFormData(mappedData);
 
       // Carregar coeficientes de temperatura como strings
-      setTempCoefPmaxStr((initialData.parameters.temperature.tempCoeffPmax * 100).toString());
-      setTempCoefVocStr((initialData.parameters.temperature.tempCoeffVoc * 100).toString());
-      setTempCoefIscStr((initialData.parameters.temperature.tempCoeffIsc * 100).toString());
-    } else {
-      // Resetar formulário para criação
-      setFormData({
-        manufacturer: '',
-        model: '',
-        nominalPower: 0,
-        specifications: {
-          voc: 0,
-          isc: 0,
-          vmpp: 0,
-          impp: 0,
-          efficiency: 0,
-          cellType: 'monocrystalline',
-          numberOfCells: 0,
-          technology: 'perc',
-        },
-        parameters: {
-          temperature: {
-            tempCoeffPmax: 0,
-            tempCoeffVoc: 0,
-            tempCoeffIsc: 0,
-          },
-          diode: {
-            aRef: 1.8,
-            iLRef: 0,
-            iORef: 2.5e-12,
-            rS: 0,
-            rShRef: 0,
-          },
-          sapm: {
-            a0: 0,
-            a1: 0,
-            a2: 0,
-            a3: 0,
-            a4: 0,
-            b0: 0,
-            b1: 0,
-            b2: 0,
-            b3: 0,
-            b4: 0,
-          },
-          spectral: {
-            am: 1.5,
-            material: '',
-            technology: '',
-          },
-          advanced: {
-            alphaSc: 0,
-            betaOc: 0,
-            gammaR: 0,
-          },
-        },
-        dimensions: {
-          widthMm: 0,
-          heightMm: 0,
-          thicknessMm: 0,
-          weightKg: 0,
-        },
-        metadata: {
-          warranty: 25,
-          certifications: [],
-        },
-        teamId: '', // Will be set by service
-      });
-      setTempCoefPmaxStr('');
-      setTempCoefVocStr('');
-      setTempCoefIscStr('');
+      if (initialData.parameters?.temperature) {
+        setTempCoefPmaxStr((initialData.parameters.temperature.tempCoeffPmax * 100).toString());
+        setTempCoefVocStr((initialData.parameters.temperature.tempCoeffVoc * 100).toString());
+        setTempCoefIscStr((initialData.parameters.temperature.tempCoeffIsc * 100).toString());
+      }
     }
-  }, [initialData, open]);
-
-  // Temp string values for temperature coefficients (to allow free typing)
-  const [tempCoefPmaxStr, setTempCoefPmaxStr] = useState<string>('');
-  const [tempCoefVocStr, setTempCoefVocStr] = useState<string>('');
-  const [tempCoefIscStr, setTempCoefIscStr] = useState<string>('');
+  }, [initialData]);
 
   const queryClient = useQueryClient();
   
@@ -271,10 +207,17 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
     mutationFn: (data: CreateModuleRequest) => moduleService.createModule(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['modules'] });
-      toast.success('Módulo criado com sucesso!');
+      toast({
+        title: "Sucesso",
+        description: "Módulo criado com sucesso!",
+      });
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Erro ao criar módulo');
+      toast({
+        title: "Erro",
+        description: error.message || 'Erro ao criar módulo',
+        variant: "destructive",
+      });
     },
   });
 
@@ -307,37 +250,95 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
       parameters: {
         ...formData.parameters,
         temperature: {
-          tempCoeffPmax: tempCoefPmaxStr ? parseFloat(tempCoefPmaxStr) / 100 || 0 : 0,
-          tempCoeffVoc: tempCoefVocStr ? parseFloat(tempCoefVocStr) / 100 || 0 : 0,
-          tempCoeffIsc: tempCoefIscStr ? parseFloat(tempCoefIscStr) / 100 || 0 : 0,
+          tempCoeffPmax: tempCoefPmaxStr ? Math.abs(parseFloat(tempCoefPmaxStr)) / 100 : Math.abs(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX) / 100,
+          tempCoeffVoc: tempCoefVocStr ? parseFloat(tempCoefVocStr) / 100 : CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC / 100,
+          tempCoeffIsc: tempCoefIscStr ? parseFloat(tempCoefIscStr) / 100 : CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC / 100,
         },
         advanced: {
-          alphaSc: tempCoefPmaxStr ? parseFloat(tempCoefPmaxStr) / 100 || 0 : 0,
-          betaOc: tempCoefVocStr ? parseFloat(tempCoefVocStr) / 100 || 0 : 0,
-          gammaR: tempCoefIscStr ? parseFloat(tempCoefIscStr) / 100 || 0 : 0,
+          alphaSc: tempCoefPmaxStr ? Math.abs(parseFloat(tempCoefPmaxStr)) / 100 : Math.abs(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX) / 100,
+          betaOc: tempCoefVocStr ? parseFloat(tempCoefVocStr) / 100 : CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC / 100,
+          gammaR: tempCoefIscStr ? parseFloat(tempCoefIscStr) / 100 : CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC / 100,
         }
       }
     };
 
     try {
-      let result;
-      if (initialData) {
-        // TODO: Implementar atualização do módulo
-        // result = await updateModule.mutateAsync({ id: initialData.id, data: dataToSave });
-        toast('Funcionalidade de edição em desenvolvimento');
-        onOpenChange(false);
-        return;
-      } else {
-        result = await createModule.mutateAsync(dataToSave);
-        onModuleAdded?.(result);
+      const newModule = await createModule.mutateAsync(dataToSave);
+      onModuleAdded?.(newModule);
 
-        // Auto-select the newly added module
-        if (onModuleSelected && result?.id) {
-          onModuleSelected(result.id);
-        }
+      // Auto-select the newly added module
+      if (onModuleSelected && newModule?.id) {
+        onModuleSelected(newModule.id);
       }
 
       onOpenChange(false);
+
+      // Reset form
+      setFormData({
+        manufacturer: '',
+        model: '',
+        nominalPower: 0,
+        specifications: {
+          voc: 0,
+          isc: 0,
+          vmpp: 0,
+          impp: 0,
+          efficiency: 0,
+          cellType: CalculationConstants.FORM_DEFAULTS.MODULE_FORM.DEFAULT_CELL_TYPE,
+          numberOfCells: 0,
+          technology: CalculationConstants.FORM_DEFAULTS.MODULE_FORM.DEFAULT_CELL_TECHNOLOGY,
+        },
+        parameters: {
+          temperature: {
+            tempCoeffPmax: 0,
+            tempCoeffVoc: 0,
+            tempCoeffIsc: 0,
+          },
+          diode: {
+            aRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_A_REF,
+            iLRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IL_REF_A,
+            iORef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_IO_REF_A,
+            rS: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_RS_OHM,
+            rShRef: CalculationConstants.MODULE_DETAILS.DEFAULT_MODULE_RSH_REF_OHM,
+          },
+          sapm: {
+            a0: 0,
+            a1: 0,
+            a2: 0,
+            a3: 0,
+            a4: 0,
+            b0: 0,
+            b1: 0,
+            b2: 0,
+            b3: 0,
+            b4: 0,
+          },
+          spectral: {
+            am: 1.5,
+            material: '',
+            technology: '',
+          },
+          advanced: {
+            alphaSc: Math.abs(CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX) / 100,
+            betaOc: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC / 100,
+            gammaR: CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC / 100,
+          },
+        },
+        dimensions: {
+          widthMm: 0,
+          heightMm: 0,
+          thicknessMm: 0,
+          weightKg: 0,
+        },
+        metadata: {
+          warranty: 25,
+          certifications: [],
+        },
+        teamId: '', // Will be set by service
+      });
+      setTempCoefPmaxStr((CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_PMAX).toString());
+      setTempCoefVocStr((CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_VOC).toString());
+      setTempCoefIscStr((CalculationConstants.MODULE_DETAILS.DEFAULT_TEMP_COEF_ISC).toString());
     } catch (error) {
     }
   };
@@ -409,16 +410,22 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fabricante">Fabricante *</Label>
-                <Select onValueChange={(value) => updateFormData('', 'manufacturer', value)}>
+                <Select onValueChange={(value) => updateFormData('', 'manufacturer', value)} disabled={loadingManufacturers}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o fabricante" />
+                    <SelectValue placeholder={loadingManufacturers ? "Carregando..." : "Selecione o fabricante"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {MANUFACTURERS.map(manufacturer => (
-                      <SelectItem key={manufacturer} value={manufacturer}>
-                        {manufacturer}
-                      </SelectItem>
-                    ))}
+                    {loadingManufacturers ? (
+                      <SelectItem value="loading" disabled>Carregando fabricantes...</SelectItem>
+                    ) : manufacturers.length === 0 ? (
+                      <SelectItem value="no-manufacturers" disabled>Nenhum fabricante encontrado</SelectItem>
+                    ) : (
+                      manufacturers.map((manufacturer: any) => (
+                        <SelectItem key={manufacturer.id} value={manufacturer.id}>
+                          {manufacturer.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -741,7 +748,7 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
               disabled={createModule.isPending || !formData.manufacturer || !formData.model || !formData.nominalPower}
             >
               {createModule.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {initialData ? 'Salvar Alterações' : 'Adicionar Módulo'}
+              {initialData ? 'Atualizar Módulo' : 'Adicionar Módulo'}
             </Button>
           </DialogFooter>
         </form>

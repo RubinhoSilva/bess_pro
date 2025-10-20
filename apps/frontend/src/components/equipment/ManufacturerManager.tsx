@@ -126,7 +126,7 @@ export function ManufacturerManager() {
 
   const handleOpenDialog = (manufacturer?: Manufacturer) => {
     if (manufacturer) {
-      if (manufacturer.isDefault) {
+      if (manufacturer.isPublic) {
         toast.error('Fabricantes padrão não podem ser editados');
         return;
       }
@@ -203,7 +203,7 @@ export function ManufacturerManager() {
   };
 
   const handleDelete = async (manufacturer: Manufacturer) => {
-    if (manufacturer.isDefault) {
+    if (manufacturer.isPublic) {
       toast.error('Fabricantes padrão não podem ser removidos');
       return;
     }
@@ -550,7 +550,7 @@ export function ManufacturerManager() {
                    )}
                  </TableCell>
                 <TableCell>
-                  {manufacturer.isDefault && (
+                  {manufacturer.isPublic && (
                     <Badge variant="secondary" className="flex items-center gap-1">
                       <Shield className="w-3 h-3" />
                       Padrão
@@ -565,13 +565,13 @@ export function ManufacturerManager() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {!manufacturer.isDefault && (
+                      {!manufacturer.isPublic && (
                         <DropdownMenuItem onClick={() => handleOpenDialog(manufacturer)}>
                           <Edit className="w-4 h-4 mr-2" />
                           Editar
                         </DropdownMenuItem>
                       )}
-                      {!manufacturer.isDefault && (
+                      {!manufacturer.isPublic && (
                         <DropdownMenuItem 
                           onClick={() => handleDelete(manufacturer)}
                           className="text-red-600"
@@ -580,7 +580,7 @@ export function ManufacturerManager() {
                           Remover
                         </DropdownMenuItem>
                       )}
-                      {manufacturer.isDefault && (
+                      {manufacturer.isPublic && (
                         <DropdownMenuItem disabled>
                           <Shield className="w-4 h-4 mr-2" />
                           Fabricante Padrão

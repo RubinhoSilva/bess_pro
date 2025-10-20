@@ -8,6 +8,7 @@ import { Manufacturer, ManufacturerType } from '../../../../domain/entities/Manu
 import { ManufacturerModel } from '../schemas/ManufacturerSchema';
 import { MongoBaseRepository, RepositoryConfig, PaginatedResult } from './base/MongoBaseRepository';
 import { ManufacturerDbMapper } from '../mappers/ManufacturerDbMapper';
+import { SystemUsers } from '@/domain/constants/SystemUsers';
 
 // Interfaces para filtros específicos
 export interface ManufacturerRepositoryFilters {
@@ -267,15 +268,15 @@ export class MongoManufacturerRepository implements IManufacturerRepository {
       ];
     }
 
-    // Filtro por time
     if (filters.teamId) {
+      // Se tem teamId, busca do time + públicos
       customFilters.$or = [
-        { isDefault: true },
-        { teamId: filters.teamId }
+        { teamId: filters.teamId },  // Equipamentos do time do usuário
+        { teamId: SystemUsers.PUBLIC_EQUIPMENT }          // Equipamentos públicos
       ];
     } else {
-      // Se não há teamId, buscar apenas fabricantes padrão
-      customFilters.isDefault = true;
+      // Se não tem teamId, busca apenas públicos
+      customFilters.teamId = SystemUsers.PUBLIC_EQUIPMENT;
     }
 
     // Filtro por isDefault

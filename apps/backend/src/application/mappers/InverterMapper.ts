@@ -51,7 +51,7 @@ export class InverterMapper {
       model: inverter.modelo,
       power: {
         ratedACPower: inverter.potenciaSaidaCA,
-        maxPVPower: inverter.potenciaFvMax || 0,
+        maxPVPower: inverter.potenciaMaxima,
         ratedDCPower: undefined,
         shortCircuitVoltageMax: inverter.tensaoCcMax || 0,
         maxInputCurrent: inverter.correnteEntradaMax || 0,

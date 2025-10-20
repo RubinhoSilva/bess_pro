@@ -60,10 +60,7 @@ export class ManufacturerController extends BaseController {
       }
 
       // Validar teamId obrigatório
-      const teamId = filters.teamId || (req as any).user?.teamId;
-      if (!teamId) {
-        return this.badRequest(res, 'TeamId é obrigatório para listar fabricantes');
-      }
+      const teamId = this.extractTeamId(req); 
 
       const query: GetManufacturersQuery = {
         teamId,

@@ -11,7 +11,7 @@ export interface InverterData extends SoftDeleteProps {
   tipoRede: string; // ex: 'Monofásico 220V', 'Trifásico 380V'
   
   // Dados de entrada (CC/FV)
-  potenciaFvMax?: number; // Máxima potência FV (W)
+  potenciaMaxima?: number; // Máxima potência FV (W)
   tensaoCcMax?: number; // Máxima tensão CC (V)
   numeroMppt?: number; // Número de MPPTs
   stringsPorMppt?: number; // Strings por MPPT
@@ -94,7 +94,7 @@ export class Inverter extends BaseEntity {
   get modelo(): string { return this.data.modelo; }
   get potenciaSaidaCA(): number { return this.data.potenciaSaidaCA; }
   get tipoRede(): string { return this.data.tipoRede; }
-  get potenciaFvMax(): number | undefined { return this.data.potenciaFvMax; }
+  get potenciaMaxima(): number | undefined { return this.data.potenciaMaxima; }
   get tensaoCcMax(): number | undefined { return this.data.tensaoCcMax; }
   get numeroMppt(): number | undefined { return this.data.numeroMppt; }
   get stringsPorMppt(): number | undefined { return this.data.stringsPorMppt; }
@@ -127,8 +127,8 @@ export class Inverter extends BaseEntity {
 
   // Business methods
   public calculateMaxModules(modulePower: number): number | undefined {
-    if (this.data.potenciaFvMax && modulePower > 0) {
-      return Math.floor(this.data.potenciaFvMax / modulePower);
+    if (this.data.potenciaMaxima && modulePower > 0) {
+      return Math.floor(this.data.potenciaMaxima / modulePower);
     }
     return undefined;
   }

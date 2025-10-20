@@ -4,6 +4,7 @@ import { InverterModel } from '../schemas/InverterSchema';
 import { MongoBaseRepository, RepositoryConfig } from './base/MongoBaseRepository';
 import { InverterDbMapper } from '../mappers/InverterDbMapper';
 import { SystemUsers } from '@/domain/constants/SystemUsers';
+import { TeamId } from '@/domain/value-objects/TeamId';
 
 // Interfaces para filtros específicos
 export interface InverterFilters {
@@ -270,8 +271,20 @@ export class MongoInverterRepository implements IInverterRepository {
   private buildCustomFilters(filters: InverterFilters): any {
     const customFilters: any = {};
 
-    // Filtro de acesso público + usuário
-    const publicAccessFilter = this.buildPublicAccessFilter(filters.teamId);
+    // Filtro de acesso: teamId informado (do token) OU público
+    let accessFilter: any;
+    if (filters.teamId) {
+      // Se tem teamId, busca do time + públicos
+      accessFilter = {
+        $or: [
+          { teamId: filters.teamId },  // Equipamentos do time do usuário
+          { teamId: SystemUsers.PUBLIC_EQUIPMENT }       // Equipamentos públicos
+        ]
+      };
+    } else {
+      // Se não tem teamId, busca apenas públicos
+      accessFilter = { teamId: SystemUsers.PUBLIC_EQUIPMENT };
+    }
     
     // Filtro de fabricante
     if (filters.fabricante) {
@@ -294,7 +307,7 @@ export class MongoInverterRepository implements IInverterRepository {
 
     // Combinar todos os filtros
     return this.mergeQueries(
-      publicAccessFilter,
+      accessFilter,
       this.mergeQueries(customFilters, this.mergeQueries(powerFilter, searchFilter))
     );
   }

@@ -20,7 +20,7 @@ export interface Manufacturer extends BaseEntity {
   readonly certifications: string[];
   readonly metadata: ManufacturerMetadata;
   readonly status: Status;
-  readonly isDefault?: boolean;
+  readonly isPublic?: boolean;
   readonly teamId?: string;
 }
 

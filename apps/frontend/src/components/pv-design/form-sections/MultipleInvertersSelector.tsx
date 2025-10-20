@@ -17,7 +17,7 @@ import {
 import { manufacturerService } from '@/services/ManufacturerService';
 
 import { useMultipleMPPTCalculations } from '@/hooks/useMPPT';
-import { AddInverterModal } from '../modals/AddInverterModal';
+import { AddInverterModal } from '@/components/equipment/modals';
 
 // Função auxiliar para mapear Inverter do shared para formato MPPT
 const mapInverterToMPPTFormat = (inverter: Inverter) => {

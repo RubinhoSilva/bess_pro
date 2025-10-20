@@ -34,7 +34,7 @@ export class CreateManufacturerUseCase implements IUseCase<CreateManufacturerReq
         name: request.name,
         type: request.type,
         teamId: request.teamId,
-        isDefault: false, // Fabricantes criados por usuários nunca são padrão
+        isPublic: false, // Fabricantes criados por usuários nunca são padrão
         description: request.description,
         website: request.website,
         country: request.address?.country,

@@ -460,6 +460,69 @@ export const CalculationConstants = {
      */
     SHADING_LOSS_FACTOR: 0.1,
   } as const,
+
+  /**
+   * Constantes de valores padrão para formulários
+   */
+  FORM_DEFAULTS: {
+    /**
+     * Valores padrão para módulos solares
+     */
+    MODULE_FORM: {
+      /**
+       * Tipo de célula padrão
+       * @unit enum
+       * @source Módulos mais comuns mercado 2024
+       * @lastUpdate 2024-01
+       */
+      DEFAULT_CELL_TYPE: 'monocrystalline',
+
+      /**
+       * Tecnologia de célula padrão
+       * @unit enum
+       * @source Tecnologia mais difundida 2024
+       * @lastUpdate 2024-01
+       */
+      DEFAULT_CELL_TECHNOLOGY: 'perc',
+
+      /**
+       * Descrição padrão para módulos
+       * @unit string
+       * @source Descrição genérica
+       * @lastUpdate 2024-01
+       */
+      DEFAULT_DESCRIPTION: 'Módulo fotovoltaico padrão',
+    } as const,
+
+    /**
+     * Valores padrão para inversores
+     */
+    INVERTER_FORM: {
+      /**
+       * Tipo de rede padrão
+       * @unit string
+       * @source Configuração mais comum Brasil
+       * @lastUpdate 2024-01
+       */
+      DEFAULT_GRID_TYPE: 'monofasico-220v',
+
+      /**
+       * Tipo de conexão padrão
+       * @unit string
+       * @source Sistema conectado à rede
+       * @lastUpdate 2024-01
+       */
+      DEFAULT_CONNECTION_TYPE: 'on-grid',
+
+      /**
+       * Certificações padrão Brasil
+       * @unit array
+       * @source Requisitos obrigatórios
+       * @lastUpdate 2024-01
+       */
+      DEFAULT_CERTIFICATIONS: ['INMETRO'],
+    } as const,
+  } as const,
 } as const;
 
 // Exportar tipos para facilitar uso
@@ -469,3 +532,4 @@ export type InverterDefaultsConstants = typeof CalculationConstants.INVERTER_DEF
 export type ConsumptionDefaultsConstants = typeof CalculationConstants.CONSUMPTION_DEFAULTS;
 export type FinancialDefaultsConstants = typeof CalculationConstants.FINANCIAL_DEFAULTS;
 export type GeometryConstants = typeof CalculationConstants.GEOMETRY;
+export type FormDefaultsConstants = typeof CalculationConstants.FORM_DEFAULTS;

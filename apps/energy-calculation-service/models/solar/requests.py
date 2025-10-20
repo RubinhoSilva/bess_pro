@@ -227,28 +227,28 @@ class ModuloSolar(BaseModel):
     # Informações básicas
     fabricante: str = Field(..., description="Fabricante do módulo")
     modelo: str = Field(..., description="Modelo do módulo")
-    potencia_nominal_w: float = Field(..., ge=100, le=1000, description="Potência nominal STC (W)")
+    potencia_nominal_w: float = Field(..., description="Potência nominal STC (W)")
 
     # Dimensões físicas
-    largura_mm: float = Field(..., ge=500, le=2500, description="Largura em mm")
-    altura_mm: float = Field(..., ge=1000, le=3000, description="Altura em mm")
-    peso_kg: float = Field(..., ge=10, le=50, description="Peso em kg")
+    largura_mm: float = Field(..., description="Largura em mm")
+    altura_mm: float = Field(..., description="Altura em mm")
+    peso_kg: float = Field(..., description="Peso em kg")
 
     # Parâmetros elétricos STC
-    vmpp: float = Field(..., ge=20, le=60, description="Tensão no ponto de máxima potência (V)")
-    impp: float = Field(..., ge=5, le=20, description="Corrente no ponto de máxima potência (A)")
-    voc_stc: float = Field(..., ge=20, le=70, description="Tensão de circuito aberto STC (V)")
-    isc_stc: float = Field(..., ge=5, le=20, description="Corrente de curto-circuito STC (A)")
+    vmpp: float = Field(..., description="Tensão no ponto de máxima potência (V)")
+    impp: float = Field(..., description="Corrente no ponto de máxima potência (A)")
+    voc_stc: float = Field(..., description="Tensão de circuito aberto STC (V)")
+    isc_stc: float = Field(..., description="Corrente de curto-circuito STC (A)")
 
     # Coeficientes de temperatura
-    eficiencia: float = Field(..., ge=10, le=30, description="Eficiência do módulo (%)")
-    temp_coef_pmax: float = Field(..., ge=-1, le=1, description="Coeficiente de temperatura Pmax (%/°C)")
+    eficiencia: float = Field(..., description="Eficiência do módulo (%)")
+    temp_coef_pmax: float = Field(..., description="Coeficiente de temperatura Pmax (%/°C)")
 
     # Parâmetros Sandia (obrigatórios para pvlib)
     alpha_sc: float = Field(..., description="Coef. temp. Isc normalizado (1/°C)")
     beta_oc: float = Field(..., description="Coef. temp. Voc normalizado (1/°C)")
     gamma_r: float = Field(..., description="Coef. temp. Pmp normalizado (1/°C)")
-    cells_in_series: int = Field(..., ge=36, le=200, description="Número de células em série")
+    cells_in_series: int = Field(..., description="Número de células em série")
 
     # Parâmetros Sandia avançados
     a_ref: float = Field(..., description="Fator de idealidade modificado (ref)")
@@ -297,18 +297,18 @@ class InversorData(BaseModel):
     # Informações básicas
     fabricante: str = Field(..., description="Fabricante do inversor")
     modelo: str = Field(..., description="Modelo do inversor")
-    potencia_saida_ca_w: float = Field(..., ge=500, le=100000, description="Potência nominal CA (W)")
+    potencia_saida_ca_w: float = Field(..., description="Potência nominal CA (W)")
 
     # Características técnicas
     tipo_rede: str = Field(..., description="Tipo de rede (ex: Monofásico 220V)")
-    potencia_fv_max_w: float = Field(..., ge=500, le=150000, description="Máxima potência FV (W)")
-    tensao_cc_max_v: float = Field(..., ge=100, le=1500, description="Máxima tensão CC (V)")
+    potencia_fv_max_w: float = Field(..., description="Máxima potência FV (W)")
+    tensao_cc_max_v: float = Field(..., description="Máxima tensão CC (V)")
     numero_mppt: int = Field(..., ge=1, le=12, description="Número de MPPTs")
-    strings_por_mppt: int = Field(..., ge=1, le=4, description="Strings por MPPT")
+    strings_por_mppt: int = Field(..., description="Strings por MPPT")
 
     # Eficiência
-    eficiencia_max: float = Field(..., ge=90, le=99.9, description="Eficiência máxima (%)")
-    efficiency_dc_ac: float = Field(..., ge=0.9, le=0.999, description="Eficiência nominal DC/AC (decimal)")
+    eficiencia_max: float = Field(..., description="Eficiência máxima (%)")
+    efficiency_dc_ac: float = Field(..., description="Eficiência nominal DC/AC (decimal)")
 
     # Parâmetros Sandia do inversor (opcionais)
     vdco: Optional[float] = Field(None, description="Tensão DC nominal de operação (V)")
@@ -349,8 +349,8 @@ class OrientacaoModulos(BaseModel):
     nome: str = Field(..., description="Nome da orientação/água")
     orientacao: float = Field(..., ge=0, le=360, description="Azimute em graus (0° = Norte)")
     inclinacao: float = Field(..., ge=0, le=90, description="Inclinação em graus (0° = horizontal)")
-    modulos_por_string: int = Field(..., ge=1, le=50, description="Número de módulos em série por string")
-    numero_strings: Optional[int] = Field(default=1, ge=1, le=10, description="Número de strings (padrão: 1)")
+    modulos_por_string: int = Field(..., description="Número de módulos em série por string")
+    numero_strings: Optional[int] = Field(default=1, description="Número de strings (padrão: 1)")
 
     @field_validator('orientacao')
     @classmethod
@@ -381,17 +381,15 @@ class InversorConfig(BaseModel):
         description="Lista de orientações/MPPTs conectados a este inversor"
     )
 
-    @field_validator('orientacoes')
-    @classmethod
-    def validate_orientacoes_vs_mppts(cls, v, info):
+    @model_validator(mode='after')
+    def validate_orientacoes_vs_mppts(self):
         """Valida se número de orientações não excede número de MPPTs"""
-        # Nota: Em Pydantic V2, o acesso a outros valores mudou
-        # Esta validação pode precisar ser reescrita ou movida para model_validator
-        if len(v) > info.data['inversor'].numero_mppt:
-            raise ValueError(
-                f"Número de orientações ({len(v)}) excede número de MPPTs disponíveis ({info.data['inversor'].numero_mppt})"
-            )
-        return v
+        if hasattr(self, 'inversor') and hasattr(self, 'orientacoes'):
+            if len(self.orientacoes) > self.inversor.numero_mppt:
+                raise ValueError(
+                    f"Número de orientações ({len(self.orientacoes)}) excede número de MPPTs disponíveis ({self.inversor.numero_mppt})"
+                )
+        return self
 
     class Config:
         json_schema_extra = {

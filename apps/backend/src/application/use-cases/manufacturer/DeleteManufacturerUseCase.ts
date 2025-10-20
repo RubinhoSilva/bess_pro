@@ -27,7 +27,7 @@ export class DeleteManufacturerUseCase implements IUseCase<DeleteManufacturerCom
       }
 
       // Verificar se é fabricante padrão e não pode ser removido
-      if (existingManufacturer.isDefault) {
+      if (existingManufacturer.isPublic) {
         return Result.failure('Fabricantes padrão não podem ser removidos');
       }
 

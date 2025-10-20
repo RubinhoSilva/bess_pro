@@ -44,6 +44,8 @@ export class GetSolarModulesUseCase implements IUseCase<GetSolarModulesQuery, Re
         page,
         pageSize
       });
+
+      console.log(`Found ${total} solar modules matching filters.`);
       
       const responseDto = SolarModuleMapper.toListResponseDto(
         modules,

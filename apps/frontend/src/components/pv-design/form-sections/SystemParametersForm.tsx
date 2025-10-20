@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { MultipleInvertersSelector } from './MultipleInvertersSelector';
-import { AddSolarModuleModal } from '../modals/AddSolarModuleModal';
+import { AddSolarModuleModal } from '@/components/equipment/modals';
 
 // Services
 import { moduleService } from '@/services/ModuleService';

@@ -156,20 +156,9 @@ export const SolarModuleSchema = z.object({
   
   // Parâmetros avançados
   advancedParameters: z.object({
-    alphaSc: z.number()
-      .refine(val => val >= 0.001 && val <= 0.01, {
-        message: "Alpha SC should be between 0.001 and 0.01"
-      }),
-    
-    betaOc: z.number()
-      .refine(val => val >= -0.003 && val <= -0.001, {
-        message: "Beta OC should be between -0.003 and -0.001"
-      }),
-    
+    alphaSc: z.number(),
+    betaOc: z.number(),
     gammaR: z.number()
-      .refine(val => val >= -0.005 && val <= 0.005, {
-        message: "Gamma R should be between -0.005 and 0.005"
-      })
   }).optional(),
   
   // Dimensões

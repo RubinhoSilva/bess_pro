@@ -107,7 +107,7 @@ export class SolarModuleMapper {
         tolerance: module.tolerancia,
       } as ModuleMetadata,
       status: 'active',
-      isPublic: module.isDefault || false,
+      isPublic: module.teamId === SystemUsers.PUBLIC_EQUIPMENT,
       createdAt: module.createdAt || new Date(),
       updatedAt: module.updatedAt || new Date(),
     };

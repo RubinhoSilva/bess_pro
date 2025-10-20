@@ -99,7 +99,7 @@ export class EquipmentCatalog {
     }
 
     // === INVARIANT: Não pode deletar fabricantes padrão ===
-    if (manufacturer.isDefault) {
+    if (manufacturer.isPublic) {
       return Result.failure('Cannot delete default manufacturers');
     }
 

@@ -189,19 +189,13 @@ const SolarModuleSchema = new Schema<ISolarModuleDocument>({
   
   // Coeficientes de temperatura críticos
   alphaSc: {
-    type: Number,
-    min: 0.0001,
-    max: 0.001
+    type: Number
   },
   betaOc: {
-    type: Number,
-    min: -0.01,
-    max: -0.001
+    type: Number
   },
   gammaR: {
-    type: Number,
-    min: -0.001,
-    max: 0
+    type: Number
   },
   
   // Parâmetros SAPM térmicos

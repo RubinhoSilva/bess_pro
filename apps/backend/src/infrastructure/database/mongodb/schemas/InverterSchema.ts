@@ -3,7 +3,6 @@ import { Schema, model, Document } from 'mongoose';
 export interface IInverterDocument extends Document {
   teamId: string;
   manufacturerId?: string;
-  fabricante: string;
   modelo: string;
   potenciaSaidaCA: number;
   tipoRede: string;
@@ -68,12 +67,6 @@ const InverterSchema = new Schema<IInverterDocument>({
   manufacturerId: {
     type: String,
     required: false,
-    index: true
-  },
-  fabricante: {
-    type: String,
-    required: true,
-    trim: true,
     index: true
   },
   modelo: {

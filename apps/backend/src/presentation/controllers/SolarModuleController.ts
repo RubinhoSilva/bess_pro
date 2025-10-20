@@ -62,10 +62,11 @@ export class SolarModuleController extends BaseController {
       }
 
       // Extrair teamId (opcional para acesso público)
-      const teamId = filters.teamId || (req as any).user?.teamId;
+      const teamId = this.extractTeamId(req); // Allow public access with default
 
       // Construir filtros completos
       const completeFilters: any = {
+        teamId,
         model: filters.model || req.query.model as string,
         minPower: filters.minPower || (req.query.minPower ? parseFloat(req.query.minPower as string) : undefined),
         maxPower: filters.maxPower || (req.query.maxPower ? parseFloat(req.query.maxPower as string) : undefined),
@@ -79,9 +80,8 @@ export class SolarModuleController extends BaseController {
         sortBy: filters.sortBy || req.query.sortBy as string,
         sortOrder: filters.sortOrder || req.query.sortOrder as 'asc' | 'desc'
       };
-      
-      // Adicionar teamId (pode ser undefined para acesso público)
-      completeFilters.teamId = teamId;
+
+      console.log('Complete Filters:', completeFilters);
       
       const result = await this.getSolarModulesUseCase.execute({ filters: completeFilters });
       

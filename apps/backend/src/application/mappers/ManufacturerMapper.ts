@@ -1,3 +1,4 @@
+import { SystemUsers } from '@/domain/constants/SystemUsers';
 import { Manufacturer } from '../../domain/entities/Manufacturer';
 import { Manufacturer as SharedManufacturer, ManufacturerContact, ManufacturerBusiness, ManufacturerMetadata, ManufacturerType as SharedManufacturerType } from '@bess-pro/shared';
 
@@ -32,7 +33,7 @@ export class ManufacturerMapper {
         qualityStandards: [],
       } as ManufacturerMetadata,
       status: (manufacturer as any).isDeleted ? ('deleted' as const) : ('active' as const),
-      isDefault: manufacturer.isDefault,
+      ...(manufacturer.teamId === SystemUsers.PUBLIC_EQUIPMENT && { isPublic: true }),
       createdAt: manufacturer.getCreatedAt(),
       updatedAt: manufacturer.getUpdatedAt(),
     };
