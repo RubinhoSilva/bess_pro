@@ -28,12 +28,12 @@ interface AddSolarModuleModalProps {
 }
 
 const CELL_TYPES = [
-  'Monocristalino',
-  'Policristalino',
-  'Perc',
-  'HJT',
-  'TOPCon',
-  'Bifacial'
+  { value: 'monocrystalline', label: 'Monocristalino' },
+  { value: 'policrystalline', label: 'Policristalino' },
+  { value: 'perc', label: 'PERC' },
+  { value: 'hjt', label: 'HJT' },
+  { value: 'topcon', label: 'TOPCon' },
+  { value: 'bifacial', label: 'Bifacial' }
 ];
 
 
@@ -125,7 +125,6 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
   // Carregar dados iniciais no modo de edição
   useEffect(() => {
     if (initialData) {
-
       // Mapear dados iniciais para o formulário
       const mappedData = {
         manufacturer: initialData.manufacturer?.id || initialData.manufacturer || '',
@@ -221,6 +220,24 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
     },
   });
 
+  const updateModule = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: CreateModuleRequest }) => moduleService.updateModule(id, data as any),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['modules'] });
+      toast({
+        title: "Sucesso",
+        description: "Módulo atualizado com sucesso!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || 'Erro ao atualizar módulo',
+        variant: "destructive",
+      });
+    },
+  });
+
   // Auto-populate iLRef when isc changes
   useEffect(() => {
     if (formData.specifications.isc && formData.specifications.isc > 0 && (!formData.parameters.diode.iLRef || formData.parameters.diode.iLRef === 0)) {
@@ -263,12 +280,24 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
     };
 
     try {
-      const newModule = await createModule.mutateAsync(dataToSave);
-      onModuleAdded?.(newModule);
+      let result;
+      
+      if (initialData?.id) {
+        // Modo de edição - usar PUT
+        result = await updateModule.mutateAsync({
+          id: initialData.id,
+          data: dataToSave
+        });
+      } else {
+        // Modo de criação - usar POST
+        result = await createModule.mutateAsync(dataToSave);
+      }
+      
+      onModuleAdded?.(result);
 
-      // Auto-select the newly added module
-      if (onModuleSelected && newModule?.id) {
-        onModuleSelected(newModule.id);
+      // Auto-select the module (newly added or updated)
+      if (onModuleSelected && result?.id) {
+        onModuleSelected(result.id);
       }
 
       onOpenChange(false);
@@ -410,7 +439,11 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fabricante">Fabricante *</Label>
-                <Select onValueChange={(value) => updateFormData('', 'manufacturer', value)} disabled={loadingManufacturers}>
+                <Select
+                  value={formData.manufacturer}
+                  onValueChange={(value) => updateFormData('', 'manufacturer', value)}
+                  disabled={loadingManufacturers}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder={loadingManufacturers ? "Carregando..." : "Selecione o fabricante"} />
                   </SelectTrigger>
@@ -471,14 +504,17 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="tipoCelula">Tipo de Célula</Label>
-                <Select onValueChange={(value) => updateFormData('specifications', 'cellType', value)}>
+                <Select
+                  value={formData.specifications.cellType}
+                  onValueChange={(value) => updateFormData('specifications', 'cellType', value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo de célula" />
                   </SelectTrigger>
                   <SelectContent>
                     {CELL_TYPES.map(type => (
-                      <SelectItem key={type} value={type}>
-                        {type}
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -745,9 +781,9 @@ export function AddSolarModuleModal({ open, onOpenChange, onModuleAdded, onModul
             </Button>
             <Button
               type="submit"
-              disabled={createModule.isPending || !formData.manufacturer || !formData.model || !formData.nominalPower}
+              disabled={createModule.isPending || updateModule.isPending || !formData.manufacturer || !formData.model || !formData.nominalPower}
             >
-              {createModule.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {(createModule.isPending || updateModule.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {initialData ? 'Atualizar Módulo' : 'Adicionar Módulo'}
             </Button>
           </DialogFooter>

@@ -35,21 +35,28 @@ export class UpdateSolarModuleUseCase implements IUseCase<UpdateModuleRequest & 
       }
 
       // Se mudou fabricante/modelo, verificar duplicação
-      if (request.manufacturer || request.model) {
-        const manufacturerIdToCheck = request.manufacturer || existingModule.manufacturerId;
-        const modelo = request.model || existingModule.modelo;
+        const manufacturerIdToCheck = existingModule.manufacturerId;
+        const modelToCheck = existingModule.modelo;
+
+        console.log('Verificação de duplicação - manufacturerIdToCheck:', manufacturerIdToCheck);
+        console.log('Verificação de duplicação - modelToCheck:', modelToCheck);
+        console.log('Verificação de duplicação - Novo manufacturerId:', manufacturerId);
+        console.log('Verificação de duplicação - Novo model:', request.model);
+
+        if (manufacturerId != manufacturerIdToCheck || (request.model && request.model !== modelToCheck)) {
         
         const duplicateModule = await this.solarModuleRepository.findByManufacturerModelo(
           manufacturerIdToCheck,
-          modelo,
+          modelToCheck,
           existingModule.teamId);
         
         if (duplicateModule && duplicateModule.id !== id) {
           const manufacturer = await this.manufacturerRepository.findById(manufacturerIdToCheck);
           const manufacturerName = manufacturer?.name || 'Desconhecido';
-          return Result.failure(`Já existe um módulo ${manufacturerName} ${modelo} cadastrado.`);
+          return Result.failure(`Já existe um módulo ${manufacturerName} ${modelToCheck} cadastrado.`);
         }
       }
+      
 
       // Converter request para o formato da entidade
       const updateData = SharedToSolarModuleMapper.updateRequestToEntityData(request);

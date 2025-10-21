@@ -167,20 +167,6 @@ export class Inverter extends BaseEntity {
     return undefined;
   }
 
-  public getPhaseType(): 'monofásico' | 'bifásico' | 'trifásico' | 'unknown' {
-    const tipoLower = this.data.tipoRede.toLowerCase();
-    if (tipoLower.includes('monofás') || tipoLower.includes('mono')) {
-      return 'monofásico';
-    }
-    if (tipoLower.includes('bifás') || tipoLower.includes('bi')) {
-      return 'bifásico';
-    }
-    if (tipoLower.includes('trifás') || tipoLower.includes('tri')) {
-      return 'trifásico';
-    }
-    return 'unknown';
-  }
-
   public toJSON(): InverterData {
     return { ...this.data };
   }

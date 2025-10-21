@@ -37,14 +37,6 @@ export class InverterMapper {
       updatedAt: new Date(),
     };
 
-    // Determinar grid type
-    let gridType: GridType = 'monofasico';
-    if (inverter.tipoRede?.toLowerCase().includes('trif')) {
-      gridType = 'trifasico';
-    } else if (inverter.tipoRede?.toLowerCase().includes('bif')) {
-      gridType = 'bifasico';
-    }
-
     return {
       id: inverter.id!,
       manufacturer,
@@ -69,7 +61,7 @@ export class InverterMapper {
         maxEfficiency: inverter.eficienciaMaxima,
         europeanEfficiency: inverter.eficienciaEuropeia,
         mpptEfficiency: inverter.eficienciaMppt,
-        gridType,
+        gridType: inverter.tipoRede as GridType,
         ratedVoltage: inverter.tensaoSaidaNominal,
         frequency: inverter.frequenciaNominal,
         powerFactor: undefined,

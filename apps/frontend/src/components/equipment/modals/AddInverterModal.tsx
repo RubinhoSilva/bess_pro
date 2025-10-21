@@ -132,6 +132,24 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
     },
   });
 
+  const updateInverter = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: CreateInverterRequest }) => inverterService.updateInverter(id, data as any),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inverters'] });
+      toast({
+        title: "Sucesso",
+        description: "Inversor atualizado com sucesso!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || 'Erro ao atualizar inversor',
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -147,14 +165,27 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
     try {
       const dataToSubmit = {
         ...formData,
-        manufacturerId: manufacturerName
+        manufacturerId: formData.manufacturerId  // Usar o ID do formData, não o nome
       };
-      const newInverter = await createInverter.mutateAsync(dataToSubmit);
-      onInverterAdded?.(newInverter);
+
+      let result;
       
-      // Auto-select the newly added inverter
-      if (onInverterSelected && newInverter?.id) {
-        onInverterSelected(newInverter.id);
+      if (initialData?.id) {
+        // Modo de edição - usar PUT
+        result = await updateInverter.mutateAsync({
+          id: initialData.id,
+          data: dataToSubmit
+        });
+      } else {
+        // Modo de criação - usar POST
+        result = await createInverter.mutateAsync(dataToSubmit);
+      }
+      
+      onInverterAdded?.(result);
+      
+      // Auto-select the inverter (newly added or updated)
+      if (onInverterSelected && result?.id) {
+        onInverterSelected(result.id);
       }
       
       onOpenChange(false);
@@ -281,7 +312,7 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
               <div className="space-y-2">
                 <Label>Tipo de Rede *</Label>
                 <Select
-                  value={formData.electrical.gridType || ''}
+                  value={formData.electrical.gridType}
                   onValueChange={value => updateFormData('electrical', 'gridType', value)}
                 >
                   <SelectTrigger className="bg-background border-border">
@@ -376,15 +407,15 @@ export function AddInverterModal({ open, onOpenChange, onInverterAdded, onInvert
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={createInverter.isPending}
+              disabled={createInverter.isPending || updateInverter.isPending}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
-              disabled={createInverter.isPending || !formData.manufacturerId || !formData.model || !formData.power.ratedACPower}
+              disabled={createInverter.isPending || updateInverter.isPending || !formData.manufacturerId || !formData.model || !formData.power.ratedACPower}
             >
-              {createInverter.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {(createInverter.isPending || updateInverter.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {initialData ? 'Atualizar Inversor' : 'Adicionar Inversor'}
             </Button>
           </DialogFooter>

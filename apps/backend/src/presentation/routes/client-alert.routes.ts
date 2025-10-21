@@ -18,7 +18,7 @@ const router = Router();
 // Rate limiting para alertas
 const alertsRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // 100 requests por window por IP
+  max: 1000, // 1000 requests por window por IP
   message: {
     success: false,
     error: {
@@ -33,7 +33,7 @@ const alertsRateLimit = rateLimit({
 // Rate limiting mais restritivo para criação
 const createAlertRateLimit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutos
-  max: 10, // 10 criações por 5 minutos por IP
+  max: 100, // 100 criações por 5 minutos por IP
   message: {
     success: false,
     error: {
