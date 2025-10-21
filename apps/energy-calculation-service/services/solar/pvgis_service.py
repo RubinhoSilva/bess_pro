@@ -49,21 +49,24 @@ class PVGISService:
 
         logger.info(f"Buscando dados PVGIS para {lat}, {lon}")
 
+        # Parâmetros de cache para distinguir da fonte NASA
+        cache_params = {'source': 'pvgis', 'dataset': 'PVGIS'}
+
         # Tentar geohash cache primeiro (novo sistema)
         if use_cache:
             try:
-                cached_data = geohash_cache_manager.get(lat, lon)
+                cached_data = geohash_cache_manager.get(lat, lon, **cache_params)
                 if cached_data is not None:
-                    logger.info(f"Geohash cache HIT para {lat}, {lon}")
+                    logger.info(f"Geohash cache HIT para PVGIS {lat}, {lon}")
                     return cached_data
                 else:
-                    logger.debug(f"Geohash cache MISS para {lat}, {lon}")
+                    logger.debug(f"Geohash cache MISS para PVGIS {lat}, {lon}")
             except Exception as e:
-                logger.warning(f"Erro no geohash cache, tentando cache legado: {e}")
+                logger.warning(f"Erro no geohash cache PVGIS, tentando cache legado: {e}")
                 # Fallback para cache legado
                 cached_data = cache_manager.get(lat, lon, prefix="pvgis")
                 if cached_data is not None:
-                    logger.info(f"Dados encontrados no cache legado para {lat}, {lon}")
+                    logger.info(f"Dados PVGIS encontrados no cache legado para {lat}, {lon}")
                     return cached_data
 
         # Buscar dados do PVGIS (API call)
@@ -75,16 +78,16 @@ class PVGISService:
             if use_cache and df is not None:
                 # Salvar no geohash cache (novo sistema)
                 try:
-                    geohash_cache_manager.set(lat, lon, df)
-                    logger.debug(f"Dados salvos no geohash cache para {lat}, {lon}")
+                    geohash_cache_manager.set(lat, lon, df, **cache_params)
+                    logger.debug(f"Dados PVGIS salvos no geohash cache para {lat}, {lon}")
                 except Exception as e:
-                    logger.warning(f"Erro ao salvar no geohash cache: {e}")
+                    logger.warning(f"Erro ao salvar PVGIS no geohash cache: {e}")
 
                 # Também salvar no cache legado para compatibilidade
                 try:
                     cache_manager.set(lat, lon, df, prefix="pvgis")
                 except Exception as e:
-                    logger.warning(f"Erro ao salvar no cache legado: {e}")
+                    logger.warning(f"Erro ao salvar PVGIS no cache legado: {e}")
 
             return df
 

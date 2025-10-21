@@ -53,6 +53,16 @@ class IrradiationService:
         df, actual_source = self._fetch_weather_data_with_fallback(
             request.lat, request.lon, request.data_source
         )
+        
+        # Log claro sobre fonte utilizada vs solicitada
+        # Normalizar comparação (request.data_source é 'nasa'/'pvgis', actual_source é 'NASA POWER'/'PVGIS')
+        requested_normalized = request.data_source.lower()
+        actual_normalized = actual_source.lower().replace(' power', '').replace(' ', '')
+        
+        if actual_normalized != requested_normalized:
+            logger.warning(f"FALLBACK: Fonte solicitada ({request.data_source}) não disponível, usando ({actual_source})")
+        else:
+            logger.info(f"Sucesso: Utilizando fonte de dados {actual_source} conforme solicitado")
 
         # Filtrar anos completos (2005-2020 ou disponível)
         df_filtered = df[df.index.year >= 2005]
@@ -62,10 +72,10 @@ class IrradiationService:
 
         # Escolher fonte de irradiação
         if use_tilted_plane:
-            logger.info(f"Calculando irradiação no plano inclinado ({request.tilt}°, {request.azimuth}°)")
+            logger.info(f"Calculando irradiação no plano inclinado ({request.tilt}°, {request.azimuth}°) com dados {actual_source}")
             irradiance_source = self._calculate_poa_irradiance(
                 df_filtered, request.lat, request.lon,
-                request.tilt, request.azimuth, request.modelo_decomposicao
+                request.tilt, request.azimuth, request.modelo_decomposicao, actual_source
             )
             irradiation_type = "POA (Plano Inclinado)"
         else:
@@ -145,26 +155,26 @@ class IrradiationService:
                 )
     
     def _calculate_poa_irradiance(self, df: pd.DataFrame, lat: float, lon: float,
-                                 tilt: float, azimuth: float, model: str) -> pd.Series:
+                                 tilt: float, azimuth: float, model: str, source: str = 'unknown') -> pd.Series:
         """Calcula irradiação no plano inclinado"""
         
         # Validar modelo de decomposição
         model = validate_decomposition_model(model)
 
-        # Verificar geohash cache para POA
+        # Verificar geohash cache para POA - incluir fonte de dados para diferenciar
         cache_key_params = {
-            'tilt': tilt, 'azimuth': azimuth, 'model': model, 'type': 'poa'
+            'tilt': tilt, 'azimuth': azimuth, 'model': model, 'type': 'poa', 'source': source
         }
 
         try:
             cached_poa = geohash_cache_manager.get(lat, lon, **cache_key_params)
             if cached_poa is not None:
-                logger.info(f"Geohash cache HIT para POA (tilt={tilt}, azimuth={azimuth}, model={model})")
+                logger.info(f"Geohash cache HIT para POA (tilt={tilt}, azimuth={azimuth}, model={model}, source={source})")
                 return cached_poa
             else:
-                logger.debug(f"Geohash cache MISS para POA")
+                logger.debug(f"Geohash cache MISS para POA (source={source})")
         except Exception as e:
-            logger.warning(f"Erro no geohash cache POA: {e}")
+            logger.warning(f"Erro no geohash cache POA (source={source}): {e}")
 
         # Calcular posição solar
         solar_pos = pvlib.solarposition.get_solarposition(df.index, lat, lon)
@@ -187,9 +197,9 @@ class IrradiationService:
         # Cachear resultado
         try:
             geohash_cache_manager.set(lat, lon, poa_global, **cache_key_params)
-            logger.info("POA cacheado com sucesso no geohash cache")
+            logger.info(f"POA cacheado com sucesso no geohash cache (source={source})")
         except Exception as e:
-            logger.warning(f"Erro ao cachear POA: {e}")
+            logger.warning(f"Erro ao cachear POA (source={source}): {e}")
 
         return poa_global
 
