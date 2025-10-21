@@ -13,21 +13,21 @@ export class AuthRoutes {
 
     // Public routes
     router.post('/register',
-      // RateLimitMiddleware.auth(), // Temporarily disabled for development
+      RateLimitMiddleware.auth(),
       ValidationMiddleware.validateRegister(),
       ValidationMiddleware.handleValidationErrors(),
       authController.register.bind(authController)
     );
 
     router.post('/login',
-      // RateLimitMiddleware.auth(), // Temporarily disabled for development
+      RateLimitMiddleware.auth(),
       ValidationMiddleware.validateLogin(),
       ValidationMiddleware.handleValidationErrors(),
       authController.login.bind(authController)
     );
 
     router.post('/refresh-token',
-      // RateLimitMiddleware.auth(), // Temporarily disabled for development
+      RateLimitMiddleware.auth(),
       authController.refreshToken.bind(authController)
     );
 
