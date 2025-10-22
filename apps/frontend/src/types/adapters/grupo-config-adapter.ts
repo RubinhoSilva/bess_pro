@@ -41,6 +41,7 @@ export class GrupoConfigAdapter {
       geracao,
       consumoLocal,
       tarifaBase: formData.tarifaEnergia || 0.85,
+      fioBBase: formData.fioBBase || 0.25,
       tipoConexao: formData.tipoConexao || 'Monofasico',
       fatorSimultaneidade: formData.fatorSimultaneidade || 0.8,
       fioB: {

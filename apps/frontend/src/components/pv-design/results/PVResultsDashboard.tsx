@@ -498,6 +498,11 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             const grupoAData = useMemo(() => {
               if (grupoTarifarioInfo.renderizar === GrupoTarifarioRender.GRUPO_A ||
                   grupoTarifarioInfo.renderizar === GrupoTarifarioRender.AMBOS) {
+                // Validar dados antes de passar para o adapter
+                if (!customerData || !energyData || !budgetData) {
+                  return null;
+                }
+                
                 return GrupoAAdapter.extractGrupoAData(customerData, energyData, systemData, budgetData, resultsData);
               }
               return null;
@@ -506,6 +511,11 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             const grupoBData = useMemo(() => {
               if (grupoTarifarioInfo.renderizar === GrupoTarifarioRender.GRUPO_B ||
                   grupoTarifarioInfo.renderizar === GrupoTarifarioRender.AMBOS) {
+                // Validar dados antes de passar para o adapter
+                if (!customerData || !energyData || !budgetData) {
+                  return null;
+                }
+                
                 return GrupoBAdapter.extractGrupoBData(customerData, energyData, systemData, budgetData, resultsData);
               }
               return null;

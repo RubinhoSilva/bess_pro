@@ -383,21 +383,21 @@ function mergeFinanceiros(configFinanceiros: any, defaultFinanceiros: CommonType
   const result = { ...defaultFinanceiros };
   
   // Para cada campo em defaultFinanceiros, usa o valor de config se não for nulo/undefined
-  Object.keys(defaultFinanceiros).forEach(key => {
+  (Object.keys(defaultFinanceiros) as Array<keyof CommonTypes.ProjectFinancials>).forEach(key => {
     if (configFinanceiros[key] !== null && configFinanceiros[key] !== undefined) {
-      if (key === 'salvage_pct' || key === 'oma_first_pct') {
+      if (key === 'salvagePct' || key === 'omaFirstPct') {
         // Converter porcentagem para decimal se necessário
         result[key] = typeof configFinanceiros[key] === 'number' && configFinanceiros[key] > 1
           ? configFinanceiros[key] / 100
           : configFinanceiros[key];
+      } else {
+        result[key] = configFinanceiros[key];
       }
-
-      result[key] = configFinanceiros[key];
     }
   });
 
-  result['omaInflacao'] = configFinanceiros['taxaDesconto'] !== null && configFinanceiros['taxaDesconto'] !== undefined
-    ? configFinanceiros['taxaDesconto']
+  result['omaInflacao'] = configFinanceiros['omaInflacao'] !== null && configFinanceiros['omaInflacao'] !== undefined
+    ? configFinanceiros['omaInflacao']
     : defaultFinanceiros['omaInflacao'];
 
   return result;

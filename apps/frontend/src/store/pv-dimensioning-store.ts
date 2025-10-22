@@ -284,7 +284,24 @@ const initialState: IProjectState = {
     totalMpptChannels: 0
   },
   roof: null,
-  budget: null,
+  budget: {
+    custoEquipamento: 0,
+    custoMateriais: 0,
+    custoMaoDeObra: 0,
+    bdi: 0,
+    paymentMethod: 'vista' as const,
+    cardInstallments: 12,
+    cardInterest: 1.99,
+    financingInstallments: 60,
+    financingInterest: 1.49,
+    inflacaoEnergia: 5.0,
+    taxaDesconto: 8.0,
+    custoOperacao: 1.0,
+    valorResidual: 10.0,
+    percentualFinanciado: 0,
+    taxaJuros: 12.0,
+    prazoFinanciamento: 5
+  },
   results: null,
   
   // Propriedades internas para controle de concorrência (não persistidas)
