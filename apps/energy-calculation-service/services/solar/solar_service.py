@@ -153,6 +153,10 @@ class SolarCalculationService:
         if df is None or df.empty:
             logger.error("Falha ao obter dados de ambas as fontes (NASA e PVGIS)")
             raise ValueError("Não foi possível obter dados meteorológicos")
+    
+
+        # Remover registros fora do período solicitado
+        df = df[(df.index.year >= startyear) & (df.index.year <= endyear)]
         
         logger.info(f"Dados obtidos: {len(df)} registros de {df.index.min()} a {df.index.max()}")
         logger.info(f"Resumo irradiação - GHI: {df['ghi'].mean():.1f}±{df['ghi'].std():.1f} W/m²")
@@ -173,6 +177,9 @@ class SolarCalculationService:
 
         # Calcular número de anos para normalização
         n_anos = df.index.year.nunique()
+        registros_por_ano = df.groupby(df.index.year).size()
+        for ano, count in registros_por_ano.items():
+            logger.info(f"Ano {ano}: {count} registros")
         logger.info(f"Período analisado: {n_anos} ano(s)")
 
         # Calcular posição solar
@@ -300,10 +307,10 @@ class SolarCalculationService:
             dc_pre_clipping_with_eff = dc_inv_total_pure * efficiency_factor
             ac_inv_output = np.minimum(dc_pre_clipping_with_eff, paco_inv)
 
-            # Calcular clipping
-            clipping_loss = (dc_pre_clipping_with_eff - ac_inv_output).sum() / 1000.0 / n_anos
-            if clipping_loss > 0:
-                logger.info(f"  Clipping detectado: {clipping_loss:.0f} kWh/ano ({(clipping_loss/(dc_pre_clipping_with_eff.sum()/1000.0/n_anos)*100):.1f}%)")
+            # # Calcular clipping
+            # clipping_loss = (dc_pre_clipping_with_eff - ac_inv_output).sum() / 1000.0 / n_anos
+            # if clipping_loss > 0:
+            #     logger.info(f"  Clipping detectado: {clipping_loss:.0f} kWh/ano ({(clipping_loss/(dc_pre_clipping_with_eff.sum()/1000.0/n_anos)*100):.1f}%)")
 
             results_inverter[inv_name] = {
                 'dc_pure': dc_inv_total_pure,
@@ -315,8 +322,8 @@ class SolarCalculationService:
             ac_all += ac_inv_output
             dc_all_pre_clipping += dc_inv_total_pure
             
-            ac_inv_energy = ac_inv_output.sum() / 1000.0 / n_anos
-            logger.info(f"  Energia AC inversor: {ac_inv_energy:.0f} kWh/ano ({kwp_inv:.2f} kWp)")
+            # ac_inv_energy = ac_inv_output.sum() / 1000.0 / n_anos
+            # logger.info(f"  Energia AC inversor: {ac_inv_energy:.0f} kWh/ano ({kwp_inv:.2f} kWp)")
 
         # Aplicar perdas finais
         perdas_totais_pct = sum(losses_parameters.values())
@@ -342,8 +349,8 @@ class SolarCalculationService:
         perda_clipping_kwh = dc_with_eff_energy - annual_energy_total_kwh_pre_losses
         perda_clipping_pct = (perda_clipping_kwh / dc_with_eff_energy) * 100.0 if dc_with_eff_energy > 0 else 0.0
         
-        if perda_clipping_kwh > 0:
-            logger.info(f"Perda total por clipping: {perda_clipping_kwh:.0f} kWh/ano ({perda_clipping_pct:.1f}%)")
+        # if perda_clipping_kwh > 0:
+        #     logger.info(f"Perda total por clipping: {perda_clipping_kwh:.0f} kWh/ano ({perda_clipping_pct:.1f}%)")
 
         # Geração mensal
         monthly_energy_kwh = ac_after_losses.groupby(ac_after_losses.index.month).sum() / 1000.0 / n_anos
