@@ -17,8 +17,25 @@ interface FinancialFormProps {
 }
 
 const FinancialForm: React.FC<FinancialFormProps> = ({ budgetData, onFormChange, totalInvestment }) => {
-  // Garantir que budgetData nunca seja nulo
-  const safeBudgetData = budgetData || {};
+  // Garantir que budgetData nunca seja nulo, usando valores padrão da interface
+  const safeBudgetData: IBudgetData = budgetData || {
+    custoEquipamento: 0,
+    custoMateriais: 0,
+    custoMaoDeObra: 0,
+    bdi: 0,
+    paymentMethod: 'vista',
+    cardInstallments: 12,
+    cardInterest: 1.99,
+    financingInstallments: 60,
+    financingInterest: 1.49,
+    inflacaoEnergia: 5.0,
+    taxaDesconto: 8.0,
+    custoOperacao: 1.0,
+    valorResidual: 10.0,
+    percentualFinanciado: 0,
+    taxaJuros: 12.0,
+    prazoFinanciamento: 5
+  };
 
   return (
     <TooltipProvider>
