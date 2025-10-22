@@ -151,8 +151,14 @@ export const selectRoofDataCompleteWithModule = (solarModules: any[]) => (state:
     ? solarModules.find((m: any) => m.id === moduleId)
     : undefined;
 
+  // Garantir que todas as águas tenham o campo numeroStrings
+  const aguasTelhadoComStrings = (state.roof?.aguasTelhado || []).map((agua: any) => ({
+    ...agua,
+    numeroStrings: agua.numeroStrings || 1
+  }));
+
   return {
-    aguasTelhado: state.roof?.aguasTelhado || [],
+    aguasTelhado: aguasTelhadoComStrings,
     selectedInverters: (state.system?.selectedInverters || []).map(inv => ({
       ...inv
       // Removido selectedAt: new Date() para evitar loop infinito
@@ -238,6 +244,7 @@ export const selectDimensioningDataWithModule = (selectedModule: any) => (state:
         orientacao: a.orientacao,
         inclinacao: a.inclinacao,
         numeroModulos: a.numeroModulos || 0,
+        numeroStrings: a.numeroStrings || 1, // Garantir que tenha o campo numeroStrings
         sombreamentoParcial: a.sombreamentoParcial || 0,
         inversorId: a.inversorId,
         mpptNumero: a.mpptNumero,

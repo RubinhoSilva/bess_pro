@@ -13,6 +13,7 @@ export interface AguaTelhado {
   modulos?: number;
   // Propriedades adicionais usadas no componente
   numeroModulos?: number;
+  numeroStrings?: number; // Quantidade de strings por MPPT
   inversorId?: string;
   mpptNumero?: number;
   sombreamentoParcial?: number;

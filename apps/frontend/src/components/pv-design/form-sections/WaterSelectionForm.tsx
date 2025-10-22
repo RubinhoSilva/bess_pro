@@ -1,5 +1,5 @@
 // React/Next.js imports
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 // External libraries imports
 import { Trash2, Plus, Home, Zap, AlertCircle, Compass, Triangle, Sun, Info, Settings } from 'lucide-react';
@@ -39,10 +39,36 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
 }) => {
   // Callback para atualizar águas do telhado
   const onAguasChange = (aguas: any[]) => {
-    onRoofChange('aguasTelhado', aguas);
+    // Garantir que todas as águas tenham o campo numeroStrings
+    const aguasComStrings = aguas.map(agua => ({
+      ...agua,
+      numeroStrings: agua.numeroStrings || 1
+    }));
+    
+    onRoofChange('aguasTelhado', aguasComStrings);
   };
   const [errors, setErrors] = useState<string[]>([]);
-  
+
+  // Garantir que águas existentes tenham o campo numeroStrings inicializado
+  useEffect(() => {
+    if (roofData.aguasTelhado?.length > 0) {
+      const aguasAtualizadas = roofData.aguasTelhado.map(agua => {
+        if (!agua.numeroStrings) {
+          return { ...agua, numeroStrings: 1 };
+        }
+        return agua;
+      });
+      
+      // Verificar se alguma água foi atualizada
+      const precisaaAtualizar = aguasAtualizadas.some((agua, index) =>
+        agua.numeroStrings !== roofData.aguasTelhado[index].numeroStrings
+      );
+      
+      if (precisaaAtualizar) {
+        onAguasChange(aguasAtualizadas);
+      }
+    }
+  }, [roofData.aguasTelhado?.length]); // Executar apenas quando a quantidade de águas mudar
 
   // Gerar lista de canais MPPT disponíveis baseado nos inversores selecionados
   const getAvailableMpptChannels = () => {
@@ -107,6 +133,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
       orientacao: 180, // Norte no Brasil (azimute 180°)
       inclinacao: 20, // Inclinação padrão (~latitude média do Brasil)
       numeroModulos: 0, // Começar com 0 módulos
+      numeroStrings: 1, // Padrão: 1 string por MPPT
       areaDisponivel: 25,
       sombreamentoParcial: 0
     };
@@ -123,6 +150,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     const updatedAguas = roofData.aguasTelhado.map(agua =>
       agua.id === id ? { ...agua, ...updates } : agua
     );
+    
     onAguasChange(updatedAguas);
   };
 
@@ -523,6 +551,88 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                         )}
                       </div>
 
+                      {/* Número de strings */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="flex items-center gap-2">
+                            <Zap className="w-4 h-4" />
+                            Quantidade de Strings
+                          </Label>
+                          {hasValidMppt && (() => {
+                            // Obter limite específico do MPPT selecionado
+                            const inverterData = roofData.selectedInverters.find(inv =>
+                              inv.inverter.id === agua.inversorId?.split('_unit')[0]
+                            );
+                            if (!inverterData) return null;
+                            
+                            const stringsPorMppt = inverterData.inverter.mppt.stringsPerMppt || 1;
+                            return (
+                              <span className="text-xs text-muted-foreground">
+                                Máx: {stringsPorMppt} strings
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        <Input
+                          type="number"
+                          min="1"
+                          max={hasValidMppt ? (() => {
+                            const inverterData = roofData.selectedInverters.find(inv =>
+                              inv.inverter.id === agua.inversorId?.split('_unit')[0]
+                            );
+                            if (!inverterData) return 1;
+                            
+                            return inverterData.inverter.mppt.stringsPerMppt || 1;
+                          })() : 1}
+                          value={agua.numeroStrings || 1}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value) || 1;
+                            
+                            let maxLimit = 1; // Fallback
+                            
+                            if (hasValidMppt) {
+                              const inverterData = roofData.selectedInverters.find(inv =>
+                                inv.inverter.id === agua.inversorId?.split('_unit')[0]
+                              );
+                              if (inverterData) {
+                                maxLimit = inverterData.inverter.mppt.stringsPerMppt || 1;
+                              }
+                            }
+                            
+                            const finalValue = Math.max(1, Math.min(value, maxLimit));
+                            
+                            handleUpdateAgua(agua.id, { numeroStrings: finalValue });
+                          }}
+                          placeholder="1"
+                          className={hasValidMppt ? (() => {
+                            const inverterData = roofData.selectedInverters.find(inv =>
+                              inv.inverter.id === agua.inversorId?.split('_unit')[0]
+                            );
+                            if (!inverterData) return '';
+                            
+                            const stringsPorMppt = inverterData.inverter.mppt.stringsPerMppt || 1;
+                            return (agua.numeroStrings || 1) > stringsPorMppt ? 'border-red-500' : '';
+                          })() : ''}
+                        />
+                        {hasValidMppt && (() => {
+                          const inverterData = roofData.selectedInverters.find(inv =>
+                            inv.inverter.id === agua.inversorId?.split('_unit')[0]
+                          );
+                          if (!inverterData) return null;
+                          
+                          const stringsPorMppt = inverterData.inverter.mppt.stringsPerMppt || 1;
+                          if ((agua.numeroStrings || 1) > stringsPorMppt) {
+                            return (
+                              <p className="text-xs text-red-500 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                Excede limite máximo ({stringsPorMppt} strings)
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+
                       {/* Número de módulos */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -539,11 +649,14 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                              
                              const inverterId = inverterData.inverter.id;
                              const limit = mpptLimits[inverterId];
+                             const numeroStrings = agua.numeroStrings || 1;
                              
                              if (limit && !limit.isLoading && !limit.error) {
+                               // Calcular limite baseado na quantidade de strings
+                               const maxModulosPorString = Math.floor(limit.modulosPorMppt / numeroStrings);
                                return (
                                  <span className="text-xs text-muted-foreground">
-                                   Máx: {limit.modulosPorString} módulos/string
+                                   Máx: {maxModulosPorString} módulos/string
                                  </span>
                                );
                              }
@@ -561,8 +674,12 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                              
                              const inverterId = inverterData.inverter.id;
                              const limit = mpptLimits[inverterId];
+                             const numeroStrings = agua.numeroStrings || 1;
 
-                             return limit && !limit.isLoading && !limit.error ? limit.modulosPorString : 100;
+                             if (limit && !limit.isLoading && !limit.error) {
+                               return Math.floor(limit.modulosPorMppt / numeroStrings);
+                             }
+                             return 100;
                            })() : 100}
                            value={agua.numeroModulos || 0}
                           onChange={(e) => {
@@ -577,8 +694,9 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                                if (inverterData) {
                                  const inverterId = inverterData.inverter.id;
                                  const limit = mpptLimits[inverterId];
+                                 const numeroStrings = agua.numeroStrings || 1;
                                  if (limit && !limit.isLoading && !limit.error) {
-                                   maxLimit = limit.modulosPorString;
+                                   maxLimit = Math.floor(limit.modulosPorMppt / numeroStrings);
                                  }
                                }
                              }
@@ -596,9 +714,11 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                              
                              const inverterId = inverterData.inverter.id;
                              const limit = mpptLimits[inverterId];
+                             const numeroStrings = agua.numeroStrings || 1;
 
                              if (limit && !limit.isLoading && !limit.error) {
-                                return (agua.numeroModulos || 0) > limit.modulosPorString ? 'border-red-500' : '';
+                                const maxModulosPorString = Math.floor(limit.modulosPorMppt / numeroStrings);
+                                return (agua.numeroModulos || 0) > maxModulosPorString ? 'border-red-500' : '';
                              }
                              return '';
                            })() : ''}
@@ -611,18 +731,22 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                            
                            const inverterId = inverterData.inverter.id;
                            const limit = mpptLimits[inverterId];
+                           const numeroStrings = agua.numeroStrings || 1;
 
-                            if (limit && !limit.isLoading && !limit.error && (agua.numeroModulos || 0) > limit.modulosPorString) {
-                             return (
-                               <p className="text-xs text-red-500 flex items-center gap-1">
-                                 <AlertCircle className="w-3 h-3" />
-                                 Excede limite máximo ({limit.modulosPorString} módulos por string)
-                               </p>
-                             );
+                            if (limit && !limit.isLoading && !limit.error) {
+                              const maxModulosPorString = Math.floor(limit.modulosPorMppt / numeroStrings);
+                              if ((agua.numeroModulos || 0) > maxModulosPorString) {
+                                return (
+                                  <p className="text-xs text-red-500 flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3" />
+                                    Excede limite máximo ({maxModulosPorString} módulos por string)
+                                  </p>
+                                );
+                              }
                            }
                            return null;
                          })()}
-                        
+                         
                          {/* Distribuição por strings */}
                           {hasValidMppt && (agua.numeroModulos || 0) > 0 && (() => {
                            const inverterData = roofData.selectedInverters.find(inv =>
@@ -630,14 +754,14 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                            );
                            if (!inverterData) return null;
 
-                           const stringsPorMppt = inverterData.inverter.mppt.stringsPerMppt || 1;
-                            const totalModulosNoMppt = (agua.numeroModulos || 0) * stringsPorMppt;
+                           const numeroStrings = agua.numeroStrings || 1;
+                           const totalModulosNoMppt = (agua.numeroModulos || 0) * numeroStrings;
 
                            return (
                              <div className="mt-1">
                                <p className="text-xs text-blue-600 flex items-center gap-1">
                                  <Settings className="w-3 h-3" />
-                                  {agua.numeroModulos || 0} módulos/string × {stringsPorMppt} strings = {totalModulosNoMppt} módulos no MPPT
+                                  {agua.numeroModulos || 0} módulos/string × {numeroStrings} strings = {totalModulosNoMppt} módulos no MPPT
                                </p>
                              </div>
                            );

@@ -18,6 +18,7 @@ export interface SolarSystemCalculationParams {
     orientacao: number;
     inclinacao: number;
     numeroModulos: number;
+    numeroStrings?: number;
     sombreamentoParcial: number;
     areaDisponivel?: number;
     inversorId?: string;
@@ -104,6 +105,7 @@ export interface ModuleCalculationParams {
     orientacao: number;
     inclinacao: number;
     numeroModulos: number;
+    numeroStrings?: number;
     sombreamentoParcial: number;
     areaDisponivel?: number;
     inversorId?: string;
@@ -173,6 +175,7 @@ export interface MultiInverterCalculationParams {
     orientacao: number;
     inclinacao: number;
     numeroModulos: number;
+    numeroStrings?: number;
     sombreamentoParcial: number;
     areaDisponivel?: number;
     inversorId?: string;
@@ -192,7 +195,7 @@ export interface MultiInverterCalculationParams {
       vdco?: number;  // Tensão DC nominal de operação
       pso?: number;   // Potência de standby (W)
       c0?: number;    // Coeficiente curva eficiência
-      c1?: number;    // Coeficiente curva eficiência  
+      c1?: number;    // Coeficiente curva eficiência
       c2?: number;    // Coeficiente curva eficiência
       c3?: number;    // Coeficiente curva eficiência
       pnt?: number;   // Potência threshold normalizada
@@ -558,18 +561,10 @@ export class SolarSystemService {
       const processedParams = this._processRoofWatersForCalculation(params, inversorGlobal);
 
       // Fazer chamada através do backend Node.js
-      console.log('🔍 Enviando para API /solar-analysis/calculate-advanced-modules:', processedParams);
       const response = await api.post('/solar-analysis/calculate-advanced-modules', processedParams);
-      console.log('🔍 Resposta completa da API:', response.data);
-      console.log('🔍 Response data:', response.data?.data);
-      console.log('🔍 Potência na resposta da API:', response.data?.data?.potencia_total_kw);
-      console.log('🔍 Energia na resposta da API (energia_total_anual_kwh):', response.data?.data?.energia_total_anual_kwh);
-      console.log('🔍 Energia na resposta da API (energiaAnualKwh):', response.data?.data?.energiaAnualKwh);
        
-      
       // A resposta agora vem no formato { success: true, data: {...}, timestamp: "..." }
       if (response.data && response.data.success && response.data.data) {
-        console.log('✅ Retornando response.data.data:', response.data.data);
         return response.data.data;
       }
       
@@ -628,11 +623,6 @@ export class SolarSystemService {
     // Calcular consumo anual a partir dos dados mensais
     const consumoAnual = consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
     
-    console.log('[SolarSystemService] calculateAdvancedFromDimensioning - consumo calculado:', {
-      grupoTarifario: store.customer?.grupoTarifario,
-      consumoMensal,
-      consumoAnual
-    });
 
     // Montar parâmetros diretamente com os dados recebidos
     const params: MultiInverterCalculationParams = {
@@ -695,14 +685,15 @@ export class SolarSystemService {
             orientacoes: []
           });
         }
+
         
         // Adicionar orientação para este inversor
         inversoresMap.get(inversorId).orientacoes.push({
           nome: agua.nome,
           orientacao: agua.orientacao,
           inclinacao: agua.inclinacao,
-          modulos_por_string: agua.numeroModulos, // Simplificado: assume 1 string
-          numero_strings: 1 // Simplificado: assume 1 string
+          modulos_por_string: agua.numeroModulos,
+          numero_strings: agua.numeroStrings
         });
       });
       
@@ -721,10 +712,6 @@ export class SolarSystemService {
         consumoMensalKwh = Array(12).fill(Math.round((params.consumo_anual_kwh || 0) / 12));
       }
       
-      console.log('[SolarSystemService] _processRoofWatersForCalculation - consumo mensal:', {
-        grupoTarifario: store.customer?.grupoTarifario,
-        consumoMensalKwh
-      });
       
       const processedParams = {
         // ✅ Campos obrigatórios no formato Python
@@ -775,10 +762,6 @@ export class SolarSystemService {
       consumoMensalKwh = Array(12).fill(Math.round((params.consumo_anual_kwh || 0) / 12));
     }
     
-    console.log('[SolarSystemService] fallback - consumo mensal:', {
-      grupoTarifario: store.customer?.grupoTarifario,
-      consumoMensalKwh
-    });
     
     return {
       lat: params.lat,
@@ -961,7 +944,7 @@ export class SolarSystemService {
           orientacao: agua.orientacao,
           inclinacao: agua.inclinacao,
           modulos_por_string: agua.numeroModulos,
-          numero_strings: inversorData.strings_por_mppt
+          numero_strings: agua.numeroStrings
         }))
       });
     } else {
