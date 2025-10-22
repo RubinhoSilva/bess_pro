@@ -387,7 +387,7 @@ function mergeFinanceiros(configFinanceiros: any, defaultFinanceiros: CommonType
     if (configFinanceiros[key] !== null && configFinanceiros[key] !== undefined) {
       if (key === 'salvagePct' || key === 'omaFirstPct') {
         // Converter porcentagem para decimal se necessário
-        result[key] = typeof configFinanceiros[key] === 'number' && configFinanceiros[key] > 1
+        result[key] = typeof configFinanceiros[key] === 'number'
           ? configFinanceiros[key] / 100
           : configFinanceiros[key];
       } else {

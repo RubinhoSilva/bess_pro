@@ -58,7 +58,7 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
       degradacao: data.degradacaoAnual,
       salvagePct: data.valorResidual,
       omaFirstPct: data.custoOperacao,
-      omaInflacao: 0.04
+      omaInflacao: data.taxaDesconto
     },
     tarifaBase: data.tarifaEnergiaB,
     fioBBase: data.custoFioB,
