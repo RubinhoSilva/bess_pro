@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useGrupoBFinancialCalculation } from '@/hooks/financial-calculation-hooks';
 import { convertToGrupoBInput } from '@/lib/financial-utils';
-import { ResultadosCodigoB, isResultadosCodigoB, objectSnakeToCamel, GrupoBConfig } from '@bess-pro/shared';
+import { ResultadosCodigoB } from '@bess-pro/shared';
 import { GrupoBAdapter, IGrupoBData } from '@/types/adapters/grupo-b-adapter';
 import toast from 'react-hot-toast';
 
@@ -61,13 +61,13 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
       omaInflacao: 0.04
     },
     tarifaBase: data.tarifaEnergiaB,
+    fioBBase: data.custoFioB,
     fioB: {
       schedule: {
-        2025: data.custoFioB,
-        2026: data.custoFioB + 0.15,
-        2027: data.custoFioB + 0.30,
-        2028: data.custoFioB + 0.45,
-        2029: data.custoFioB + 0.45
+        2025: 0.45,
+        2026: 0.60,
+        2027: 0.75,
+        2028: 0.90
       },
       baseYear: 2025
     }
@@ -90,7 +90,7 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
   
   const grupoBCalculation = useGrupoBFinancialCalculation({
     onSuccess: (data) => {
-      console.log(data);
+      console.log('[GrupoBFinancialResults] Cálculo concluído com sucesso:', data);
       setFinancialResults(data);
       setIsLoading(false);
       isCalculatingRef.current = false;
@@ -122,7 +122,7 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
         isCalculatingRef.current = false;
       }
     }
-  }, [calculationData, config]); // Removido grupoBCalculation.mutateAsync das dependências
+  }, [calculationData, config]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -223,46 +223,7 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
             </div>
           </CardContent>
         </Card>
-      </motion.div>
-
-      {/* Comparativo de Custos de Abatimento */}
-      <motion.div variants={itemVariants}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-800 dark:text-slate-200">
-              Comparativo de Custos de Abatimento
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Custo Sem Sistema</p>
-                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                  {financialResults.comparativoCustoAbatimento.custoSemSistema}
-                </p>
-              </div>
-              <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Custo Com Sistema</p>
-                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                  {financialResults?.comparativoCustoAbatimento?.custoComSistema ||
-                    `R$ ${(
-                      (calculationData?.consumoMensal?.reduce((total: number, val: number) => total + val, 0) || 0) *
-                      (config?.tarifaBase || 0.8) -
-                      (financialResults?.financeiro?.economiaTotalNominal || 0)
-                    ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/ano`}
-                </p>
-              </div>
-              <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Economia Anual</p>
-                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {financialResults?.comparativoCustoAbatimento?.economiaAnual ||
-                    `R$ ${(financialResults?.financeiro?.economiaTotalNominal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      </motion.div>      
 
       {/* Resumo Financeiro */}
       <motion.div variants={itemVariants}>

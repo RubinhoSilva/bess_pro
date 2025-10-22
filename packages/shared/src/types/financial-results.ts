@@ -148,14 +148,14 @@ export interface ResultadosCodigoB {
     * @description Análise entre custo sem sistema e custo com sistema
     */
   comparativoCustoAbatimento: {
-    /** Custo anual sem sistema formatado */
-    custoSemSistema: string;
+    /** Custo fio B */
+    custoFioB: string;
+
+    /** Custo de disponibilidade */
+    custoDisponibilidade: string;
     
-    /** Custo anual com sistema formatado */
-    custoComSistema: string;
-    
-    /** Economia anual calculada */
-    economiaAnual: string;
+    /** Maior custo entre fio B e disponibilidade */
+    maiorCusto: string;
   };
 
   /** 

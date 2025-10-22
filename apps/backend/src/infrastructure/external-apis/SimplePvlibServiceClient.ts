@@ -141,44 +141,8 @@ export class SimplePvlibServiceClient {
         throw new Error('Dados de consumo mensal são obrigatórios e devem ser um objeto');
       }
 
-      // Log da chamada com dados resumidos (com validação adicional)
-      const geracaoAnual = Object.values(input.geracao || {}).reduce((a: number, b: number) => a + b, 0);
-      const consumoAnual = Object.values(input.consumoLocal || {}).reduce((a: number, b: number) => a + b, 0);
-      
-      console.log('[SimplePvlibService DEBUG] Payload original Grupo B:', JSON.stringify(input, null, 2));
-      
-      console.log('[SimplePvlibService] Iniciando cálculo financeiro Grupo B:', {
-        investimento: input.financeiros.capex,
-        geracao_anual: geracaoAnual,
-        consumo_anual: consumoAnual,
-        tarifa_base: input.tarifaBase,
-        tipo_conexao: input.tipoConexao
-      });
-
       // Converter input para snake_case
       const snakeCaseInput = objectCamelToSnake(input);
-      
-      console.log('[SimplePvlibService DEBUG] Payload convertido para snake_case Grupo B:', JSON.stringify(snakeCaseInput, null, 2));
-
-      // Salvar payload em disco para debug
-      try {
-        const fs = require('fs');
-        const path = require('path');
-
-        const payloadsDir = path.join(process.cwd(), 'payloads');
-        if (!fs.existsSync(payloadsDir)) {
-          fs.mkdirSync(payloadsDir, { recursive: true });
-        }
-
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `payload-grupo-b-financial-${timestamp}.json`;
-        const filepath = path.join(payloadsDir, filename);
-
-        fs.writeFileSync(filepath, JSON.stringify(snakeCaseInput, null, 2), 'utf8');
-        console.log(`💾 [SimplePvlibService] Payload Grupo B salvo em: ${filepath}`);
-      } catch (error) {
-        console.error('❌ [SimplePvlibService] Erro ao salvar payload Grupo B:', error);
-      }
 
       // Chamar endpoint específico do Grupo B com timeout de 60 segundos
       const response = await this.client.post('/api/v1/financial/calculate-grupo-b', snakeCaseInput, {

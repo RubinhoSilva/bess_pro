@@ -115,6 +115,10 @@ export function convertToGrupoBInput(
   config: any, 
   calculatedData: { investimentoInicial: number; geracaoMensal: number[]; consumoMensal: number[] }
 ): GrupoBConfig {
+
+console.log('Convertendo para GrupoBConfig com dados calculados:', calculatedData);
+console.log('Config recebido:', config);
+
   // Construir dados mensais a partir de arrays
   const meses: CommonTypes.Month[] = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   
@@ -142,12 +146,12 @@ export function convertToGrupoBInput(
   const defaultFinanceiros: CommonTypes.ProjectFinancials = {
     capex: calculatedData.investimentoInicial,
     anos: 25,
-    taxaDesconto: 0.08,
-    inflacaoEnergia: 0.045,
-    degradacao: 0.005,
+    taxaDesconto: 8,
+    inflacaoEnergia: 8.5,
+    degradacao: 0.5,
     salvagePct: 0.10,
     omaFirstPct: 0.015,
-    omaInflacao: 0.04
+    omaInflacao: 8
   };
 
   const defaultFioB: CommonTypes.FioBParams = {
@@ -187,11 +191,26 @@ export function convertToGrupoBInput(
     }
   };
 
-  return {
-    financeiros: config.financeiros || defaultFinanceiros,
+  console.log('Config final:', {
+    financeiros: mergeFinanceiros(config.financeiros, defaultFinanceiros),
     geracao: geracaoMensal,
     consumoLocal: consumoMensal,
     tarifaBase: config.tarifaBase || 0.85,
+    fioBBase: config.fioBBase || 0.25,
+    tipoConexao: config.tipoConexao || 'Monofasico',
+    fatorSimultaneidade: config.fatorSimultaneidade || 0.85,
+    fioB: config.fioB || defaultFioB,
+    remotoB: config.remotoB || defaultRemotoB,
+    remotoAVerde: config.remotoAVerde || defaultRemotoA,
+    remotoAAzul: config.remotoAAzul || defaultRemotoA
+  });
+
+  return {
+    financeiros: mergeFinanceiros(config.financeiros, defaultFinanceiros),
+    geracao: geracaoMensal,
+    consumoLocal: consumoMensal,
+    tarifaBase: config.tarifaBase || 0.85,
+    fioBBase: config.fioBBase || 0.25,
     tipoConexao: config.tipoConexao || 'Monofasico',
     fatorSimultaneidade: config.fatorSimultaneidade || 0.85,
     fioB: config.fioB || defaultFioB,
@@ -351,4 +370,35 @@ export function evaluateTIR(tir: number): { status: 'excelente' | 'bom' | 'regul
       message: 'TIR ruim - retorno muito baixo' 
     };
   }
+}
+
+/**
+ * Faz merge dos dados financeiros, usando valores padrão para campos nulos
+ */
+function mergeFinanceiros(configFinanceiros: any, defaultFinanceiros: CommonTypes.ProjectFinancials): CommonTypes.ProjectFinancials {
+  if (!configFinanceiros) {
+    return defaultFinanceiros;
+  }
+  
+  const result = { ...defaultFinanceiros };
+  
+  // Para cada campo em defaultFinanceiros, usa o valor de config se não for nulo/undefined
+  Object.keys(defaultFinanceiros).forEach(key => {
+    if (configFinanceiros[key] !== null && configFinanceiros[key] !== undefined) {
+      if (key === 'salvage_pct' || key === 'oma_first_pct') {
+        // Converter porcentagem para decimal se necessário
+        result[key] = typeof configFinanceiros[key] === 'number' && configFinanceiros[key] > 1
+          ? configFinanceiros[key] / 100
+          : configFinanceiros[key];
+      }
+
+      result[key] = configFinanceiros[key];
+    }
+  });
+
+  result['omaInflacao'] = configFinanceiros['taxaDesconto'] !== null && configFinanceiros['taxaDesconto'] !== undefined
+    ? configFinanceiros['taxaDesconto']
+    : defaultFinanceiros['omaInflacao'];
+
+  return result;
 }

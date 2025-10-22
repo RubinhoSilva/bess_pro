@@ -91,6 +91,14 @@ export interface GrupoBConfig {
    */
   tarifaBase: number;
 
+
+  /** 
+   * Base do Fio B
+   * @description Valor base do custo do Fio B para cálculos iniciais
+   * @example 0.25 para R$ 0,25/kWh (custo típico do Fio B)
+   */
+  fioBBase: number;
+
    /** 
     * Tipo de conexão elétrica da unidade
     * @description Define o padrão de conexão

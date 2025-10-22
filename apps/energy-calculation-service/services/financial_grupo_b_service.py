@@ -40,126 +40,437 @@ class FinancialGrupoBService:
         """
         Método principal de cálculo financeiro para Grupo B
         
-        Estrutura:
-        1. Log início com CAPEX
-        2. Validar dados de entrada
-        3. Converter MonthlyData para arrays
-        4. Calcular autoconsumo instantâneo
-        5. Calcular créditos mensais
-        6. Aplicar Fio B aos créditos
-        7. Calcular custo de disponibilidade
-        8. Calcular abatimentos locais
-        9. Calcular abatimentos remotos (se habilitado)
-        10. Calcular economia total anual
-        11. Calcular fluxo de caixa (25 anos)
-        12. Calcular indicadores financeiros
-        13. Montar tabelas de resumo
-        14. Formatar resultados
-        15. Retornar ResultadosCodigoBResponse
-        
-        Use try/except robusto.
-        Log em cada etapa principal.
+        Implementa lógica completa do notebook com loops aninhados (ano × mês)
+        e banco de créditos persistente.
         """
         try:
-            # 1. Log início com CAPEX e dados completos
-            self.logger.info("="*80)
-            self.logger.info("INÍCIO CÁLCULO FINANCEIRO GRUPO B - DETALHADO")
-            self.logger.info("="*80)
-            self.logger.info(f"CAPEX: R$ {request.financeiros.capex:,.2f}")
-            self.logger.info(f"Anos: {request.financeiros.anos}")
-            self.logger.info(f"Taxa desconto: {request.financeiros.taxa_desconto}%")
-            self.logger.info(f"Inflação energia: {request.financeiros.inflacao_energia}%")
-            self.logger.info(f"Degradação: {request.financeiros.degradacao}%")
-            self.logger.info(f"Fator simultaneidade: {request.fator_simultaneidade}")
-            self.logger.info(f"Tipo conexão: {request.tipo_conexao}")
-            self.logger.info(f"Tarifa base: R$ {request.tarifa_base}")
-            
-            # Log dados de geração e consumo
-            self.logger.info("DADOS DE GERAÇÃO (kWh/mês):")
-            geracao_list = request.geracao.to_list()
-            for i, val in enumerate(geracao_list):
-                self.logger.info(f"  Mês {i+1}: {val:.2f} kWh")
-            
-            self.logger.info("DADOS DE CONSUMO LOCAL (kWh/mês):")
-            consumo_list = request.consumo_local.to_list()
-            for i, val in enumerate(consumo_list):
-                self.logger.info(f"  Mês {i+1}: {val:.2f} kWh")
-            
-            # Log dados remotos
-            self.logger.info(f"Remoto B enabled: {request.remoto_b.enabled}")
-            if request.remoto_b.enabled:
-                self.logger.info(f"Remoto B percentage: {request.remoto_b.percentage}%")
-                self.logger.info(f"Remoto B tarifa: R$ {request.remoto_b.tarifa_total}")
-            
-            # 2. Validar dados de entrada
-            self.logger.info("VALIDANDO DADOS DE ENTRADA...")
+            self.logger.info(f"INÍCIO CÁLCULO GRUPO B - CAPEX: R${request.financeiros.capex:.2f}")
             self._validate_request(request)
-            self.logger.info("✓ Validação concluída com sucesso")
             
-            # 3. Converter MonthlyData para arrays
-            self.logger.info("CONVERTENDO DADOS MENSAIS...")
-            geracao = request.geracao.to_list()
-            consumo_local = request.consumo_local.to_list()
-            self.logger.info(f"✓ Geração total anual: {sum(geracao):.2f} kWh")
-            self.logger.info(f"✓ Consumo total anual: {sum(consumo_local):.2f} kWh")
+            # Extrair dados de entrada
+            geracao_monthly = np.array(request.geracao.to_list())
+            consumo_local_monthly = np.array(request.consumo_local.to_list())
             
-            # 4. Calcular autoconsumo instantâneo
-            self.logger.info("CALCULANDO AUTOCONSUMO INSTANTÂNEO...")
-            self.logger.info(f"Fórmula: min(geracao, consumo) * fator_simultaneidade ({request.fator_simultaneidade})")
-            autoconsumo_instantaneo = self._calculate_autoconsumo_instantaneo(
-                geracao, consumo_local, request.fator_simultaneidade
-            )
-            self.logger.info(f"✓ Autoconsumo instantâneo total: {sum(autoconsumo_instantaneo):.2f} kWh")
+            # Extrair dados remotos se habilitados
+            consumo_remoto_b_monthly = np.array(request.remoto_b.data.to_list()) if request.remoto_b.enabled else np.zeros(12)
+            consumo_remoto_a_verde_fp_monthly = np.array(request.remoto_a_verde.data_off_peak.to_list()) if request.remoto_a_verde.enabled else np.zeros(12)
+            consumo_remoto_a_verde_p_monthly = np.array(request.remoto_a_verde.data_peak.to_list()) if request.remoto_a_verde.enabled else np.zeros(12)
+            consumo_remoto_a_azul_fp_monthly = np.array(request.remoto_a_azul.data_off_peak.to_list()) if request.remoto_a_azul.enabled else np.zeros(12)
+            consumo_remoto_a_azul_p_monthly = np.array(request.remoto_a_azul.data_peak.to_list()) if request.remoto_a_azul.enabled else np.zeros(12)
             
-            # 5. Calcular créditos mensais
-            self.logger.info("CALCULANDO CRÉDITOS DE ENERGIA...")
-            self.logger.info("Fórmula: max(0, geracao - autoconsumo_instantaneo)")
-            creditos = self._calculate_creditos_grupo_b(geracao, autoconsumo_instantaneo)
-            self.logger.info(f"✓ Créditos totais: {sum(creditos):.2f} kWh")
+            # Demanda mínima por tipo de conexão
+            demanda_minima = {
+                "Monofasico": 30,
+                "Bifasico": 50,
+                "Trifasico": 100
+            }.get(request.tipo_conexao, 30)
             
-            # 6. Aplicar Fio B aos créditos
-            creditos_liquidos_por_ano = self._apply_fio_b(
-                creditos, request.fio_b.schedule, request.fio_b.base_year, request.financeiros.anos
-            )
+            # Inicialização de variáveis
+            anos = range(1, request.financeiros.anos + 1)
+            flows = np.zeros(request.financeiros.anos + 1)
+            flows[0] = -request.financeiros.capex
+            disc_flows = np.zeros(request.financeiros.anos + 1)
+            disc_flows[0] = -request.financeiros.capex
             
-            # 7. Calcular custo de disponibilidade
-            custo_disponibilidade_mensal = self._calculate_custo_disponibilidade(
-                request.tipo_conexao, request.tarifa_base
-            )
+            # Listas para armazenamento dos resultados anuais
+            gen_annual = np.zeros(request.financeiros.anos)
+            autoconsumo_instantaneo_annual = np.zeros(request.financeiros.anos)
+            autoconsumo_abatido_annual = np.zeros(request.financeiros.anos)
+            abatido_remoto_b_annual = np.zeros(request.financeiros.anos)
+            abatido_remoto_a_verde_foraponta_annual = np.zeros(request.financeiros.anos)
+            abatido_remoto_a_verde_ponta_annual = np.zeros(request.financeiros.anos)
+            abatido_remoto_a_azul_foraponta_annual = np.zeros(request.financeiros.anos)
+            abatido_remoto_a_azul_ponta_annual = np.zeros(request.financeiros.anos)
+            economia_geradora_annual = np.zeros(request.financeiros.anos)
+            economia_remoto_b_annual = np.zeros(request.financeiros.anos)
+            economia_remoto_a_verde_foraponta_annual = np.zeros(request.financeiros.anos)
+            economia_remoto_a_verde_ponta_annual = np.zeros(request.financeiros.anos)
+            economia_remoto_a_azul_foraponta_annual = np.zeros(request.financeiros.anos)
+            economia_remoto_a_azul_ponta_annual = np.zeros(request.financeiros.anos)
+            economia_total_annual = np.zeros(request.financeiros.anos)
+            oma_annual = np.zeros(request.financeiros.anos)
             
-            # 8. Calcular abatimentos locais
-            abatimentos_local = self._calculate_abatimento_local(
-                consumo_local, creditos_liquidos_por_ano[0], autoconsumo_instantaneo,
-                request.tarifa_base, custo_disponibilidade_mensal
-            )
+            # Nova variável para o banco de créditos (em kWh)
+            banco_creditos = 0.0
             
-            # 9. Calcular abatimentos remotos (se habilitado)
-            abatimentos_remotos = self._calculate_abatimentos_remotos(request, creditos_liquidos_por_ano)
+            # Loop principal: ano a ano
+            for idx, ano in enumerate(anos, start=1):
+                self.logger.debug(f"Calculando ano {ano}...")
+                
+                # Nova variável para o banco de créditos (em kWh)
+                banco_creditos_mes_inicial = banco_creditos
+
+                logger.info(f"  Banco de créditos no início do ano: {banco_creditos_mes_inicial:.2f} kWh")
+                
+                # Inicialização das variáveis mensais para acumular no ano
+                autoconsumo_instantaneo_mensal_acumulado = 0
+                autoconsumo_abatido_mensal_acumulado = 0
+                abatido_remoto_b_mensal_acumulado = 0
+                abatido_remoto_a_verde_foraponta_mensal_acumulado = 0
+                abatido_remoto_a_verde_ponta_mensal_acumulado = 0
+                abatido_remoto_a_azul_foraponta_mensal_acumulado = 0
+                abatido_remoto_a_azul_ponta_mensal_acumulado = 0
+                
+                # Inflação e degradação
+                gen_mes_base = geracao_monthly * ((1 - request.financeiros.degradacao / 100) ** (ano - 1))
+                tarifa_base_mes = request.tarifa_base * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                
+                logger.info(f"  Tarifa base no ano {ano}: R$ {tarifa_base_mes:.4f} /kWh")
+                logger.info(f"  Geração mensal no ano {ano} (kWh): {gen_mes_base}")
+
+                # Fio B e custos de O&M
+                noncomp_b = request.fio_b.schedule.get(request.fio_b.base_year + (ano - 1), 1.0)
+                noncomp_a = 1.0
+                fio_b_y = request.fio_b_base * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                
+                logger.info(f"  Fio B no ano {ano}: R$ {fio_b_y:.4f} /kWh, Não Comp.: {noncomp_b:.4f}")
+
+                # Loop aninhado: mês a mês
+                for mes in range(12):
+                    # logger.info(f"    Mês {mes + 1}:")
+
+                    # Geração e Consumo do Mês
+                    gen_m = gen_mes_base[mes]
+                    consumo_local_m = consumo_local_monthly[mes]
+
+                    # logger.info(f"      Geração no mês: {gen_m:.2f} kWh")
+                    # logger.info(f"      Consumo local no mês: {consumo_local_m:.2f} kWh")
+                    
+                    # 1. AUTOCONSUMO LOCAL
+                    # Autoconsumo Instantâneo (o que não gera crédito nem custo)
+                    autoconsumo_instantaneo_m = min(gen_m * request.fator_simultaneidade, consumo_local_m)
+
+                    # logger.info(f"      Autoconsumo instantâneo no mês: {autoconsumo_instantaneo_m:.2f} kWh")
+
+                    # Energia injetada na rede
+                    injetado_m = gen_m - autoconsumo_instantaneo_m
+
+                    # logger.info(f"      Energia injetada no mês: {injetado_m:.2f} kWh")
+                    
+                    # Consumo restante a ser abatido (com créditos)
+                    consumo_restante_local_m = consumo_local_m - autoconsumo_instantaneo_m
+
+                    # logger.info(f"      Consumo restante a ser abatido no mês: {consumo_restante_local_m:.2f} kWh")
+                    
+                    # Abate o consumo restante com a energia injetada no próprio mês
+                    abatido_com_injetado_m = min(injetado_m, consumo_restante_local_m)
+
+                    # logger.info(f"      Abatido com energia injetada no mês: {abatido_com_injetado_m:.2f} kWh")
+                    
+                    # Atualiza a energia injetada e o consumo restante
+                    injetado_liquido_m = injetado_m - abatido_com_injetado_m
+                    consumo_a_abater_com_creditos_m = consumo_restante_local_m - abatido_com_injetado_m
+                    
+                    # logger.info(f"      Energia injetada líquida no mês (créditos gerados): {injetado_liquido_m:.2f} kWh")
+                    # logger.info(f"      Consumo a abater com créditos no mês: {consumo_a_abater_com_creditos_m:.2f} kWh")
+
+                    # Abate o consumo restante com o banco de créditos
+                    abatido_com_credito_m = min(consumo_a_abater_com_creditos_m, banco_creditos)
+                    banco_creditos -= abatido_com_credito_m
+
+                    # logger.info(f"      Abatido com créditos do banco no mês: {abatido_com_credito_m:.2f} kWh")
+                    # logger.info(f"      Banco de créditos após abatimento no mês: {banco_creditos:.2f} kWh")
+                    
+                    # O total abatido na unidade geradora é a soma do abatido no mês com o abatido do banco de créditos
+                    autoconsumo_abatido_m = abatido_com_injetado_m + abatido_com_credito_m
+
+                    # logger.info(f"      Autoconsumo abatido total no mês: {autoconsumo_abatido_m:.2f} kWh")
+                    
+                    # Atualiza o banco de créditos com o excedente do mês
+                    banco_creditos += injetado_liquido_m
+
+                    # logger.info(f"      Banco de créditos no final do mês após adição do excedente: {banco_creditos:.2f} kWh")
+                    
+                    # 2. ABATIMENTO DE UNIDADES REMOTAS
+                    # NOTA: No notebook, quando as unidades remotas estão desabilitadas,
+                    # os percentuais ainda são definidos mas não são usados
+                    
+                    # Créditos disponíveis para as unidades remotas no final do mês
+                    # Só calcula se houver pelo menos uma unidade remota habilitada
+                    if request.remoto_b.enabled or request.remoto_a_verde.enabled or request.remoto_a_azul.enabled:
+                        creditos_disponiveis = banco_creditos * (1 - request.remoto_b.percentage/100 - request.remoto_a_verde.percentage/100 - request.remoto_a_azul.percentage/100)
+                        
+                        # Créditos para cada grupo remoto
+                        creditos_para_b = banco_creditos * (request.remoto_b.percentage/100) if request.remoto_b.enabled else 0
+                        creditos_para_a_verde = banco_creditos * (request.remoto_a_verde.percentage/100) if request.remoto_a_verde.enabled else 0
+                        creditos_para_a_azul = banco_creditos * (request.remoto_a_azul.percentage/100) if request.remoto_a_azul.enabled else 0
+                    else:
+                        creditos_disponiveis = banco_creditos
+                        creditos_para_b = 0
+                        creditos_para_a_verde = 0
+                        creditos_para_a_azul = 0
+                    
+                    abatido_remoto_b_m = 0
+                    abatido_remoto_a_verde_foraponta_m = 0
+                    abatido_remoto_a_verde_ponta_m = 0
+                    abatido_remoto_a_azul_foraponta_m = 0
+                    abatido_remoto_a_azul_ponta_m = 0
+                    
+                    if request.remoto_b.enabled:
+                        consumo_remoto_b_m = consumo_remoto_b_monthly[mes]
+                        creditos_b_utilizados = min(creditos_para_b, consumo_remoto_b_m)
+                        banco_creditos -= creditos_b_utilizados
+                        abatido_remoto_b_m = creditos_b_utilizados
+                    
+                    if request.remoto_a_verde.enabled:
+                        consumo_fp_a_verde_m = consumo_remoto_a_verde_fp_monthly[mes]
+                        consumo_p_a_verde_m = consumo_remoto_a_verde_p_monthly[mes]
+                        
+                        # Fatores de equivalência mensais
+                        tarifa_total_remoto_a_verde_fp_m = request.remoto_a_verde.tarifas["off_peak"] * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                        tarifa_total_remoto_a_verde_p_m = request.remoto_a_verde.tarifas["peak"] * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                        fator_equiv_b_a_verde_fp = tarifa_base_mes / tarifa_total_remoto_a_verde_fp_m
+                        fator_equiv_b_a_verde_p = tarifa_base_mes / tarifa_total_remoto_a_verde_p_m
+                        
+                        creditos_restantes = creditos_para_a_verde
+                        
+                        # Prioridade de abatimento: FORA DE PONTA primeiro
+                        abatido_fp = min(creditos_restantes * fator_equiv_b_a_verde_fp, consumo_fp_a_verde_m)
+                        creditos_restantes -= abatido_fp / fator_equiv_b_a_verde_fp
+                        
+                        # Em seguida, PONTA
+                        abatido_p = min(creditos_restantes * fator_equiv_b_a_verde_p, consumo_p_a_verde_m)
+                        
+                        abatido_remoto_a_verde_foraponta_m = abatido_fp
+                        abatido_remoto_a_verde_ponta_m = abatido_p
+                        banco_creditos -= (abatido_fp / fator_equiv_b_a_verde_fp) + (abatido_p / fator_equiv_b_a_verde_p)
+                    
+                    if request.remoto_a_azul.enabled:
+                        consumo_fp_a_azul_m = consumo_remoto_a_azul_fp_monthly[mes]
+                        consumo_p_a_azul_m = consumo_remoto_a_azul_p_monthly[mes]
+                        
+                        # Fatores de equivalência mensais
+                        tarifa_total_remoto_a_azul_fp_m = request.remoto_a_azul.tarifas["off_peak"] * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                        tarifa_total_remoto_a_azul_p_m = request.remoto_a_azul.tarifas["peak"] * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                        fator_equiv_b_a_azul_fp = tarifa_base_mes / tarifa_total_remoto_a_azul_fp_m
+                        fator_equiv_b_a_azul_p = tarifa_base_mes / tarifa_total_remoto_a_azul_p_m
+                        
+                        creditos_restantes = creditos_para_a_azul
+                        
+                        # Prioridade de abatimento: FORA DE PONTA primeiro
+                        abatido_fp = min(creditos_restantes * fator_equiv_b_a_azul_fp, consumo_fp_a_azul_m)
+                        creditos_restantes -= abatido_fp / fator_equiv_b_a_azul_fp
+                        
+                        # Em seguida, PONTA
+                        abatido_p = min(creditos_restantes * fator_equiv_b_a_azul_p, consumo_p_a_azul_m)
+                        
+                        abatido_remoto_a_azul_foraponta_m = abatido_fp
+                        abatido_remoto_a_azul_ponta_m = abatido_p
+                        banco_creditos -= (abatido_fp / fator_equiv_b_a_azul_fp) + (abatido_p / fator_equiv_b_a_azul_p)
+                    
+                    # 3. ACUMULADORES MENSAIS
+                    autoconsumo_instantaneo_mensal_acumulado += autoconsumo_instantaneo_m
+                    autoconsumo_abatido_mensal_acumulado += autoconsumo_abatido_m
+                    abatido_remoto_b_mensal_acumulado += abatido_remoto_b_m
+                    abatido_remoto_a_verde_foraponta_mensal_acumulado += abatido_remoto_a_verde_foraponta_m
+                    abatido_remoto_a_verde_ponta_mensal_acumulado += abatido_remoto_a_verde_ponta_m
+                    abatido_remoto_a_azul_foraponta_mensal_acumulado += abatido_remoto_a_azul_foraponta_m
+                    abatido_remoto_a_azul_ponta_mensal_acumulado += abatido_remoto_a_azul_ponta_m
+                
+                # FIM DO LOOP MENSAL
+                
+                # logger.info(f"  Banco de créditos no final do ano {ano}: {banco_creditos:.2f} kWh")
+                # logger.info(f"  Acumulados do ano {ano}:")
+                # logger.info(f"    Autoconsumo instantâneo anual: {autoconsumo_instantaneo_mensal_acumulado:.2f} kWh")
+                # logger.info(f"    Autoconsumo abatido anual: {autoconsumo_abatido_mensal_acumulado:.2f} kWh")
+                # logger.info(f"    Abatido remoto B anual: {abatido_remoto_b_mensal_acumulado:.2f} kWh")
+                # logger.info(f"    Abatido remoto A Verde fora ponta anual: {abatido_remoto_a_verde_foraponta_mensal_acumulado:.2f} kWh")
+                # logger.info(f"    Abatido remoto A Verde ponta anual: {abatido_remoto_a_verde_ponta_mensal_acumulado:.2f} kWh")
+                # logger.info(f"    Abatido remoto A Azul fora ponta anual: {abatido_remoto_a_azul_foraponta_mensal_acumulado:.2f} kWh")
+                # logger.info(f"    Abatido remoto A Azul ponta anual: {abatido_remoto_a_azul_ponta_mensal_acumulado:.2f} kWh")
+
+                # Cálculos Anuais a partir dos acumuladores
+                gen_annual[idx - 1] = np.sum(gen_mes_base)
+
+                logger.info(f"  Geração anual no ano {ano}: {gen_annual[idx - 1]:.2f} kWh")
+
+                # Abatimento local
+                autoconsumo_instantaneo_annual[idx - 1] = autoconsumo_instantaneo_mensal_acumulado
+                autoconsumo_abatido_annual[idx - 1] = autoconsumo_abatido_mensal_acumulado
+
+                logger.info(f"  Autoconsumo instantâneo anual no ano {ano}: {autoconsumo_instantaneo_annual[idx - 1]:.2f} kWh")
+                logger.info(f"  Autoconsumo abatido anual no ano {ano}: {autoconsumo_abatido_annual[idx - 1]:.2f} kWh")
+                
+                # Abatimento Remoto
+                abatido_remoto_b_annual[idx - 1] = abatido_remoto_b_mensal_acumulado
+                abatido_remoto_a_verde_foraponta_annual[idx - 1] = abatido_remoto_a_verde_foraponta_mensal_acumulado
+                abatido_remoto_a_verde_ponta_annual[idx - 1] = abatido_remoto_a_verde_ponta_mensal_acumulado
+                abatido_remoto_a_azul_foraponta_annual[idx - 1] = abatido_remoto_a_azul_foraponta_mensal_acumulado
+                abatido_remoto_a_azul_ponta_annual[idx - 1] = abatido_remoto_a_azul_ponta_mensal_acumulado
+                
+                logger.info(f"  Abatido remoto B anual no ano {ano}: {abatido_remoto_b_annual[idx - 1]:.2f} kWh")
+                logger.info(f"  Abatido remoto A Verde fora ponta anual no ano {ano}: {abatido_remoto_a_verde_foraponta_annual[idx - 1]:.2f} kWh")
+                logger.info(f"  Abatido remoto A Verde ponta anual no ano {ano}: {abatido_remoto_a_verde_ponta_annual[idx - 1]:.2f} kWh")
+                logger.info(f"  Abatido remoto A Azul fora ponta anual no ano {ano}: {abatido_remoto_a_azul_foraponta_annual[idx - 1]:.2f} kWh")
+                logger.info(f"  Abatido remoto A Azul ponta anual no ano {ano}: {abatido_remoto_a_azul_ponta_annual[idx - 1]:.2f} kWh")
+
+                # Cálculo das Economias Anuais
+                # Economia Unidade Geradora Local (Grupo B)
+                abatido_total_local = autoconsumo_instantaneo_annual[idx - 1] + autoconsumo_abatido_annual[idx-1]
+                
+                logger.info(f"  Abatido total na unidade geradora no ano {ano}: {abatido_total_local:.2f} kWh")
+
+                # Custo de Abatimento Fio B ou Demanda Mínima (o maior)
+                custo_fio_b_ano = autoconsumo_abatido_annual[idx - 1] * request.fio_b_base * noncomp_b
+                custo_disponibilidade_ano = demanda_minima * tarifa_base_mes * 12
+                maior_custo_abatimento = max(custo_fio_b_ano, custo_disponibilidade_ano)
+
+                logger.info(f"  Custo de abatimento Fio B no ano {ano}: R$ {custo_fio_b_ano:.2f}")
+                logger.info(f"  Custo de disponibilidade no ano {ano}: R$ {custo_disponibilidade_ano:.2f}")
+                logger.info(f"  Maior custo de abatimento no ano {ano}: R$ {maior_custo_abatimento:.2f}")
+
+                economia_geradora_annual[idx-1] = (abatido_total_local * tarifa_base_mes) - maior_custo_abatimento
+
+                logger.info(f"  Economia geradora anual no ano {ano}: R$ {economia_geradora_annual[idx-1]:.2f}")
+
+                # Economia Unidade Remoto Grupo B
+                economia_remoto_b_annual[idx-1] = (abatido_remoto_b_annual[idx - 1] * tarifa_base_mes) - (abatido_remoto_b_annual[idx-1] * fio_b_y * noncomp_b)
+                
+                logger.info(f"  Economia remoto B anual no ano {ano}: R$ {economia_remoto_b_annual[idx-1]:.2f}")
+
+                # Economia Unidade Remoto Grupo A Verde
+                if request.remoto_a_verde.enabled:
+                    tarifa_total_remoto_a_verde_fp_y = request.remoto_a_verde.tarifas["off_peak"] * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                    tarifa_total_remoto_a_verde_p_y = request.remoto_a_verde.tarifas["peak"] * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                    tusc_remoto_a_verde_fp_y = request.remoto_a_verde.tusd["off_peak"] * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                    tusc_remoto_a_verde_p_y = request.remoto_a_verde.tusd["peak"] * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                    
+                    economia_remoto_a_verde_foraponta_annual[idx - 1] = abatido_remoto_a_verde_foraponta_annual[idx-1] * tarifa_total_remoto_a_verde_fp_y - (abatido_remoto_a_verde_foraponta_annual[idx-1] * tusc_remoto_a_verde_fp_y * noncomp_a)
+                    economia_remoto_a_verde_ponta_annual[idx - 1] = abatido_remoto_a_verde_ponta_annual[idx-1] * tarifa_total_remoto_a_verde_p_y - (abatido_remoto_a_verde_ponta_annual[idx-1] * tusc_remoto_a_verde_p_y * noncomp_a)
+                
+                # Economia Unidade Remoto Grupo A Azul
+                if request.remoto_a_azul.enabled:
+                    tarifa_total_remoto_a_azul_fp_y = request.remoto_a_azul.tarifas["off_peak"] * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                    tarifa_total_remoto_a_azul_p_y = request.remoto_a_azul.tarifas["peak"] * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                    tusc_remoto_a_azul_fp_y = request.remoto_a_azul.tusd["off_peak"] * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                    tusc_remoto_a_azul_p_y = request.remoto_a_azul.tusd["peak"] * ((1 + request.financeiros.inflacao_energia / 100) ** (idx - 1))
+                    
+                    economia_remoto_a_azul_foraponta_annual[idx - 1] = abatido_remoto_a_azul_foraponta_annual[idx-1] * tarifa_total_remoto_a_azul_fp_y - (abatido_remoto_a_azul_foraponta_annual[idx-1] * tusc_remoto_a_azul_fp_y * noncomp_a)
+                    economia_remoto_a_azul_ponta_annual[idx - 1] = abatido_remoto_a_azul_ponta_annual[idx-1] * tarifa_total_remoto_a_azul_p_y - (abatido_remoto_a_azul_ponta_annual[idx-1] * tusc_remoto_a_azul_p_y * noncomp_a)
+                
+                # Economia Total e Fluxo de Caixa
+                economia_total_annual[idx - 1] = (economia_geradora_annual[idx - 1] + economia_remoto_b_annual[idx-1] +
+                                                economia_remoto_a_verde_foraponta_annual[idx-1] + economia_remoto_a_verde_ponta_annual[idx-1] +
+                                                economia_remoto_a_azul_foraponta_annual[idx-1] + economia_remoto_a_azul_ponta_annual[idx-1])
+                
+                logger.info(f"  Economia total anual no ano {ano}: R$ {economia_total_annual[idx-1]:.2f}")
+
+                oma_annual[idx - 1] = request.financeiros.capex * request.financeiros.oma_first_pct * ((1 + request.financeiros.oma_inflacao / 100) ** (idx-1))
+                flow_y = economia_total_annual[idx - 1] - oma_annual[idx-1]
+
+                logger.info(f"  O&M anual no ano {ano}: R$ {oma_annual[idx-1]:.2f}")
+                logger.info(f"  Fluxo de caixa antes do salvamento no ano {ano}: R$ {flow_y:.2f}")
+                
+                if ano == request.financeiros.anos:
+                    flow_y += request.financeiros.capex * request.financeiros.salvage_pct
+                    logger.info(f"  Adicionando salvamento ao fluxo de caixa no ano {ano}: R$ {request.financeiros.capex * request.financeiros.salvage_pct:.2f}")
+                
+                flows[idx] = flow_y
+                disc_flows[idx] = flow_y / ((1 + request.financeiros.taxa_desconto / 100)**(idx))
+
+                logger.info(f"  Fluxo de caixa descontado no ano {ano}: R$ {disc_flows[idx]:.2f}")
+
+                #TODO No codigo do notebook nós temos essas 2 linhas abaixo
+                # pv_gen_annual[idx-1] = gen_annual[idx-1] / ((1 + request.financeiros.taxa_desconto/100)**(idx))
+                # pv_oma_annual[idx-1] = oma_annual[idx-1] / ((1 + request.financeiros.taxa_desconto/100)**(idx))
+
+                # logger.info(f"  Geração anual em valor presente no ano {ano}: R$ {pv_gen_annual[idx-1]:.2f}")
+                # logger.info(f"  O&M anual em valor presente no ano {ano}: R$ {pv_oma_annual[idx-1]:.2f}")
+
+            # Cálculo do VPL e do Payback
+            VPL = npf.npv(request.financeiros.taxa_desconto / 100, flows)
+            TIR = npf.irr(flows)
+
+            logger.info(f"VPL calculado: R$ {VPL:.2f}")
+            logger.info(f"TIR calculada: {TIR*100:.2f} %")
             
-            # 10. Calcular economia total anual
-            economia_anual = abatimentos_local['economia_total_ano'] + abatimentos_remotos['economia_total_ano']
+            # CORREÇÃO DO CÁLCULO DE PAYBACK SIMPLES E DESCONTADO
+            cumul_nominal = np.cumsum(flows)
+            cumul_discounted = np.cumsum(disc_flows)
+
+            logger.info(f"Cumulativo Nominal: {cumul_nominal}")
+            logger.info(f"Cumulativo Descontado: {cumul_discounted}")
             
-            # 11. Calcular fluxo de caixa (25 anos)
-            cash_flow = self._calculate_cash_flow(
-                request.financeiros.capex,
-                economia_anual,
-                request.financeiros.capex * request.financeiros.oma_first_pct,
-                request.financeiros.inflacao_energia / 100,
-                request.financeiros.oma_inflacao / 100,
-                request.financeiros.degradacao / 100,
-                request.financeiros.anos,
-                request.financeiros.taxa_desconto / 100,
-                request.financeiros.salvage_pct
-            )
+            payback_nominal = 0
+            for i in range(1, len(cumul_nominal)):
+                if cumul_nominal[i] >= 0:
+                    prev_cumul = cumul_nominal[i-1]
+                    current_flow = flows[i]
+                    payback_nominal = i - 1 + abs(prev_cumul) / current_flow
+                    logger.info(f"Payback simples no ano {ano}: {payback_nominal:.2f} anos")
+                    break
             
-            # 12. Calcular indicadores financeiros
-            indicadores = self._calculate_indicadores_financeiros(cash_flow, request.financeiros.capex)
+            payback_descontado = 0
+            for i in range(1, len(cumul_discounted)):
+                if cumul_discounted[i] >= 0:
+                    prev_cumul_disc = cumul_discounted[i-1]
+                    current_flow_disc = disc_flows[i]
+                    payback_descontado = i - 1 + abs(prev_cumul_disc) / current_flow_disc
+                    logger.info(f"Payback descontado no ano {ano}: {payback_descontado:.2f} anos")
+                    break
             
-            # 13. Montar resposta
+            # NOVOS CÁLCULOS FINANCEIROS
+            total_pv_economies = np.sum(disc_flows[1:])
+            pi = total_pv_economies / request.financeiros.capex
+
+            logger.info(f"Valor Presente Líquido das economias calculado: R$ {total_pv_economies:.2f}")
+            logger.info(f"Índice de lucratividade (PI) calculado: {pi:.2f}")
+            
+            pv_gen_annual = gen_annual / ((1 + request.financeiros.taxa_desconto / 100)**np.arange(1, request.financeiros.anos + 1))
+            pv_oma_annual = oma_annual / ((1 + request.financeiros.taxa_desconto / 100)**np.arange(1, request.financeiros.anos + 1))
+
+            total_pv_gen = np.sum(pv_gen_annual)
+            total_pv_oma = np.sum(pv_oma_annual)
+            lcoe = (request.financeiros.capex + total_pv_oma - (request.financeiros.capex * request.financeiros.salvage_pct / (1 + request.financeiros.taxa_desconto / 100)**(request.financeiros.anos))) / total_pv_gen
+            roi_simples = (np.sum(economia_total_annual) - np.sum(oma_annual)) / request.financeiros.capex
+
+            logger.info(f"Calculado Índice de Lucratividade (PI): {pi:.2f}")
+            logger.info(f"Calculado LCOE: R$ {lcoe:.2f} /kWh")
+            logger.info(f"Calculado Retorno sobre Investimento (ROI) Simples: {roi_simples*100:.2f}%")
+            logger.info(f"Calculado Economia Total Projetada (Nominal): R$ {np.sum(economia_total_annual):.2f}")
+            logger.info(f"Calculado Economia Total Projetada (Valor Presente): R$ {total_pv_economies:.2f}")
+
+            logger.info(flows)
+            
+            # Montar resposta
             response = self._build_response(
-                geracao, consumo_local, request.financeiros.capex,
-                cash_flow, abatimentos_local, abatimentos_remotos,
-                indicadores, request, custo_disponibilidade_mensal
+                geracao_monthly.tolist(),
+                consumo_local_monthly.tolist(),
+                request.financeiros.capex,
+                flows.tolist(),
+                cumul_nominal.tolist(),
+                cumul_discounted.tolist(),
+                {
+                    'vpl': VPL,
+                    'tir': TIR * 100 if TIR is not None else 0,
+                    'pi': pi,
+                    'payback_simples': payback_nominal,
+                    'payback_descontado': payback_descontado,
+                    'lcoe': lcoe,
+                    'roi_simples': roi_simples * 100,
+                    'economia_total_nominal': np.sum(economia_total_annual),
+                    'economia_total_valor_presente': total_pv_economies
+                },
+                {
+                    'gen_annual': gen_annual.tolist(),
+                    'autoconsumo_instantaneo_annual': autoconsumo_instantaneo_annual.tolist(),
+                    'autoconsumo_abatido_annual': autoconsumo_abatido_annual.tolist(),
+                    'abatido_remoto_b_annual': abatido_remoto_b_annual.tolist(),
+                    'abatido_remoto_a_verde_foraponta_annual': abatido_remoto_a_verde_foraponta_annual.tolist(),
+                    'abatido_remoto_a_verde_ponta_annual': abatido_remoto_a_verde_ponta_annual.tolist(),
+                    'abatido_remoto_a_azul_foraponta_annual': abatido_remoto_a_azul_foraponta_annual.tolist(),
+                    'abatido_remoto_a_azul_ponta_annual': abatido_remoto_a_azul_ponta_annual.tolist(),
+                    'economia_geradora_annual': economia_geradora_annual.tolist(),
+                    'economia_remoto_b_annual': economia_remoto_b_annual.tolist(),
+                    'economia_remoto_a_verde_foraponta_annual': economia_remoto_a_verde_foraponta_annual.tolist(),
+                    'economia_remoto_a_verde_ponta_annual': economia_remoto_a_verde_ponta_annual.tolist(),
+                    'economia_remoto_a_azul_foraponta_annual': economia_remoto_a_azul_foraponta_annual.tolist(),
+                    'economia_remoto_a_azul_ponta_annual': economia_remoto_a_azul_ponta_annual.tolist(),
+                    'economia_total_annual': economia_total_annual.tolist(),
+                    'oma_annual': oma_annual.tolist()
+                },
+                request,
+                demanda_minima * request.tarifa_base
             )
             
             self.logger.info("FIM CÁLCULO GRUPO B - Sucesso")
@@ -190,350 +501,22 @@ class FinancialGrupoBService:
         if total_percent > 100:
             raise ValueError(f"Soma de percentuais remotos ({total_percent}%) não pode ultrapassar 100%")
     
-    def _calculate_autoconsumo_instantaneo(
-        self,
-        geracao: List[float],
-        consumo: List[float],
-        fator_simultaneidade: float
-    ) -> List[float]:
-        """
-        Calcula energia consumida instantaneamente (não vai para rede)
-        
-        Formula para cada mês:
-        autoconsumo_instantaneo = min(geracao, consumo) * fator_simultaneidade
-        
-        Retorna array de 12 valores (kWh/mês)
-        
-        Exemplo:
-        geracao = [1000, 1200, 800]
-        consumo = [800, 1500, 600]
-        fator_simultaneidade = 0.25
-        Resultado: [200, 300, 150]  # min(1000,800)*0.25, min(1200,1500)*0.25, min(800,600)*0.25
-        """
-        if len(geracao) != 12 or len(consumo) != 12:
-            raise ValueError("Arrays devem ter 12 elementos")
-        
-        autoconsumo = []
-        for i in range(12):
-            valor = min(geracao[i], consumo[i]) * fator_simultaneidade
-            autoconsumo.append(valor)
-        
-        self.logger.debug(f"Autoconsumo instantâneo calculado: {autoconsumo}")
-        return autoconsumo
-    
-    def _calculate_creditos_grupo_b(
-        self,
-        geracao: List[float],
-        autoconsumo_instantaneo: List[float]
-    ) -> List[float]:
-        """
-        Calcula créditos de energia (energia excedente injetada na rede)
-        
-        Formula para cada mês:
-        creditos = geracao - autoconsumo_instantaneo
-        
-        Retorna array de 12 valores (kWh de crédito/mês)
-        
-        Créditos não podem ser negativos.
-        """
-        if len(geracao) != 12 or len(autoconsumo_instantaneo) != 12:
-            raise ValueError("Arrays devem ter 12 elementos")
-        
-        creditos = []
-        for i in range(12):
-            valor = max(0, geracao[i] - autoconsumo_instantaneo[i])
-            creditos.append(valor)
-        
-        self.logger.debug(f"Créditos calculados: {creditos}")
-        return creditos
-    
-    def _apply_fio_b(
-        self,
-        creditos: List[float],
-        fio_b_schedule: Dict[int, float],
-        base_year: int,
-        anos: int
-    ) -> Dict[int, List[float]]:
-        """
-        Aplica desconto de Fio B aos créditos conforme cronograma da Lei 14.300
-        
-        Para cada ano:
-        - Aplica percentual de Fio B correspondente ao ano
-        - credito_liquido = credito * (1 - fio_b_percent)
-        
-        Retorna dict {ano: [12 valores de créditos líquidos]}
-        """
-        creditos_por_ano = {}
-        
-        self.logger.info(f"Cronograma Fio B utilizado: {fio_b_schedule}")
-        
-        for ano in range(anos):
-            year = base_year + ano
-            fio_b_percent = fio_b_schedule.get(year, list(fio_b_schedule.values())[-1])  # Último valor disponível
-            
-            # Aplicar degradação aos créditos (0.5% ao ano padrão)
-            degradacao = 0.005
-            creditos_ano = [cred * (1 - degradacao) ** ano for cred in creditos]
-            
-            # Aplicar Fio B
-            creditos_liquidos = [cred * (1 - fio_b_percent) for cred in creditos_ano]
-            
-            creditos_por_ano[ano] = creditos_liquidos
-            
-            self.logger.debug(f"Ano {year}: Fio B {fio_b_percent:.1%}, créditos líquidos: {sum(creditos_liquidos):.2f} kWh")
-        
-        return creditos_por_ano
-    
-    def _calculate_custo_disponibilidade(self, tipo_conexao: str, tarifa_base: float) -> float:
-        """Calcula custo de disponibilidade mensal conforme tipo de conexão"""
-        demanda_minima = {
-            "Monofasico": 30,
-            "Bifasico": 50,
-            "Trifasico": 100
-        }.get(tipo_conexao, 30)
-        
-        custo_mensal = demanda_minima * tarifa_base
-        self.logger.debug(f"Custo disponibilidade mensal ({tipo_conexao}): R$ {custo_mensal:.2f}")
-        return custo_mensal
-    
-    def _calculate_abatimento_local(
-        self,
-        consumo: List[float],
-        creditos_liquidos: List[float],
-        autoconsumo_instantaneo: List[float],
-        tarifa_base: float,
-        custo_disponibilidade_mensal: float
-    ) -> Dict[str, Any]:
-        """
-        Calcula economia gerada na unidade local
-        
-        Para cada mês:
-        1. Economia autoconsumo instantâneo = autoconsumo * tarifa_base
-        2. kWh_abater = consumo - autoconsumo_instantaneo
-        3. kWh_abatido_com_creditos = min(kWh_abater, creditos_liquidos)
-        4. Economia créditos = kWh_abatido_com_creditos * tarifa_base
-        5. Custo mínimo = max(custo_disponibilidade, economia_total)
-        6. Economia líquida = economia_total - custo_mínimo
-        
-        Retorna dict com:
-        - economia_mensal: List[float]
-        - kwh_abatido: List[float]
-        - percentual_abatido: List[float]
-        - economia_total_ano: float
-        """
-        economia_mensal = []
-        kwh_abatido = []
-        percentual_abatido = []
-        
-        for i in range(12):
-            # 1. Economia autoconsumo instantâneo
-            economia_autoconsumo = autoconsumo_instantaneo[i] * tarifa_base
-            
-            # 2. kWh a abater
-            kWh_abater = consumo[i] - autoconsumo_instantaneo[i]
-            
-            # 3. kWh abatido com créditos
-            kWh_abatido_com_creditos = min(kWh_abater, creditos_liquidos[i])
-            
-            # 4. Economia créditos
-            economia_creditos = kWh_abatido_com_creditos * tarifa_base
-            
-            # 5. Economia total do mês
-            economia_total_mes = economia_autoconsumo + economia_creditos
-            
-            # 6. Custo mínimo (tarifa de disponibilidade)
-            custo_minimo = max(custo_disponibilidade_mensal, economia_total_mes)
-            
-            # 7. Economia líquida
-            economia_liquida = economia_total_mes - custo_minimo
-            
-            economia_mensal.append(economia_liquida)
-            kwh_abatido.append(autoconsumo_instantaneo[i] + kWh_abatido_com_creditos)
-            
-            # Percentual de abatimento
-            perc_abatido = (kwh_abatido[i] / consumo[i] * 100) if consumo[i] > 0 else 0
-            percentual_abatido.append(perc_abatido)
-        
-        economia_total_ano = sum(economia_mensal)
-        
-        self.logger.debug(f"Abatimento local - Economia anual: R$ {economia_total_ano:.2f}")
-        
-        return {
-            'economia_mensal': economia_mensal,
-            'kwh_abatido': kwh_abatido,
-            'percentual_abatido': percentual_abatido,
-            'economia_total_ano': economia_total_ano
-        }
-    
-    def _calculate_abatimentos_remotos(
-        self, 
-        request: GrupoBFinancialRequest, 
-        creditos_liquidos_por_ano: Dict[int, List[float]]
-    ) -> Dict[str, Any]:
-        """Calcula abatimentos para unidades remotas"""
-        economia_remotos = 0
-        
-        # Implementação simplificada - pode ser expandida conforme necessidade
-        if request.remoto_b.enabled:
-            # Lógica para abatimento remoto B
-            consumo_remoto_b = request.remoto_b.data.to_list()
-            creditos_para_b = sum(creditos_liquidos_por_ano[0]) * (request.remoto_b.percentage / 100)
-            
-            for i in range(12):
-                abatido = min(creditos_para_b / 12, consumo_remoto_b[i])
-                economia_remotos += abatido * request.remoto_b.tarifa_total
-        
-        # Similar para A Verde e A Azul...
-        
-        return {
-            'economia_total_ano': economia_remotos
-        }
-    
-    def _calculate_cash_flow(
-        self,
-        capex: float,
-        economia_anual: float,
-        custo_oma_first: float,
-        inflacao_energia: float,
-        inflacao_oma: float,
-        degradacao: float,
-        anos: int,
-        taxa_desconto: float,
-        salvage_pct: float
-    ) -> List[Dict[str, float]]:
-        """
-        Calcula fluxo de caixa ano a ano
-        
-        Para cada ano:
-        - Ano 0: Fluxo = -CAPEX
-        - Anos 1-N:
-          - Economia ano = economia_anual * (1 + inflacao_energia)^ano * (1 - degradacao)^ano
-          - Custo O&M ano = custo_oma_first * (1 + inflacao_oma)^ano
-          - Fluxo nominal = economia_ano - custo_oma_ano
-          - Fluxo descontado = fluxo_nominal / (1 + taxa_desconto)^ano
-          - Fluxo acumulado nominal = soma de todos os fluxos até o ano
-          - Fluxo acumulado descontado = soma de todos os fluxos descontados
-        - Último ano: Adicionar valor residual = CAPEX * salvage_pct
-        
-        Retorna lista de dicts com campos:
-        - ano, fluxo_nominal, fluxo_acumulado_nominal, fluxo_descontado, fluxo_acumulado_descontado
-        """
-        cash_flow = []
-        fluxo_acumulado_nominal = -capex
-        fluxo_acumulado_descontado = -capex
-        
-        # Ano 0
-        cash_flow.append({
-            'ano': 0,
-            'fluxo_nominal': -capex,
-            'fluxo_acumulado_nominal': fluxo_acumulado_nominal,
-            'fluxo_descontado': -capex,
-            'fluxo_acumulado_descontado': fluxo_acumulado_descontado
-        })
-        
-        for ano in range(1, anos + 1):
-            # Economia do ano com inflação e degradação
-            economia_ano = economia_anual * ((1 + inflacao_energia) ** (ano - 1)) * ((1 - degradacao) ** (ano - 1))
-            
-            # Custo O&M do ano com inflação
-            custo_oma_ano = custo_oma_first * ((1 + inflacao_oma) ** (ano - 1))
-            
-            # Fluxo nominal
-            fluxo_nominal = economia_ano - custo_oma_ano
-            
-            # Adicionar valor residual no último ano
-            if ano == anos:
-                fluxo_nominal += capex * salvage_pct
-            
-            # Fluxo descontado
-            fluxo_descontado = fluxo_nominal / ((1 + taxa_desconto) ** ano)
-            
-            # Fluxos acumulados
-            fluxo_acumulado_nominal += fluxo_nominal
-            fluxo_acumulado_descontado += fluxo_descontado
-            
-            cash_flow.append({
-                'ano': ano,
-                'fluxo_nominal': fluxo_nominal,
-                'fluxo_acumulado_nominal': fluxo_acumulado_nominal,
-                'fluxo_descontado': fluxo_descontado,
-                'fluxo_acumulado_descontado': fluxo_acumulado_descontado
-            })
-        
-        return cash_flow
-    
-    def _calculate_indicadores_financeiros(self, cash_flow: List[Dict], capex: float) -> Dict[str, float]:
-        """Calcula indicadores financeiros principais"""
-        # Extrair fluxos para cálculos
-        fluxos = [cf['fluxo_nominal'] for cf in cash_flow]
-        
-        # VPL
-        vpl = npf.npv(0.08, fluxos)  # Usando taxa de desconto padrão de 8%
-        
-        # TIR
-        try:
-            tir = npf.irr(fluxos)
-            tir_pct = tir * 100 if tir is not None else 0
-        except:
-            tir_pct = 0
-        
-        # Payback simples
-        payback_simples = self._calculate_payback(cash_flow, 'nominal')
-        
-        # Payback descontado
-        payback_descontado = self._calculate_payback(cash_flow, 'descontado')
-        
-        return {
-            'vpl': vpl,
-            'tir': tir_pct,
-            'payback_simples': payback_simples,
-            'payback_descontado': payback_descontado
-        }
-    
-    def _calculate_payback(self, cash_flow: List[Dict], tipo: str) -> float:
-        """Calcula payback (simples ou descontado)"""
-        campo_fluxo = f'fluxo_acumulado_{tipo}'
-        
-        for cf in cash_flow[1:]:  # Ignorar ano 0
-            if cf[campo_fluxo] >= 0:
-                # Interpolação linear para precisão
-                ano_anterior = cf['ano'] - 1
-                cf_anterior = cash_flow[ano_anterior]
-                
-                if cf['ano'] > 1 and cf[campo_fluxo] - cf_anterior[campo_fluxo] > 0:
-                    fator = abs(cf_anterior[campo_fluxo]) / (cf[campo_fluxo] - cf_anterior[campo_fluxo])
-                    return cf['ano'] - 1 + fator
-                else:
-                    return float(cf['ano'])
-        
-        return float(len(cash_flow) - 1)  # Retorna vida útil se não pagar
-    
-
     
     def _build_response(
         self,
         geracao: List[float],
         consumo: List[float],
         capex: float,
-        cash_flow: List[Dict],
-        abatimentos_local: Dict,
-        abatimentos_remotos: Dict,
+        flows: List[float],
+        cumul_nominal: List[float],
+        cumul_discounted: List[float],
         indicadores: Dict,
+        dados_anuais: Dict,
         request: GrupoBFinancialRequest,
         custo_disponibilidade_mensal: float
     ) -> ResultadosCodigoBResponse:
         """
-        Monta objeto de resposta formatado
-        
-        Estrutura:
-        1. somas_iniciais: Formatar geração, consumo, CAPEX
-        2. comparativo_custo_abatimento: Calcular e formatar
-        3. financeiro: Formatar todos os indicadores financeiros
-        4. consumo_ano1: Montar estrutura detalhada do ano 1
-        5. tabela_resumo_anual: Montar array com dados anuais
-        6. tabela_fluxo_caixa: Converter cash_flow para formato esperado
-        
-        Use funções de formatação (format_currency, format_percentage, etc.)
+        Monta objeto de resposta formatado com base nos cálculos do notebook
         """
         
         # 1. Somas iniciais
@@ -543,58 +526,75 @@ class FinancialGrupoBService:
             "capex": format_currency(capex)
         }
         
-        # 2. Comparativo de custo abatimento
-        custo_anual_sem_sistema = sum(consumo) * request.tarifa_base
-        custo_anual_com_sistema = custo_disponibilidade_mensal * 12
-        economia_anual = custo_anual_sem_sistema - custo_anual_com_sistema
+        # 2. Comparativo de custo abatimento (Ano 1)
+        custo_fio_b_ano1 = dados_anuais['autoconsumo_abatido_annual'][0] * request.fio_b_base * request.fio_b.schedule.get(request.fio_b.base_year, 1.0)
+        custo_disponibilidade_ano1 = custo_disponibilidade_mensal * 12
         
         comparativo_custo_abatimento = {
-            "custo_sem_sistema": format_currency(custo_anual_sem_sistema) + "/ano",
-            "custo_com_sistema": format_currency(custo_anual_com_sistema) + "/ano",
-            "economia_anual": format_currency(economia_anual)
+            "custo_fio_b": format_currency(custo_fio_b_ano1),
+            "custo_disponibilidade": format_currency(custo_disponibilidade_ano1),
+            "maior_custo": format_currency(max(custo_fio_b_ano1, custo_disponibilidade_ano1))
         }
         
         # 3. Financeiro
         financeiro = FinancialSummary(
             vpl=float(indicadores['vpl']),
-            tir=float(indicadores['tir']) if indicadores['tir'] > 0 else 0.0,
-            pi=float((indicadores['vpl'] + capex) / capex) if capex > 0 else 0.0,
+            tir=float(indicadores['tir']) / 100 if indicadores['tir'] > 0 else 0.0,
+            pi=float(indicadores['pi']),
             payback_simples=float(indicadores['payback_simples']),
             payback_descontado=float(indicadores['payback_descontado']),
-            lcoe=float(capex / sum(geracao) * 1000) if sum(geracao) > 0 else 0.0,
-            roi_simples=float(((sum(abatimentos_local['economia_mensal']) - capex * request.financeiros.oma_first_pct) / capex) * 100 / 100),
-            economia_total_nominal=float(sum(abatimentos_local['economia_mensal']) * request.financeiros.anos),
-            economia_total_valor_presente=float(indicadores['vpl'])
+            lcoe=float(indicadores['lcoe']),
+            roi_simples=float(indicadores['roi_simples']) / 100,
+            economia_total_nominal=float(indicadores['economia_total_nominal']),
+            economia_total_valor_presente=float(indicadores['economia_total_valor_presente'])
         )
         
         # 4. Consumo ano 1
         consumo_ano1 = {
             "consumo_local": sum(consumo),
-            "geracao": sum(geracao),
-            "autoconsumo_instantaneo": sum(abatimentos_local['economia_mensal']) / request.tarifa_base,
-            "percentual_abatido": sum(abatimentos_local['percentual_abatido']) / 12
+            "geracao": dados_anuais['gen_annual'][0],
+            "autoconsumo_instantaneo": dados_anuais['autoconsumo_instantaneo_annual'][0],
+            "autoconsumo_abatido": dados_anuais['autoconsumo_abatido_annual'][0],
+            "percentual_abatido": ((dados_anuais['autoconsumo_instantaneo_annual'][0] + dados_anuais['autoconsumo_abatido_annual'][0]) / sum(consumo)) * 100 if sum(consumo) > 0 else 0,
+            "abatido_remoto_b": dados_anuais['abatido_remoto_b_annual'][0] if request.remoto_b.enabled else 0,
+            "abatido_remoto_a_verde_fp": dados_anuais['abatido_remoto_a_verde_foraponta_annual'][0] if request.remoto_a_verde.enabled else 0,
+            "abatido_remoto_a_verde_p": dados_anuais['abatido_remoto_a_verde_ponta_annual'][0] if request.remoto_a_verde.enabled else 0,
+            "abatido_remoto_a_azul_fp": dados_anuais['abatido_remoto_a_azul_foraponta_annual'][0] if request.remoto_a_azul.enabled else 0,
+            "abatido_remoto_a_azul_p": dados_anuais['abatido_remoto_a_azul_ponta_annual'][0] if request.remoto_a_azul.enabled else 0
         }
         
-        # 5. Tabela resumo anual (simplificada)
+        # 5. Tabela resumo anual (primeiros 5 anos para visualização)
         tabela_resumo_anual = []
-        for ano in range(1, min(request.financeiros.anos + 1, 6)):  # Primeiros 5 anos
+        for ano in range(min(5, request.financeiros.anos)):
+            idx = ano
+            perc_abatido_local = ((dados_anuais['autoconsumo_instantaneo_annual'][idx] + dados_anuais['autoconsumo_abatido_annual'][idx]) / sum(consumo)) * 100 if sum(consumo) > 0 else 0
+            
             tabela_resumo_anual.append({
-                "ano": ano,
-                "geracao": sum(geracao) * ((1 - request.financeiros.degradacao / 100) ** (ano - 1)),
-                "economia": sum(abatimentos_local['economia_mensal']) * ((1 + request.financeiros.inflacao_energia / 100) ** (ano - 1)),
-                "custos_om": capex * request.financeiros.oma_first_pct * ((1 + request.financeiros.oma_inflacao / 100) ** (ano - 1))
+                "ano": ano + 1,
+                "geracao": dados_anuais['gen_annual'][idx],
+                "percentual_abatido_local": perc_abatido_local,
+                "economia_local": dados_anuais['economia_geradora_annual'][idx],
+                "economia_remoto_b": dados_anuais['economia_remoto_b_annual'][idx],
+                "economia_remoto_a_verde_fp": dados_anuais['economia_remoto_a_verde_foraponta_annual'][idx],
+                "economia_remoto_a_verde_p": dados_anuais['economia_remoto_a_verde_ponta_annual'][idx],
+                "economia_remoto_a_azul_fp": dados_anuais['economia_remoto_a_azul_foraponta_annual'][idx],
+                "economia_remoto_a_azul_p": dados_anuais['economia_remoto_a_azul_ponta_annual'][idx],
+                "custos_om": dados_anuais['oma_annual'][idx],
+                "economia_total": dados_anuais['economia_total_annual'][idx]
             })
         
         # 6. Tabela fluxo de caixa
-        tabela_fluxo_caixa = [
-            CashFlowRow(
-                ano=cf['ano'],
-                fluxo_nominal=cf['fluxo_nominal'],
-                fluxo_acumulado_nominal=cf['fluxo_acumulado_nominal'],
-                fluxo_descontado=cf['fluxo_descontado'],
-                fluxo_acumulado_descontado=cf['fluxo_acumulado_descontado']
-            ) for cf in cash_flow
-        ]
+        tabela_fluxo_caixa = []
+        for ano in range(len(flows)):
+            tabela_fluxo_caixa.append(
+                CashFlowRow(
+                    ano=ano,
+                    fluxo_nominal=flows[ano],
+                    fluxo_acumulado_nominal=cumul_nominal[ano],
+                    fluxo_descontado=cumul_discounted[ano] if ano < len(cumul_discounted) else flows[ano] / ((1 + request.financeiros.taxa_desconto / 100)**ano),
+                    fluxo_acumulado_descontado=cumul_discounted[ano] if ano < len(cumul_discounted) else sum(flows[:ano+1] / np.array([(1 + request.financeiros.taxa_desconto / 100)**i for i in range(ano+1)]))
+                )
+            )
         
         return ResultadosCodigoBResponse(
             somas_iniciais=somas_iniciais,

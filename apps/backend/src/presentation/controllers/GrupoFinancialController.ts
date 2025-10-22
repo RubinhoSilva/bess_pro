@@ -62,27 +62,8 @@ export class GrupoFinancialController extends BaseController {
         return this.badRequest(res, 'Campo "consumoLocal" não pode estar vazio');
       }
 
-      // Log resumido dos dados recebidos
-      const geracaoAnual = Object.values(financialInput.geracao || {}).reduce((a: number, b: number) => a + b, 0);
-      const consumoAnual = Object.values(financialInput.consumoLocal || {}).reduce((a: number, b: number) => a + b, 0);
-      
-      console.log('[GrupoFinancialController DEBUG] Payload completo recebido Grupo B:', JSON.stringify(financialInput, null, 2));
-      
-      console.log('[GrupoFinancialController] Dados recebidos Grupo B:', {
-        investimento: financialInput.financeiros?.capex,
-        geracao_anual: geracaoAnual,
-        consumo_anual: consumoAnual,
-        tarifa_base: financialInput.tarifaBase
-      });
-
       // Executar cálculo no serviço Python
       const result = await this.pvlibClient.calculateGrupoBFinancials(financialInput);
-
-      console.log('[GrupoFinancialController] Cálculo Grupo B concluído:', {
-        vpl: result.financeiro?.vpl,
-        tir: result.financeiro?.tir,
-        payback: result.financeiro?.paybackSimples
-      });
 
       // Retornar resultado
       return this.ok(res, {

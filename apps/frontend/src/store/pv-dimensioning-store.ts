@@ -72,8 +72,8 @@ export interface ISystemData {
   // Campos do SystemParametersForm
   fabricanteModulo?: string;
   moduloSelecionado?: string;
-  vidaUtil?: number;
-  degradacaoAnual?: number;
+  vidaUtil: number;
+  degradacaoAnual: number;
   // Campos adicionais necessários para compatibilidade
   eficienciaModulo?: number;
   tensaoModulo?: number;
@@ -95,13 +95,13 @@ export interface IBudgetData {
   financingInstallments?: number;
   financingInterest?: number;
   // Campos do FinancialForm
-  inflacaoEnergia?: number;
-  taxaDesconto?: number;
-  custoOperacao?: number;
-  valorResidual?: number;
-  percentualFinanciado?: number;
-  taxaJuros?: number;
-  prazoFinanciamento?: number;
+  inflacaoEnergia: number;
+  taxaDesconto: number;
+  custoOperacao: number;
+  valorResidual: number;
+  percentualFinanciado: number;
+  taxaJuros: number;
+  prazoFinanciamento: number;
 }
 
 export interface IResultsData {

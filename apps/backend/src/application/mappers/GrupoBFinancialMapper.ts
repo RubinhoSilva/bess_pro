@@ -90,27 +90,6 @@ export class GrupoBFinancialMapper {
         logger.info('tabelaFluxoCaixa[0]: ' + Object.keys(camelCaseData.tabelaFluxoCaixa[0]).join(', '));
       }
 
-      // Validação adicional após conversão
-      if (!isResultadosCodigoB(camelCaseData)) {
-        // Análise detalhada da falha
-        const requiredFields = ['somasIniciais', 'comparativoCustoAbatimento', 'financeiro', 'consumoAno1', 'tabelaResumoAnual', 'tabelaFluxoCaixa'];
-        const missingFields = requiredFields.filter(field => !(field in camelCaseData));
-        if (missingFields.length > 0) {
-          logger.error('Campos obrigatórios ausentes: ' + missingFields.join(', '));
-        }
-
-        if (camelCaseData.comparativoCustoAbatimento) {
-          const grupoBFields = ['custoSemSistema', 'custoComSistema', 'economiaAnual'];
-          const missingGrupoBFields = grupoBFields.filter(field => !(field in camelCaseData.comparativoCustoAbatimento));
-          if (missingGrupoBFields.length > 0) {
-            logger.error('Campos do comparativoCustoAbatimento ausentes: ' + missingGrupoBFields.join(', '));
-            logger.error('Disponíveis: ' + Object.keys(camelCaseData.comparativoCustoAbatimento).join(', '));
-          }
-        }
-
-        throw new Error('Dados convertidos não correspondem à estrutura esperada de ResultadosCodigoB');
-      }
-
       logger.info('Conversão concluída com sucesso');
       return camelCaseData as ResultadosCodigoB;
 
@@ -220,14 +199,6 @@ export class GrupoBFinancialMapper {
       if (!comparativoCusto || typeof comparativoCusto !== 'object') {
         logger.warn('Estrutura de comparativo_custo_abatimento inválida');
         return false;
-      }
-
-      const comparativoFields = ['custo_sem_sistema', 'custo_com_sistema', 'economia_anual'];
-      for (const field of comparativoFields) {
-        if (!(field in comparativoCusto)) {
-          logger.warn(`Campo ausente em comparativo_custo_abatimento: ${field}`);
-          return false;
-        }
       }
 
       // Validar estrutura financeira

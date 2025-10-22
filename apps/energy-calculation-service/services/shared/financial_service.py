@@ -151,7 +151,7 @@ class FinancialCalculationService:
             economia_anual = 0.0
             geracao_anual = 0.0
             
-            print(f"🐍 [PYTHON] Processando Ano {ano}/{input_data.vida_util}:")
+            logger.info(f"🐍 [PYTHON] Processando Ano {ano}/{input_data.vida_util}:")
             
             for mes in range(12):
                 # Degradacao
@@ -159,13 +159,14 @@ class FinancialCalculationService:
                 gen_mes = input_data.geracao_mensal[mes] * fator_degradacao
                 geracao_anual += gen_mes
                 
+                logger.info(f"🐍 [PYTHON]   Mês {mes+1}: Geração ajustada={gen_mes:.2f}kWh (Fator degradação={fator_degradacao:.4f})")
+
                 # Inflacao
                 fator_inflacao = (1 + input_data.inflacao_energia / 100) ** (ano - 1)
                 tarifa_mes = input_data.tarifa_energia * fator_inflacao
                 fio_b_mes = input_data.custo_fio_b * fator_inflacao
-                
-                if ano == 1 and mes < 3:  # Log apenas primeiros meses do primeiro ano
-                    print(f"🐍 [PYTHON]   Mês {mes+1}: Geração={gen_mes:.2f}kWh, Tarifa=R${tarifa_mes:.4f}, Fio B=R${fio_b_mes:.4f}")
+
+                logger.info(f"🐍 [PYTHON]   Mês {mes+1}: Tarifa ajustada=R${tarifa_mes:.4f}/kWh, Fio B ajustado=R${fio_b_mes:.4f}/kWh (Fator inflação={fator_inflacao:.4f})")
                 
                 # Calcular economia local
                 economia_mes, banco_local = FinancialCalculationService._calculate_monthly_local_savings(
@@ -180,9 +181,8 @@ class FinancialCalculationService:
                     input_data.base_year
                 )
                 
-                if ano == 1 and mes < 3:  # Log apenas primeiros meses do primeiro ano
-                    print(f"🐍 [PYTHON]   Mês {mes+1}: Economia local=R${economia_mes:.2f}, Banco após={banco_local:.2f}kWh")
-                
+                logger.info(f"🐍 [PYTHON]   Mês {mes+1}: Economia local={economia_mes:.2f}R$, Banco créditos atualizado={banco_local:.2f}kWh"   )
+
                 # GUARDAR BANCO INICIAL DO MES
                 banco_inicial_mes = banco_local
                 creditos_consumidos_total = 0.0

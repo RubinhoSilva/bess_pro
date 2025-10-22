@@ -364,6 +364,7 @@ class GrupoBFinancialRequest(BaseModel):
     geracao: MonthlyDataModel = Field(..., description="Dados de geração mensal em kWh")
     consumo_local: MonthlyDataModel = Field(..., description="Dados de consumo local mensal em kWh")
     tarifa_base: float = Field(..., gt=0, description="Tarifa base de energia em R$/kWh")
+    fio_b_base: float = Field(..., gt=0, description="Valor base do Fio B em R$/kWh")
     tipo_conexao: str = Field(..., pattern=r'^(Monofasico|Bifasico|Trifasico)$', description="Tipo de conexão")
     fator_simultaneidade: float = Field(..., ge=0, le=1, description="Fator de simultaneidade")
     fio_b: FioBParamsModel = Field(..., description="Parâmetros do Fio B")
@@ -395,6 +396,7 @@ class GrupoBFinancialRequest(BaseModel):
                     "set": 370, "out": 390, "nov": 365, "dez": 355
                 },
                 "tarifa_base": 0.85,
+                "fio_b_base": 0.2500,
                 "tipo_conexao": "Monofasico",
                 "fator_simultaneidade": 0.25,
                 "fio_b": {

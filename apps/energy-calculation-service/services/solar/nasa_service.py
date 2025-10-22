@@ -24,6 +24,8 @@ class NASAService:
         self.dataset = settings.NASA_POWER_DATASET
         self.temporal = settings.NASA_POWER_TEMPORAL
         self.api_name = settings.NASA_POWER_API
+        self.start_year = 2015 
+        self.end_year = 2020 
 
     def fetch_weather_data(self, lat: float, lon: float, use_cache: bool = True) -> pd.DataFrame:
         """
@@ -110,13 +112,9 @@ class NASAService:
             # Importar a função correta do pvlib para NASA POWER
             from pvlib.iotools import get_nasa_power
 
-            # Calcular período de dados (últimos N anos)
-            end_year = datetime.now().year - 1  # Último ano completo
-            start_year = end_year - self.years_back + 1
-
             # Criar datas de início e fim
-            start_date = datetime(start_year, 1, 1)
-            end_date = datetime(end_year, 12, 31)
+            start_date = datetime(self.start_year, 1, 1)
+            end_date = datetime(self.end_year, 12, 31)
 
             logger.info(f"Fazendo requisição NASA POWER para {lat}, {lon}")
             logger.info(f"Período: {start_date.strftime('%Y-%m-%d')} até {end_date.strftime('%Y-%m-%d')}")
@@ -158,11 +156,7 @@ class NASAService:
         """
         try:
             from pvlib.iotools import read_srml, get_pvgis_hourly
-            import requests
-
-            # Calcular período
-            end_year = datetime.now().year - 1
-            start_year = end_year - self.years_back + 1
+            import requests        
 
             logger.info(f"Usando método alternativo para NASA POWER data")
 
@@ -185,8 +179,8 @@ class NASAService:
                 f"community=RE&"
                 f"longitude={lon}&"
                 f"latitude={lat}&"
-                f"start={start_year}0101&"
-                f"end={end_year}1231&"
+                f"start={self.start_year}0101&"
+                f"end={self.end_year}1231&"
                 f"format=JSON"
             )
 
