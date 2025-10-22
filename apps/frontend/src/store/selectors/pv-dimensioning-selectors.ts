@@ -182,30 +182,45 @@ export const selectRoofDataCompleteWithModule = (solarModules: any[]) => (state:
 
 // Seletor que aceita módulo externo para dimensioningData
 export const selectDimensioningDataWithModule = (selectedModule: any) => (state: IProjectState) => {
-  // Preparar dados do inversor para incluir em cada água
+  // Preparar dados dos inversores para associar a cada água
   const selectedInverters = state.system?.selectedInverters || [];
-  const inverterData = selectedInverters.length > 0 ? {
-    fabricante: selectedInverters[0].inverter.manufacturer.name || 'Desconhecido',
-    modelo: selectedInverters[0].inverter.model || 'Modelo',
-    potencia_saida_ca_w: selectedInverters[0].inverter.power.ratedACPower || 0,
-    tipo_rede: selectedInverters[0].inverter.electrical.gridType || 'Desconhecido',
-    potencia_fv_max_w: selectedInverters[0].inverter.power.maxPVPower || 0,
-    tensao_cc_max_v: selectedInverters[0].inverter.power.maxDCVoltage || 0,
-    numero_mppt: selectedInverters[0].inverter.mppt.numberOfMppts || 1,
-    strings_por_mppt: selectedInverters[0].inverter.mppt.stringsPerMppt || 1,
-    eficiencia_max: selectedInverters[0].inverter.electrical.maxEfficiency || 0,
-    efficiency_dc_ac: ((selectedInverters[0].inverter.electrical.maxEfficiency || 0) / 100),
-    corrente_entrada_max_a: selectedInverters[0].inverter.power.maxInputCurrent || 0,
-    potencia_aparente_max_va: selectedInverters[0].inverter.power.maxApparentPower || 0,
-    // Parâmetros Sandia (se disponíveis no tipo compartilhado)
-    vdco: undefined, // Não disponível no tipo compartilhado atualmente
-    pso: undefined,
-    c0: undefined,
-    c1: undefined,
-    c2: undefined,
-    c3: undefined,
-    pnt: undefined
-  } : undefined;
+  
+  // Função para encontrar o inversor correto baseado no inversorId da água
+  const findInverterForAgua = (inversorId?: string) => {
+    if (!inversorId || selectedInverters.length === 0) return undefined;
+    
+    // O inversorId pode ter o formato "inverterId_unitX" para múltiplas unidades
+    // Precisamos extrair apenas o ID base do inversor
+    const baseInverterId = inversorId.split('_unit')[0];
+    
+    // Procurar o inversor correspondente
+    const inverter = selectedInverters.find(inv => inv.inverter.id === baseInverterId);
+    
+    if (!inverter) return undefined;
+    
+    return {
+      fabricante: inverter.inverter.manufacturer.name || 'Desconhecido',
+      modelo: inverter.inverter.model || 'Modelo',
+      potencia_saida_ca_w: inverter.inverter.power.ratedACPower || 0,
+      tipo_rede: inverter.inverter.electrical.gridType || 'Desconhecido',
+      potencia_fv_max_w: inverter.inverter.power.maxPVPower || 0,
+      tensao_cc_max_v: inverter.inverter.power.maxDCVoltage || 0,
+      numero_mppt: inverter.inverter.mppt.numberOfMppts || 1,
+      strings_por_mppt: inverter.inverter.mppt.stringsPerMppt || 1,
+      eficiencia_max: inverter.inverter.electrical.maxEfficiency || 0,
+      efficiency_dc_ac: ((inverter.inverter.electrical.maxEfficiency || 0) / 100),
+      corrente_entrada_max_a: inverter.inverter.power.maxInputCurrent || 0,
+      potencia_aparente_max_va: inverter.inverter.power.maxApparentPower || 0,
+      // Parâmetros Sandia (se disponíveis no tipo compartilhado)
+      vdco: undefined, // Não disponível no tipo compartilhado atualmente
+      pso: undefined,
+      c0: undefined,
+      c1: undefined,
+      c2: undefined,
+      c3: undefined,
+      pnt: undefined
+    };
+  };
 
   const aguasTelhado = state.roof?.aguasTelhado || [];
 
@@ -213,17 +228,22 @@ export const selectDimensioningDataWithModule = (selectedModule: any) => (state:
     latitude: state.location?.location?.latitude,
     longitude: state.location?.location?.longitude,
     fonteDados: state.location?.fonteDados,
-    aguasTelhado: aguasTelhado.map((a: any) => ({
-      id: a.id,
-      nome: a.nome,
-      orientacao: a.orientacao,
-      inclinacao: a.inclinacao,
-      numeroModulos: a.numeroModulos || 0,
-      sombreamentoParcial: a.sombreamentoParcial || 0,
-      inversorId: a.inversorId,
-      mpptNumero: a.mpptNumero,
-      inversor: inverterData
-    })),
+    aguasTelhado: aguasTelhado.map((a: any) => {
+      // Encontrar o inversor específico para esta água
+      const inverterData = findInverterForAgua(a.inversorId);
+      
+      return {
+        id: a.id,
+        nome: a.nome,
+        orientacao: a.orientacao,
+        inclinacao: a.inclinacao,
+        numeroModulos: a.numeroModulos || 0,
+        sombreamentoParcial: a.sombreamentoParcial || 0,
+        inversorId: a.inversorId,
+        mpptNumero: a.mpptNumero,
+        inversor: inverterData
+      };
+    }),
     potenciaModulo: selectedModule ? selectedModule.nominalPower : state.system?.potenciaModulo,
     energyBills: state.energy?.energyBills || [{
       consumoMensal: [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500] // 6000 kWh/ano padrão

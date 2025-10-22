@@ -1045,12 +1045,14 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 potencia_nominal_w: state.system?.potenciaModulo || 550,
                 // ... demais parâmetros
               } : null,
-              inversor: state.system?.selectedInverters?.[0] ? {
-                fabricante: state.system.selectedInverters[0].inverter.manufacturer.name,
-                modelo: state.system.selectedInverters[0].inverter.model,
-                potencia_saida_ca_w: state.system.selectedInverters[0].inverter.power.ratedACPower,
-                tipo_rede: state.system.selectedInverters[0].inverter.electrical.gridType
-              } : null,
+              // CORREÇÃO: Enviar todos os inversores selecionados em vez de apenas o primeiro
+              inversores: state.system?.selectedInverters?.map(inv => ({
+                fabricante: inv.inverter.manufacturer.name,
+                modelo: inv.inverter.model,
+                potencia_saida_ca_w: inv.inverter.power.ratedACPower,
+                tipo_rede: inv.inverter.electrical.gridType,
+                quantidade: inv.quantity || 1
+              })) || [],
               perdas_sistema: (state.system?.perdaSombreamento || 3) +
                               (state.system?.perdaMismatch || 2) +
                               (state.system?.perdaCabeamento || 2) +

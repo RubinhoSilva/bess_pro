@@ -594,7 +594,8 @@ export class SolarSystemService {
     
     // Extrair dados diretamente sem defaults
     const moduloSelecionado = dimensioningData.selectedModules?.[0];
-    const inversorSelecionado = dimensioningData.inverters?.[0];
+    // CORREÇÃO: Não usar mais inversores[0], pois cada água terá seu próprio inversor
+    // Os inversores agora estão embutidos em cada água do telhado
     
     // CORREÇÃO: Usar a store para calcular consumo baseado no grupo tarifário
     const store = usePVDimensioningStore.getState();
@@ -655,7 +656,7 @@ export class SolarSystemService {
       aguasTelhado: dimensioningData.aguasTelhado
     };
 
-    return this.calculateAdvancedModules(params, inversorSelecionado);
+    return this.calculateAdvancedModules(params, undefined); // Inversor global não é mais necessário
   }
 
 /**
@@ -673,7 +674,7 @@ export class SolarSystemService {
         const inversorId = agua.inversorId || 'default';
         
         if (!inversoresMap.has(inversorId)) {
-          // Usar inversor da água ou o inversor global/padrão
+          // CORREÇÃO: Priorizar o inversor da água que agora vem corretamente do seletor
           const inversorData = agua.inversor || inversorGlobal || {
             fabricante: "WEG",
             modelo: "SIW500H-M",
