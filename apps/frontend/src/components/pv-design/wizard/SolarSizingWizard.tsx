@@ -482,12 +482,12 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div className="text-center">
-                            <div className="text-lg font-semibold text-blue-600">{agua.numeroModulos}</div>
+                            <div className="text-lg font-semibold text-blue-600">{(agua.numeroModulos || 0) * (agua.numeroStrings || 1)}</div>
                             <div className="text-xs text-gray-500">Módulos</div>
                           </div>
                           <div className="text-center">
                             <div className="text-lg font-semibold text-purple-600">
-                              {((agua.numeroModulos * (systemData?.potenciaModulo || 550)) / 1000).toFixed(2)} kWp
+                              {(((agua.numeroModulos || 0) * (agua.numeroStrings || 1) * (systemData?.potenciaModulo || 550)) / 1000).toFixed(2)} kWp
                             </div>
                             <div className="text-xs text-gray-500">Potência</div>
                           </div>

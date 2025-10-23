@@ -229,6 +229,15 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
 
   const maxModules = calculateMaxModules();
 
+  // Função auxiliar para calcular o total de módulos considerando strings
+  const calculateTotalModules = useMemo(() => {
+    return roofData.aguasTelhado.reduce((sum, agua) => {
+      const modulosPorString = agua.numeroModulos || 0;
+      const numeroStrings = agua.numeroStrings || 1;
+      return sum + (modulosPorString * numeroStrings);
+    }, 0);
+  }, [roofData.aguasTelhado]);
+
   // Usar seletor para obter dimensioningData formatado
   const dimensioningData = useMemo(() => {
     const store = usePVDimensioningStore.getState();
@@ -248,7 +257,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     }
 
     // Verificar se existe pelo menos uma água com módulos
-    const totalModulos = roofData.aguasTelhado.reduce((sum, a) => sum + (a.numeroModulos || 0), 0);
+    const totalModulos = calculateTotalModules;
     if (totalModulos === 0) {
       return;
     }
@@ -295,7 +304,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         
       // Distribuir os resultados proporcionalmente entre todas as águas que têm módulos
       const finalAguas = roofData.aguasTelhado.map(a => {
-        const modulos = a.numeroModulos || 0;
+        const modulos = (a.numeroModulos || 0) * (a.numeroStrings || 1);
         if (modulos > 0) {
           // Calcular proporção desta água no sistema total
           const proporcao = modulos / totalModulos;
@@ -408,7 +417,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                     </div>
                     <div className="flex items-center gap-2">
                        <Badge variant="outline">
-                         {agua.numeroModulos || 0} módulos
+                         {((agua.numeroModulos || 0) * (agua.numeroStrings || 1))} módulos
                        </Badge>
                       <Badge variant="outline">
                         {orientacaoLabel}
@@ -864,34 +873,34 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                 
                 <div className="text-center p-3">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ${
-                    roofData.aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0) > maxModules
+                    calculateTotalModules > maxModules
                       ? 'bg-red-100'
                       : 'bg-blue-100'
                   }`}>
                     <Settings className={`w-6 h-6 ${
-                      roofData.aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0) > maxModules
+                      calculateTotalModules > maxModules
                         ? 'text-red-600'
                         : 'text-blue-600'
                     }`} />
                   </div>
                   <p className={`text-2xl font-bold ${
-                    roofData.aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0) > maxModules
+                    calculateTotalModules > maxModules
                       ? 'text-red-600'
                       : 'text-blue-600'
                   }`}>
-                     {roofData.aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0)}
+                     {calculateTotalModules}
                     {maxModules && ` / ${maxModules}`}
                   </p>
                   <p className={`text-sm ${
-                    roofData.aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0) > maxModules
+                    calculateTotalModules > maxModules
                       ? 'text-red-600'
                       : 'text-gray-600'
                   }`}>
                     Total de Módulos
-                     {roofData.aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0) > maxModules && ' (Excede!)'}
+                     {calculateTotalModules > maxModules && ' (Excede!)'}
                   </p>
                   <p className="text-xs text-gray-500">
-                     {((roofData.aguasTelhado.reduce((sum, agua) => sum + (agua.numeroModulos || 0), 0) * (roofData.selectedModule?.nominalPower || roofData.system?.potenciaModulo || 550)) / 1000).toFixed(1)} kWp
+                     {((calculateTotalModules * (roofData.selectedModule?.nominalPower || roofData.system?.potenciaModulo || 550)) / 1000).toFixed(1)} kWp
                   </p>
                 </div>
                 
@@ -985,7 +994,7 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
                         <div className="flex-1">
                           <p className="font-medium text-sm">{agua.nome}</p>
                           <div className="flex items-center gap-3 text-xs text-gray-500">
-                            <span>{agua.numeroModulos || 0} módulos</span>
+                            <span>{((agua.numeroModulos || 0) * (agua.numeroStrings || 1))} módulos</span>
                             <span>{orientacaoLabel}</span>
                             <span>{agua.inclinacao}°</span>
                             {hasValidMppt && (
