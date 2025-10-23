@@ -42,8 +42,8 @@ export class GrupoConfigAdapter {
       consumoLocal,
       tarifaBase: formData.tarifaEnergia || 0.85,
       fioBBase: formData.fioBBase || 0.25,
-      tipoConexao: formData.tipoConexao || 'Monofasico',
-      fatorSimultaneidade: formData.fatorSimultaneidade || 0.8,
+      tipoConexao: formData.tipoRede || formData.tipoConexao || 'Monofasico',
+      fatorSimultaneidade: (formData.fatorSimultaneidade || 100) / 100,
       fioB: {
         schedule: formData.fioBSchedule || { 2025: 0.45, 2026: 0.60, 2027: 0.75, 2028: 0.90, 2029: 0.90 },
         baseYear: formData.baseYear || 2025
@@ -147,7 +147,7 @@ export class GrupoConfigAdapter {
         foraPonta: formData.teForaPonta || 0.40,
         ponta: formData.tePonta || 0.60
       },
-      fatorSimultaneidadeLocal: formData.fatorSimultaneidadeLocal || 0.85,
+      fatorSimultaneidadeLocal: (formData.fatorSimultaneidadeLocal || 85) / 100,
       fioB: {
         schedule: formData.fioBSchedule || { 2025: 0.45, 2026: 0.60, 2027: 0.75, 2028: 0.90, 2029: 0.90 },
         baseYear: formData.baseYear || 2025

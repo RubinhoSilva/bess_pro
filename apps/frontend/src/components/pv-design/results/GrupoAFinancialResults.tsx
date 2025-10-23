@@ -68,7 +68,10 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ data })
     te: {
       ponta: data.tePontaA,
       foraPonta: data.teForaPontaA
-    }
+    },
+    // Adicionar os campos que estavam faltando
+    tipoRede: data.tipoRede,
+    fatorSimultaneidadeLocal: data.fatorSimultaneidade
   }), [
     data.investimentoInicial,
     data.vidaUtil,
@@ -80,7 +83,9 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ data })
     data.tarifaEnergiaPontaA,
     data.tarifaEnergiaForaPontaA,
     data.tePontaA,
-    data.teForaPontaA
+    data.teForaPontaA,
+    data.tipoRede,
+    data.fatorSimultaneidade
   ]);
   const { isDark } = useTheme();
   const colors = getChartColors(isDark);

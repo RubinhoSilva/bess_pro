@@ -60,9 +60,9 @@ class FinancialGrupoBService:
             
             # Demanda mínima por tipo de conexão
             demanda_minima = {
-                "Monofasico": 30,
-                "Bifasico": 50,
-                "Trifasico": 100
+                "monofasico": 30,
+                "bifasico": 50,
+                "trifasico": 100
             }.get(request.tipo_conexao, 30)
             
             # Inicialização de variáveis

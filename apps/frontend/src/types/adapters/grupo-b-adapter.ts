@@ -17,6 +17,8 @@ export interface IGrupoBData {
   valorResidual: number;
   hasRemotoB?: boolean;
   consumoRemotoB?: number[];
+  tipoRede?: string;
+  fatorSimultaneidade?: number;
 }
 
 /**
@@ -66,7 +68,9 @@ export class GrupoBAdapter {
       custoOperacao: budgetData.custoOperacao,
       valorResidual: budgetData.valorResidual,
       hasRemotoB: energyData?.hasRemotoB || false,
-      consumoRemotoB: energyData?.consumoRemotoB || Array(12).fill(0)
+      consumoRemotoB: energyData?.consumoRemotoB || Array(12).fill(0),
+      tipoRede: customerData.tipoRede,
+      fatorSimultaneidade: customerData.fatorSimultaneidade
     };
   }
   

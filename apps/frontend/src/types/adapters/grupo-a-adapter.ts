@@ -17,6 +17,8 @@ export interface IGrupoAData {
   degradacaoAnual: number;
   custoOperacao: number;
   valorResidual: number;
+  tipoRede?: string;
+  fatorSimultaneidade?: number;
 }
 
 /**
@@ -74,7 +76,9 @@ export class GrupoAAdapter {
       inflacaoEnergia: budgetData?.inflacaoEnergia || defaultFinancialParams.inflacaoEnergia,
       degradacaoAnual: (systemData?.degradacaoAnual || 0.5) / 100, // Converter % para decimal
       custoOperacao: budgetData?.custoOperacao || defaultFinancialParams.custoOperacao,
-      valorResidual: budgetData?.valorResidual || defaultFinancialParams.valorResidual
+      valorResidual: budgetData?.valorResidual || defaultFinancialParams.valorResidual,
+      tipoRede: customerData?.tipoRede,
+      fatorSimultaneidade: customerData?.fatorSimultaneidade
     };
   }
   

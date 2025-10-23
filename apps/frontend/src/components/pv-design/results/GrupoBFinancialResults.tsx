@@ -76,7 +76,10 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
     hasRemotoB: data.hasRemotoB,
     consumoRemotoB: data.consumoRemotoB,
     tarifaEnergiaB: data.tarifaEnergiaB,
-    custoFioB: data.custoFioB
+    custoFioB: data.custoFioB,
+    // Adicionar os campos que estavam faltando
+    tipoRede: data.tipoRede,
+    fatorSimultaneidade: data.fatorSimultaneidade
   }), [
     data.investimentoInicial,
     data.vidaUtil,
@@ -88,7 +91,9 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
     data.tarifaEnergiaB,
     data.custoFioB,
     data.hasRemotoB,
-    data.consumoRemotoB
+    data.consumoRemotoB,
+    data.tipoRede,
+    data.fatorSimultaneidade
   ]);
   const [financialResults, setFinancialResults] = useState<ResultadosCodigoB | null>(null);
   const [isLoading, setIsLoading] = useState(false);
