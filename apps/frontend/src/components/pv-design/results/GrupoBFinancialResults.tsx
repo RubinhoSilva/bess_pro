@@ -45,8 +45,10 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
   const calculationData = useMemo(() => ({
     investimentoInicial: data.investimentoInicial,
     geracaoMensal: data.geracaoMensal,
-    consumoMensal: data.consumoMensal
-  }), [data.investimentoInicial, data.geracaoMensal, data.consumoMensal]);
+    consumoMensal: data.consumoMensal,
+    hasRemotoB: data.hasRemotoB,
+    consumoRemotoB: data.consumoRemotoB
+  }), [data.investimentoInicial, data.geracaoMensal, data.consumoMensal, data.hasRemotoB, data.consumoRemotoB]);
   
   // Memoizar objeto de configuração para evitar re-renders
   const config = useMemo(() => ({
@@ -70,7 +72,11 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
         2028: 0.90
       },
       baseYear: 2025
-    }
+    },
+    hasRemotoB: data.hasRemotoB,
+    consumoRemotoB: data.consumoRemotoB,
+    tarifaEnergiaB: data.tarifaEnergiaB,
+    custoFioB: data.custoFioB
   }), [
     data.investimentoInicial,
     data.vidaUtil,
@@ -80,7 +86,9 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
     data.valorResidual,
     data.custoOperacao,
     data.tarifaEnergiaB,
-    data.custoFioB
+    data.custoFioB,
+    data.hasRemotoB,
+    data.consumoRemotoB
   ]);
   const [financialResults, setFinancialResults] = useState<ResultadosCodigoB | null>(null);
   const [isLoading, setIsLoading] = useState(false);
