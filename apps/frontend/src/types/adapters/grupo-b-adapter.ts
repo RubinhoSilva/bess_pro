@@ -19,6 +19,17 @@ export interface IGrupoBData {
   consumoRemotoB?: number[];
   tipoRede?: string;
   fatorSimultaneidade?: number;
+  // Dados do Grupo A para remotoAVerde
+  hasRemotoAVerde?: boolean;
+  consumoRemotoAVerdePonta?: number[];
+  consumoRemotoAVerdeForaPonta?: number[];
+  tarifaEnergiaPontaA?: number;
+  tarifaEnergiaForaPontaA?: number;
+  tePontaA?: number;
+  teForaPontaA?: number;
+  tusdPontaA?: number;
+  tusdForaPontaA?: number;
+  subgrupoTarifario?: string;
 }
 
 /**
@@ -50,10 +61,37 @@ export class GrupoBAdapter {
     // Extrair geração mensal dos resultados
     const geracaoMensal = resultsData?.calculationResults?.geracaoEstimadaMensal || Array(12).fill(0);
     
+    // Extrair dados do Grupo A se houver contas do Grupo A
+    let hasRemotoAVerde = false;
+    let consumoRemotoAVerdePonta = Array(12).fill(0);
+    let consumoRemotoAVerdeForaPonta = Array(12).fill(0);
+    
+    if (energyData?.energyBillsA && energyData.energyBillsA.length > 0) {
+      hasRemotoAVerde = true;
+      // Extrair consumo das contas do Grupo A
+      energyData.energyBillsA.forEach((bill: any) => {
+        if (bill.consumoMensalPonta) {
+          consumoRemotoAVerdePonta = consumoRemotoAVerdePonta.map((val: number, idx: number) =>
+            val + (bill.consumoMensalPonta[idx] || 0)
+          );
+        }
+        if (bill.consumoMensalForaPonta) {
+          consumoRemotoAVerdeForaPonta = consumoRemotoAVerdeForaPonta.map((val: number, idx: number) =>
+            val + (bill.consumoMensalForaPonta[idx] || 0)
+          );
+        }
+      });
+    }
+    
     // Log para debug da geração mensal
     console.log('[GrupoBAdapter] Geração mensal extraída:', geracaoMensal);
     console.log('[GrupoBAdapter] Estrutura completa de resultsData:', resultsData);
     console.log('[GrupoBAdapter] Estrutura de calculationResults:', resultsData?.calculationResults);
+    console.log('[GrupoBAdapter] Dados do Grupo A para remotoAVerde:', {
+      hasRemotoAVerde,
+      consumoRemotoAVerdePonta,
+      consumoRemotoAVerdeForaPonta
+    });
     
     return {
       investimentoInicial,
@@ -70,7 +108,18 @@ export class GrupoBAdapter {
       hasRemotoB: energyData?.hasRemotoB || false,
       consumoRemotoB: energyData?.consumoRemotoB || Array(12).fill(0),
       tipoRede: customerData.tipoRede,
-      fatorSimultaneidade: customerData.fatorSimultaneidade
+      fatorSimultaneidade: customerData.fatorSimultaneidade,
+      // Dados do Grupo A para remotoAVerde
+      hasRemotoAVerde,
+      consumoRemotoAVerdePonta,
+      consumoRemotoAVerdeForaPonta,
+      tarifaEnergiaPontaA: customerData.tarifaEnergiaPontaA,
+      tarifaEnergiaForaPontaA: customerData.tarifaEnergiaForaPontaA,
+      tePontaA: customerData.tePontaA,
+      teForaPontaA: customerData.teForaPontaA,
+      tusdPontaA: customerData.tusdPontaA,
+      tusdForaPontaA: customerData.tusdForaPontaA,
+      subgrupoTarifario: customerData.subgrupoTarifario
     };
   }
   

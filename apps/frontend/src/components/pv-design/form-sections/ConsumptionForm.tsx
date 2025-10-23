@@ -450,25 +450,25 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerD
                         />
                       </div>
 
-                      {/* TE - Tarifas de Demanda */}
+                      {/* TUSD - Tarifas de Demanda */}
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">TE Ponta (R$/kW)</Label>
-                        <Input 
+                        <Label className="text-sm font-medium">TUSD Ponta (R$/kW)</Label>
+                        <Input
                           type="number"
                           step="0.01"
-                          value={customerData?.tePontaA || 0.60}
-                          onChange={(e) => handleGrupoATariffChange('tePontaA', parseFloat(e.target.value) || 0)}
+                          value={customerData?.tusdPontaA || 0.60}
+                          onChange={(e) => handleGrupoATariffChange('tusdPontaA', parseFloat(e.target.value) || 0)}
                           placeholder="0.60"
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">TE Fora Ponta (R$/kW)</Label>
-                        <Input 
+                        <Label className="text-sm font-medium">TUSD Fora Ponta (R$/kW)</Label>
+                        <Input
                           type="number"
                           step="0.01"
-                          value={customerData?.teForaPontaA || 0.40}
-                          onChange={(e) => handleGrupoATariffChange('teForaPontaA', parseFloat(e.target.value) || 0)}
+                          value={customerData?.tusdForaPontaA || 0.40}
+                          onChange={(e) => handleGrupoATariffChange('tusdForaPontaA', parseFloat(e.target.value) || 0)}
                           placeholder="0.40"
                         />
                       </div>

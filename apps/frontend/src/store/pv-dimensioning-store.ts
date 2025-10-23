@@ -32,6 +32,9 @@ export interface ICustomerData {
   tarifaEnergiaForaPontaA: number;
   tePontaA: number;
   teForaPontaA: number;
+  // Campos de TUSD Grupo A
+  tusdPontaA: number;
+  tusdForaPontaA: number;
 }
 
 export interface IEnergyData {
@@ -255,7 +258,9 @@ const initialState: IProjectState = {
     tarifaEnergiaPontaA: 0,
     tarifaEnergiaForaPontaA: 0,
     tePontaA: 0,
-    teForaPontaA: 0
+    teForaPontaA: 0,
+    tusdPontaA: 0.60,  // Valor padrão para TUSD Ponta
+    tusdForaPontaA: 0.40  // Valor padrão para TUSD Fora Ponta
   },
   energy: {
     energyBills: [],
@@ -847,7 +852,9 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 tarifaEnergiaPontaA: projectData.tarifaEnergiaPontaA || 0,
                 tarifaEnergiaForaPontaA: projectData.tarifaEnergiaForaPontaA || 0,
                 tePontaA: projectData.tePontaA || 0,
-                teForaPontaA: projectData.teForaPontaA || 0
+                teForaPontaA: projectData.teForaPontaA || 0,
+                tusdPontaA: projectData.tusdPontaA || 0,
+                tusdForaPontaA: projectData.tusdForaPontaA || 0
               },
               
               // Etapa 2: Dados de energia
@@ -1224,7 +1231,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 },
                 base_year: 2025
               },
-              tipo_conexao: "Monofasico",
+              tipo_conexao: "monofasico",
               fator_simultaneidade: 0.25,
               // Adicionar dados remotos B
               remoto_b: {

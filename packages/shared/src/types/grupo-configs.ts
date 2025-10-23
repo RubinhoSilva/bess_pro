@@ -102,11 +102,11 @@ export interface GrupoBConfig {
    /** 
     * Tipo de conexão elétrica da unidade
     * @description Define o padrão de conexão
-    * @options 'Monofasico' | 'Bifasico' | 'Trifasico'
+    * @options 'monofasico' | 'bifasico' | 'trifasico'
     * @usage Para dimensionamento de proteção e adequação à rede
     * @pattern Residencial: Monofásico/Bifásico, Comercial: Trifásico
     */
-  tipoConexao: 'Monofasico' | 'Bifasico' | 'Trifasico';
+  tipoConexao: 'monofasico' | 'bifasico' | 'trifasico';
 
   /** 
    * Percentual da geração usada instantaneamente
@@ -473,8 +473,8 @@ export function validateGrupoBConfig(config: any): { isValid: boolean; errors: s
   if (typeof config.tarifaBase !== 'number' || config.tarifaBase <= 0) {
     errors.push('tarifaBase deve ser número positivo');
   }
-  if (!['Monofasico', 'Bifasico', 'Trifasico'].includes(config.tipoConexao)) {
-    errors.push('tipoConexao deve ser Monofasico, Bifasico ou Trifasico');
+  if (!['monofasico', 'bifasico', 'trifasico'].includes(config.tipoConexao)) {
+    errors.push('tipoConexao deve ser monofasico, bifasico ou trifasico');
   }
   if (typeof config.fatorSimultaneidade !== 'number' || 
       config.fatorSimultaneidade < 0 || config.fatorSimultaneidade > 1) {

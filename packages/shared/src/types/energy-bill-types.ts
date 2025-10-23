@@ -74,7 +74,7 @@ export interface EnergyBillB {
   fornecedor?: string;
   
   /** Tipo de conexão (Monofásico, Bifásico, Trifásico) */
-  tipoConexao?: 'Monofasico' | 'Bifasico' | 'Trifasico';
+  tipoConexao?: 'monofasico' | 'bifasico' | 'trifasico';
   
   /** Metadados adicionais */
   metadados?: Record<string, any>;
@@ -343,7 +343,7 @@ export function createEnergyBillB(data: {
   tarifaMedia?: number;
   dataReferencia?: string;
   fornecedor?: string;
-  tipoConexao?: 'Monofasico' | 'Bifasico' | 'Trifasico';
+  tipoConexao?: 'monofasico' | 'bifasico' | 'trifasico';
 }): EnergyBillB {
   const consumo = Array.isArray(data.consumo) 
     ? CommonTypes.arrayToMonthlyData(data.consumo)

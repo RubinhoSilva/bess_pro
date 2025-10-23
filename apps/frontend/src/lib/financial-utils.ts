@@ -168,6 +168,11 @@ console.log('Config recebido:', config);
   const hasRemotoB = config.hasRemotoB || false;
   const consumoRemotoB = config.consumoRemotoB || Array(12).fill(0);
   
+  // Verificar se há dados remotos A Verde na config
+  const hasRemotoAVerde = config.hasRemotoAVerde || false;
+  const consumoRemotoAVerdePonta = config.consumoRemotoAVerdePonta || Array(12).fill(0);
+  const consumoRemotoAVerdeForaPonta = config.consumoRemotoAVerdeForaPonta || Array(12).fill(0);
+  
   const defaultRemotoB: CommonTypes.RemoteConsumptionGrupoB = {
     enabled: hasRemotoB,
     percentage: hasRemotoB ? 0.40 : 0, // 40% dos créditos para remoto B
@@ -179,10 +184,42 @@ console.log('Config recebido:', config);
     fioBValue: config.custoFioB || 0.30
   };
 
+  const defaultRemotoAVerde: CommonTypes.RemoteConsumptionGrupoA = {
+    enabled: hasRemotoAVerde,
+    percentage: hasRemotoAVerde ? 0.30 : 0, // 30% dos créditos para remoto A Verde
+    dataOffPeak: meses.reduce((obj, mes, index) => {
+      obj[mes] = consumoRemotoAVerdeForaPonta[index] || 0;
+      return obj;
+    }, {} as CommonTypes.MonthlyData),
+    dataPeak: meses.reduce((obj, mes, index) => {
+      obj[mes] = consumoRemotoAVerdePonta[index] || 0;
+      return obj;
+    }, {} as CommonTypes.MonthlyData),
+    tarifas: {
+      offPeak: config.tarifaEnergiaForaPontaA || 0.60,
+      peak: config.tarifaEnergiaPontaA || 1.20
+    },
+    tusd: {
+      offPeak: config.tusdForaPontaA || config.teForaPontaA || 0.40, // Usa TUSD se existir, senão usa TE
+      peak: config.tusdPontaA || config.tePontaA || 0.60  // Usa TUSD se existir, senão usa TE
+    },
+    te: {
+      offPeak: config.teForaPontaA || config.tusdForaPontaA || 0.40, // Usa TE se existir, senão usa TUSD
+      peak: config.tePontaA || config.tusdPontaA || 0.60  // Usa TE se existir, senão usa TUSD
+    }
+  };
+
   console.log('[convertToGrupoBInput] Dados remotos B:', {
     hasRemotoB,
     consumoRemotoB,
     defaultRemotoB
+  });
+
+  console.log('[convertToGrupoBInput] Dados remotos A Verde:', {
+    hasRemotoAVerde,
+    consumoRemotoAVerdePonta,
+    consumoRemotoAVerdeForaPonta,
+    defaultRemotoAVerde
   });
 
   const defaultRemotoA: CommonTypes.RemoteConsumptionGrupoA = {
@@ -210,7 +247,7 @@ console.log('Config recebido:', config);
     consumoLocal: consumoMensal,
     tarifaBase: config.tarifaBase || 0.85,
     fioBBase: config.fioBBase || 0.25,
-    tipoConexao: config.tipoRede || config.tipoConexao || 'Monofasico',
+    tipoConexao: config.tipoRede || config.tipoConexao || 'monofasico',
     fatorSimultaneidade: (config.fatorSimultaneidade || 100) / 100,
     fioB: config.fioB || defaultFioB,
     remotoB: config.remotoB || defaultRemotoB,
@@ -224,11 +261,11 @@ console.log('Config recebido:', config);
     consumoLocal: consumoMensal,
     tarifaBase: config.tarifaBase || 0.85,
     fioBBase: config.fioBBase || 0.25,
-    tipoConexao: config.tipoRede || config.tipoConexao || 'Monofasico',
+    tipoConexao: config.tipoRede || config.tipoConexao || 'monofasico',
     fatorSimultaneidade: (config.fatorSimultaneidade || 100) / 100,
     fioB: config.fioB || defaultFioB,
     remotoB: config.remotoB || defaultRemotoB,
-    remotoAVerde: config.remotoAVerde || defaultRemotoA,
+    remotoAVerde: config.remotoAVerde || defaultRemotoAVerde,
     remotoAAzul: config.remotoAAzul || defaultRemotoA
   };
 }

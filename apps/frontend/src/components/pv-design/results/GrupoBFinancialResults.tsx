@@ -79,7 +79,18 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
     custoFioB: data.custoFioB,
     // Adicionar os campos que estavam faltando
     tipoRede: data.tipoRede,
-    fatorSimultaneidade: data.fatorSimultaneidade
+    fatorSimultaneidade: data.fatorSimultaneidade,
+    // Dados do Grupo A para remotoAVerde
+    hasRemotoAVerde: data.hasRemotoAVerde,
+    consumoRemotoAVerdePonta: data.consumoRemotoAVerdePonta,
+    consumoRemotoAVerdeForaPonta: data.consumoRemotoAVerdeForaPonta,
+    tarifaEnergiaPontaA: data.tarifaEnergiaPontaA,
+    tarifaEnergiaForaPontaA: data.tarifaEnergiaForaPontaA,
+    tePontaA: data.tePontaA,
+    teForaPontaA: data.teForaPontaA,
+    tusdPontaA: data.tusdPontaA,
+    tusdForaPontaA: data.tusdForaPontaA,
+    subgrupoTarifario: data.subgrupoTarifario
   }), [
     data.investimentoInicial,
     data.vidaUtil,
@@ -93,7 +104,18 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
     data.hasRemotoB,
     data.consumoRemotoB,
     data.tipoRede,
-    data.fatorSimultaneidade
+    data.fatorSimultaneidade,
+    // Dados do Grupo A para remotoAVerde
+    data.hasRemotoAVerde,
+    data.consumoRemotoAVerdePonta,
+    data.consumoRemotoAVerdeForaPonta,
+    data.tarifaEnergiaPontaA,
+    data.tarifaEnergiaForaPontaA,
+    data.tePontaA,
+    data.teForaPontaA,
+    data.tusdPontaA,
+    data.tusdForaPontaA,
+    data.subgrupoTarifario
   ]);
   const [financialResults, setFinancialResults] = useState<ResultadosCodigoB | null>(null);
   const [isLoading, setIsLoading] = useState(false);

@@ -42,7 +42,7 @@ export class GrupoConfigAdapter {
       consumoLocal,
       tarifaBase: formData.tarifaEnergia || 0.85,
       fioBBase: formData.fioBBase || 0.25,
-      tipoConexao: formData.tipoRede || formData.tipoConexao || 'Monofasico',
+      tipoConexao: formData.tipoRede || formData.tipoConexao || 'monofasico',
       fatorSimultaneidade: (formData.fatorSimultaneidade || 100) / 100,
       fioB: {
         schedule: formData.fioBSchedule || { 2025: 0.45, 2026: 0.60, 2027: 0.75, 2028: 0.90, 2029: 0.90 },
