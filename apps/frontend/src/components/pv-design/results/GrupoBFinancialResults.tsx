@@ -90,7 +90,11 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
     teForaPontaA: data.teForaPontaA,
     tusdPontaA: data.tusdPontaA,
     tusdForaPontaA: data.tusdForaPontaA,
-    subgrupoTarifario: data.subgrupoTarifario
+    subgrupoTarifario: data.subgrupoTarifario,
+    // Dados do Grupo A para remotoAAzul
+    hasRemotoAAzul: data.hasRemotoAAzul,
+    consumoRemotoAAzulPonta: data.consumoRemotoAAzulPonta,
+    consumoRemotoAAzulForaPonta: data.consumoRemotoAAzulForaPonta
   }), [
     data.investimentoInicial,
     data.vidaUtil,
@@ -115,7 +119,11 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
     data.teForaPontaA,
     data.tusdPontaA,
     data.tusdForaPontaA,
-    data.subgrupoTarifario
+    data.subgrupoTarifario,
+    // Dados do Grupo A para remotoAAzul
+    data.hasRemotoAAzul,
+    data.consumoRemotoAAzulPonta,
+    data.consumoRemotoAAzulForaPonta
   ]);
   const [financialResults, setFinancialResults] = useState<ResultadosCodigoB | null>(null);
   const [isLoading, setIsLoading] = useState(false);

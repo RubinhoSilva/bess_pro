@@ -30,6 +30,10 @@ export interface IGrupoBData {
   tusdPontaA?: number;
   tusdForaPontaA?: number;
   subgrupoTarifario?: string;
+  // Dados do Grupo A para remotoAAzul
+  hasRemotoAAzul?: boolean;
+  consumoRemotoAAzulPonta?: number[];
+  consumoRemotoAAzulForaPonta?: number[];
 }
 
 /**
@@ -65,22 +69,45 @@ export class GrupoBAdapter {
     let hasRemotoAVerde = false;
     let consumoRemotoAVerdePonta = Array(12).fill(0);
     let consumoRemotoAVerdeForaPonta = Array(12).fill(0);
+    let hasRemotoAAzul = false;
+    let consumoRemotoAAzulPonta = Array(12).fill(0);
+    let consumoRemotoAAzulForaPonta = Array(12).fill(0);
     
     if (energyData?.energyBillsA && energyData.energyBillsA.length > 0) {
-      hasRemotoAVerde = true;
-      // Extrair consumo das contas do Grupo A
-      energyData.energyBillsA.forEach((bill: any) => {
-        if (bill.consumoMensalPonta) {
-          consumoRemotoAVerdePonta = consumoRemotoAVerdePonta.map((val: number, idx: number) =>
-            val + (bill.consumoMensalPonta[idx] || 0)
-          );
-        }
-        if (bill.consumoMensalForaPonta) {
-          consumoRemotoAVerdeForaPonta = consumoRemotoAVerdeForaPonta.map((val: number, idx: number) =>
-            val + (bill.consumoMensalForaPonta[idx] || 0)
-          );
-        }
-      });
+      // Verificar o subgrupo tarifário para determinar se é Verde ou Azul
+      const subgrupoTarifario = customerData?.subgrupoTarifario || 'verde';
+      
+      if (subgrupoTarifario === 'verde') {
+        hasRemotoAVerde = true;
+        // Extrair consumo das contas do Grupo A Verde
+        energyData.energyBillsA.forEach((bill: any) => {
+          if (bill.consumoMensalPonta) {
+            consumoRemotoAVerdePonta = consumoRemotoAVerdePonta.map((val: number, idx: number) =>
+              val + (bill.consumoMensalPonta[idx] || 0)
+            );
+          }
+          if (bill.consumoMensalForaPonta) {
+            consumoRemotoAVerdeForaPonta = consumoRemotoAVerdeForaPonta.map((val: number, idx: number) =>
+              val + (bill.consumoMensalForaPonta[idx] || 0)
+            );
+          }
+        });
+      } else if (subgrupoTarifario === 'azul') {
+        hasRemotoAAzul = true;
+        // Extrair consumo das contas do Grupo A Azul
+        energyData.energyBillsA.forEach((bill: any) => {
+          if (bill.consumoMensalPonta) {
+            consumoRemotoAAzulPonta = consumoRemotoAAzulPonta.map((val: number, idx: number) =>
+              val + (bill.consumoMensalPonta[idx] || 0)
+            );
+          }
+          if (bill.consumoMensalForaPonta) {
+            consumoRemotoAAzulForaPonta = consumoRemotoAAzulForaPonta.map((val: number, idx: number) =>
+              val + (bill.consumoMensalForaPonta[idx] || 0)
+            );
+          }
+        });
+      }
     }
     
     // Log para debug da geração mensal
@@ -91,6 +118,12 @@ export class GrupoBAdapter {
       hasRemotoAVerde,
       consumoRemotoAVerdePonta,
       consumoRemotoAVerdeForaPonta
+    });
+    
+    console.log('[GrupoBAdapter] Dados do Grupo A para remotoAAzul:', {
+      hasRemotoAAzul,
+      consumoRemotoAAzulPonta,
+      consumoRemotoAAzulForaPonta
     });
     
     return {
@@ -119,7 +152,11 @@ export class GrupoBAdapter {
       teForaPontaA: customerData.teForaPontaA,
       tusdPontaA: customerData.tusdPontaA,
       tusdForaPontaA: customerData.tusdForaPontaA,
-      subgrupoTarifario: customerData.subgrupoTarifario
+      subgrupoTarifario: customerData.subgrupoTarifario,
+      // Dados do Grupo A para remotoAAzul
+      hasRemotoAAzul,
+      consumoRemotoAAzulPonta,
+      consumoRemotoAAzulForaPonta
     };
   }
   
