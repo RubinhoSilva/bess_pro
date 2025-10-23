@@ -15,6 +15,8 @@ export interface IGrupoBData {
   degradacaoAnual: number;
   custoOperacao: number;
   valorResidual: number;
+  hasRemotoB?: boolean;
+  consumoRemotoB?: number[];
 }
 
 /**
@@ -56,13 +58,15 @@ export class GrupoBAdapter {
       geracaoMensal,
       consumoMensal,
       tarifaEnergiaB: customerData.tarifaEnergiaB,
-      custoFioB: customerData.custoFioB,       
+      custoFioB: customerData.custoFioB,
       vidaUtil: systemData.vidaUtil,
       taxaDesconto: budgetData.taxaDesconto,
       inflacaoEnergia: budgetData.inflacaoEnergia,
-      degradacaoAnual: systemData.degradacaoAnual, 
+      degradacaoAnual: systemData.degradacaoAnual,
       custoOperacao: budgetData.custoOperacao,
-      valorResidual: budgetData.valorResidual
+      valorResidual: budgetData.valorResidual,
+      hasRemotoB: energyData?.hasRemotoB || false,
+      consumoRemotoB: energyData?.consumoRemotoB || Array(12).fill(0)
     };
   }
   

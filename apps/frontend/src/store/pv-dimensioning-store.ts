@@ -37,6 +37,8 @@ export interface ICustomerData {
 export interface IEnergyData {
   energyBills?: EnergyBillB[];
   energyBillsA?: EnergyBillA[];
+  consumoRemotoB?: number[];
+  hasRemotoB?: boolean;
 }
 
 export interface ILocationData {
@@ -255,7 +257,12 @@ const initialState: IProjectState = {
     tePontaA: 0,
     teForaPontaA: 0
   },
-  energy: null,
+  energy: {
+    energyBills: [],
+    energyBillsA: [],
+    consumoRemotoB: [],
+    hasRemotoB: false
+  },
   location: null,
   system: {
     selectedModuleId: '',
@@ -741,6 +748,8 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 // Dados de energia
                 energyBills: state.energy?.energyBills,
                 energyBillsA: state.energy?.energyBillsA,
+                consumoRemotoB: state.energy?.consumoRemotoB,
+                hasRemotoB: state.energy?.hasRemotoB,
                 
                 // Dados de localização
                 endereco: state.location?.location?.address,
@@ -844,7 +853,9 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               // Etapa 2: Dados de energia
               energy: {
                 energyBills: projectData.energyBills,
-                energyBillsA: projectData.energyBillsA
+                energyBillsA: projectData.energyBillsA,
+                consumoRemotoB: projectData.consumoRemotoB || [],
+                hasRemotoB: projectData.hasRemotoB || false
               },
               
               // Etapa 3: Dados de localização
@@ -1007,17 +1018,42 @@ export const usePVDimensioningStore = create<IProjectStore>()(
             console.log('[PVDimensioningStore] consumo Grupo A calculado:', consumoMensal);
             return consumoMensal;
           } else if (state.energy?.energyBills?.length) {
-            // Grupo B: usar consumoMensal diretamente
-            const consumoMensal = Array(12).fill(0);
+            // Grupo B: separar primeira conta (local) das demais (remotas)
+            const primeiraConta = state.energy.energyBills[0];
+            const contasRemotas = state.energy.energyBills.slice(1);
             
-            state.energy.energyBills.forEach(bill => {
+            // Usar apenas a primeira conta como consumo local
+            const consumoLocal = Array(12).fill(0);
+            if (primeiraConta) {
               for (let i = 0; i < 12; i++) {
-                consumoMensal[i] += bill.consumoMensal[i] || 0;
+                consumoLocal[i] = primeiraConta.consumoMensal[i] || 0;
               }
-            });
+            }
             
-            console.log('[PVDimensioningStore] consumo Grupo B calculado:', consumoMensal);
-            return consumoMensal;
+            // Processar contas remotas se existirem
+            if (contasRemotas.length > 0) {
+              const consumoRemoto = Array(12).fill(0);
+              contasRemotas.forEach(bill => {
+                for (let i = 0; i < 12; i++) {
+                  consumoRemoto[i] += bill.consumoMensal[i] || 0;
+                }
+              });
+              
+              console.log('[PVDimensioningStore] consumo remoto B calculado:', consumoRemoto);
+              
+              // Armazenar dados remotos para uso no cálculo financeiro
+              set((state) => ({
+                ...state,
+                energy: {
+                  ...state.energy,
+                  consumoRemotoB: consumoRemoto,
+                  hasRemotoB: true
+                }
+              }));
+            }
+            
+            console.log('[PVDimensioningStore] consumo local Grupo B calculado:', consumoLocal);
+            return consumoLocal;
           }
           
           // Fallback: array zerado
@@ -1134,6 +1170,10 @@ export const usePVDimensioningStore = create<IProjectStore>()(
             const totalInvestment = subtotal * (1 + (state.budget?.bdi || 0) / 100);
             
             // Preparar dados para cálculo financeiro
+            const consumoMensal = get().calcularConsumoMensal();
+            const consumoRemotoB = state.energy?.consumoRemotoB || Array(12).fill(0);
+            const hasRemotoB = state.energy?.hasRemotoB || false;
+            
             const financialData = {
               financeiros: {
                 capex: totalInvestment,
@@ -1159,25 +1199,22 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 Nov: state.results?.calculationResults?.geracaoEstimadaMensal?.[10] || 0,
                 Dez: state.results?.calculationResults?.geracaoEstimadaMensal?.[11] || 0
               },
-              // Usar a mesma função utilitária para calcular o consumo local
-              consumo_local: (() => {
-                const consumoMensal = get().calcularConsumoMensal();
-                return {
-                  Jan: consumoMensal[0] || 0,
-                  Fev: consumoMensal[1] || 0,
-                  Mar: consumoMensal[2] || 0,
-                  Abr: consumoMensal[3] || 0,
-                  Mai: consumoMensal[4] || 0,
-                  Jun: consumoMensal[5] || 0,
-                  Jul: consumoMensal[6] || 0,
-                  Ago: consumoMensal[7] || 0,
-                  Set: consumoMensal[8] || 0,
-                  Out: consumoMensal[9] || 0,
-                  Nov: consumoMensal[10] || 0,
-                  Dez: consumoMensal[11] || 0
-                };
-              })(),
-              tarifa_base: 0.85,
+              // Usar apenas a primeira conta como consumo local
+              consumo_local: {
+                Jan: consumoMensal[0] || 0,
+                Fev: consumoMensal[1] || 0,
+                Mar: consumoMensal[2] || 0,
+                Abr: consumoMensal[3] || 0,
+                Mai: consumoMensal[4] || 0,
+                Jun: consumoMensal[5] || 0,
+                Jul: consumoMensal[6] || 0,
+                Ago: consumoMensal[7] || 0,
+                Set: consumoMensal[8] || 0,
+                Out: consumoMensal[9] || 0,
+                Nov: consumoMensal[10] || 0,
+                Dez: consumoMensal[11] || 0
+              },
+              tarifa_base: state.customer?.tarifaEnergiaB || 0.85,
               fio_b: {
                 schedule: {
                   2025: 0.45,
@@ -1188,7 +1225,28 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 base_year: 2025
               },
               tipo_conexao: "Monofasico",
-              fator_simultaneidade: 0.25
+              fator_simultaneidade: 0.25,
+              // Adicionar dados remotos B
+              remoto_b: {
+                enabled: hasRemotoB,
+                percentage: hasRemotoB ? 0.40 : 0,
+                data: {
+                  Jan: consumoRemotoB[0] || 0,
+                  Fev: consumoRemotoB[1] || 0,
+                  Mar: consumoRemotoB[2] || 0,
+                  Abr: consumoRemotoB[3] || 0,
+                  Mai: consumoRemotoB[4] || 0,
+                  Jun: consumoRemotoB[5] || 0,
+                  Jul: consumoRemotoB[6] || 0,
+                  Ago: consumoRemotoB[7] || 0,
+                  Set: consumoRemotoB[8] || 0,
+                  Out: consumoRemotoB[9] || 0,
+                  Nov: consumoRemotoB[10] || 0,
+                  Dez: consumoRemotoB[11] || 0
+                },
+                tarifa_total: state.customer?.tarifaEnergiaB || 0.90,
+                fio_b_value: state.customer?.custoFioB || 0.30
+              }
             };
             
             // Chamar API de cálculo financeiro

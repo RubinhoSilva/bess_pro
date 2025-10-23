@@ -112,7 +112,7 @@ export function convertToGrupoAInput(
  * Converte configuração do frontend para formato GrupoBConfig completo
  */
 export function convertToGrupoBInput(
-  config: any, 
+  config: any,
   calculatedData: { investimentoInicial: number; geracaoMensal: number[]; consumoMensal: number[] }
 ): GrupoBConfig {
 
@@ -164,13 +164,26 @@ console.log('Config recebido:', config);
     baseYear: 2025
   };
 
+  // Verificar se há dados remotos B na config
+  const hasRemotoB = config.hasRemotoB || false;
+  const consumoRemotoB = config.consumoRemotoB || Array(12).fill(0);
+  
   const defaultRemotoB: CommonTypes.RemoteConsumptionGrupoB = {
-    enabled: false,
-    percentage: 0,
-    data: { Jan: 0, Fev: 0, Mar: 0, Abr: 0, Mai: 0, Jun: 0, Jul: 0, Ago: 0, Set: 0, Out: 0, Nov: 0, Dez: 0 },
-    tarifaTotal: 0,
-    fioBValue: 0
+    enabled: hasRemotoB,
+    percentage: hasRemotoB ? 0.40 : 0, // 40% dos créditos para remoto B
+    data: meses.reduce((obj, mes, index) => {
+      obj[mes] = consumoRemotoB[index] || 0;
+      return obj;
+    }, {} as CommonTypes.MonthlyData),
+    tarifaTotal: config.tarifaEnergiaB || 0.90,
+    fioBValue: config.custoFioB || 0.30
   };
+
+  console.log('[convertToGrupoBInput] Dados remotos B:', {
+    hasRemotoB,
+    consumoRemotoB,
+    defaultRemotoB
+  });
 
   const defaultRemotoA: CommonTypes.RemoteConsumptionGrupoA = {
     enabled: false,
