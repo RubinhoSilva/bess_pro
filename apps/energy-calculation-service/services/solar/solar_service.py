@@ -357,6 +357,33 @@ class SolarCalculationService:
         meses_str = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
         monthly_energy_kwh.index = meses_str
 
+        # Geração mensal por orientação (MPPT)
+        monthly_energy_by_orientation = {}
+        for inv_idx, inv_cfg in enumerate(inverter_configs):
+            inv_name = inv_cfg['name']
+            mppts_list = inv_cfg['mppts']
+            
+            for i, mppt in enumerate(mppts_list):
+                mppt_id = mppt.get('id', f'{inv_name}_MPPT_{i+1}')
+                
+                # Encontrar a energia AC correspondente a este MPPT
+                # Para isso, precisamos calcular a contribuição de cada MPPT para o total
+                mppt_weight = total_kwp_by_mppt_id[mppt_id] / potencia_total_kWp if potencia_total_kWp > 0 else 0
+                
+                # Calcular geração mensal para esta orientação
+                mppt_monthly_energy = (ac_after_losses * mppt_weight).groupby(ac_after_losses.index.month).sum() / 1000.0 / n_anos
+                mppt_monthly_energy.index = meses_str
+                
+                monthly_energy_by_orientation[mppt_id] = {
+                    'nome': mppt_id,
+                    'orientacao': mppt['azimuth'],
+                    'inclinacao': mppt['tilt'],
+                    'potencia_kwp': total_kwp_by_mppt_id[mppt_id],
+                    'geracao_mensal_kwh': mppt_monthly_energy.to_dict(),
+                    'geracao_anual_kwh': mppt_monthly_energy.sum(),
+                    'percentual_total': (mppt_monthly_energy.sum() / annual_energy_kwh * 100) if annual_energy_kwh > 0 else 0
+                }
+
         # POA
         df_poa_hourly = pd.DataFrame(poa_global_mppt_results)
         weights = pd.Series(total_kwp_by_mppt_id)
@@ -415,7 +442,8 @@ class SolarCalculationService:
             'fator_capacidade': fator_capacidade,
             'pr_total': PR_total * 100.0,
             'anos_analisados': n_anos,
-            'inversores': inverter_summary
+            'inversores': inverter_summary,
+            'geracao_por_orientacao': monthly_energy_by_orientation
         }
 
     # REMOVIDO: Funções _buscar_dados_nasa e _buscar_dados_pvgis foram removidas

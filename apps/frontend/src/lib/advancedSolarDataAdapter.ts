@@ -24,6 +24,17 @@ export interface AdvancedSolarAnalysisData {
     anual: number;
     diarioMedio: number;
   };
+  geracaoPorOrientacao?: {
+    [key: string]: {
+      nome: string;
+      orientacao: number;
+      inclinacao: number;
+      potencia_kwp: number;
+      geracao_mensal_kwh: { [month: string]: number };
+      geracao_anual_kwh: number;
+      percentual_total: number;
+    };
+  };
 }
 
 export class AdvancedSolarDataAdapter {
@@ -72,7 +83,10 @@ export class AdvancedSolarDataAdapter {
         mensal: advancedResult.geracao_mensal || this.estimateMonthlyGeneration(advancedResult.energia_total_anual_kwh),
         anual: advancedResult.energia_total_anual_kwh,
         diarioMedio: (advancedResult.energia_total_anual_kwh / 365) || 0
-      }
+      },
+      
+      // Geração por orientação (se disponível)
+      geracaoPorOrientacao: advancedResult.geracao_por_orientacao
     };
   }
   

@@ -13,6 +13,7 @@ import { EconomyProjectionChart } from './EconomyProjectionChart';
 import { AnnualSavingsChart } from './AnnualSavingsChart';
 import { AdvancedSolarAnalysis } from './AdvancedSolarAnalysis';
 import { AdvancedFinancialAnalysis } from './AdvancedFinancialAnalysis';
+import { GenerationByOrientation } from './GenerationByOrientation';
 import AdvancedPDFGenerator from '../report/AdvancedPDFGenerator';
 import { useDimensioningOperations } from '@/hooks/dimensioning';
 import { ProposalDocument } from '../proposal/ProposalDocument';
@@ -109,12 +110,13 @@ const validateAndNormalizeResults = (results: any) => {
         fatorCapacidade: Number(results.advancedSolar.performance?.fatorCapacidade) || 0.15
       },
       geracaoEstimada: {
-        mensal: Array.isArray(results.advancedSolar.geracaoEstimada?.mensal) 
-          ? results.advancedSolar.geracaoEstimada.mensal 
+        mensal: Array.isArray(results.advancedSolar.geracaoEstimada?.mensal)
+          ? results.advancedSolar.geracaoEstimada.mensal
           : Array(12).fill(0),
         anual: Number(results.advancedSolar.geracaoEstimada?.anual) || 0,
         diarioMedio: Number(results.advancedSolar.geracaoEstimada?.diarioMedio) || 0
-      }
+      },
+      geracaoPorOrientacao: results.advancedSolar.geracaoPorOrientacao
     } : null,
     
     advancedFinancial: results.advancedFinancial ? {

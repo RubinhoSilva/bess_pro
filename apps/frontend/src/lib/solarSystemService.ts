@@ -230,6 +230,18 @@ export interface AdvancedModuleCalculationResult {
     outras?: number[];
     total: number[];
   };
+  // Geração por orientação
+  geracao_por_orientacao?: {
+    [key: string]: {
+      nome: string;
+      orientacao: number;
+      inclinacao: number;
+      potencia_kwp: number;
+      geracao_mensal_kwh: { [month: string]: number };
+      geracao_anual_kwh: number;
+      percentual_total: number;
+    };
+  };
   compatibilidade_sistema: {
     compatibilidade_tensao: boolean;
     strings_recomendadas: number;

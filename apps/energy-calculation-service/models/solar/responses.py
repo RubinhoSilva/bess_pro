@@ -213,6 +213,17 @@ class AguaTelhadoResults(BaseModel):
             }
         }
 
+class OrientationGenerationData(BaseModel):
+    """Dados de geração por orientação"""
+    
+    nome: str = Field(..., description="Nome/orientação do MPPT")
+    orientacao: float = Field(..., description="Orientação (azimuth) em graus")
+    inclinacao: float = Field(..., description="Inclinação (tilt) em graus")
+    potencia_kwp: float = Field(..., description="Potência instalada nesta orientação em kWp")
+    geracao_mensal_kwh: Dict[str, float] = Field(..., description="Geração mensal por orientação em kWh")
+    geracao_anual_kwh: float = Field(..., description="Geração anual por orientação em kWh")
+    percentual_total: float = Field(..., description="Percentual da geração total desta orientação")
+
 class ModuleCalculationResponse(BaseModel):
     """Resposta avançada do cálculo de módulos fotovoltaicos"""
     
@@ -255,6 +266,9 @@ class ModuleCalculationResponse(BaseModel):
     
     # Perdas detalhadas do sistema
     perdas_detalhadas: Optional[Dict[str, List[float]]] = Field(None, description="Perdas detalhadas por tipo e mês")
+    
+    # Geração por orientação
+    geracao_por_orientacao: Optional[Dict[str, OrientationGenerationData]] = Field(None, description="Dados de geração por orientação/MPPT")
     
     # Dados para análises
     dados_processados: int = Field(..., description="Número de registros processados")
