@@ -64,9 +64,9 @@ class MPPTService:
 
             #ajuste por corrente 
             #Corrente Curto-Circuito (Isc) do modulo adicionar no request
-            if not(request.strings_por_mppt * 1.25 * request.isc < request.corrente_mppt_max_a):
-                logger.error(f"A corrente excede o valor máximo da MPPT, revise o projeto!")
-                raise CalculationError(f"A corrente excede o valor máximo da MPPT, revise o projeto!")
+            # if not(request.strings_por_mppt * 1.25 * request.isc < request.corrente_mppt_max_a):
+            #     logger.error(f"A corrente excede o valor máximo da MPPT, revise o projeto!")
+            #     raise CalculationError(f"A corrente excede o valor máximo da MPPT, revise o projeto!")
 
             # Definir variáveis de limitação para resposta
             limitacao_potencia = {
@@ -97,31 +97,15 @@ class MPPTService:
 
             # Ajustar total baseado na distribuição real
             modulos_total = modulos_por_mppt * request.numero_mppt
-            print(f"\n📊 [MPPT SERVICE] Etapa 7: Calculando TOTAL no sistema...")
-            print(f"   Fórmula: Total = Módulos_por_MPPT × Número_de_MPPTs")
-            print(f"   Cálculo: {modulos_por_mppt} × {request.numero_mppt} = {modulos_total} módulos")
-            print(f"✅ [MPPT SERVICE] Total de módulos no sistema: {modulos_total}")
-            logger.info(f"Resultado final: {modulos_por_mppt} módulos/MPPT × {request.numero_mppt} MPPTs = {modulos_total} módulos")
 
             # Análise básica (será expandida com regras de negócio)
-            print(f"\n🔍 [MPPT SERVICE] Etapa 8: Gerando análise detalhada...")
             analise_detalhada = self._analyze_system_limits(request, modulos_por_mppt)
-            print(f"✅ [MPPT SERVICE] Análise concluída")
 
             # Configuração recomendada
-            print(f"\n⚙️  [MPPT SERVICE] Etapa 9: Gerando configuração recomendada...")
             configuracao = self._generate_recommended_configuration(request, modulos_por_mppt)
-            print(f"✅ [MPPT SERVICE] Configuração gerada")
-
-            logger.info(f"Cálculo concluído: {modulos_por_mppt} módulos por MPPT, {modulos_total} total")
 
             # Calcular total real baseado na limitação mais restritiva
             total_modulos_sistema = min(num_modulos_por_potencia, num_modulos_por_tensao_total)
-            print(f"\n🏁 [MPPT SERVICE] RESULTADO FINAL:")
-            print(f"   📊 Módulos por MPPT: {modulos_por_mppt}")
-            print(f"   🔢 Total no sistema: {total_modulos_sistema}")
-            print(f"   🎯 Limitação: {limitacao_principal}")
-            print("=" * 100 + "\n")
             
             return MPPTCalculationResponse(
                 modulos_por_mppt=modulos_por_mppt,
