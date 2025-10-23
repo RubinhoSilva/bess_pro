@@ -343,7 +343,12 @@ export const selectAggregatedRoofData = (state: IProjectState) => {
   const potenciaModulo = state.system?.potenciaModulo || 550;
   
   // Calcular totais das águas do telhado
-  const totalModulos = aguasTelhado.reduce((total: number, agua: any) => total + (agua.numeroModulos || 0), 0);
+  // CORREÇÃO: Aplicar a regra número de strings × módulos por string
+  const totalModulos = aguasTelhado.reduce((total: number, agua: any) => {
+    const numeroStrings = agua.numeroStrings || 1;
+    const modulosPorString = agua.numeroModulos || 0;
+    return total + (numeroStrings * modulosPorString);
+  }, 0);
   const totalGeracao = aguasTelhado.reduce((total: number, agua: any) => total + (agua.geracaoAnual || 0), 0);
   const totalArea = aguasTelhado.reduce((total: number, agua: any) => total + (agua.areaCalculada || 0), 0);
   const potenciaPico = (totalModulos * potenciaModulo) / 1000; // kWp
