@@ -143,3 +143,11 @@ test-results.xml
 # Misc
 *.tgz
 *.tar.gz
+
+# Python cache files
+*/__pycache__/*
+*.pyc
+*.pyof
+
+# Python debug logs
+*/debug_logs/*
