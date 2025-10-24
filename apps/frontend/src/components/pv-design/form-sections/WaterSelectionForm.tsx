@@ -301,22 +301,38 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
       }
       
       // Obter a energia total anual do cálculo
-      const energiaTotal = (dados as any).energia_total_anual_kwh || (dados as any).energiaAnualKwh || 0;
-        
-      // Distribuir os resultados proporcionalmente entre todas as águas que têm módulos
+      const energiaTotal = (dados as any).energia_anual_kwh || (dados as any).energiaAnualKwh || 0;
+      
+      // Obter dados de geração por orientação da API
+      const geracaoPorOrientacao = (dados as any).geracaoPorOrientacao || {};
+      
+      // Distribuir os resultados para cada água baseado nos dados da API
       const finalAguas = roofData.aguasTelhado.map(a => {
         const modulos = (a.numeroModulos || 0) * (a.numeroStrings || 1);
         if (modulos > 0) {
-          // Calcular proporção desta água no sistema total
-          const proporcao = modulos / totalModulos;
-          const geracaoProporcional = Math.round(energiaTotal * proporcao * 100) / 100;
-                    
-          return {
-            ...a,
-            areaCalculada: Math.round(((dados as any).area_necessaria_m2 || 0) * proporcao * 100) / 100,
-            geracaoAnual: geracaoProporcional,
-            isCalculando: false
-          };
+          // Procurar dados desta orientação na resposta da API
+          const orientacaoData = geracaoPorOrientacao[a.nome] || geracaoPorOrientacao[a.id];
+          
+          if (orientacaoData) {
+            // Usar dados da API para esta orientação
+            return {
+              ...a,
+              areaCalculada: orientacaoData.area_utilizada_m2 || 0,
+              geracaoAnual: orientacaoData.geracao_anual_kwh || 0,
+              isCalculando: false
+            };
+          } else {
+            // Fallback: calcular proporção se não encontrar dados específicos
+            const proporcao = modulos / totalModulos;
+            const geracaoProporcional = Math.round(energiaTotal * proporcao * 100) / 100;
+            
+            return {
+              ...a,
+              areaCalculada: Math.round(((dados as any).area_necessaria_m2 || 0) * proporcao * 100) / 100,
+              geracaoAnual: geracaoProporcional,
+              isCalculando: false
+            };
+          }
         } else {
           // Águas sem módulos apenas param de calcular
           return {

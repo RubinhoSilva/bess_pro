@@ -220,6 +220,8 @@ class OrientationGenerationData(BaseModel):
     orientacao: float = Field(..., description="Orientação (azimuth) em graus")
     inclinacao: float = Field(..., description="Inclinação (tilt) em graus")
     potencia_kwp: float = Field(..., description="Potência instalada nesta orientação em kWp")
+    numero_modulos: int = Field(..., description="Número de módulos nesta orientação")
+    area_utilizada_m2: float = Field(..., description="Área utilizada nesta orientação em m²")
     geracao_mensal_kwh: Dict[str, float] = Field(..., description="Geração mensal por orientação em kWh")
     geracao_anual_kwh: float = Field(..., description="Geração anual por orientação em kWh")
     percentual_total: float = Field(..., description="Percentual da geração total desta orientação")

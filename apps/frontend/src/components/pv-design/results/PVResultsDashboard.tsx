@@ -13,7 +13,6 @@ import { EconomyProjectionChart } from './EconomyProjectionChart';
 import { AnnualSavingsChart } from './AnnualSavingsChart';
 import { AdvancedSolarAnalysis } from './AdvancedSolarAnalysis';
 import { AdvancedFinancialAnalysis } from './AdvancedFinancialAnalysis';
-import { GenerationByOrientation } from './GenerationByOrientation';
 import AdvancedPDFGenerator from '../report/AdvancedPDFGenerator';
 import { useDimensioningOperations } from '@/hooks/dimensioning';
 import { ProposalDocument } from '../proposal/ProposalDocument';
@@ -462,7 +461,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
 
           {/* Advanced Solar Analysis */}
           {/* {validatedResults.advancedSolar && (
-            <Section title="Análise Solar Avançada" delay={2}>
+            <Section title="Análise Solar Avançada" delay={3}>
               <AdvancedSolarAnalysis results={{
                 ...validatedResults,
                 advancedSolar: {
@@ -529,7 +528,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             switch (grupoTarifarioInfo.renderizar) {
               case GrupoTarifarioRender.GRUPO_A:
                 return (
-                  <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={3}>
+                  <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={4}>
                     {mensagemInformativa && (
                       <Alert className="mb-4">
                         <AlertTriangle className="h-4 w-4" />
@@ -542,7 +541,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
                 
               case GrupoTarifarioRender.GRUPO_B:
                 return (
-                  <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={3}>
+                  <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={4}>
                     {mensagemInformativa && (
                       <Alert className="mb-4">
                         <AlertTriangle className="h-4 w-4" />
@@ -556,14 +555,14 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
               case GrupoTarifarioRender.AMBOS:
                 return (
                   <>
-                    <Section title="Resultados Financeiros - Grupo A" delay={3}>
+                    <Section title="Resultados Financeiros - Grupo A" delay={4}>
                       <GrupoAFinancialResults data={grupoAData!} />
                     </Section>
-                    <Section title="Resultados Financeiros - Grupo B" delay={4}>
+                    <Section title="Resultados Financeiros - Grupo B" delay={5}>
                       <GrupoBFinancialResults data={grupoBData!} />
                     </Section>
                     {mensagemInformativa && (
-                      <Section title="Análise Comparativa" delay={5}>
+                      <Section title="Análise Comparativa" delay={6}>
                         <Alert>
                           <AlertTriangle className="h-4 w-4" />
                           <AlertDescription>{mensagemInformativa}</AlertDescription>
@@ -576,7 +575,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
               case GrupoTarifarioRender.NENHUM:
               default:
                 return (
-                  <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={3}>
+                  <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={4}>
                     <Card>
                       <CardContent className="flex items-center justify-center py-12">
                         <div className="text-center">
@@ -593,7 +592,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             }
           })()}
 
-          {/* <Section title="Gráficos de Desempenho" delay={4}>
+          {/* <Section title="Gráficos de Desempenho" delay={5}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {hasFinancialDataCheck ? (
                 <PaybackChart results={{
@@ -619,7 +618,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             </div>
           </Section> */}
 
-          {/* <Section title="Projeção de Economia" delay={5}>
+          {/* <Section title="Projeção de Economia" delay={6}>
             {hasFinancialDataCheck || hasGenerationData ? (
               <AnnualSavingsChart results={validatedResults} />
             ) : (
@@ -632,7 +631,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             )}
           </Section> */}
           
-          {/* <Section title="Análise Técnica Detalhada" delay={6}>
+          {/* <Section title="Análise Técnica Detalhada" delay={7}>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
               <div className="lg:col-span-3">
                 {hasGenerationData ? (
@@ -652,7 +651,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
 
 
           {/* Seção de Geração de Proposta */}
-          <Section title="📄 Gerar Proposta" delay={8}>
+          <Section title="📄 Gerar Proposta" delay={9}>
             <PDFGenerator
               results={validatedResults}
               currentDimensioning={currentDimensioning}

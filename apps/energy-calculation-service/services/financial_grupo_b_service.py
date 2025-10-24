@@ -22,14 +22,6 @@ from utils.format_utils import format_currency, format_percentage
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Adicionar handler para arquivo de log detalhado
-file_handler = logging.FileHandler('debug_logs/financial_grupo_b_detailed.log', mode='a')
-file_handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-
-
 class FinancialGrupoBService:
     """Serviço especializado para cálculos financeiros do Grupo B"""
     

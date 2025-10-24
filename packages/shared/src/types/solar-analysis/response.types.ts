@@ -76,7 +76,7 @@ export interface FrontendPvlibData {
   energiaDcAnualKwh: number;
   perdaClippingKwh?: number;
   perdaClippingPct?: number;
-  geracaoMensalKwh: number[];
+  geracaoMensalKwh: number[] | { [month: string]: number };
   consumoAnualKwh?: number;
   yieldEspecifico: number;
   coberturaPercentual?: number;
@@ -101,6 +101,17 @@ export interface FrontendPvlibData {
   anosAnalisados?: number;
   periodoDados?: string;
   inversores?: any[];
+  geracaoPorOrientacao?: { [key: string]: {
+    nome: string;
+    orientacao: number;
+    inclinacao: number;
+    potencia_kwp: number;
+    numero_modulos: number;
+    area_utilizada_m2: number;
+    geracao_mensal_kwh: { [month: string]: number };
+    geracao_anual_kwh: number;
+    percentual_total: number;
+  }};
 }
 
 // Specific result types for each endpoint

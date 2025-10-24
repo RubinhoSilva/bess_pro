@@ -237,6 +237,8 @@ export interface AdvancedModuleCalculationResult {
       orientacao: number;
       inclinacao: number;
       potencia_kwp: number;
+      numero_modulos: number;
+      area_utilizada_m2: number;
       geracao_mensal_kwh: { [month: string]: number };
       geracao_anual_kwh: number;
       percentual_total: number;
@@ -287,6 +289,7 @@ export interface MPPTCalculationRequest {
   numero_mppt?: number;
   strings_por_mppt?: number;
   corrente_entrada_max_a?: number;
+  isc?: number; // Corrente de curto-circuito do módulo STC (A)
   faixa_mppt_min_v?: number;
   faixa_mppt_max_v?: number;
   tipo_rede?: string;
@@ -845,9 +848,18 @@ export class SolarSystemService {
       throw new Error('Resposta inválida do serviço MPPT');
     } catch (error: any) {
 
+      // Tratar erro estruturado do backend
+      if (error.response?.status === 422 && error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
 
       if (error.message?.includes('fetch')) {
         throw new Error('Erro de conexão com o servidor MPPT');
+      }
+
+      // Fallback para outros erros
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
       }
 
       throw new Error('Erro interno no cálculo de limites MPPT');

@@ -39,7 +39,7 @@ export interface PythonPvlibResponse {
   energia_dc_anual_kwh: number;
   perda_clipping_kwh?: number;
   perda_clipping_pct?: number;
-  geracao_mensal_kwh: number[];
+  geracao_mensal_kwh: number[] | { [month: string]: number };
   consumo_anual_kwh?: number;
   yield_especifico: number;
   cobertura_percentual?: number;
@@ -64,6 +64,17 @@ export interface PythonPvlibResponse {
   anos_analisados?: number;
   periodo_dados?: string;
   inversores?: InverterResult[];
+  geracao_por_orientacao?: { [key: string]: {
+    nome: string;
+    orientacao: number;
+    inclinacao: number;
+    potencia_kwp: number;
+    numero_modulos: number;
+    area_utilizada_m2: number;
+    geracao_mensal_kwh: { [month: string]: number };
+    geracao_anual_kwh: number;
+    percentual_total: number;
+  }};
 }
 
 // Irradiation analysis request

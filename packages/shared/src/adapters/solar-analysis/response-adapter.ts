@@ -31,6 +31,16 @@ export function pythonToFrontend(
   pythonResponse: PythonPvlibResponse,
   originalRequest: any
 ): AdvancedModulesResult {
+  // DEBUG: Log completo da resposta Python
+  console.log('=== DEBUG PYTHON RESPONSE ===');
+  console.log('geracao_por_orientacao recebido:', JSON.stringify(pythonResponse.geracao_por_orientacao, null, 2));
+  console.log('geracao_mensal_kwh tipo:', typeof pythonResponse.geracao_mensal_kwh);
+  console.log('geracao_mensal_kwh valor:', pythonResponse.geracao_mensal_kwh);
+  
+  // GARANTIR CLONE PROFUNDO para evitar problemas de referência
+  const geracaoPorOrientacaoClonado = JSON.parse(JSON.stringify(pythonResponse.geracao_por_orientacao || {}));
+  const inversoresClonados = JSON.parse(JSON.stringify(pythonResponse.inversores || []));
+  
   const frontendData: FrontendPvlibData = {
     numModulos: pythonResponse.num_modulos,
     potenciaTotalKwp: pythonResponse.potencia_total_kwp,
@@ -63,15 +73,28 @@ export function pythonToFrontend(
     dadosProcessados: pythonResponse.dados_processados,
     anosAnalisados: pythonResponse.anos_analisados,
     periodoDados: pythonResponse.periodo_dados,
-    inversores: pythonResponse.inversores
+    inversores: inversoresClonados,
+    // CAMPO CRÍTICO - Usar clone profundo para garantir serialização
+    geracaoPorOrientacao: geracaoPorOrientacaoClonado
   };
 
-  return {
+  // DEBUG: Log do que será retornado
+  console.log('=== DEBUG FRONTEND DATA ===');
+  console.log('geracaoPorOrientacao no frontendData:', JSON.stringify(frontendData.geracaoPorOrientacao, null, 2));
+  console.log('frontendData completo:', JSON.stringify(frontendData, null, 2));
+
+  const result = {
     success: true,
     data: frontendData,
     timestamp: new Date().toISOString(),
     message: 'Cálculo avançado de módulos realizado com sucesso'
   };
+
+  // DEBUG: Log final
+  console.log('=== DEBUG FINAL RESULT ===');
+  console.log('Resultado final:', JSON.stringify(result, null, 2));
+
+  return result;
 }
 
 /**

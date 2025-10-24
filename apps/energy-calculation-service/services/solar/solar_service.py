@@ -58,9 +58,20 @@ class SolarCalculationService:
         # Preparar parâmetros do módulo
         modulo = request.modulo
         potencia_modulo = modulo.potencia_nominal_w
+        
+        # Calcular área do módulo
+        area_modulo_m2 = 0
+        if modulo.largura_mm and modulo.altura_mm:
+            area_modulo_m2 = (modulo.largura_mm / 1000.0) * (modulo.altura_mm / 1000.0)
+        elif hasattr(modulo, 'area_m2') and modulo.area_m2:
+            area_modulo_m2 = modulo.area_m2
+        else:
+            # Área padrão se não disponível (aproximado para módulos de 550W)
+            area_modulo_m2 = 2.3
 
         logger.info(f"Módulo: {modulo.fabricante} {modulo.modelo} - {potencia_modulo}W")
         logger.info(f"Parâmetros STC: Voc={modulo.voc_stc}V, Isc={modulo.isc_stc}A, Vmpp={modulo.vmpp}V, Impp={modulo.impp}A")
+        logger.info(f"Área do módulo: {area_modulo_m2:.2f} m²")
 
         module_parameters = {
             'alpha_sc': modulo.alpha_sc,
@@ -303,32 +314,64 @@ class SolarCalculationService:
                 dc_mppt_energy = dc_pre_clipping_mppt.sum() / 1000.0 / n_anos
                 logger.info(f"    Energia DC MPPT: {dc_pre_clipping_mppt.sum() / 1000.0:.0f} kWh/ano")
 
-            # Aplicar eficiência e clipping
-            dc_pre_clipping_with_eff = dc_inv_total_pure * efficiency_factor
-            ac_inv_output = np.minimum(dc_pre_clipping_with_eff, paco_inv)
+                # ===== NOVO: Calcular AC individual para esta orientação =====
+                # Aplicar eficiência e clipping individualmente
+                ac_mppt_pre_clipping = np.minimum(dc_pre_clipping_mppt * efficiency_factor, paco_inv)
+                
+                # Aplicar perdas finais individuais
+                perdas_totais_pct = sum(losses_parameters.values())
+                perdas_fator = (1.0 - perdas_totais_pct / 100.0)
+                ac_mppt_final = ac_mppt_pre_clipping * perdas_fator
+                
+                # Calcular geração anual individual
+                mppt_annual_energy = ac_mppt_final.sum() / 1000.0 / n_anos
+                
+                # Calcular área utilizada
+                total_modulos_mppt = mppt['modules_per_string'] * mppt['strings']
+                area_orientacao_m2 = total_modulos_mppt * area_modulo_m2
+                
+                # Armazenar resultados individuais (criar o array aqui)
+                if 'monthly_energy_by_orientation' not in locals():
+                    monthly_energy_by_orientation = {}
+                
+                monthly_energy_by_orientation[mppt_id] = {
+                    'nome': mppt_id,
+                    'orientacao': mppt['azimuth'],
+                    'inclinacao': mppt['tilt'],
+                    'potencia_kwp': total_kwp_by_mppt_id[mppt_id],
+                    'numero_modulos': total_modulos_mppt,
+                    'area_utilizada_m2': area_orientacao_m2,
+                    'geracao_anual_kwh': mppt_annual_energy,
+                    'percentual_total': None  # Será calculado depois
+                }
+                
+                # Adicionar ao AC total do sistema
+                ac_all += ac_mppt_final
 
-            # # Calcular clipping
-            # clipping_loss = (dc_pre_clipping_with_eff - ac_inv_output).sum() / 1000.0 / n_anos
-            # if clipping_loss > 0:
-            #     logger.info(f"  Clipping detectado: {clipping_loss:.0f} kWh/ano ({(clipping_loss/(dc_pre_clipping_with_eff.sum()/1000.0/n_anos)*100):.1f}%)")
+            # Removido: O ac_all já é somado individualmente acima
+            # dc_pre_clipping_with_eff = dc_inv_total_pure * efficiency_factor
+            # ac_inv_output = np.minimum(dc_pre_clipping_with_eff, paco_inv)
 
             results_inverter[inv_name] = {
                 'dc_pure': dc_inv_total_pure,
-                'ac_pre_losses': ac_inv_output,
+                'ac_pre_losses': ac_all,  # Usar o ac_all que já foi somado
                 'paco_w': paco_inv,
                 'kwp': kwp_inv
             }
 
-            ac_all += ac_inv_output
+            # Removido: Já somado individualmente acima
+            # ac_all += ac_inv_output
             dc_all_pre_clipping += dc_inv_total_pure
             
             # ac_inv_energy = ac_inv_output.sum() / 1000.0 / n_anos
             # logger.info(f"  Energia AC inversor: {ac_inv_energy:.0f} kWh/ano ({kwp_inv:.2f} kWp)")
 
-        # Aplicar perdas finais
+        # Aplicar perdas finais (já foram aplicadas individualmente, mas precisamos ajustar o total)
+        # Nota: As perdas já foram aplicadas individualmente em cada MPPT, mas mantemos para consistência
         perdas_totais_pct = sum(losses_parameters.values())
         perdas_fator = (1.0 - perdas_totais_pct / 100.0)
-        ac_after_losses = ac_all * perdas_fator
+        # ac_after_losses = ac_all  # Já com perdas aplicadas individualmente
+        ac_after_losses = ac_all  # Já com perdas aplicadas individualmente
 
         potencia_total_kWp = sum(r['kwp'] for r in results_inverter.values())
 
@@ -357,32 +400,13 @@ class SolarCalculationService:
         meses_str = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
         monthly_energy_kwh.index = meses_str
 
-        # Geração mensal por orientação (MPPT)
-        monthly_energy_by_orientation = {}
-        for inv_idx, inv_cfg in enumerate(inverter_configs):
-            inv_name = inv_cfg['name']
-            mppts_list = inv_cfg['mppts']
-            
-            for i, mppt in enumerate(mppts_list):
-                mppt_id = mppt.get('id', f'{inv_name}_MPPT_{i+1}')
-                
-                # Encontrar a energia AC correspondente a este MPPT
-                # Para isso, precisamos calcular a contribuição de cada MPPT para o total
-                mppt_weight = total_kwp_by_mppt_id[mppt_id] / potencia_total_kWp if potencia_total_kWp > 0 else 0
-                
-                # Calcular geração mensal para esta orientação
-                mppt_monthly_energy = (ac_after_losses * mppt_weight).groupby(ac_after_losses.index.month).sum() / 1000.0 / n_anos
-                mppt_monthly_energy.index = meses_str
-                
-                monthly_energy_by_orientation[mppt_id] = {
-                    'nome': mppt_id,
-                    'orientacao': mppt['azimuth'],
-                    'inclinacao': mppt['tilt'],
-                    'potencia_kwp': total_kwp_by_mppt_id[mppt_id],
-                    'geracao_mensal_kwh': mppt_monthly_energy.to_dict(),
-                    'geracao_anual_kwh': mppt_monthly_energy.sum(),
-                    'percentual_total': (mppt_monthly_energy.sum() / annual_energy_kwh * 100) if annual_energy_kwh > 0 else 0
-                }
+        # Calcular percentuais das orientações (após ter o total)
+        if 'monthly_energy_by_orientation' in locals():
+            for mppt_id in monthly_energy_by_orientation:
+                geracao_anual = monthly_energy_by_orientation[mppt_id]['geracao_anual_kwh']
+                monthly_energy_by_orientation[mppt_id]['percentual_total'] = (geracao_anual / annual_energy_kwh * 100) if annual_energy_kwh > 0 else 0
+        else:
+            monthly_energy_by_orientation = {}
 
         # POA
         df_poa_hourly = pd.DataFrame(poa_global_mppt_results)

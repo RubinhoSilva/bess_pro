@@ -30,6 +30,8 @@ export interface AdvancedSolarAnalysisData {
       orientacao: number;
       inclinacao: number;
       potencia_kwp: number;
+      numero_modulos: number;
+      area_utilizada_m2: number;
       geracao_mensal_kwh: { [month: string]: number };
       geracao_anual_kwh: number;
       percentual_total: number;

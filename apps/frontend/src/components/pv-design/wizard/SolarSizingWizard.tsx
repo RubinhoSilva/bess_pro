@@ -488,7 +488,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
                             <div className="text-lg font-semibold text-orange-600">
                               {agua.areaCalculada ? agua.areaCalculada.toFixed(1) : '—'} m²
                             </div>
-                            <div className="text-xs text-gray-500">Área</div>
+                            <div className="text-xs text-gray-500">Área Calculada</div>
                           </div>
                         </div>
                       </div>
