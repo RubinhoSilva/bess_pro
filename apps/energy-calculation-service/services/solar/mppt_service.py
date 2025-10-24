@@ -1,7 +1,7 @@
 import logging
 import math
-from typing import Dict, Any
-from models.solar.mppt_models import MPPTCalculationRequest, MPPTCalculationResponse
+from typing import Dict, Any, Union
+from models.solar.mppt_models import MPPTCalculationRequest, MPPTCalculationResponse, MPPTCalculationErrorResponse
 from core.exceptions import CalculationError, ValidationError
 from services.solar.pvgis_service import pvgis_service
 
@@ -15,7 +15,7 @@ class MPPTService:
         """Inicializa o serviço MPPT"""
         logger.info("Inicializando MPPTService")
     
-    def calculate_modules_per_mppt(self, request: MPPTCalculationRequest) -> MPPTCalculationResponse:
+    def calculate_modules_per_mppt(self, request: MPPTCalculationRequest) -> Union[MPPTCalculationResponse, MPPTCalculationErrorResponse]:
         """
         Calcula quantos módulos podem ser conectados por MPPT
 
@@ -62,11 +62,25 @@ class MPPTService:
             #Limitar por quantidade de strings
             modulos_por_mppt_string = modulos_por_mppt_tensao // request.strings_por_mppt
 
-            #ajuste por corrente 
+            #ajuste por corrente
             #Corrente Curto-Circuito (Isc) do modulo adicionar no request
-            # if not(request.strings_por_mppt * 1.25 * request.isc < request.corrente_mppt_max_a):
-            #     logger.error(f"A corrente excede o valor máximo da MPPT, revise o projeto!")
-            #     raise CalculationError(f"A corrente excede o valor máximo da MPPT, revise o projeto!")
+            # Verificar se temos os dados necessários para o cálculo de corrente
+            if request.isc and request.corrente_entrada_max_a:
+                corrente_calculada = request.strings_por_mppt * 1.25 * request.isc
+                if corrente_calculada > request.corrente_entrada_max_a:
+                    logger.error(f"A corrente excede o valor máximo da MPPT, revise o projeto!")
+                    return MPPTCalculationErrorResponse(
+                        success=False,
+                        error_type="CORRENTE_MPPT_EXCEDIDA",
+                        message="A corrente excede o valor máximo da MPPT, revise o projeto!",
+                        details={
+                            "corrente_calculada": round(corrente_calculada, 2),
+                            "corrente_maxima_mppt": request.corrente_entrada_max_a,
+                            "strings_por_mppt": request.strings_por_mppt,
+                            "isc_modulo": request.isc,
+                            "fator_seguranca": 1.25
+                        }
+                    )
 
             # Definir variáveis de limitação para resposta
             limitacao_potencia = {

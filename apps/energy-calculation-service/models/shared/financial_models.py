@@ -12,14 +12,6 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Adicionar handler para arquivo de log de validação
-file_handler = logging.FileHandler('debug_logs/pydantic_validation.log', mode='a')
-file_handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-
-
 class FinancialInput(BaseModel):
     """Modelo simplificado para entrada de dados financeiros"""
     geracao_mensal: List[float]

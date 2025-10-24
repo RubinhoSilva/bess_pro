@@ -13,6 +13,7 @@ class MPPTCalculationRequest(BaseModel):
     potencia_modulo_w: float = Field(..., description="Potência nominal do módulo em watts")
     voc_stc: float = Field(..., description="Tensão de circuito aberto STC (V)")
     temp_coef_voc: float = Field(..., description="Coeficiente de temperatura Voc (%/°C)")
+    isc: Optional[float] = Field(None, description="Corrente de curto-circuito do módulo STC (A)")
     
     # Coordenadas para buscar temperatura mínima
     latitude: float = Field(..., description="Latitude para buscar dados climáticos")
@@ -47,6 +48,7 @@ class MPPTCalculationRequest(BaseModel):
                 "numero_mppt": 2,
                 "strings_por_mppt": 2,
                 "corrente_entrada_max_a": 16,
+                "isc": 10.5,
                 "faixa_mppt_min_v": 200,
                 "faixa_mppt_max_v": 580,
                 "tipo_rede": "Monofásico 220V"
@@ -91,6 +93,30 @@ class MPPTCalculationResponse(BaseModel):
                     "fabricante": "WEG",
                     "modelo": "SIW500H-M",
                     "numero_mppt": 2
+                }
+            }
+        }
+
+
+class MPPTCalculationErrorResponse(BaseModel):
+    """Response de erro do cálculo de módulos por MPPT"""
+    
+    success: bool = Field(False, description="Indica se o cálculo foi bem-sucedido")
+    error_type: str = Field(..., description="Tipo de erro ocorrido")
+    message: str = Field(..., description="Mensagem de erro detalhada")
+    details: Optional[Dict[str, Any]] = Field(None, description="Detalhes adicionais do erro")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": False,
+                "error_type": "CORRENTE_MPPT_EXCEDIDA",
+                "message": "A corrente excede o valor máximo da MPPT, revise o projeto!",
+                "details": {
+                    "corrente_calculada": 25.0,
+                    "corrente_maxima_mppt": 20.0,
+                    "strings_por_mppt": 2,
+                    "isc_modulo": 10.0
                 }
             }
         }

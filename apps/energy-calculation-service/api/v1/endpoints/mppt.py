@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from models.solar.mppt_models import MPPTCalculationRequest, MPPTCalculationResponse
+from models.solar.mppt_models import MPPTCalculationRequest, MPPTCalculationResponse, MPPTCalculationErrorResponse
 from services.solar.mppt_service import mppt_service
 from core.exceptions import ValidationError, CalculationError
 from api.dependencies import rate_limit_dependency, log_request_dependency
@@ -86,6 +86,21 @@ async def calculate_modules_per_mppt(
         # Executar cálculo
         print("\n🔄 [PYTHON - MPPT ENDPOINT] Chamando mppt_service.calculate_modules_per_mppt...")
         result = mppt_service.calculate_modules_per_mppt(request)
+
+        # Verificar se o resultado é um erro estruturado
+        if isinstance(result, MPPTCalculationErrorResponse):
+            print(f"\n❌ [PYTHON - MPPT ENDPOINT] ERRO ESTRUTURADO: {result.message}")
+            logger.error(f"Erro no cálculo MPPT: {result.error_type} - {result.message}")
+            
+            # Retornar HTTP 422 com o erro estruturado
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_type": result.error_type,
+                    "message": result.message,
+                    "details": result.details
+                }
+            )
 
         print("\n✅ [PYTHON - MPPT ENDPOINT] RESULTADO DO CÁLCULO:")
         print(f"   📊 Módulos por MPPT: {result.modulos_por_mppt}")

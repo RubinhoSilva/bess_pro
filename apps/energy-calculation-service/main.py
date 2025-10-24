@@ -11,14 +11,6 @@ from core.exceptions import SolarAPIException
 from api.v1.router import api_router
 
 # Configurar logging detalhado
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('debug_logs/detailed_api.log', mode='a')
-    ]
-)
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager

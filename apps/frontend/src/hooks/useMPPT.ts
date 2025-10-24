@@ -20,6 +20,7 @@ export interface MPPTCalculationParams {
     potenciaNominal: number;
     vocStc: number;
     tempCoefVoc: number;
+    isc?: number; // Corrente de curto-circuito do módulo STC (A)
   };
   coordinates: {
     latitude: number;
@@ -38,6 +39,7 @@ export function useMPPTCalculation(params: MPPTCalculationParams) {
         potencia_modulo_w: params.modulo.potenciaNominal,
         voc_stc: params.modulo.vocStc,
         temp_coef_voc: params.modulo.tempCoefVoc,
+        isc: params.modulo.isc, // Adicionar campo ISC
         latitude: params.coordinates.latitude,
         longitude: params.coordinates.longitude,
         potencia_saida_ca_w: params.inversor.potenciaSaidaCA,
@@ -101,6 +103,7 @@ export function useMultipleMPPTCalculations(
     potenciaNominal: number;
     vocStc: number;
     tempCoefVoc: number;
+    isc?: number; // Corrente de curto-circuito do módulo STC (A)
   },
   coordinates: {
     latitude: number;
@@ -119,6 +122,7 @@ export function useMultipleMPPTCalculations(
           potencia_modulo_w: modulo.potenciaNominal,
           voc_stc: modulo.vocStc,
           temp_coef_voc: modulo.tempCoefVoc,
+          isc: modulo.isc, // Adicionar campo ISC
           latitude: coordinates.latitude,
           longitude: coordinates.longitude,
           potencia_saida_ca_w: inverter.potenciaSaidaCA,

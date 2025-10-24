@@ -25,6 +25,11 @@ export class SolarAnalysisController extends BaseController {
     }
 
     if (error.response?.status === 422) {
+      // Tratar erro estruturado do MPPT service
+      if (error.response.data?.detail?.error_type && error.response.data?.detail?.message) {
+        return this.badRequest(res, error.response.data.detail.message);
+      }
+      // Fallback para erros 422 genéricos
       return this.badRequest(res, error.response.data.detail || 'Parâmetros inválidos');
     }
 

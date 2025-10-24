@@ -200,7 +200,8 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
     return {
       potenciaNominal: roofData.selectedModule.nominalPower,
       vocStc: roofData.selectedModule.specifications.voc,
-      tempCoefVoc: roofData.selectedModule.parameters.temperature.tempCoeffVoc
+      tempCoefVoc: roofData.selectedModule.parameters.temperature.tempCoeffVoc,
+      isc: roofData.selectedModule.specifications.isc // Adicionar campo ISC
     };
   }, [roofData.selectedModule]);
     

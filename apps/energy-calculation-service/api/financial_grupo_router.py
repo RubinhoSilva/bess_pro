@@ -30,13 +30,6 @@ router = APIRouter(prefix="/financial", tags=["Financial Grupo A/B"])
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Adicionar handler para arquivo de log do router
-file_handler = logging.FileHandler('debug_logs/financial_router_detailed.log', mode='a')
-file_handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-
 # Instanciar serviços
 grupo_b_service = FinancialGrupoBService()
 grupo_a_service = FinancialGrupoAService()

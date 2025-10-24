@@ -337,6 +337,30 @@ export const selectInvertersForMPPT = (state: IProjectState) => {
   }));
 };
 
+// Seletor para obter dados do módulo para cálculos MPPT
+export const selectModuleForMPPT = (state: IProjectState) => {
+  const moduleId = state.system?.selectedModuleId;
+  
+  // Verificar se temos dados do módulo no estado do sistema
+  if (moduleId && state.system?.correnteModulo) {
+    // Usar dados diretos do sistema (mais recente)
+    return {
+      potenciaNominal: state.system.potenciaModulo || 550,
+      vocStc: state.system.tensaoModulo || 45,
+      tempCoefVoc: -0.25, // Valor padrão se não disponível
+      isc: state.system.correnteModulo || 10.0
+    };
+  }
+  
+  // Retornar valores padrão se não houver módulo selecionado
+  return {
+    potenciaNominal: 550,
+    vocStc: 45,
+    tempCoefVoc: -0.25,
+    isc: 10.0 // Valor padrão para testes
+  };
+};
+
 // Seletores para dados agregados das águas do telhado
 export const selectAggregatedRoofData = (state: IProjectState) => {
   const aguasTelhado = state.roof?.aguasTelhado || [];

@@ -37,7 +37,6 @@ function MyComponent() {
         variant="destructive"
         onConfirm={() => {
           // Lógica de deleção aqui
-          console.log('Item deletado');
         }}
       />
     </>
