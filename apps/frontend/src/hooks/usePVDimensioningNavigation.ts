@@ -66,20 +66,17 @@ export const usePVDimensioningNavigation = () => {
   const safeGoToStep = useCallback((step: number) => {
     // Validar se pode ir para o passo
     if (step < 1 || step > 7) {
-      console.error('Passo inválido:', step);
       return false;
     }
     
     // Validar dependências
     if (!navigation.canGoBack && step < navigation.currentStep) {
-      console.warn('Não pode voltar para passos anteriores sem concluir');
       return false;
     }
     
     // Validar passos anteriores
     for (let i = 1; i < step; i++) {
       if (!navigation.completedSteps.has(i)) {
-        console.warn(`Passo ${i} não foi concluído`);
         return false;
       }
     }
@@ -109,7 +106,6 @@ export const usePVDimensioningNavigation = () => {
     // Validar se todas as etapas anteriores estão completas
     for (let i = 1; i < step; i++) {
       if (!isStepCompleted(i) && !isStepValid(i)) {
-        console.warn(`Não pode pular para o passo ${step} porque o passo ${i} não está completo`);
         return false;
       }
     }

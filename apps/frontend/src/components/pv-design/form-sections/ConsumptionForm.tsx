@@ -117,14 +117,6 @@ const EnergyBillComponent: React.FC<{
 };
 
 const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerData, onFormChange }) => {
-  // Logs para depurar inicialização e persistência dos dados
-  console.log('[ConsumptionForm] Inicializado com:', { 
-    energyData: energyData ? 'presente' : 'nulo', 
-    customerData: customerData ? 'presente' : 'nulo',
-    energyBillsCount: energyData?.energyBills?.length || 0,
-    energyBillsACount: energyData?.energyBillsA?.length || 0,
-    grupoTarifario: customerData?.grupoTarifario
-  });
   
   // Garantir que energyData nunca seja nulo (proteção similar ao CustomerDataForm)
   const energyBills = energyData?.energyBills || [];

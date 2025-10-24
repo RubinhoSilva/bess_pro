@@ -85,7 +85,6 @@ function PVDesignPageContent() {
         });
       }
     } catch (error) {
-      console.error('Erro ao carregar projeto:', error);
       toast({
         variant: "destructive",
         title: "Erro ao carregar projeto",

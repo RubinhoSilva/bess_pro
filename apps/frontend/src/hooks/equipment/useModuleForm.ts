@@ -117,12 +117,6 @@ export const useModuleForm = (options: UseModuleFormOptions = {}): UseModuleForm
     // Extrair ID antes do try para uso no catch
     const moduleId = (data as any).id;
     
-    console.log('🚀 useModuleForm onSubmit iniciado', { 
-      mode, 
-      isEditMode, 
-      moduleId, 
-      data: JSON.stringify(data, null, 2)
-    });
     
     try {
       setIsSubmitting(true);
@@ -157,12 +151,9 @@ export const useModuleForm = (options: UseModuleFormOptions = {}): UseModuleForm
 
       // Executa ação baseada no modo
       if (isEditMode && moduleId) {
-        console.log('📝 Modo edição: atualizando módulo', moduleId);
         const updateData = createModuleUpdateFromFormData(data as Partial<ModuleFormData>);
         await updateModule(moduleId, updateData);
-        console.log('✅ Módulo atualizado com sucesso');
       } else {
-        console.log('➕ Modo criação: criando novo módulo');
         // Para modo create, converter FormData para SolarModule
         const moduleData = data as ModuleFormData;
         const manufacturer = manufacturers.find(m => m.id === moduleData.manufacturerId);
@@ -171,12 +162,8 @@ export const useModuleForm = (options: UseModuleFormOptions = {}): UseModuleForm
         }
         
         const completeModule = createModuleFromFormData(moduleData, manufacturer);
-        console.log('📦 Módulo criado:', completeModule);
         addModule(completeModule as SolarModule);
-        console.log('✅ Módulo adicionado com sucesso');
       }
-      
-      console.log('🎯 Chamando callback onSuccess');
       onSuccess?.(data);
       
       // Reset em modo create
@@ -185,14 +172,12 @@ export const useModuleForm = (options: UseModuleFormOptions = {}): UseModuleForm
       }
       
     } catch (error) {
-      console.error('❌ Erro no useModuleForm onSubmit:', error);
       const handledError = handleError(error, {
         context: 'module-form',
         action: isEditMode ? 'update' : 'create',
         data: { mode, hasId: !!moduleId }
       });
       
-      console.log('🎯 Chamando callback onError com:', handledError);
       onError?.(handledError);
     } finally {
       setIsSubmitting(false);

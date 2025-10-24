@@ -18,12 +18,10 @@ interface GrupoBFinancialResultsProps {
 }
 
 const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data }) => {
-  console.log('[GrupoBFinancialResults] Dados recebidos:', data);
   
   // Validar dados
   const validation = GrupoBAdapter.validateGrupoBData(data);
   if (!validation.isValid) {
-    console.error('[GrupoBFinancialResults] Dados inválidos:', validation.errors);
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
@@ -133,13 +131,11 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
   
   const grupoBCalculation = useGrupoBFinancialCalculation({
     onSuccess: (data) => {
-      console.log('[GrupoBFinancialResults] Cálculo concluído com sucesso:', data);
       setFinancialResults(data);
       setIsLoading(false);
       isCalculatingRef.current = false;
     },
     onError: (error) => {
-      console.error('[GrupoBFinancialResults] Erro no cálculo:', error);
       toast.error('Erro ao calcular análise financeira do Grupo B');
       setIsLoading(false);
       isCalculatingRef.current = false;
@@ -160,7 +156,6 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
         const input = convertToGrupoBInput(config, calculationData);
         grupoBCalculation.mutateAsync(input);
       } catch (error) {
-        console.error('[GrupoBFinancialResults] Erro ao converter input:', error);
         setIsLoading(false);
         isCalculatingRef.current = false;
       }

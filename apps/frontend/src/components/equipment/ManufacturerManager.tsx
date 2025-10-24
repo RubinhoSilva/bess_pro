@@ -231,7 +231,6 @@ export function ManufacturerManager() {
   const handleTypeFilter = (type: ManufacturerType | 'ALL') => {
     // Type filter não está disponível em ManufacturerFilters ainda
     // TODO: Adicionar type filter ao shared types
-    console.log('Type filter temporarily disabled:', type);
     setFilters((prev: any) => ({
       ...prev,
       page: 1

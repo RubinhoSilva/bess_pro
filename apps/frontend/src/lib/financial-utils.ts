@@ -116,8 +116,6 @@ export function convertToGrupoBInput(
   calculatedData: { investimentoInicial: number; geracaoMensal: number[]; consumoMensal: number[] }
 ): GrupoBConfig {
 
-console.log('Convertendo para GrupoBConfig com dados calculados:', calculatedData);
-console.log('Config recebido:', config);
 
   // Construir dados mensais a partir de arrays
   const meses: CommonTypes.Month[] = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -239,25 +237,6 @@ console.log('Config recebido:', config);
     }
   };
 
-  console.log('[convertToGrupoBInput] Dados remotos B:', {
-    hasRemotoB,
-    consumoRemotoB,
-    defaultRemotoB
-  });
-
-  console.log('[convertToGrupoBInput] Dados remotos A Verde:', {
-    hasRemotoAVerde,
-    consumoRemotoAVerdePonta,
-    consumoRemotoAVerdeForaPonta,
-    defaultRemotoAVerde
-  });
-
-  console.log('[convertToGrupoBInput] Dados remotos A Azul:', {
-    hasRemotoAAzul,
-    consumoRemotoAAzulPonta,
-    consumoRemotoAAzulForaPonta,
-    defaultRemotoAAzul
-  });
 
   const defaultRemotoA: CommonTypes.RemoteConsumptionGrupoA = {
     enabled: false,
@@ -278,19 +257,6 @@ console.log('Config recebido:', config);
     }
   };
 
-  console.log('Config final:', {
-    financeiros: mergeFinanceiros(config.financeiros, defaultFinanceiros),
-    geracao: geracaoMensal,
-    consumoLocal: consumoMensal,
-    tarifaBase: config.tarifaBase || 0.85,
-    fioBBase: config.fioBBase || 0.25,
-    tipoConexao: config.tipoRede || config.tipoConexao || 'monofasico',
-    fatorSimultaneidade: (config.fatorSimultaneidade || 100) / 100,
-    fioB: config.fioB || defaultFioB,
-    remotoB: config.remotoB || defaultRemotoB,
-    remotoAVerde: config.remotoAVerde || defaultRemotoA,
-    remotoAAzul: config.remotoAAzul || defaultRemotoA
-  });
 
   return {
     financeiros: mergeFinanceiros(config.financeiros, defaultFinanceiros),

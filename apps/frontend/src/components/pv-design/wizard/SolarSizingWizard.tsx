@@ -277,7 +277,6 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
 
   const handleNext = async () => {
-    console.log('[SolarSizingWizard] handleNext chamado, passo atual:', navigationState.currentStep);
     
     // VALIDAÇÃO CENTRALIZADA: Usar apenas validateCurrentStep da store
     const isValid = validateCurrentStep();
@@ -301,12 +300,9 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
     // Auto-save progress - bloquear avanço se falhar
     if (customerData?.customer && customerData?.dimensioningName?.trim()) {
-      console.log('[SolarSizingWizard] Tentando salvar dimensioning...');
       try {
         await saveDimensioning();
-        console.log('[SolarSizingWizard] Dimensioning salvo com sucesso');
       } catch (error: any) {
-        console.error('[SolarSizingWizard] Erro ao salvar dimensioning:', error);
         let errorMessage = "Erro ao salvar o progresso.";
 
         if (error?.response?.status === 429) {
@@ -326,17 +322,12 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         // Bloquear navegação - não continuar
         return;
       }
-    } else {
-      console.log('[SolarSizingWizard] Pulando salvamento - dados do cliente incompletos');
     }
-
-    console.log('[SolarSizingWizard] Verificando passo atual para decidir ação:', navigationState.currentStep);
     
     if (navigationState.currentStep === 6) {
       // Calculate results before going to step 7
       await handleCalculate();
     } else {
-      console.log('[SolarSizingWizard] Chamando nextStep()');
       nextStep();
     }
   };
@@ -352,10 +343,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   // Memoizar handleSystemFormChange para evitar recriação a cada render
   // CORREÇÃO DEFINITIVA: Suporte a batch update para prevenir múltiplos re-renders
   const handleSystemFormChange = useCallback((field: string, value: any) => {
-    console.log('[SolarSizingWizard] handleSystemFormChange chamado', { field, value });
     if (field === 'moduleData') {
       // Batch update: atualizar múltiplos campos de uma vez (7 campos → 1 atualização)
-      console.log('[SolarSizingWizard] handleSystemFormChange: batch update', value);
       
       // CORREÇÃO: Garantir que selectedModuleId seja definido corretamente
       const moduleData = {
@@ -363,11 +352,9 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         selectedModuleId: value.moduloSelecionado // Garantir que selectedModuleId seja atualizado
       };
       
-      console.log('[SolarSizingWizard] handleSystemFormChange: moduleData corrigido', moduleData);
       updateSystemData(moduleData);
     } else {
       // Update individual de campo
-      console.log('[SolarSizingWizard] handleSystemFormChange: individual update', { [field]: value });
       updateSystemData({ [field]: value });
     }
   }, [updateSystemData]);

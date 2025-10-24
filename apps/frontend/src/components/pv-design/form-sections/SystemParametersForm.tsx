@@ -130,8 +130,6 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ systemData,
         fabricanteModuloNome: legacyModule.fabricante,
         modeloModulo: legacyModule.modelo
       });
-    } else {
-      console.log('[SystemParametersForm] handleModuleChange: módulo não encontrado', { moduleId });
     }
   }, [solarModules, onFormChange]);
 
@@ -202,8 +200,6 @@ const SystemParametersForm: React.FC<SystemParametersFormProps> = ({ systemData,
       }, 0);
       
       hasAutoSelected.current = true; // Marcar como executado para prevenir loops
-    } else {
-      console.log('[SystemParametersForm] useLayoutEffect: nenhum módulo encontrado');
     }
   }, [
     systemData.moduloSelecionado,

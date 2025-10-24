@@ -110,21 +110,6 @@ export class GrupoBAdapter {
       }
     }
     
-    // Log para debug da geração mensal
-    console.log('[GrupoBAdapter] Geração mensal extraída:', geracaoMensal);
-    console.log('[GrupoBAdapter] Estrutura completa de resultsData:', resultsData);
-    console.log('[GrupoBAdapter] Estrutura de calculationResults:', resultsData?.calculationResults);
-    console.log('[GrupoBAdapter] Dados do Grupo A para remotoAVerde:', {
-      hasRemotoAVerde,
-      consumoRemotoAVerdePonta,
-      consumoRemotoAVerdeForaPonta
-    });
-    
-    console.log('[GrupoBAdapter] Dados do Grupo A para remotoAAzul:', {
-      hasRemotoAAzul,
-      consumoRemotoAAzulPonta,
-      consumoRemotoAAzulForaPonta
-    });
     
     return {
       investimentoInicial,

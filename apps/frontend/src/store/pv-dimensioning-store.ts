@@ -335,34 +335,24 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         // Ações de navegação
         goToStep: (step) => {
           const state = get();
-          console.log('[PVDimensioningStore] goToStep chamado:', {
-            passoDestino: step,
-            passoAtual: state.currentStep,
-            canGoBack: state.canGoBack,
-            completedSteps: Array.from(state.completedSteps)
-          });
           
           // Validar se pode ir para o passo
           if (step < 1 || step > 7) {
-            console.error('[PVDimensioningStore] Passo inválido:', step);
             return;
           }
           
           // Validar dependências
           if (!state.canGoBack && step < state.currentStep) {
-            console.warn('[PVDimensioningStore] Não pode voltar para passos anteriores sem concluir');
             return;
           }
           
           // Validar passos anteriores
           for (let i = 1; i < step; i++) {
             if (!state.completedSteps.has(i)) {
-              console.warn(`[PVDimensioningStore] Passo ${i} não foi concluído`);
               return;
             }
           }
           
-          console.log('[PVDimensioningStore] Atualizando estado para passo:', step);
           set((state) => {
             state.currentStep = step;
             state.canAdvance = false;
@@ -377,17 +367,9 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         
         nextStep: () => {
           const state = get();
-          console.log('[PVDimensioningStore] nextStep chamado:', {
-            currentStep: state.currentStep,
-            canAdvance: state.canAdvance,
-            completedSteps: Array.from(state.completedSteps)
-          });
           
           if (state.canAdvance) {
-            console.log('[PVDimensioningStore] Avançando para passo:', state.currentStep + 1);
             get().goToStep(state.currentStep + 1);
-          } else {
-            console.log('[PVDimensioningStore] Não é possível avançar - canAdvance é false');
           }
         },
         
@@ -583,11 +565,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           const step = state.currentStep;
           const errors: string[] = [];
           
-          console.log('[PVDimensioningStore] validateCurrentStep chamado:', {
-            passo: step,
-            canAdvance: state.canAdvance,
-            completedSteps: Array.from(state.completedSteps)
-          });
           
           switch (step) {
             case 1:
@@ -616,13 +593,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                   bill.consumoMensalForaPonta.some(c => c > 0)
                 );
               
-              console.log('[PVDimensioningStore] validateCurrentStep passo 2:', {
-                hasGrupoB,
-                hasGrupoA,
-                energyBillsCount: state.energy?.energyBills?.length || 0,
-                energyBillsACount: state.energy?.energyBillsA?.length || 0,
-                resultado: !!(hasGrupoB || hasGrupoA)
-              });
               
               if (!hasGrupoB && !hasGrupoA) {
                 errors.push('É necessário adicionar pelo menos uma conta de energia (Grupo A ou B) com consumo > 0');
@@ -679,13 +649,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               : state.completedSteps;
           });
           
-          console.log('[PVDimensioningStore] validateCurrentStep resultado:', {
-            passo: step,
-            isValid: errors.length === 0,
-            canAdvance: errors.length === 0 && step < 7,
-            errors,
-            completedSteps: Array.from(get().completedSteps)
-          });
           
           return errors.length === 0;
         },
@@ -990,7 +953,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                     set((state) => { (state as any)._isSaving = true; });
                     await get().saveDimensioning();
                   } catch (error) {
-                    console.error('Erro no auto-salvamento:', error);
+                    // Erro no auto-salvamento tratado silenciosamente
                   } finally {
                     // Limpar flag de salvamento
                     set((state) => { (state as any)._isSaving = false; });
@@ -1006,11 +969,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           const state = get();
           const grupoTarifario = state.customer?.grupoTarifario || 'B';
           
-          console.log('[PVDimensioningStore] calcularConsumoMensal:', {
-            grupoTarifario,
-            hasEnergyBills: !!(state.energy?.energyBills?.length),
-            hasEnergyBillsA: !!(state.energy?.energyBillsA?.length)
-          });
           
           if (grupoTarifario === 'A' && state.energy?.energyBillsA?.length) {
             // Grupo A: somar ponta + fora ponta para cada mês
@@ -1022,7 +980,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               }
             });
             
-            console.log('[PVDimensioningStore] consumo Grupo A calculado:', consumoMensal);
             return consumoMensal;
           } else if (state.energy?.energyBills?.length) {
             // Grupo B: separar primeira conta (local) das demais (remotas)
@@ -1046,7 +1003,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 }
               });
               
-              console.log('[PVDimensioningStore] consumo remoto B calculado:', consumoRemoto);
               
               // Armazenar dados remotos para uso no cálculo financeiro
               set((state) => ({
@@ -1059,12 +1015,10 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               }));
             }
             
-            console.log('[PVDimensioningStore] consumo local Grupo B calculado:', consumoLocal);
             return consumoLocal;
           }
           
           // Fallback: array zerado
-          console.log('[PVDimensioningStore] nenhum consumo encontrado, usando fallback');
           return Array(12).fill(0);
         },
 
@@ -1084,10 +1038,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
             const consumoMensal = get().calcularConsumoMensal();
             const consumoAnual = consumoMensal.reduce((sum: number, c: number) => sum + c, 0);
             
-            console.log('[PVDimensioningStore] calculateSystem - consumo calculado:', {
-              consumoMensal,
-              consumoAnual
-            });
             
             // Preparar dados para API
             const requestData = {
@@ -1152,7 +1102,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
             }
             
           } catch (error: any) {
-            console.error('Erro no cálculo do sistema:', error);
             toast.error(error.message || "Ocorreu um erro ao calcular o sistema");
           } finally {
             set((state) => ({ ...state, isCalculating: false }));
@@ -1282,7 +1231,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
             }
             
           } catch (error: any) {
-            console.error('Erro no cálculo financeiro:', error);
             toast.error(error.message || "Ocorreu um erro ao calcular os indicadores financeiros");
           } finally {
             set((state) => ({ ...state, isCalculating: false }));
@@ -1303,7 +1251,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               
               toast.success("Estado recuperado do backup automático");
             } catch (error) {
-              console.error('Erro ao recuperar do backup:', error);
+              // Erro ao recuperar do backup tratado silenciosamente
             }
           }
         },

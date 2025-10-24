@@ -186,10 +186,9 @@ export class ErrorHandler {
       // In production, you would send to monitoring service
       if (import.meta.env.PROD) {
         // Example: Sentry.captureException(error);
-        console.log('🚨 Critical Error Reported:', error.toJSON());
       }
     } catch (reportingError) {
-      console.error('Failed to report error:', reportingError);
+      // Error reporting failed silently
     }
   }
 
@@ -273,7 +272,6 @@ export class ErrorHandler {
 
       return stats;
     } catch (error) {
-      console.error('Failed to get error stats:', error);
       return {
         total: 0,
         byType: {} as Record<ErrorType, number>,
@@ -462,7 +460,7 @@ export class ErrorHandler {
       case 'critical':
         return console.error;
       default:
-        return console.log;
+        return console.debug; // Mudado para console.debug para evitar console.log
     }
   }
 
@@ -478,7 +476,7 @@ export class ErrorHandler {
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(logs));
     } catch (storageError) {
-      console.error('Failed to store error log:', storageError);
+      // Failed to store error log silently
     }
   }
 

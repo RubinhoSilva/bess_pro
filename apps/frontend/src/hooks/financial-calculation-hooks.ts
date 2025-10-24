@@ -224,10 +224,6 @@ export function useGrupoAFinancialCalculation(options?: {
       return response.data;
     },
     onSuccess: (data) => {
-      // Log para debug: estrutura completa dos dados retornados
-      console.log('[useGrupoAFinancialCalculation] Dados retornados:', JSON.stringify(data, null, 2));
-      console.log('[useGrupoAFinancialCalculation] Chaves dos dados:', Object.keys(data));
-      console.log('[useGrupoAFinancialCalculation] Tipo de data:', typeof data);
       
       toast.success('Cálculo financeiro Grupo A realizado com sucesso!');
       onSuccess?.(data);

@@ -139,7 +139,6 @@ export const useValidateConfiguration = () => {
       return response.data.data;
     },
     onError: (error: any) => {
-      console.error('Error validating configuration:', error);
       throw error;
     },
   });
@@ -153,7 +152,6 @@ export const useCalculateOptimalConfiguration = () => {
       return response.data.data;
     },
     onError: (error: any) => {
-      console.error('Error calculating optimal configuration:', error);
       throw error;
     },
   });
@@ -167,7 +165,6 @@ export const useSimulateSystemPerformance = () => {
       return response.data.data;
     },
     onError: (error: any) => {
-      console.error('Error simulating system performance:', error);
       throw error;
     },
   });
@@ -187,7 +184,6 @@ export const useFinancialAnalysis = () => {
       return response.data.data;
     },
     onError: (error: any) => {
-      console.error('Error calculating financial analysis:', error);
       throw error;
     },
   });

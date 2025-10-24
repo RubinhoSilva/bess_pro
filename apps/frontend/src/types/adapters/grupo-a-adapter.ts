@@ -50,10 +50,6 @@ export class GrupoAAdapter {
     // Extrair geração mensal dos resultados
     const geracaoMensal = resultsData?.calculationResults?.geracaoEstimadaMensal || Array(12).fill(0);
     
-    // Log para debug da geração mensal
-    console.log('[GrupoAAdapter] Geração mensal extraída:', geracaoMensal);
-    console.log('[GrupoAAdapter] Estrutura completa de resultsData:', resultsData);
-    console.log('[GrupoAAdapter] Estrutura de calculationResults:', resultsData?.calculationResults);
     
     // Valores padrão para parâmetros financeiros
     const defaultFinancialParams = {
