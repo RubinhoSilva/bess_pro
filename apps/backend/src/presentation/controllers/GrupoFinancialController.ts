@@ -167,12 +167,7 @@ export class GrupoFinancialController extends BaseController {
       });
 
       // Retornar resultado
-      return this.ok(res, {
-        success: true,
-        data: result,
-        message: 'Cálculo financeiro do Grupo A realizado com sucesso',
-        timestamp: new Date().toISOString()
-      });
+     return this.ok(res, result);
 
     } catch (error: any) {
       console.error('[GrupoFinancialController] Erro no cálculo Grupo A:', error);

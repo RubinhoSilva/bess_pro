@@ -1,4 +1,5 @@
 import { ICustomerData, IEnergyData, ISystemData, IBudgetData, IResultsData } from '@/store/pv-dimensioning-store';
+import { EnergyBillA, EnergyBillB } from '@/types/energy-bill-types';
 
 /**
  * Interface para dados agregados do Grupo A
@@ -7,10 +8,18 @@ export interface IGrupoAData {
   investimentoInicial: number;
   geracaoMensal: number[];
   consumoMensal: number[];
+  // NOVO: Consumo separado por posto
+  consumoForaPontaMensal?: number[];
+  consumoPontaMensal?: number[];
+  // Tarifas completas
   tarifaEnergiaPontaA: number;
   tarifaEnergiaForaPontaA: number;
   tePontaA: number;
   teForaPontaA: number;
+  // NOVO: TUSD separado
+  tusdPontaA?: number;
+  tusdForaPontaA?: number;
+  // Parâmetros financeiros
   vidaUtil: number;
   taxaDesconto: number;
   inflacaoEnergia: number;
@@ -35,8 +44,28 @@ export class GrupoAAdapter {
     budgetData: IBudgetData | null,
     resultsData: IResultsData | null
   ): IGrupoAData {
-    // Extrair consumo mensal das contas de energia
-    const consumoMensal = energyData?.energyBills?.[0]?.consumoMensal || Array(12).fill(0);
+    // NOVO: Extrair consumo separado por posto (usar EnergyBillA se disponível)
+    let consumoForaPontaMensal: number[] = [];
+    let consumoPontaMensal: number[] = [];
+    let consumoMensal: number[] = [];
+    
+    // Verificar se há dados do Grupo A (com separação por posto)
+    if (energyData?.energyBillsA && energyData.energyBillsA.length > 0) {
+      const billA = energyData.energyBillsA[0];
+      consumoForaPontaMensal = billA.consumoMensalForaPonta;
+      consumoPontaMensal = billA.consumoMensalPonta;
+      
+      // Calcular consumo total para validação (soma ponta + fora ponta)
+      consumoMensal = consumoForaPontaMensal.map((foraPonta, index) =>
+        (foraPonta || 0) + (consumoPontaMensal[index] || 0)
+      );
+    } else {
+      // Fallback: tentar extrair de energyBills (Grupo B) se não houver dados do Grupo A
+      const fallbackConsumo = energyData?.energyBills?.[0]?.consumoMensal || Array(12).fill(0);
+      consumoMensal = fallbackConsumo;
+      consumoForaPontaMensal = consumoMensal.map(v => v * 0.8); // Padrão 80% fora ponta
+      consumoPontaMensal = consumoMensal.map(v => v * 0.2); // Padrão 20% ponta
+    }
     
     // Calcular investimento total se não existir nos resultados
     let investimentoInicial = resultsData?.calculationResults?.totalInvestment || 0;
@@ -63,10 +92,19 @@ export class GrupoAAdapter {
       investimentoInicial,
       geracaoMensal,
       consumoMensal,
+      // NOVO: Consumo separado por posto
+      consumoForaPontaMensal,
+      consumoPontaMensal,
+      // Tarifas de energia completas
       tarifaEnergiaPontaA: customerData?.tarifaEnergiaPontaA || 0.95,  // Default R$ 0,95/kWh
       tarifaEnergiaForaPontaA: customerData?.tarifaEnergiaForaPontaA || 0.65,  // Default R$ 0,65/kWh
+      // TE separado
       tePontaA: customerData?.tePontaA || 0.60,  // Default R$ 0,60/kWh
       teForaPontaA: customerData?.teForaPontaA || 0.40,  // Default R$ 0,40/kWh
+      // NOVO: TUSD separado
+      tusdPontaA: customerData?.tusdPontaA || 0.35,  // Default R$ 0,35/kWh
+      tusdForaPontaA: customerData?.tusdForaPontaA || 0.25,  // Default R$ 0,25/kWh
+      // Parâmetros financeiros
       vidaUtil: systemData?.vidaUtil || 25,
       taxaDesconto: budgetData?.taxaDesconto || defaultFinancialParams.taxaDesconto,
       inflacaoEnergia: budgetData?.inflacaoEnergia || defaultFinancialParams.inflacaoEnergia,
@@ -92,7 +130,14 @@ export class GrupoAAdapter {
       errors.push('Geração mensal não pode ser toda zero');
     }
     
-    if (data.consumoMensal.every(v => v === 0)) {
+    // CORREÇÃO: Para Grupo A, validar consumo separado por posto
+    const consumoTotalMensal = data.consumoForaPontaMensal && data.consumoPontaMensal
+      ? data.consumoForaPontaMensal.map((foraPonta, index) =>
+          (foraPonta || 0) + (data.consumoPontaMensal?.[index] || 0)
+        )
+      : data.consumoMensal;
+    
+    if (consumoTotalMensal.every(v => v === 0)) {
       errors.push('Consumo mensal não pode ser todo zero');
     }
     

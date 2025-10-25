@@ -149,7 +149,7 @@ export class SimplePvlibServiceClient {
         timeout: 60000 // 60 segundos
       });
 
-      // Extrair dados reais do wrapper SuccessResponse
+      // Extrair dados do SuccessResponse (response.data.data)
       const actualData = response.data.data || response.data;
 
       // Validar resposta usando o mapper
@@ -278,13 +278,16 @@ export class SimplePvlibServiceClient {
         timeout: 60000 // 60 segundos
       });
 
+      // Extrair dados do SuccessResponse (response.data.data)
+      const actualData = response.data.data || response.data;
+
       // Validar resposta usando o mapper
-      if (!GrupoAFinancialMapper.validatePythonResponse(response.data)) {
+      if (!GrupoAFinancialMapper.validatePythonResponse(actualData)) {
         throw new Error('Resposta do serviço Python não tem estrutura válida para Grupo A');
       }
 
       // Converter resposta usando o mapper
-      const resultado = GrupoAFinancialMapper.fromPythonResponse(response.data);
+      const resultado = GrupoAFinancialMapper.fromPythonResponse(actualData);
 
       // Log de sucesso
       console.log('[SimplePvlibService] Cálculo Grupo A concluído com sucesso:', {

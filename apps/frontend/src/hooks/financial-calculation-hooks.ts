@@ -8,6 +8,7 @@ import {
   GetFinancialResultsResponse,
 } from '../types/financial';
 import { ResultadosCodigoB, isResultadosCodigoB, objectSnakeToCamel } from '@bess-pro/shared';
+import { mapObjectToCamelCase } from '../lib/field-mapper';
 
 /**
  * Hook para calcular an�lise financeira avan�ada de um projeto
@@ -221,11 +222,27 @@ export function useGrupoAFinancialCalculation(options?: {
   return useMutation({
     mutationFn: async (input: any) => {
       const response = await apiClient.calculations.calculateGrupoAFinancials(input);
-      return response.data;
+      
+      // CORREÇÃO: Os dados já vêm em camelCase do backend, não precisa converter
+      // Apenas extrair os dados corretamente da resposta
+      let data = response.data;
+      
+      // Se tiver wrapper com success, extrair o data
+      if (data && data.success && data.data) {
+        data = data.data;
+      }
+      
+      // DEBUG: Log para verificar a estrutura dos dados
+      console.log('=== DADOS GRUPO A RECEBIDOS ===');
+      console.log('Resposta completa:', response);
+      console.log('Dados extraídos:', data);
+      console.log('Estrutura financeiro:', data?.financeiro);
+      console.log('VPL:', data?.financeiro?.vpl);
+      console.log('===============================');
+      
+      return data;
     },
     onSuccess: (data) => {
-      
-      toast.success('Cálculo financeiro Grupo A realizado com sucesso!');
       onSuccess?.(data);
     },
     onError: (error: any) => {

@@ -135,10 +135,24 @@ export const selectRoofDataComplete = (state: IProjectState) => {
       perdaInversor: state.system?.perdaInversor,
       perdaOutras: state.system?.perdaOutras
     },
+    // CORREÇÃO: Calcular consumo total anual considerando Grupo A e Grupo B
     energy: {
-      consumoAnualTotal: state.energy?.energyBills?.reduce((acc: number, bill: any) => {
-        return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
-      }, 0) || 0
+      consumoAnualTotal: (() => {
+        // Verificar se há dados do Grupo A primeiro
+        if (state.energy?.energyBillsA && state.energy?.energyBillsA.length > 0) {
+          return state.energy.energyBillsA.reduce((acc: number, billA: any) => {
+            const consumoMensalTotal = billA.consumoMensalPonta.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0) +
+                                    billA.consumoMensalForaPonta.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0);
+            return acc + consumoMensalTotal;
+          }, 0);
+        } else if (state.energy?.energyBills && state.energy?.energyBills.length > 0) {
+          // Grupo B
+          return state.energy.energyBills.reduce((acc: number, bill: any) => {
+            return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
+          }, 0);
+        }
+        return 0;
+      })()
     },
     selectedModule: undefined // O selectedModuleFull será injetado no wizard
   };
@@ -177,10 +191,24 @@ export const selectRoofDataCompleteWithModule = (solarModules: any[]) => (state:
       perdaInversor: state.system?.perdaInversor,
       perdaOutras: state.system?.perdaOutras
     },
+    // CORREÇÃO: Calcular consumo total anual considerando Grupo A e Grupo B
     energy: {
-      consumoAnualTotal: state.energy?.energyBills?.reduce((acc: number, bill: any) => {
-        return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
-      }, 0) || 0
+      consumoAnualTotal: (() => {
+        // Verificar se há dados do Grupo A primeiro
+        if (state.energy?.energyBillsA && state.energy?.energyBillsA.length > 0) {
+          return state.energy.energyBillsA.reduce((acc: number, billA: any) => {
+            const consumoMensalTotal = billA.consumoMensalPonta.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0) +
+                                    billA.consumoMensalForaPonta.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0);
+            return acc + consumoMensalTotal;
+          }, 0);
+        } else if (state.energy?.energyBills && state.energy?.energyBills.length > 0) {
+          // Grupo B
+          return state.energy.energyBills.reduce((acc: number, bill: any) => {
+            return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
+          }, 0);
+        }
+        return 0;
+      })()
     },
     selectedModule
   };
@@ -252,9 +280,16 @@ export const selectDimensioningDataWithModule = (selectedModule: any) => (state:
       };
     }),
     potenciaModulo: selectedModule ? selectedModule.nominalPower : state.system?.potenciaModulo,
-    energyBills: state.energy?.energyBills || [{
-      consumoMensal: [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500] // 6000 kWh/ano padrão
-    }],
+    // CORREÇÃO: Verificar se há dados do Grupo A primeiro
+    energyBills: state.energy?.energyBillsA && state.energy?.energyBillsA.length > 0
+      ? state.energy.energyBillsA.map(billA => ({
+          consumoMensal: billA.consumoMensalPonta.map((ponta, index) =>
+            (ponta || 0) + (billA.consumoMensalForaPonta[index] || 0)
+          )
+        }))
+      : (state.energy?.energyBills || [{
+          consumoMensal: [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500] // 6000 kWh/ano padrão
+        }]),
     selectedModules: selectedModule ? [({
       fabricante: selectedModule.manufacturer.name,
       modelo: selectedModule.model,
@@ -377,10 +412,22 @@ export const selectAggregatedRoofData = (state: IProjectState) => {
   const totalArea = aguasTelhado.reduce((total: number, agua: any) => total + (agua.areaCalculada || 0), 0);
   const potenciaPico = (totalModulos * potenciaModulo) / 1000; // kWp
   
-  // Calcular consumo total anual
-  const consumoTotalAnual = state.energy?.energyBills?.reduce((acc: number, bill: any) => {
-    return acc + bill.consumoMensal.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0);
-  }, 0) || 0;
+  // CORREÇÃO: Calcular consumo total anual considerando Grupo A e Grupo B
+  let consumoTotalAnual = 0;
+  
+  // Verificar se há dados do Grupo A primeiro
+  if (state.energy?.energyBillsA && state.energy?.energyBillsA.length > 0) {
+    consumoTotalAnual = state.energy.energyBillsA.reduce((acc: number, billA: any) => {
+      const consumoMensalTotal = billA.consumoMensalPonta.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0) +
+                              billA.consumoMensalForaPonta.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0);
+      return acc + consumoMensalTotal;
+    }, 0);
+  } else if (state.energy?.energyBills && state.energy?.energyBills.length > 0) {
+    // Grupo B
+    consumoTotalAnual = state.energy.energyBills.reduce((acc: number, bill: any) => {
+      return acc + bill.consumoMensal.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0);
+    }, 0);
+  }
   
   // Calcular cobertura percentual
   const cobertura = consumoTotalAnual > 0 ? (totalGeracao / consumoTotalAnual) * 100 : 0;

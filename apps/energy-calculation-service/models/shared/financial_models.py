@@ -610,14 +610,44 @@ class CashFlowRow(BaseModel):
     Modelo para linha da tabela de fluxo de caixa
     
     Representa os dados financeiros de um ano específico no fluxo
-    de caixa do projeto.
+    de caixa do projeto, incluindo dados detalhados de economia.
     """
     
+    # Campos básicos existentes
     ano: int = Field(..., description="Ano da análise")
     fluxo_nominal: float = Field(..., description="Fluxo de caixa nominal em R$")
     fluxo_acumulado_nominal: float = Field(..., description="Fluxo acumulado nominal em R$")
     fluxo_descontado: float = Field(..., description="Fluxo de caixa descontado em R$")
     fluxo_acumulado_descontado: float = Field(..., description="Fluxo acumulado descontado em R$")
+    
+    # Campos de geração e consumo
+    geracao_anual: float = Field(..., description="Geração anual em kWh")
+    economia_simultanea: float = Field(..., description="Economia por autoconsumo simultâneo em R$")
+    
+    # Campos de economia local
+    percentual_abatido_local_fp: float = Field(..., description="Percentual abatido consumo fora de ponta local (%)")
+    economia_local_fp: float = Field(..., description="Economia local fora de ponta em R$")
+    percentual_abatido_local_p: float = Field(..., description="Percentual abatido consumo ponta local (%)")
+    economia_local_p: float = Field(..., description="Economia local ponta em R$")
+    creditos_usados_ponta: float = Field(..., description="Créditos usados para abater ponta em kWh")
+    
+    # Campos de economia remota
+    percentual_abatido_remoto_b: float = Field(..., description="Percentual abatido remoto Grupo B (%)")
+    economia_remoto_b: float = Field(..., description="Economia remota Grupo B em R$")
+    economia_remoto_a_verde_fp: float = Field(..., description="Economia remota Grupo A Verde fora de ponta em R$")
+    economia_remoto_a_verde_p: float = Field(..., description="Economia remota Grupo A Verde ponta em R$")
+    economia_remoto_a_azul_fp: float = Field(..., description="Economia remota Grupo A Azul fora de ponta em R$")
+    economia_remoto_a_azul_p: float = Field(..., description="Economia remota Grupo A Azul ponta em R$")
+    
+    # Campos financeiros
+    custos_om: float = Field(..., description="Custos de operação e manutenção em R$")
+    economia_total: float = Field(..., description="Economia total anual em R$")
+    
+    # Campos para compatibilidade com TypeScript
+    fluxo_operacional: float = Field(..., description="Fluxo operacional em R$ (economia_total - custos_om)")
+    fluxo_liquido: float = Field(..., description="Fluxo líquido em R$ (equivalente ao fluxo_nominal)")
+    fluxo_acumulado: float = Field(..., description="Fluxo acumulado em R$ (equivalente ao fluxo_acumulado_nominal)")
+    valor_presente: float = Field(..., description="Valor presente em R$ (equivalente ao fluxo_descontado)")
 
 
 class ResultadosCodigoBResponse(BaseModel):
@@ -691,13 +721,13 @@ class ResultadosCodigoBResponse(BaseModel):
 class ResultadosCodigoAResponse(BaseModel):
     """
     Modelo de response para resultados Grupo A
-    
+
     Estrutura completa de resposta para cálculos financeiros do
     Grupo A incluindo análise de sensibilidade.
     """
-    
+
     somas_iniciais: Dict[str, str] = Field(..., description="Somas iniciais formatadas")
-    financeiro: FinancialSummaryFormatted = Field(..., description="Resumo financeiro formatado")
+    financeiro: FinancialSummary = Field(..., description="Resumo financeiro com valores brutos")
     consumo_ano1: Dict[str, Any] = Field(..., description="Dados de consumo do primeiro ano")
     tabela_resumo_anual: List[Dict[str, Any]] = Field(..., description="Tabela resumo anual")
     tabela_fluxo_caixa: List[CashFlowRow] = Field(..., description="Tabela de fluxo de caixa")
@@ -745,7 +775,26 @@ class ResultadosCodigoAResponse(BaseModel):
                         "fluxo_nominal": 10602,
                         "fluxo_acumulado_nominal": 10602,
                         "fluxo_descontado": 9817,
-                        "fluxo_acumulado_descontado": 9817
+                        "fluxo_acumulado_descontado": 9817,
+                        "geracao_anual": 21600,
+                        "economia_simultanea": 1500,
+                        "percentual_abatido_local_fp": 85.5,
+                        "economia_local_fp": 8500,
+                        "percentual_abatido_local_p": 75.0,
+                        "economia_local_p": 3200,
+                        "creditos_usados_ponta": 1200,
+                        "percentual_abatido_remoto_b": 40.0,
+                        "economia_remoto_b": 2400,
+                        "economia_remoto_a_verde_fp": 0,
+                        "economia_remoto_a_verde_p": 0,
+                        "economia_remoto_a_azul_fp": 0,
+                        "economia_remoto_a_azul_p": 0,
+                        "custos_om": 2250,
+                        "economia_total": 12852,
+                        "fluxo_operacional": 10602,
+                        "fluxo_liquido": 10602,
+                        "fluxo_acumulado": 10602,
+                        "valor_presente": 9817
                     }
                 ],
                 "dados_sensibilidade": {

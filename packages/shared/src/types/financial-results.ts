@@ -314,7 +314,7 @@ export interface ResultadosCodigoA {
     economiaAcumulada: number;
   }>;
 
-  /** 
+  /**
    * Tabela de fluxo de caixa
    * @description Array com fluxos financeiros anuais
    */
@@ -333,6 +333,51 @@ export interface ResultadosCodigoA {
     
     /** Valor presente do fluxo em Reais */
     valorPresente: number;
+    
+    /** Geração anual em kWh */
+    geracaoAnual: number;
+    
+    /** Economia por autoconsumo simultâneo em R$ */
+    economiaSimultanea: number;
+    
+    /** Percentual abatido consumo fora de ponta local (%) */
+    percentualAbatidoLocalFP: number;
+    
+    /** Economia local fora de ponta em R$ */
+    economiaLocalFP: number;
+    
+    /** Percentual abatido consumo ponta local (%) */
+    percentualAbatidoLocalP: number;
+    
+    /** Economia local ponta em R$ */
+    economiaLocalP: number;
+    
+    /** Créditos usados para abater ponta em kWh */
+    creditosUsadosPonta: number;
+    
+    /** Percentual abatido remoto Grupo B (%) */
+    percentualAbatidoRemotoB: number;
+    
+    /** Economia remota Grupo B em R$ */
+    economiaRemotoB: number;
+    
+    /** Economia remota Grupo A Verde fora de ponta em R$ */
+    economiaRemotoAVerdeFP: number;
+    
+    /** Economia remota Grupo A Verde ponta em R$ */
+    economiaRemotoAVerdeP: number;
+    
+    /** Economia remota Grupo A Azul fora de ponta em R$ */
+    economiaRemotoAAzulFP: number;
+    
+    /** Economia remota Grupo A Azul ponta em R$ */
+    economiaRemotoAAzulP: number;
+    
+    /** Custos de operação e manutenção em R$ */
+    custosOM: number;
+    
+    /** Economia total anual em R$ */
+    economiaTotal: number;
   }>;
 
   /** 

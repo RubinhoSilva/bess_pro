@@ -20,6 +20,22 @@ interface GrupoAFinancialResultsProps {
 
 const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ data }) => {
   
+  // DEBUG: Log para identificar dados faltantes
+  console.log('=== DEBUG GRUPO A DATA ===');
+  console.log('Dados completos:', data);
+  console.log('Consumo fora ponta:', data.consumoForaPontaMensal);
+  console.log('Consumo ponta:', data.consumoPontaMensal);
+  console.log('Geração mensal:', data.geracaoMensal);
+  console.log('Tarifas TE:', {
+    tePontaA: data.tePontaA,
+    teForaPontaA: data.teForaPontaA
+  });
+  console.log('Tarifas TUSD:', {
+    tusdPontaA: data.tusdPontaA,
+    tusdForaPontaA: data.tusdForaPontaA
+  });
+  console.log('==========================');
+  
   // Validar dados
   const validation = GrupoAAdapter.validateGrupoAData(data);
   if (!validation.isValid) {
@@ -44,8 +60,13 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ data })
   const calculationData = useMemo(() => ({
     investimentoInicial: data.investimentoInicial,
     geracaoMensal: data.geracaoMensal,
-    consumoMensal: data.consumoMensal
-  }), [data.investimentoInicial, data.geracaoMensal, data.consumoMensal]);
+    // CORREÇÃO: Para Grupo A, usar consumo separado por posto se disponível
+    consumoMensal: data.consumoForaPontaMensal && data.consumoPontaMensal
+      ? data.consumoForaPontaMensal.map((foraPonta, index) =>
+          (foraPonta || 0) + (data.consumoPontaMensal?.[index] || 0)
+        )
+      : data.consumoMensal
+  }), [data.investimentoInicial, data.geracaoMensal, data.consumoMensal, data.consumoForaPontaMensal, data.consumoPontaMensal]);
   
   // Memoizar objeto de configuração para evitar re-renders
   const config = useMemo(() => ({
@@ -57,11 +78,18 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ data })
       degradacao: data.degradacaoAnual,
       salvagePct: data.valorResidual,
       omaFirstPct: data.custoOperacao,
-      omaInflacao: 0.04
+      omaInflacao: 4.0  // CORREÇÃO: 4% como percentual (não decimal 0.04)
     },
+    // CORREÇÃO: Estrutura de tarifas com TE e TUSD separados
     tarifas: {
-      ponta: data.tarifaEnergiaPontaA,
-      foraPonta: data.tarifaEnergiaForaPontaA
+      ponta: {
+        te: data.tePontaA,
+        tusd: data.tusdPontaA || 0.35
+      },
+      foraPonta: {
+        te: data.teForaPontaA,
+        tusd: data.tusdForaPontaA || 0.25
+      }
     },
     te: {
       ponta: data.tePontaA,
@@ -118,6 +146,7 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ data })
       isCalculatingRef.current = true;
       try {
         const input = convertToGrupoAInput(config, calculationData);
+        // Backend fará a conversão para snake_case corretamente
         grupoACalculation.mutateAsync(input);
       } catch (error) {
         setIsLoading(false);
@@ -211,7 +240,7 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ data })
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Geração Anual</p>
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   {financialResults?.somasIniciais?.geracaoAnual ||
-                    `${(financialResults?.geracaoAnual || calculationData?.geracaoMensal?.reduce((a: number, b: number) => a + b, 0) || 0).toLocaleString('pt-BR')} kWh`}
+                    `${(calculationData?.geracaoMensal?.reduce((a: number, b: number) => a + b, 0) || 0).toLocaleString('pt-BR')} kWh`}
                 </p>
               </div>
               <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
@@ -252,51 +281,50 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ data })
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="text-center p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">VPL</p>
-                <p className={`text-xl font-bold ${(financialResults?.vpl || financialResults?.financeiro?.vpl || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {((financialResults?.vpl || financialResults?.financeiro?.vpl || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                <p className={`text-xl font-bold ${(financialResults?.financeiro?.vpl || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {(financialResults?.financeiro?.vpl || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
               </div>
               <div className="text-center p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">TIR</p>
                 <p className="text-xl font-bold text-cyan-600 dark:text-cyan-400">
-                  {(financialResults?.tir || financialResults?.financeiro?.tir || 0) === 0 ? 'N/A' : `${((financialResults?.tir || financialResults?.financeiro?.tir || 0) * 100).toFixed(2)}%`}
+                  {(financialResults?.financeiro?.tir || 0) === 0 ? 'N/A' : `${((financialResults?.financeiro?.tir || 0) * 100).toFixed(2)}%`}
                 </p>
               </div>
               <div className="text-center p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">PI</p>
-                <p className={`text-xl font-bold ${(financialResults?.pi || financialResults?.financeiro?.pi || 0) >= 1 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {((financialResults?.pi || financialResults?.financeiro?.pi || 0)).toFixed(2)}
+                <p className={`text-xl font-bold ${(financialResults?.financeiro?.pi || 0) >= 1 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {(financialResults?.financeiro?.pi || 0).toFixed(2)}
                 </p>
               </div>
               <div className="text-center p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Payback Simples</p>
                 <p className="text-xl font-bold text-amber-600 dark:text-amber-400">
-                  {((financialResults?.paybackSimples || financialResults?.financeiro?.paybackSimples || 0)).toFixed(2)} anos
+                  {(financialResults?.financeiro?.paybackSimples || 0).toFixed(2)} anos
                 </p>
               </div>
               <div className="text-center p-4 bg-lime-50 dark:bg-lime-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Payback Descontado</p>
                 <p className="text-xl font-bold text-lime-600 dark:text-lime-400">
-                  {((financialResults?.paybackDescontado || financialResults?.financeiro?.paybackDescontado || 0)).toFixed(2)} anos
+                  {(financialResults?.financeiro?.paybackDescontado || 0).toFixed(2)} anos
                 </p>
               </div>
               <div className="text-center p-4 bg-rose-50 dark:bg-rose-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">LCOE</p>
                 <p className="text-xl font-bold text-rose-600 dark:text-rose-400">
-                  {((financialResults?.lcoe || financialResults?.financeiro?.lcoe || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/kWh
+                  {(financialResults?.financeiro?.lcoe || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/kWh
                 </p>
               </div>
               <div className="text-center p-4 bg-violet-50 dark:bg-violet-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">ROI Simples</p>
-                <p className={`text-xl font-bold ${(financialResults?.roiSimples || financialResults?.financeiro?.roiSimples || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {((financialResults?.roiSimples || financialResults?.financeiro?.roiSimples || 0) * 100).toFixed(2)}%
+                <p className={`text-xl font-bold ${(financialResults?.financeiro?.roiSimples || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {(financialResults?.financeiro?.roiSimples || 0).toFixed(2)}%
                 </p>
               </div>
               <div className="text-center p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Economia Total VP</p>
                 <p className="text-xl font-bold text-sky-600 dark:text-sky-400">
-                  {financialResults?.financeiro?.economiaTotalValorPresente?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ||
-                    `${(financialResults?.economiaTotalValorPresente || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}
+                  {(financialResults?.financeiro?.economiaTotalValorPresente || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
               </div>
             </div>
@@ -437,14 +465,14 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ data })
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(financialResults?.tabelaResumoAnual || financialResults?.cashFlow || []).map((item: any, index: number) => (
+                  {(financialResults?.tabelaResumoAnual || []).map((item: any, index: number) => (
                     <TableRow key={index}>
                       <TableCell className="text-center font-medium">{item.ano}</TableCell>
                       <TableCell className="text-center">{(item.geracaoAnual || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</TableCell>
                       <TableCell className="text-center">{(item.consumoForaPonta || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</TableCell>
                       <TableCell className="text-center">{(item.consumoPonta || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</TableCell>
                       <TableCell className="text-center">{(item.economiaAnual || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                      <TableCell className="text-center">{(item.economiaAcumulada || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-center">{(item.fluxoNominal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -475,13 +503,13 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ data })
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(financialResults?.tabelaFluxoCaixa || financialResults?.cashFlow || []).map((item: any, index: number) => (
+                  {(financialResults?.tabelaFluxoCaixa || []).map((item: any, index: number) => (
                     <TableRow key={index}>
                       <TableCell className="text-center font-medium">{item.ano}</TableCell>
-                      <TableCell className="text-center">{(item.fluxoOperacional || item.fluxoLiquido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                      <TableCell className="text-center">{(item.fluxoLiquido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                      <TableCell className="text-center">{(item.fluxoAcumulado || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                      <TableCell className="text-center">{(item.valorPresente || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-center">{(item.fluxoNominal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-center">{(item.fluxoNominal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-center">{(item.fluxoAcumuladoNominal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-center">{(item.fluxoDescontado || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

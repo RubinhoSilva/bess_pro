@@ -4,12 +4,14 @@
  */
 
 import { GrupoAConfig, GrupoBConfig, CommonTypes } from '@bess-pro/shared';
+import { mapObjectToSnakeCase } from './field-mapper';
+import { validateGrupoADataBeforeSend, validateRemoteUnits, validateCreditDistribution } from './financial-validation';
 
 /**
  * Converte configuração do frontend para formato GrupoAConfig completo
  */
 export function convertToGrupoAInput(
-  config: any, 
+  config: any,
   calculatedData: { investimentoInicial: number; geracaoMensal: number[]; consumoMensal: number[] }
 ): GrupoAConfig {
   // Construir dados mensais a partir de arrays
@@ -21,27 +23,44 @@ export function convertToGrupoAInput(
     return obj;
   }, {} as CommonTypes.MonthlyData);
   
-  // Dividir consumo proporcionalmente (80% fora ponta, 20% ponta)
-  const consumoForaPonta: CommonTypes.MonthlyData = meses.reduce((obj, mes, index) => {
-    obj[mes] = (calculatedData.consumoMensal[index] || 0) * 0.8;
-    return obj;
-  }, {} as CommonTypes.MonthlyData);
+  // CORREÇÃO: Usar dados de consumo separados por posto se disponíveis
+  let consumoForaPonta: CommonTypes.MonthlyData;
+  let consumoPonta: CommonTypes.MonthlyData;
   
-  const consumoPonta: CommonTypes.MonthlyData = meses.reduce((obj, mes, index) => {
-    obj[mes] = (calculatedData.consumoMensal[index] || 0) * 0.2;
-    return obj;
-  }, {} as CommonTypes.MonthlyData);
+  if (config.consumoForaPontaMensal && config.consumoPontaMensal) {
+    // Usar dados reais separados por posto
+    consumoForaPonta = meses.reduce((obj, mes, index) => {
+      obj[mes] = config.consumoForaPontaMensal[index] || 0;
+      return obj;
+    }, {} as CommonTypes.MonthlyData);
+    
+    consumoPonta = meses.reduce((obj, mes, index) => {
+      obj[mes] = config.consumoPontaMensal[index] || 0;
+      return obj;
+    }, {} as CommonTypes.MonthlyData);
+  } else {
+    // Usar divisão padrão (80% fora ponta, 20% ponta)
+    consumoForaPonta = meses.reduce((obj, mes, index) => {
+      obj[mes] = (calculatedData.consumoMensal[index] || 0) * 0.8;
+      return obj;
+    }, {} as CommonTypes.MonthlyData);
+    
+    consumoPonta = meses.reduce((obj, mes, index) => {
+      obj[mes] = (calculatedData.consumoMensal[index] || 0) * 0.2;
+      return obj;
+    }, {} as CommonTypes.MonthlyData);
+  }
 
   // Valores padrão para campos obrigatórios
   const defaultFinanceiros: CommonTypes.ProjectFinancials = {
     capex: calculatedData.investimentoInicial,
     anos: 25,
-    taxaDesconto: 0.12,
-    inflacaoEnergia: 0.10,
-    degradacao: 0.005,
-    salvagePct: 0.10,
-    omaFirstPct: 0.015,
-    omaInflacao: 0.04
+    taxaDesconto: 8.0,         // CORREÇÃO: 8% como percentual (não decimal)
+    inflacaoEnergia: 4.5,      // CORREÇÃO: 4.5% como percentual (não decimal)
+    degradacao: 0.5,           // CORREÇÃO: 0.5% como percentual (não decimal)
+    salvagePct: 0.10,          // CORRETO: já é decimal (10% = 0.1)
+    omaFirstPct: 0.015,        // CORRETO: já é decimal (1.5% = 0.015)
+    omaInflacao: 4.0           // CORREÇÃO: 4% como percentual (não decimal)
   };
 
   const defaultFioB: CommonTypes.FioBParams = {
@@ -54,16 +73,25 @@ export function convertToGrupoAInput(
     baseYear: 2025
   };
 
+  // CORREÇÃO: Estrutura de tarifas com TE e TUSD separados
   const defaultTarifas = {
-    foraPonta: 0.65,
-    ponta: 0.95
+    fora_ponta: {
+      te: config.teForaPontaA || 0.40,      // TE fora ponta
+      tusd: config.tusdForaPontaA || 0.25   // TUSD fora ponta
+    },
+    ponta: {
+      te: config.tePontaA || 0.60,           // TE ponta
+      tusd: config.tusdPontaA || 0.35        // TUSD ponta
+    }
   };
 
+  // CORREÇÃO: Estrutura TE com snake_case
   const defaultTE = {
-    foraPonta: 0.40,
-    ponta: 0.60
+    fora_ponta: config.teForaPontaA || 0.40,
+    ponta: config.tePontaA || 0.60
   };
 
+  // CORREÇÃO: Estrutura completa de unidades remotas
   const defaultRemotoB: CommonTypes.RemoteConsumptionGrupoB = {
     enabled: false,
     percentage: 0,
@@ -91,21 +119,43 @@ export function convertToGrupoAInput(
     }
   };
 
-  return {
-    financeiros: config.financeiros || defaultFinanceiros,
+  // CORREÇÃO: Fator de simultaneidade como decimal
+  const fatorSimultaneidadeDecimal = (config.fatorSimultaneidadeLocal || 85) / 100;
+
+  const resultado = {
+    financeiros: mergeFinanceiros(config.financeiros, defaultFinanceiros),
     geracao: geracaoMensal,
-    consumoLocal: {
+    consumoLocal: {                    // CORREÇÃO: camelCase (frontend)
       foraPonta: consumoForaPonta,
       ponta: consumoPonta
     },
     tarifas: config.tarifas || defaultTarifas,
     te: config.te || defaultTE,
-    fatorSimultaneidadeLocal: config.fatorSimultaneidadeLocal || 0.85,
+    fatorSimultaneidadeLocal: fatorSimultaneidadeDecimal,  // CORREÇÃO: camelCase (frontend)
     fioB: config.fioB || defaultFioB,
     remotoB: config.remotoB || defaultRemotoB,
     remotoAVerde: config.remotoAVerde || defaultRemotoA,
     remotoAAzul: config.remotoAAzul || defaultRemotoA
   };
+
+  // DEBUG: Log para identificar dados antes da validação
+  console.log('=== DEBUG GRUPO A INPUT ===');
+  console.log('Resultado completo:', resultado);
+  console.log('Tarifas fora ponta:', resultado.tarifas?.foraPonta);
+  console.log('Tarifas ponta:', resultado.tarifas?.ponta);
+  console.log('Consumo local:', resultado.consumoLocal);
+  console.log('TE:', resultado.te);
+  console.log('Geração mensal:', resultado.geracao);
+  console.log('===========================');
+
+  // CORREÇÃO: Validar dados antes de retornar
+  const validacao = validateGrupoADataBeforeSend(resultado);
+  if (!validacao.isValid) {
+    console.error('Erros de validação nos dados do Grupo A:', validacao.errors);
+    throw new Error(`Dados inválidos para cálculo Grupo A: ${validacao.errors.join(', ')}`);
+  }
+
+  return resultado;
 }
 
 /**
@@ -450,19 +500,23 @@ function mergeFinanceiros(configFinanceiros: any, defaultFinanceiros: CommonType
   (Object.keys(defaultFinanceiros) as Array<keyof CommonTypes.ProjectFinancials>).forEach(key => {
     if (configFinanceiros[key] !== null && configFinanceiros[key] !== undefined) {
       if (key === 'salvagePct' || key === 'omaFirstPct') {
-        // Converter porcentagem para decimal se necessário
-        result[key] = typeof configFinanceiros[key] === 'number'
+        // Campos que devem ser enviados como decimal (10% = 0.1, 1.5% = 0.015)
+        // Se o valor vier como percentual inteiro (ex: 10), dividir por 100
+        result[key] = typeof configFinanceiros[key] === 'number' && configFinanceiros[key] >= 1
           ? configFinanceiros[key] / 100
           : configFinanceiros[key];
+      } else if (key === 'taxaDesconto' || key === 'inflacaoEnergia' || key === 'degradacao' || key === 'omaInflacao') {
+        // Campos que devem ser enviados como percentual (8% = 8.0, 4.5% = 4.5)
+        // Se o valor vier como decimal (ex: 0.08), converter para percentual (8.0)
+        result[key] = typeof configFinanceiros[key] === 'number' && configFinanceiros[key] < 1
+          ? configFinanceiros[key] * 100
+          : configFinanceiros[key];
       } else {
+        // Outros campos mantêm o valor original
         result[key] = configFinanceiros[key];
       }
     }
   });
-
-  result['omaInflacao'] = configFinanceiros['omaInflacao'] !== null && configFinanceiros['omaInflacao'] !== undefined
-    ? configFinanceiros['omaInflacao']
-    : defaultFinanceiros['omaInflacao'];
 
   return result;
 }
