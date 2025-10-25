@@ -176,9 +176,12 @@ export function convertToGrupoBInput(
   const consumoRemotoAAzulPonta = config.consumoRemotoAAzulPonta || Array(12).fill(0);
   const consumoRemotoAAzulForaPonta = config.consumoRemotoAAzulForaPonta || Array(12).fill(0);
   
+  // Usar o percentual configurado pelo usuário ou o padrão de 40%
+  const percCreditosRemotoB = config.percCreditosRemotoB !== undefined ? config.percCreditosRemotoB : 0.40;
+  
   const defaultRemotoB: CommonTypes.RemoteConsumptionGrupoB = {
     enabled: hasRemotoB,
-    percentage: hasRemotoB ? 0.40 : 0, // 40% dos créditos para remoto B
+    percentage: hasRemotoB ? percCreditosRemotoB : 0, // Usar percentual configurado
     data: meses.reduce((obj, mes, index) => {
       obj[mes] = consumoRemotoB[index] || 0;
       return obj;
@@ -187,9 +190,13 @@ export function convertToGrupoBInput(
     fioBValue: config.custoFioB || 0.30
   };
 
+  // Usar os percentuais configurados pelo usuário ou os padrões de 50%
+  const percCreditosRemotoAVerde = config.percCreditosRemotoAVerde !== undefined ? config.percCreditosRemotoAVerde : 0.50;
+  const percCreditosRemotoAAzul = config.percCreditosRemotoAAzul !== undefined ? config.percCreditosRemotoAAzul : 0.50;
+  
   const defaultRemotoAVerde: CommonTypes.RemoteConsumptionGrupoA = {
     enabled: hasRemotoAVerde,
-    percentage: hasRemotoAVerde ? 0.30 : 0, // 30% dos créditos para remoto A Verde
+    percentage: hasRemotoAVerde ? percCreditosRemotoAVerde : 0, // Usar percentual configurado
     dataOffPeak: meses.reduce((obj, mes, index) => {
       obj[mes] = consumoRemotoAVerdeForaPonta[index] || 0;
       return obj;
@@ -214,7 +221,7 @@ export function convertToGrupoBInput(
 
   const defaultRemotoAAzul: CommonTypes.RemoteConsumptionGrupoA = {
     enabled: hasRemotoAAzul,
-    percentage: hasRemotoAAzul ? 0.30 : 0, // 30% dos créditos para remoto A Azul
+    percentage: hasRemotoAAzul ? percCreditosRemotoAAzul : 0, // Usar percentual configurado
     dataOffPeak: meses.reduce((obj, mes, index) => {
       obj[mes] = consumoRemotoAAzulForaPonta[index] || 0;
       return obj;
@@ -258,7 +265,7 @@ export function convertToGrupoBInput(
   };
 
 
-  return {
+  const resultado = {
     financeiros: mergeFinanceiros(config.financeiros, defaultFinanceiros),
     geracao: geracaoMensal,
     consumoLocal: consumoMensal,
@@ -271,6 +278,10 @@ export function convertToGrupoBInput(
     remotoAVerde: config.remotoAVerde || defaultRemotoAVerde,
     remotoAAzul: config.remotoAAzul || defaultRemotoAAzul
   };
+
+  // Resultado final sem logs
+
+  return resultado;
 }
 
 /**

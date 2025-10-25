@@ -15,6 +15,20 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
         ref={ref}
         {...props}
+        onChange={(e) => {
+          // Validar max se for input do tipo number
+          if (type === 'number' && props.max !== undefined) {
+            const value = parseFloat(e.target.value);
+            if (value > parseFloat(props.max.toString())) {
+              e.target.value = props.max.toString();
+            }
+          }
+          
+          // Chamar onChange original se existir
+          if (props.onChange) {
+            props.onChange(e);
+          }
+        }}
       />
     );
   }

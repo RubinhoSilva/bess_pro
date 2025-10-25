@@ -19,6 +19,10 @@ export interface IGrupoBData {
   consumoRemotoB?: number[];
   tipoRede?: string;
   fatorSimultaneidade?: number;
+  // Percentuais configurados pelo usuário
+  percCreditosRemotoB?: number;
+  percCreditosRemotoAVerde?: number;
+  percCreditosRemotoAAzul?: number;
   // Dados do Grupo A para remotoAVerde
   hasRemotoAVerde?: boolean;
   consumoRemotoAVerdePonta?: number[];
@@ -110,7 +114,6 @@ export class GrupoBAdapter {
       }
     }
     
-    
     return {
       investimentoInicial,
       geracaoMensal,
@@ -127,6 +130,10 @@ export class GrupoBAdapter {
       consumoRemotoB: energyData?.consumoRemotoB || Array(12).fill(0),
       tipoRede: customerData.tipoRede,
       fatorSimultaneidade: customerData.fatorSimultaneidade,
+      // Percentuais configurados pelo usuário
+      percCreditosRemotoB: energyData?.percCreditosRemotoB,
+      percCreditosRemotoAVerde: energyData?.percCreditosRemotoAVerde,
+      percCreditosRemotoAAzul: energyData?.percCreditosRemotoAAzul,
       // Dados do Grupo A para remotoAVerde
       hasRemotoAVerde,
       consumoRemotoAVerdePonta,

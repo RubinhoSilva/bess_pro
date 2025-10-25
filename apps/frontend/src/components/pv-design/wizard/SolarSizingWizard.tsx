@@ -248,7 +248,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
         field === 'tarifaEnergiaForaPontaA' || field === 'tePontaA' ||
         field === 'teForaPontaA') {
       updateCustomerData({ [field]: value });
-    } else if (field === 'energyBills' || field === 'energyBillsA') {
+    } else if (field === 'energyBills' || field === 'energyBillsA' ||
+               field === 'percCreditosRemotoB' || field === 'percCreditosRemotoAVerde' || field === 'percCreditosRemotoAAzul') {
       updateEnergyData({ [field]: value });
     } else if (field.includes('latitude') || field.includes('longitude') ||
                field.includes('endereco') || field.includes('cidade') || field.includes('estado')) {

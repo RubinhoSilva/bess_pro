@@ -78,6 +78,10 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
     // Adicionar os campos que estavam faltando
     tipoRede: data.tipoRede,
     fatorSimultaneidade: data.fatorSimultaneidade,
+    // Percentuais configurados pelo usuário
+    percCreditosRemotoB: data.percCreditosRemotoB,
+    percCreditosRemotoAVerde: data.percCreditosRemotoAVerde,
+    percCreditosRemotoAAzul: data.percCreditosRemotoAAzul,
     // Dados do Grupo A para remotoAVerde
     hasRemotoAVerde: data.hasRemotoAVerde,
     consumoRemotoAVerdePonta: data.consumoRemotoAVerdePonta,
@@ -107,6 +111,10 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
     data.consumoRemotoB,
     data.tipoRede,
     data.fatorSimultaneidade,
+    // Percentuais configurados pelo usuário
+    data.percCreditosRemotoB,
+    data.percCreditosRemotoAVerde,
+    data.percCreditosRemotoAAzul,
     // Dados do Grupo A para remotoAVerde
     data.hasRemotoAVerde,
     data.consumoRemotoAVerdePonta,

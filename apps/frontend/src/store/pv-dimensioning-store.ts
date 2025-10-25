@@ -42,6 +42,11 @@ export interface IEnergyData {
   energyBillsA?: EnergyBillA[];
   consumoRemotoB?: number[];
   hasRemotoB?: boolean;
+  // Novo campo para percentual de créditos remotos
+  percCreditosRemotoB?: number;
+  // Novos campos para percentuais de créditos remotos do Grupo A
+  percCreditosRemotoAVerde?: number;
+  percCreditosRemotoAAzul?: number;
 }
 
 export interface ILocationData {
@@ -266,7 +271,10 @@ const initialState: IProjectState = {
     energyBills: [],
     energyBillsA: [],
     consumoRemotoB: [],
-    hasRemotoB: false
+    hasRemotoB: false,
+    percCreditosRemotoB: 0.40,  // Valor padrão de 40%
+    percCreditosRemotoAVerde: 0.50,  // Valor padrão de 50%
+    percCreditosRemotoAAzul: 0.50    // Valor padrão de 50%
   },
   location: null,
   system: {
@@ -402,7 +410,26 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         
         updateEnergyData: (data) => {
           set((state) => {
-            state.energy = { ...state.energy, ...data } as IEnergyData;
+            // Se atualizar um dos percentuais do Grupo A, atualizar o outro também
+            if (data.percCreditosRemotoAVerde !== undefined) {
+              if (state.energy) {
+                state.energy.percCreditosRemotoAVerde = data.percCreditosRemotoAVerde;
+                state.energy.percCreditosRemotoAAzul = data.percCreditosRemotoAVerde;
+              }
+            } else if (data.percCreditosRemotoAAzul !== undefined) {
+              if (state.energy) {
+                state.energy.percCreditosRemotoAAzul = data.percCreditosRemotoAAzul;
+                state.energy.percCreditosRemotoAVerde = data.percCreditosRemotoAAzul;
+              }
+            } else if (data.percCreditosRemotoB !== undefined) {
+              if (state.energy) {
+                state.energy.percCreditosRemotoB = data.percCreditosRemotoB;
+              }
+            } else {
+              // Para outros campos, mesclar normalmente
+              state.energy = { ...state.energy, ...data } as IEnergyData;
+            }
+            
             state.isDirty = true;
           });
           
@@ -445,7 +472,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         
         updateSystemData: (data) => {
           set((state) => {
-            //  Isso garante que duas atualizações com os mesmos valores resultem em objetos idênticos, evitando re-renders desnecessários e loops infinitos!
+            //  Isso garante que duas atualizações com os mesmos valores resultam em objetos idênticos, evitando re-renders desnecessários e loops infinitos!
             // Manter valores padrão para campos não especificados. Por algum motivo sem eles ali, da erro de deep
             const defaultSystemData = {
               selectedModuleId: '',
@@ -718,6 +745,9 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 energyBillsA: state.energy?.energyBillsA,
                 consumoRemotoB: state.energy?.consumoRemotoB,
                 hasRemotoB: state.energy?.hasRemotoB,
+                percCreditosRemotoB: state.energy?.percCreditosRemotoB,
+                percCreditosRemotoAVerde: state.energy?.percCreditosRemotoAVerde,
+                percCreditosRemotoAAzul: state.energy?.percCreditosRemotoAAzul,
                 
                 // Dados de localização
                 endereco: state.location?.location?.address,
@@ -825,7 +855,10 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 energyBills: projectData.energyBills,
                 energyBillsA: projectData.energyBillsA,
                 consumoRemotoB: projectData.consumoRemotoB || [],
-                hasRemotoB: projectData.hasRemotoB || false
+                hasRemotoB: projectData.hasRemotoB || false,
+                percCreditosRemotoB: projectData.percCreditosRemotoB || 0.40,
+                percCreditosRemotoAVerde: projectData.percCreditosRemotoAVerde || 0.50,
+                percCreditosRemotoAAzul: projectData.percCreditosRemotoAAzul || 0.50
               },
               
               // Etapa 3: Dados de localização
@@ -1129,6 +1162,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
             const consumoMensal = get().calcularConsumoMensal();
             const consumoRemotoB = state.energy?.consumoRemotoB || Array(12).fill(0);
             const hasRemotoB = state.energy?.hasRemotoB || false;
+            const percCreditosRemotoB = state.energy?.percCreditosRemotoB || 0.40;
             
             const financialData = {
               financeiros: {
@@ -1185,7 +1219,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               // Adicionar dados remotos B
               remoto_b: {
                 enabled: hasRemotoB,
-                percentage: hasRemotoB ? 0.40 : 0,
+                percentage: hasRemotoB ? percCreditosRemotoB : 0,
                 data: {
                   Jan: consumoRemotoB[0] || 0,
                   Fev: consumoRemotoB[1] || 0,

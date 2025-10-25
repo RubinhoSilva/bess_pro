@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Zap, PlusCircle, Trash2 } from 'lucide-react';
+import { Zap, PlusCircle, Trash2, Info } from 'lucide-react';
 import { EnergyBillA, EnergyBillB, createEnergyBillA, createEnergyBillB } from '@/types/energy-bill-types';
 import { EnergyBillComponentA } from './EnergyBillComponentA';
 
@@ -122,11 +122,46 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerD
   const energyBills = energyData?.energyBills || [];
   const energyBillsA = energyData?.energyBillsA || [];
   const [showAddAccountModal, setShowAddAccountModal] = useState(false);
+  
+  // Estado local para os percentuais (para evitar problemas de sincronização)
+  const [localPercentualA, setLocalPercentualA] = useState(
+    ((energyData?.percCreditosRemotoAVerde || 0.50) * 100).toString()
+  );
+  const [localPercentualB, setLocalPercentualB] = useState(
+    ((energyData?.percCreditosRemotoB || 0.40) * 100).toString()
+  );
+  
+  // Estado local para os campos TUSD (para evitar problemas de sincronização)
+  const [localTusdPontaA, setLocalTusdPontaA] = useState(
+    (customerData?.tusdPontaA || 0.60).toString()
+  );
+  const [localTusdForaPontaA, setLocalTusdForaPontaA] = useState(
+    (customerData?.tusdForaPontaA || 0.40).toString()
+  );
+  
+  // Função para ajustar percentuais do Grupo A (AMBOS devem ter o mesmo valor)
+  const handlePercentualAChange = (newValue: string) => {
+    const value = parseFloat(newValue) || 0;
+    
+    // AMBOS os percentuais devem ter o MESMO valor
+    setLocalPercentualA(newValue);
+    onFormChange('percCreditosRemotoAVerde', value / 100);
+    onFormChange('percCreditosRemotoAAzul', value / 100);
+  };
+  
+  // Função para ajustar percentuais do Grupo B
+  const handlePercentualBChange = (newValue: string) => {
+    const value = parseFloat(newValue) || 0;
+    
+    // Atualizar percentual do Grupo B
+    setLocalPercentualB(newValue);
+    onFormChange('percCreditosRemotoB', value / 100);
+  };
 
   // Criar primeira conta automaticamente baseado no grupo selecionado na step 1
   useEffect(() => {
     const hasAnyAccount = energyBills.length > 0 || energyBillsA.length > 0;
-    const hasCorrectAccountType = 
+    const hasCorrectAccountType =
       (customerData?.grupoTarifario === 'A' && energyBillsA.length > 0) ||
       (customerData?.grupoTarifario === 'B' && energyBills.length > 0);
     
@@ -156,6 +191,11 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerD
       }
     }
   }, [customerData?.grupoTarifario, energyBills.length, energyBillsA.length]); // Executar quando mudar grupo ou contas
+
+  // REMOVIDO: useEffect que estava sobrescrevendo os valores dos percentuais
+  // Os estados locais já são inicializados corretamente nas linhas 127-132
+  // Este useEffect estava causando o problema de os percentuais do Grupo A
+  // voltarem para os valores padrão (50% e 0%) mesmo após o usuário digitar novos valores
 
 
   const needsGrupoATariffData = () => {
@@ -271,6 +311,9 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerD
 
   // Verificar se já existe alguma conta
   const hasAnyAccount = energyBillsA.length > 0 || energyBills.length > 0;
+  
+  // Verificar se há contas remotas (mais de uma conta do mesmo grupo)
+  const hasRemoteAccounts = energyBills.length > 1 || energyBillsA.length > 0;
 
   return (
     <Card className="bg-card border border-border shadow-lg">
@@ -355,6 +398,45 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerD
                   </div>
                 )}
                 
+                {/* Configuração de percentual de créditos remotos */}
+                {energyBills.length > 1 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-medium text-blue-800 dark:text-blue-200">Configurar Autoconsumo Remoto</h4>
+                      <Info className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <p className="text-sm text-blue-600 dark:text-blue-400 mb-4">
+                      Defina o percentual dos créditos de energia excedente que será destinado às unidades remotas
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Percentual de Créditos para Unidades Remotas (%)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={localPercentualB}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            handlePercentualBChange(newValue);
+                          }}
+                          placeholder="40"
+                        />
+                        <p className="text-xs text-gray-500">
+                          Percentual dos créditos que serão destinados às unidades remotas (padrão: 40%)
+                        </p>
+                        {parseFloat(localPercentualB) > 100 && (
+                          <p className="text-xs text-red-500 mt-1">
+                            ⚠️ Percentual não pode ultrapassar 100%
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Lista de contas Grupo B */}
                 <div className="space-y-4">
                   {energyBills.map((bill: EnergyBillB) => (
@@ -375,6 +457,46 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerD
             {energyBills.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-700">Contas Grupo B (Residencial/Comercial)</h3>
+                
+                {/* Configuração de percentual de créditos remotos */}
+                {energyBills.length > 1 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-medium text-blue-800 dark:text-blue-200">Configurar Autoconsumo Remoto</h4>
+                      <Info className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <p className="text-sm text-blue-600 dark:text-blue-400 mb-4">
+                      Defina o percentual dos créditos de energia excedente que será destinado às unidades remotas
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Percentual de Créditos para Unidades Remotas (%)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={localPercentualB}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            handlePercentualBChange(newValue);
+                          }}
+                          placeholder="40"
+                        />
+                        <p className="text-xs text-gray-500">
+                          Percentual dos créditos que serão destinados às unidades remotas (padrão: 40%)
+                        </p>
+                        {parseFloat(localPercentualB) > 100 && (
+                          <p className="text-xs text-red-500 mt-1">
+                            ⚠️ Percentual não pode ultrapassar 100%
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="space-y-4">
                   {energyBills.map((bill: EnergyBillB) => (
                     <EnergyBillComponent
@@ -405,7 +527,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerD
                       {/* Subgrupo Tarifário */}
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">Subgrupo Tarifário</Label>
-                        <Select 
+                        <Select
                           value={customerData?.subgrupoTarifario || 'verde'}
                           onValueChange={(value) => handleGrupoATariffChange('subgrupoTarifario', value)}
                         >
@@ -422,7 +544,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerD
                       {/* Tarifas de Energia */}
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">Tarifa Ponta (R$/kWh)</Label>
-                        <Input 
+                        <Input
                           type="number"
                           step="0.01"
                           value={customerData?.tarifaEnergiaPontaA || 1.20}
@@ -433,7 +555,7 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerD
 
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">Tarifa Fora Ponta (R$/kWh)</Label>
-                        <Input 
+                        <Input
                           type="number"
                           step="0.01"
                           value={customerData?.tarifaEnergiaForaPontaA || 0.60}
@@ -448,8 +570,12 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerD
                         <Input
                           type="number"
                           step="0.01"
-                          value={customerData?.tusdPontaA || 0.60}
-                          onChange={(e) => handleGrupoATariffChange('tusdPontaA', parseFloat(e.target.value) || 0)}
+                          value={localTusdPontaA}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            setLocalTusdPontaA(newValue);
+                            handleGrupoATariffChange('tusdPontaA', parseFloat(newValue) || 0);
+                          }}
                           placeholder="0.60"
                         />
                       </div>
@@ -459,10 +585,53 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerD
                         <Input
                           type="number"
                           step="0.01"
-                          value={customerData?.tusdForaPontaA || 0.40}
-                          onChange={(e) => handleGrupoATariffChange('tusdForaPontaA', parseFloat(e.target.value) || 0)}
+                          value={localTusdForaPontaA}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            setLocalTusdForaPontaA(newValue);
+                            handleGrupoATariffChange('tusdForaPontaA', parseFloat(newValue) || 0);
+                          }}
                           placeholder="0.40"
                         />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Configuração de percentual de créditos remotos para Grupo A */}
+                {energyBillsA.length > 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-medium text-blue-800 dark:text-blue-200">Configurar Autoconsumo Remoto - Grupo A</h4>
+                      <Info className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <p className="text-sm text-blue-600 dark:text-blue-400 mb-4">
+                      Defina o percentual dos créditos de energia excedente para os subgrupos do Grupo A
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Percentual de Créditos para Unidades Remotas (%)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={localPercentualA}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            handlePercentualAChange(newValue);
+                          }}
+                          placeholder="50"
+                        />
+                        <p className="text-xs text-gray-500">
+                          Percentual dos créditos aplicado a ambos os subgrupos Verde e Azul (padrão: 50%)
+                        </p>
+                        {parseFloat(localPercentualA) > 100 && (
+                          <p className="text-xs text-red-500 mt-1">
+                            ⚠️ Percentual não pode ultrapassar 100%
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -560,6 +729,22 @@ const ConsumptionForm: React.FC<ConsumptionFormProps> = ({ energyData, customerD
               </div>
             </div>
             
+          </div>
+        )}
+
+        {/* Informações sobre autoconsumo remoto */}
+        {hasRemoteAccounts && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+            <div className="flex items-center gap-2 mb-2">
+              <h4 className="font-medium text-blue-800 dark:text-blue-200">Informações sobre Autoconsumo Remoto</h4>
+              <Info className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="text-sm text-blue-600 dark:text-blue-400 space-y-2">
+              <p>• A primeira conta adicionada é considerada a unidade geradora (consumo local)</p>
+              <p>• As contas adicionais são consideradas unidades consumidoras remotas</p>
+              <p>• O percentual configurado define quanto dos créditos de energia excedente será destinado às unidades remotas</p>
+              <p>• O valor padrão é 40%, mas pode ser ajustado conforme sua necessidade</p>
+            </div>
           </div>
         )}
 
