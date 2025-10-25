@@ -65,12 +65,12 @@ class Settings(BaseSettings):
     # Configurações de cache
     CACHE_TTL_HOURS: int = Field(default=24*7, description="TTL do cache em horas (padrão: 1 semana)")
     MAX_CACHE_SIZE_MB: int = Field(default=1000, description="Tamanho máximo do cache em MB")
-
+    
     # Geohash cache configuration
     GEOHASH_PRECISION: int = Field(default=5, description="Geohash precision (5 = ~4.9km cells)")
     CACHE_RADIUS_KM: float = Field(default=15.0, description="Maximum distance for cache hits (km)")
     PVGIS_CACHE_TTL_DAYS: int = Field(default=30, description="PVGIS cache TTL in days")
-
+    
     # Weather data source configuration
     WEATHER_DATA_SOURCE_DEFAULT: str = Field(
         default="pvgis",
@@ -80,7 +80,7 @@ class Settings(BaseSettings):
         default=True,
         description="Enable fallback to alternative data source on failure"
     )
-
+    
     # NASA POWER configuration
     NASA_POWER_API_TIMEOUT: int = Field(
         default=60,
@@ -102,7 +102,7 @@ class Settings(BaseSettings):
         default="PSM3",
         description="NASA POWER dataset name (PSM3 or TMY)"
     )
-
+    
     # Logging
     LOG_LEVEL: str = Field(default="INFO", description="Nível de log")
     LOG_FORMAT: str = Field(
@@ -118,11 +118,31 @@ class Settings(BaseSettings):
     WIND_MAX_VALUE: float = Field(default=50.0, description="Velocidade máxima do vento válida (m/s)")
     WIND_MIN_VALUE: float = Field(default=0.0, description="Velocidade mínima do vento válida (m/s)")
     
+    # Configurações de propostas
+    PROPOSALS_STORAGE_DIR: str = Field(
+        default="./storage/proposals",
+        description="Diretório para armazenamento de propostas"
+    )
+    DEFAULT_LOGO_URL: str = Field(
+        default="https://via.placeholder.com/150x80/0066cc/ffffff?text=Logo",
+        description="URL padrão para logo da empresa"
+    )
+    MAX_PROPOSAL_SIZE_MB: int = Field(
+        default=10,
+        description="Tamanho máximo do arquivo de proposta em MB"
+    )
+    
+    # Configurações de fontes
+    FONTS_DIR: str = Field(
+        default="/usr/share/fonts/truetype/dejavu",
+        description="Diretório de fontes para PDF"
+    )
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
-
+    
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Converter CACHE_DIR para Path se for string
