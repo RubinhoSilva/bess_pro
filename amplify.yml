@@ -4,11 +4,11 @@ frontend:
     preBuild:
       commands:
         # Install root dependencies
-        - npm ci
+        - npm install
 
         # Build shared package
         - cd packages/shared
-        - npm ci
+        - npm install
         - npm run build
 
         # Install frontend dependencies
