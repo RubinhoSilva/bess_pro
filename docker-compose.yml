@@ -54,7 +54,7 @@ services:
       JWT_SECRET: dev-jwt-secret-super-secure-change-in-production
       JWT_REFRESH_SECRET: dev-refresh-secret-super-secure-change-in-production
       CORS_ORIGIN: http://localhost:3003
-      ENERGY_SERVICE_URL: http://localhost:8110
+      ENERGY_SERVICE_URL: http://energy-calculation-service:8100
       EMAIL_PROVIDER: nodemailer
       EMAIL_HOST: mailpit
       EMAIL_PORT: 1025
