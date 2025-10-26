@@ -69,6 +69,63 @@ function PVDesignPageContent() {
     }
   }, [routerLocation.state, toast]);
 
+  // CORREÇÃO: Adicionar listener para antes de descarregar a página
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const state = usePVDimensioningStore.getState();
+      if (state.isDirty && !state.dimensioningId) {
+        // Criar backup automático antes de sair
+        state.createBackup();
+        
+        // Mostrar aviso ao usuário
+        e.preventDefault();
+        e.returnValue = 'Você tem alterações não salvas. Deseja realmente sair?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  // CORREÇÃO: Adicionar listener para mudança de rota (versão compatível)
+  useEffect(() => {
+    const handleRouteChange = () => {
+      const state = usePVDimensioningStore.getState();
+      if (state.isDirty && !state.dimensioningId) {
+        // Criar backup antes de mudar de rota
+        state.createBackup();
+      }
+    };
+
+    // Listener para popstate (botão voltar do navegador)
+    const handlePopState = (event: PopStateEvent) => {
+      const state = usePVDimensioningStore.getState();
+      if (state.isDirty && !state.dimensioningId) {
+        // Criar backup
+        state.createBackup();
+        
+        // Mostrar confirmação
+        if (!window.confirm('Você tem alterações não salvas. Deseja realmente sair?')) {
+          // Prevenir navegação
+          window.history.pushState(null, '', window.location.pathname);
+          event.preventDefault();
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleRouteChange);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleRouteChange);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
   const loadProjectData = async (projectId: string) => {
     setIsLoading(true);
     try {
@@ -76,6 +133,9 @@ function PVDesignPageContent() {
       const project = response.data?.data || response.data;
       
       if (project.projectData?.dimensioningName) {
+        // CORREÇÃO: Limpar backup local antes de carregar novo projeto
+        localStorage.removeItem('pv-dimensioning-backup');
+        
         // Atualiza a store com os dados carregados
         await usePVDimensioningStore.getState().loadDimensioning(projectId);
         
@@ -96,8 +156,22 @@ function PVDesignPageContent() {
   };
 
   const handleNewProject = () => {
+    // CORREÇÃO: Limpar estado completamente ao iniciar novo projeto
+    const { resetWizard, createBackup } = usePVDimensioningStore.getState();
+    
+    // Criar backup do estado atual antes de limpar
+    createBackup();
+    
+    // Resetar wizard
+    resetWizard();
+    
     setCalculationResults(null);
     setCurrentView('wizard');
+    
+    toast({
+      title: "Novo dimensionamento",
+      description: "Um novo dimensionamento foi iniciado."
+    });
   };
 
   const handleWizardComplete = (results: any) => {
@@ -106,6 +180,12 @@ function PVDesignPageContent() {
   };
 
   const handleBackToWizard = () => {
+    // CORREÇÃO: Validar se há dados para preservar ao voltar
+    const state = usePVDimensioningStore.getState();
+    if (state.isDirty) {
+      state.createBackup();
+    }
+    
     setCurrentView('wizard');
   };
 
