@@ -75,7 +75,7 @@ const MapClickHandler: React.FC<{
   setMarkerPosition: (pos: LatLng | null) => void;
 }> = ({ onLocationSelect, setMarkerPosition }) => {
   useMapEvents({
-    click: async (e) => {
+    click: async (e: any) => {
       const { lat, lng } = e.latlng;
       setMarkerPosition(e.latlng);
       onLocationSelect({ lat, lng });
@@ -305,10 +305,12 @@ const MapSelector: React.FC<MapSelectorProps> = ({
           zoom={position ? 15 : 6}
           style={{ height: '100%', width: '100%' }}
           ref={mapRef}
+          {...({ center: [currentMapCenter.lat, currentMapCenter.lng] } as any)}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            {...({ attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' } as any)}
           />
           
           {markerPosition && (
@@ -324,6 +326,7 @@ const MapSelector: React.FC<MapSelectorProps> = ({
               eventHandlers={{
                 click: () => pin.onClick?.(pin),
               }}
+              {...({ icon: createProjectIcon(pin.type) } as any)}
             >
               {/* Optional: Add popup with project info */}
               {/* <Popup>
