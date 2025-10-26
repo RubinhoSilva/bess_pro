@@ -107,7 +107,7 @@ class MPPTService:
             configuracao = self._generate_recommended_configuration(request, nummodulosporstring)
 
             # Calcular total real baseado na limitação mais restritiva
-            total_modulos_sistema = nummodulosporstring
+            total_modulos_sistema = nummodulosporstring * request.numero_mppt
             
             return MPPTCalculationResponse(
                 modulos_por_mppt=nummodulosporstring * request.strings_por_mppt,
