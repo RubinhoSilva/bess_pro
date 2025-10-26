@@ -17,13 +17,13 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      // Bundle analyzer para produção
-      ...(isProduction ? [visualizer({
-        filename: 'dist/stats.html',
-        open: false,
-        gzipSize: true,
-        brotliSize: true,
-      })] : [])
+      // Bundle analyzer removido para evitar conflito com Rollup no Amplify
+      // ...(isProduction ? [visualizer({
+      //   filename: 'dist/stats.html',
+      //   open: false,
+      //   gzipSize: true,
+      //   brotliSize: true,
+      // })] : [])
     ],
     resolve: {
       alias: {
