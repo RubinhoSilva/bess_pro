@@ -13,15 +13,14 @@ import { EconomyProjectionChart } from './EconomyProjectionChart';
 import { AnnualSavingsChart } from './AnnualSavingsChart';
 import { AdvancedSolarAnalysis } from './AdvancedSolarAnalysis';
 import { AdvancedFinancialAnalysis } from './AdvancedFinancialAnalysis';
-import AdvancedPDFGenerator from '../report/AdvancedPDFGenerator';
 import { useDimensioningOperations } from '@/hooks/dimensioning';
-import { ProposalDocument } from '../proposal/ProposalDocument';
 import GrupoBFinancialResults from './GrupoBFinancialResults';
 import GrupoAFinancialResults from './GrupoAFinancialResults';
 import { GrupoConfigAdapter } from '@/types/adapters/grupo-config-adapter';
 import { GrupoBAdapter, IGrupoBData } from '@/types/adapters/grupo-b-adapter';
 import { GrupoAAdapter, IGrupoAData } from '@/types/adapters/grupo-a-adapter';
 import { GrupoTarifarioDetector, GrupoTarifarioRender } from '@/utils/grupo-tarifario-detector';
+import ProposalGenerator from './ProposalGenerator';
 
 // Store imports
 import { usePVDimensioningStore } from '@/store/pv-dimensioning-store';
@@ -189,170 +188,6 @@ const LoadingFallback: React.FC = () => (
   </motion.div>
 );
 
-// Componente auxiliar para renderizar ProposalDocument inline
-const ProposalDocumentInline: React.FC<{ results: any }> = ({ results }) => {
-  const profile = {
-    company: 'Sua Empresa Solar',
-    email: 'contato@empresa.com',
-    phone: '(XX) XXXX-XXXX',
-    website: 'www.suaempresa.com',
-  };
-
-  const settings = {
-    show_introduction: true,
-    show_technical_analysis: true,
-    show_financial_analysis: true,
-  };
-
-  return <ProposalDocument results={results} profile={profile} settings={settings} />;
-};
-
-// Componente de geração de PDF
-const PDFGenerator: React.FC<{ results: any; currentDimensioning: any }> = ({ results, currentDimensioning }) => {
-  const [isGenerating, setIsGenerating] = React.useState(false);
-  const [showProposalPreview, setShowProposalPreview] = React.useState(false);
-
-  const generateProposal = async () => {
-    setIsGenerating(true);
-
-    try {
-      // 1. Renderiza o ProposalDocument inline (oculto)
-      setShowProposalPreview(true);
-
-      // 2. Aguarda a renderização completa dos componentes React (2 segundos)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // 3. Importa as bibliotecas necessárias
-      const jsPDF = (await import('jspdf')).default;
-      const html2canvas = (await import('html2canvas')).default;
-
-      // 4. Pega o elemento renderizado
-      const proposalElement = document.getElementById('proposal-content-test');
-
-      if (!proposalElement) {
-        throw new Error('Elemento da proposta não encontrado');
-      }
-
-      // 5. Ajusta estilos temporários para renderização
-      const originalStyles = proposalElement.style.cssText;
-      proposalElement.style.cssText += 'width: 210mm; display: block; visibility: visible;';
-
-      // 6. Pega todas as páginas
-      const pages = proposalElement.querySelectorAll('.proposal-page');
-
-      if (pages.length === 0) {
-        throw new Error('Nenhuma página encontrada no documento');
-      }
-
-      // 7. Cria o PDF
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-
-       // 8. Processa cada página
-      for (let i = 0; i < pages.length; i++) {
-        const page = pages[i] as HTMLElement;
-
-        // Ajusta o scrollWidth para páginas muito largas (como a Page 6)
-        const captureWidth = Math.min(page.scrollWidth, 792); // Limita a largura máxima
-        const captureHeight = Math.min(page.scrollHeight, 1121); // Limita a altura máxima
-        
-        // Captura a página como canvas
-        const canvas = await html2canvas(page, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          windowWidth: captureWidth,
-          windowHeight: captureHeight,
-          logging: true, // Ativa logs do html2canvas
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-        const imgProps = pdf.getImageProperties(imgData);
-        const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-        // Ajusta a altura para caber exatamente na página
-        const adjustedImgHeight = Math.min(imgHeight, pdfHeight - 0.5); // -0.5mm de margem de segurança
-
-        if (i > 0) {
-          pdf.addPage();
-        }
-
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, adjustedImgHeight);
-      }
-
-      // 9. Restaura estilos
-      proposalElement.style.cssText = originalStyles;
-
-      // 10. Salva o PDF
-      const projectName = results.projectName ||
-                         results.customerName ||
-                         'solar';
-      pdf.save(`proposta-component-based-${projectName}-${Date.now()}.pdf`);
-
-      // 11. Limpa o preview
-      setShowProposalPreview(false);
-
-    } catch (error: any) {
-      setShowProposalPreview(false);
-      alert(`Erro ao gerar PDF: ${error.message}`);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <Button
-        onClick={generateProposal}
-        disabled={isGenerating}
-        size="lg"
-        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
-      >
-        {isGenerating ? (
-          <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            Gerando Proposta...
-          </>
-        ) : (
-          <>
-            <Download className="w-5 h-5 mr-2" />
-            Gerar e Baixar Proposta
-          </>
-        )}
-      </Button>
-
-      {/* ProposalDocument renderizado inline (oculto) para o método Component-Based */}
-      {showProposalPreview && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '-9999px',
-            left: '-9999px',
-            width: '210mm',
-            zIndex: -1
-          }}
-        >
-          <div id="proposal-content-test" className="bg-white">
-            <ProposalDocumentInline results={results} />
-          </div>
-        </div>
-      )}
-
-      {/* Loading overlay durante geração */}
-      {isGenerating && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-slate-800 p-8 rounded-lg shadow-2xl text-center">
-            <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-blue-500" />
-            <p className="text-lg font-semibold mb-2">Gerando Proposta PDF...</p>
-            <p className="text-sm text-muted-foreground">Renderizando componentes e gráficos...</p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
   onGenerateProposal,
@@ -652,9 +487,14 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
 
           {/* Seção de Geração de Proposta */}
           <Section title="📄 Gerar Proposta" delay={9}>
-            <PDFGenerator
+            <ProposalGenerator
               results={validatedResults}
-              currentDimensioning={currentDimensioning}
+              customerData={customerData}
+              energyData={energyData}
+              systemData={systemData}
+              budgetData={budgetData}
+              systemSummaryData={systemSummaryData}
+              aggregatedRoofData={aggregatedRoofData}
             />
           </Section>
         </div>

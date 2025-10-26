@@ -30,6 +30,7 @@ import { TestFinancialController } from '../controllers/TestFinancialController'
 import { GrupoFinancialRoutes } from './GrupoFinancialRoutes';
 
 import { ProposalRoutes } from './ProposalRoutes';
+import ProposalPDFRoutes from './ProposalPDFRoutes';
 
 export class ApiRoutes {
   static create(container: Container): Router {
@@ -83,6 +84,9 @@ export class ApiRoutes {
 
     // Proposal routes
     router.use('/proposals', ProposalRoutes.create(container));
+    
+    // Proposal PDF generation routes
+    router.use('/proposal', ProposalPDFRoutes);
 
     return router;
   }

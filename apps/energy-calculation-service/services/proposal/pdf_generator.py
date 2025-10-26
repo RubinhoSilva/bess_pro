@@ -20,10 +20,8 @@ class ProposalPDF(FPDF):
             self.add_font("DejaVuSans", "B", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
             self.add_font("DejaVuSans", "I", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf")
             self.fonts_loaded = True
-            logger.info("Fontes DejaVu carregadas com sucesso")
         except FileNotFoundError:
             # Fallback para fontes padrão
-            logger.warning("Fontes DejaVu não encontradas, usando fontes padrão")
             self.fonts_loaded = False
         
         self.request = request

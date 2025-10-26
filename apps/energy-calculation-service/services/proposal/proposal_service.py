@@ -25,7 +25,8 @@ class ProposalGenerationService:
         Gera proposta PDF completa baseada nos dados fornecidos
         """
         try:
-            logger.info(f"Iniciando geração de proposta para cliente: {request.cliente.nome}")
+            # Log do JSON recebido
+            import json
             
             # 1. Gerar gráficos
             graph_files = ProposalGenerationService._generate_graphs(request)
@@ -55,7 +56,6 @@ class ProposalGenerationService:
             )
             
         except Exception as e:
-            logger.error(f"Erro na geração de proposta: {str(e)}", exc_info=True)
             raise Exception(f"Erro ao gerar proposta: {str(e)}")
     
     @staticmethod
@@ -86,9 +86,9 @@ class ProposalGenerationService:
                 graph_files['fluxo_caixa'] = fluxo_graph
                 
         except Exception as e:
-            logger.warning(f"Erro na geração de gráficos: {str(e)}")
             # Continuar sem gráficos se falhar
-            
+            pass
+        
         return graph_files
     
     @staticmethod
@@ -197,11 +197,9 @@ class ProposalGenerationService:
             temp_file.write(response.content)
             temp_file.close()
             
-            logger.info(f"Logo baixado com sucesso: {logo_url}")
             return temp_file.name
             
         except Exception as e:
-            logger.warning(f"Erro ao baixar logo: {str(e)}")
             return None
     
     @staticmethod
@@ -224,11 +222,9 @@ class ProposalGenerationService:
             temp_file = tempfile.NamedTemporaryFile(suffix='.pdf', delete=False)
             pdf.output(temp_file.name)
             
-            logger.info(f"PDF gerado com sucesso: {temp_file.name}")
             return temp_file.name
             
         except Exception as e:
-            logger.error(f"Erro na geração do PDF: {str(e)}")
             raise Exception(f"Erro ao gerar PDF: {str(e)}")
     
     @staticmethod
@@ -243,7 +239,7 @@ class ProposalGenerationService:
             try:
                 os.chmod(proposals_dir, 0o755)
             except Exception as chmod_error:
-                logger.warning(f"Não foi possível definir permissões do diretório: {str(chmod_error)}")
+                pass
             
             # Gerar nome único
             if not filename:
@@ -266,15 +262,13 @@ class ProposalGenerationService:
             try:
                 os.chmod(final_path, 0o644)
             except Exception as chmod_error:
-                logger.warning(f"Não foi possível definir permissões do arquivo: {str(chmod_error)}")
+                pass
             
-            logger.info(f"Arquivo movido com sucesso: {final_path}")
             
             # Retornar URL relativa
             return f"/api/v1/proposal/download/{filename}"
             
         except Exception as e:
-            logger.error(f"Erro ao mover arquivo para storage: {str(e)}")
             raise Exception(f"Erro ao salvar arquivo: {str(e)}")
     
     @staticmethod
@@ -284,13 +278,11 @@ class ProposalGenerationService:
             try:
                 if os.path.exists(file_path):
                     os.unlink(file_path)
-                    logger.debug(f"Arquivo temporário removido: {file_path}")
             except Exception as e:
-                logger.warning(f"Erro ao remover arquivo temporário {file_path}: {str(e)}")
+                pass
         
         if logo_path and os.path.exists(logo_path):
             try:
                 os.unlink(logo_path)
-                logger.debug(f"Logo temporário removido: {logo_path}")
             except Exception as e:
-                logger.warning(f"Erro ao remover logo temporário {logo_path}: {str(e)}")
+                pass
