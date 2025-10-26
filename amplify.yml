@@ -21,7 +21,6 @@ frontend:
 
     postBuild:
       commands:
-        - cd apps/frontend
         - find dist -name "*.js" -exec gzip -k {} \;
         - find dist -name "*.css" -exec gzip -k {} \;
         - find dist -name "*.svg" -exec gzip -k {} \;
