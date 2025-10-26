@@ -27,23 +27,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # Frontend Node.js
-  frontend:
-    build:
-      context: .
-      dockerfile: apps/frontend/Dockerfile.prod
-      target: production
-    container_name: bess-pro-frontend
-    restart: unless-stopped
-    ports:
-      - "3003:80"
-    environment:
-      - NODE_ENV=production
-    networks:
-      - bess-network
-    depends_on:
-      - backend
-
   # Python Energy Calculation Service
   energy-calculation-service:
     build:
