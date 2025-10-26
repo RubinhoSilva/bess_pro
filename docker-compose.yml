@@ -54,7 +54,7 @@ services:
       JWT_SECRET: dev-jwt-secret-super-secure-change-in-production
       JWT_REFRESH_SECRET: dev-refresh-secret-super-secure-change-in-production
       CORS_ORIGIN: http://localhost:3003
-      ENERGY_SERVICE_URL: http://bess-pro-energy-calc:8100
+      ENERGY_SERVICE_URL: http://energy-calculation-service:8100
       EMAIL_PROVIDER: nodemailer
       EMAIL_HOST: mailpit
       EMAIL_PORT: 1025
@@ -107,6 +107,7 @@ services:
       - "8110:8100"
     volumes:
       - ./apps/energy-calculation-service:/app
+      - proposal_storage:/app/storage
     networks:
       - bess-network
     environment:
@@ -123,6 +124,7 @@ volumes:
   redis_data:
   node_modules_frontend:
   node_modules_shared:
+  proposal_storage:
 
 networks:
   bess-network:

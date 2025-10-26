@@ -399,16 +399,30 @@ export const selectAggregatedRoofData = (state: IProjectState) => {
 };
 
 // Seletor específico para o SystemSummary
-export const selectSystemSummaryData = (state: IProjectState) => {
+export const selectSystemSummaryData = (solarModules: any[] = []) => (state: IProjectState) => {
   const aggregatedData = selectAggregatedRoofData(state);
+  
+  // Buscar dados completos do módulo selecionado
+  const moduleId = state.system?.selectedModuleId;
+  const selectedModule = moduleId && solarModules.length > 0
+    ? solarModules.find((m: any) => m.id === moduleId)
+    : undefined;
+  
+  // Formatar dados dos inversores para o SystemSummary
+  const selectedInverters = (state.system?.selectedInverters || []).map(inv => ({
+    fabricante: inv.inverter.manufacturer.name,
+    modelo: inv.inverter.model,
+    potenciaNominal: inv.inverter.power.ratedACPower,
+    quantity: inv.quantity || 1
+  }));
   
   return {
     potenciaPico: aggregatedData.potenciaPico,
     numeroModulos: aggregatedData.totalModulos,
     areaEstimada: aggregatedData.totalArea,
     geracaoEstimadaAnual: aggregatedData.totalGeracao,
-    selectedInverters: state.system?.selectedInverters || [],
-    selectedModule: state.system?.selectedModuleId, // Apenas o ID, o componente buscará o objeto completo
+    selectedInverters,
+    selectedModule,
     consumoTotalAnual: aggregatedData.consumoTotalAnual,
     cobertura: aggregatedData.cobertura
   };

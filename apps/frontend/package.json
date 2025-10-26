@@ -5,10 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build --minify false",
+    "build": "tsc --noEmit && vite build --minify esbuild",
+    "build:staging": "tsc --noEmit && vite build --mode staging --minify esbuild",
+    "build:production": "tsc --noEmit && vite build --mode production --minify esbuild",
     "preview": "vite preview",
     "test": "vitest",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "test:ci": "vitest run",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "type-check": "tsc --noEmit",
+    "analyze": "npm run build && npx vite-bundle-analyzer dist/stats.html",
+    "build:analyze": "npm run build && npx rollup-plugin-visualizer"
   },
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "^1.7.4",
@@ -90,6 +97,9 @@
   },
   "devDependencies": {
     "@rollup/wasm-node": "^4.46.2",
+    "@vitejs/plugin-react": "^4.1.1",
+    "rollup-plugin-visualizer": "^5.9.2",
+    "terser": "^5.24.0",
     "@tailwindcss/forms": "^0.5.7",
     "@tailwindcss/typography": "^0.5.10",
     "@testing-library/jest-dom": "^6.1.5",
@@ -102,7 +112,6 @@
     "@types/three": "^0.179.0",
     "@typescript-eslint/eslint-plugin": "^6.10.0",
     "@typescript-eslint/parser": "^6.10.0",
-    "@vitejs/plugin-react": "^4.1.1",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.53.0",
     "jsdom": "^23.0.1",
@@ -110,7 +119,15 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.2.2",
     "vite": "^5.0.0",
+    "vite-bundle-analyzer": "^0.7.0",
     "vitest": "^1.0.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.46.2",
+    "@rollup/rollup-linux-arm64-gnu": "^4.46.2",
+    "@rollup/rollup-darwin-x64": "^4.46.2",
+    "@rollup/rollup-darwin-arm64": "^4.46.2",
+    "@rollup/rollup-win32-x64-msvc": "^4.46.2"
   },
   "overrides": {
     "rollup": "npm:@rollup/wasm-node"
