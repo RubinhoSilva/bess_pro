@@ -1,54 +1,54 @@
 version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - npm ci
-        - cd apps/frontend && npm ci
-        - cd ../../packages/shared && npm ci && npm run build
-        
-    build:
-      commands:
-        - cd apps/frontend
-        - npm run build:production
-        
-    postBuild:
-      commands:
-        - find dist -name "*.js" -exec gzip -k {} \;
-        - find dist -name "*.css" -exec gzip -k {} \;
-        
-  artifacts:
-    baseDirectory: apps/frontend/dist
-    files:
-      - '**/*'
-      
-  cache:
-    paths:
-      - node_modules/**/*
-      - apps/frontend/node_modules/**/*
-      - packages/shared/node_modules/**/*
-      
-  customHeaders:
-    - pattern: '**/*'
-      headers:
-        - key: 'X-Frame-Options'
-          value: 'DENY'
-        - key: 'X-XSS-Protection'
-          value: '1; mode=block'
-        - key: 'X-Content-Type-Options'
-          value: 'nosniff'
+applications:
+  - appRoot: apps/frontend
+    phases:
+      preBuild:
+        commands:
+          - npm ci
+          - cd ../../packages/shared && npm ci && npm run build
+          - cd apps/frontend && npm ci
           
-    - pattern: '*.js'
-      headers:
-        - key: 'Cache-Control'
-          value: 'public, max-age=31536000, immutable'
+      build:
+        commands:
+          - cd apps/frontend
+          - npm run build:production
           
-    - pattern: '*.css'
-      headers:
-        - key: 'Cache-Control'
-          value: 'public, max-age=31536000, immutable'
+      postBuild:
+        commands:
+          - find dist -name "*.js" -exec gzip -k {} \;
+          - find dist -name "*.css" -exec gzip -k {} \;
           
-  redirects:
-    - source: '</^[^.]+$|\\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>'
-      target: '/index.html'
-      status: 200
+    artifacts:
+      baseDirectory: dist
+      files:
+        - '**/*'
+        
+    cache:
+      paths:
+        - node_modules/**/*
+        - ../../packages/shared/node_modules/**/*
+        
+    customHeaders:
+      - pattern: '**/*'
+        headers:
+          - key: 'X-Frame-Options'
+            value: 'DENY'
+          - key: 'X-XSS-Protection'
+            value: '1; mode=block'
+          - key: 'X-Content-Type-Options'
+            value: 'nosniff'
+            
+      - pattern: '*.js'
+        headers:
+          - key: 'Cache-Control'
+            value: 'public, max-age=31536000, immutable'
+            
+      - pattern: '*.css'
+        headers:
+          - key: 'Cache-Control'
+            value: 'public, max-age=31536000, immutable'
+            
+    redirects:
+      - source: '</^[^.]+$|\\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>'
+        target: '/index.html'
+        status: 200
