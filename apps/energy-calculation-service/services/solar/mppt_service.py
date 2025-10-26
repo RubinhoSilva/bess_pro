@@ -50,17 +50,16 @@ class MPPTService:
             # Calcular módulos máximos por MPPT por limitação de tensão
             tensao_cc_max_v = request.tensao_cc_max_v or request.faixa_mppt_max_v
             num_modulos_por_tensao_mppt = math.floor(tensao_cc_max_v / voc_cold)
-            num_modulos_por_tensao_total = num_modulos_por_tensao_mppt * request.numero_mppt
+            # num_modulos_por_tensao_total = num_modulos_por_tensao_mppt * request.numero_mppt
             
-            # REGRA FINAL: Calcular limite por MPPT individual
-            # Para limitação por potência: usar o valor total (já é por MPPT)
-            modulos_por_mppt_potencia = num_modulos_por_potencia
+            #Potência máxima por MPPT
+            potenciamaxmppt = request.potencia_fv_max_w / request.numero_mppt
 
-            # Para limitação por tensão: já temos o valor por MPPT
-            modulos_por_mppt_tensao = num_modulos_por_tensao_mppt
+             # Número de módulos por potência
+            modulos_string_por_potencia = math.floor(potenciamaxmppt / (request.potencia_modulo_w*request.strings_por_mppt))
 
-            #Limitar por quantidade de strings
-            modulos_por_mppt_string = modulos_por_mppt_tensao // request.strings_por_mppt
+            # Número final de módulos por string
+            nummodulosporstring = min(modulos_string_por_potencia, num_modulos_por_tensao_mppt)
 
             #ajuste por corrente
             #Corrente Curto-Circuito (Isc) do modulo adicionar no request
@@ -85,46 +84,35 @@ class MPPTService:
             # Definir variáveis de limitação para resposta
             limitacao_potencia = {
                 "modulos_maximos_total": num_modulos_por_potencia,
-                "modulos_por_mppt": modulos_por_mppt_potencia,
+                "modulos_por_mppt": nummodulosporstring,
                 "descricao": f"Limitação por potência: {potencia_limitante}W ({potencia_tipo}) ÷ {request.potencia_modulo_w}W = {num_modulos_por_potencia} módulos no total"
             }
 
             limitacao_tensao = {
                 "voc_cold": round(voc_cold, 2),
                 "tensao_mppt_max": tensao_cc_max_v,
-                "modulos_por_mppt": modulos_por_mppt_tensao,
-                "descricao": f"Limitação por tensão: {tensao_cc_max_v}V ÷ {voc_cold:.2f}V = {modulos_por_mppt_tensao} módulos por MPPT"
+                "modulos_por_mppt": nummodulosporstring,
+                "descricao": f"Limitação por tensão: {tensao_cc_max_v}V ÷ {voc_cold:.2f}V = {nummodulosporstring} módulos por MPPT"
             }
 
-            # Usar o menor dos dois como limite real por MPPT
-            modulos_por_mppt = min(modulos_por_mppt_potencia, modulos_por_mppt_tensao)
-            print(f"   Decisão: min({modulos_por_mppt_potencia}, {modulos_por_mppt_tensao}) = {modulos_por_mppt} módulos por MPPT")
-
-            if modulos_por_mppt_potencia <= modulos_por_mppt_tensao:
-                limitacao_principal = f"Limitado por potência: {modulos_por_mppt} módulos por MPPT"
-                print(f"✅ [MPPT SERVICE] Limitação CRÍTICA: POTÊNCIA ({modulos_por_mppt} módulos/MPPT)")
-                logger.info("Limitação crítica: POTÊNCIA")
-            else:
-                limitacao_principal = f"Limitado por tensão: {modulos_por_mppt} módulos por MPPT"
-                print(f"✅ [MPPT SERVICE] Limitação CRÍTICA: TENSÃO ({modulos_por_mppt} módulos/MPPT)")
-                logger.info("Limitação crítica: TENSÃO")
+    
 
             # Ajustar total baseado na distribuição real
-            modulos_total = modulos_por_mppt * request.numero_mppt
+            modulos_total = nummodulosporstring * request.numero_mppt
 
             # Análise básica (será expandida com regras de negócio)
-            analise_detalhada = self._analyze_system_limits(request, modulos_por_mppt)
+            analise_detalhada = self._analyze_system_limits(request, nummodulosporstring)
 
             # Configuração recomendada
-            configuracao = self._generate_recommended_configuration(request, modulos_por_mppt)
+            configuracao = self._generate_recommended_configuration(request, nummodulosporstring)
 
             # Calcular total real baseado na limitação mais restritiva
-            total_modulos_sistema = min(num_modulos_por_potencia, num_modulos_por_tensao_total)
+            total_modulos_sistema = nummodulosporstring
             
             return MPPTCalculationResponse(
-                modulos_por_mppt=modulos_por_mppt,
+                modulos_por_mppt=nummodulosporstring * request.strings_por_mppt,
                 modulos_total_sistema=total_modulos_sistema,
-                limitacao_principal=limitacao_principal,
+                limitacao_principal=str(nummodulosporstring),
                 analise_detalhada=analise_detalhada,
                 configuracao_recomendada=configuracao,
                 parametros_entrada={
