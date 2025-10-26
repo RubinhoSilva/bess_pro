@@ -1036,7 +1036,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 }
               });
               
-              
               // Armazenar dados remotos para uso no cálculo financeiro
               set((state) => ({
                 ...state,

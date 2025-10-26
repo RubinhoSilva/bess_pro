@@ -119,59 +119,59 @@ class FinancialGrupoBService:
 
                 # Loop aninhado: mês a mês
                 for mes in range(12):
-                    # logger.info(f"    Mês {mes + 1}:")
+                    logger.info(f"    Mês {mes + 1}:")
 
                     # Geração e Consumo do Mês
                     gen_m = gen_mes_base[mes]
                     consumo_local_m = consumo_local_monthly[mes]
 
-                    # logger.info(f"      Geração no mês: {gen_m:.2f} kWh")
-                    # logger.info(f"      Consumo local no mês: {consumo_local_m:.2f} kWh")
+                    logger.info(f"      Geração no mês: {gen_m:.2f} kWh")
+                    logger.info(f"      Consumo local no mês: {consumo_local_m:.2f} kWh")
                     
                     # 1. AUTOCONSUMO LOCAL
                     # Autoconsumo Instantâneo (o que não gera crédito nem custo)
                     autoconsumo_instantaneo_m = min(gen_m * request.fator_simultaneidade, consumo_local_m)
 
-                    # logger.info(f"      Autoconsumo instantâneo no mês: {autoconsumo_instantaneo_m:.2f} kWh")
+                    logger.info(f"      Autoconsumo instantâneo no mês: {autoconsumo_instantaneo_m:.2f} kWh")
 
                     # Energia injetada na rede
                     injetado_m = gen_m - autoconsumo_instantaneo_m
 
-                    # logger.info(f"      Energia injetada no mês: {injetado_m:.2f} kWh")
+                    logger.info(f"      Energia injetada no mês: {injetado_m:.2f} kWh")
                     
                     # Consumo restante a ser abatido (com créditos)
                     consumo_restante_local_m = consumo_local_m - autoconsumo_instantaneo_m
 
-                    # logger.info(f"      Consumo restante a ser abatido no mês: {consumo_restante_local_m:.2f} kWh")
+                    logger.info(f"      Consumo restante a ser abatido no mês: {consumo_restante_local_m:.2f} kWh")
                     
                     # Abate o consumo restante com a energia injetada no próprio mês
                     abatido_com_injetado_m = min(injetado_m, consumo_restante_local_m)
 
-                    # logger.info(f"      Abatido com energia injetada no mês: {abatido_com_injetado_m:.2f} kWh")
+                    logger.info(f"      Abatido com energia injetada no mês: {abatido_com_injetado_m:.2f} kWh")
                     
                     # Atualiza a energia injetada e o consumo restante
                     injetado_liquido_m = injetado_m - abatido_com_injetado_m
                     consumo_a_abater_com_creditos_m = consumo_restante_local_m - abatido_com_injetado_m
                     
-                    # logger.info(f"      Energia injetada líquida no mês (créditos gerados): {injetado_liquido_m:.2f} kWh")
-                    # logger.info(f"      Consumo a abater com créditos no mês: {consumo_a_abater_com_creditos_m:.2f} kWh")
+                    logger.info(f"      Energia injetada líquida no mês (créditos gerados): {injetado_liquido_m:.2f} kWh")
+                    logger.info(f"      Consumo a abater com créditos no mês: {consumo_a_abater_com_creditos_m:.2f} kWh")
 
                     # Abate o consumo restante com o banco de créditos
                     abatido_com_credito_m = min(consumo_a_abater_com_creditos_m, banco_creditos)
                     banco_creditos -= abatido_com_credito_m
 
-                    # logger.info(f"      Abatido com créditos do banco no mês: {abatido_com_credito_m:.2f} kWh")
-                    # logger.info(f"      Banco de créditos após abatimento no mês: {banco_creditos:.2f} kWh")
+                    logger.info(f"      Abatido com créditos do banco no mês: {abatido_com_credito_m:.2f} kWh")
+                    logger.info(f"      Banco de créditos após abatimento no mês: {banco_creditos:.2f} kWh")
                     
                     # O total abatido na unidade geradora é a soma do abatido no mês com o abatido do banco de créditos
                     autoconsumo_abatido_m = abatido_com_injetado_m + abatido_com_credito_m
 
-                    # logger.info(f"      Autoconsumo abatido total no mês: {autoconsumo_abatido_m:.2f} kWh")
+                    logger.info(f"      Autoconsumo abatido total no mês: {autoconsumo_abatido_m:.2f} kWh")
                     
                     # Atualiza o banco de créditos com o excedente do mês
                     banco_creditos += injetado_liquido_m
 
-                    # logger.info(f"      Banco de créditos no final do mês após adição do excedente: {banco_creditos:.2f} kWh")
+                    logger.info(f"      Banco de créditos no final do mês após adição do excedente: {banco_creditos:.2f} kWh")
                     
                     # 2. ABATIMENTO DE UNIDADES REMOTAS
                     # NOTA: No notebook, quando as unidades remotas estão desabilitadas,
@@ -180,12 +180,12 @@ class FinancialGrupoBService:
                     # Créditos disponíveis para as unidades remotas no final do mês
                     # Só calcula se houver pelo menos uma unidade remota habilitada
                     if request.remoto_b.enabled or request.remoto_a_verde.enabled or request.remoto_a_azul.enabled:
-                        creditos_disponiveis = banco_creditos * (1 - request.remoto_b.percentage/100 - request.remoto_a_verde.percentage/100 - request.remoto_a_azul.percentage/100)
+                        creditos_disponiveis = banco_creditos * (1 - request.remoto_b.percentage - request.remoto_a_verde.percentage - request.remoto_a_azul.percentage)
                         
                         # Créditos para cada grupo remoto
-                        creditos_para_b = banco_creditos * (request.remoto_b.percentage/100) if request.remoto_b.enabled else 0
-                        creditos_para_a_verde = banco_creditos * (request.remoto_a_verde.percentage/100) if request.remoto_a_verde.enabled else 0
-                        creditos_para_a_azul = banco_creditos * (request.remoto_a_azul.percentage/100) if request.remoto_a_azul.enabled else 0
+                        creditos_para_b = banco_creditos * request.remoto_b.percentage if request.remoto_b.enabled else 0
+                        creditos_para_a_verde = banco_creditos * request.remoto_a_verde.percentage if request.remoto_a_verde.enabled else 0
+                        creditos_para_a_azul = banco_creditos * request.remoto_a_azul.percentage if request.remoto_a_azul.enabled else 0
                     else:
                         creditos_disponiveis = banco_creditos
                         creditos_para_b = 0
@@ -261,15 +261,15 @@ class FinancialGrupoBService:
                 
                 # FIM DO LOOP MENSAL
                 
-                # logger.info(f"  Banco de créditos no final do ano {ano}: {banco_creditos:.2f} kWh")
-                # logger.info(f"  Acumulados do ano {ano}:")
-                # logger.info(f"    Autoconsumo instantâneo anual: {autoconsumo_instantaneo_mensal_acumulado:.2f} kWh")
-                # logger.info(f"    Autoconsumo abatido anual: {autoconsumo_abatido_mensal_acumulado:.2f} kWh")
-                # logger.info(f"    Abatido remoto B anual: {abatido_remoto_b_mensal_acumulado:.2f} kWh")
-                # logger.info(f"    Abatido remoto A Verde fora ponta anual: {abatido_remoto_a_verde_foraponta_mensal_acumulado:.2f} kWh")
-                # logger.info(f"    Abatido remoto A Verde ponta anual: {abatido_remoto_a_verde_ponta_mensal_acumulado:.2f} kWh")
-                # logger.info(f"    Abatido remoto A Azul fora ponta anual: {abatido_remoto_a_azul_foraponta_mensal_acumulado:.2f} kWh")
-                # logger.info(f"    Abatido remoto A Azul ponta anual: {abatido_remoto_a_azul_ponta_mensal_acumulado:.2f} kWh")
+                logger.info(f"  Banco de créditos no final do ano {ano}: {banco_creditos:.2f} kWh")
+                logger.info(f"  Acumulados do ano {ano}:")
+                logger.info(f"    Autoconsumo instantâneo anual: {autoconsumo_instantaneo_mensal_acumulado:.2f} kWh")
+                logger.info(f"    Autoconsumo abatido anual: {autoconsumo_abatido_mensal_acumulado:.2f} kWh")
+                logger.info(f"    Abatido remoto B anual: {abatido_remoto_b_mensal_acumulado:.2f} kWh")
+                logger.info(f"    Abatido remoto A Verde fora ponta anual: {abatido_remoto_a_verde_foraponta_mensal_acumulado:.2f} kWh")
+                logger.info(f"    Abatido remoto A Verde ponta anual: {abatido_remoto_a_verde_ponta_mensal_acumulado:.2f} kWh")
+                logger.info(f"    Abatido remoto A Azul fora ponta anual: {abatido_remoto_a_azul_foraponta_mensal_acumulado:.2f} kWh")
+                logger.info(f"    Abatido remoto A Azul ponta anual: {abatido_remoto_a_azul_ponta_mensal_acumulado:.2f} kWh")
 
                 # Cálculos Anuais a partir dos acumuladores
                 gen_annual[idx - 1] = np.sum(gen_mes_base)
@@ -490,7 +490,7 @@ class FinancialGrupoBService:
         if request.remoto_a_azul.enabled:
             total_percent += request.remoto_a_azul.percentage
         
-        if total_percent > 100:
+        if total_percent > 1:
             raise ValueError(f"Soma de percentuais remotos ({total_percent}%) não pode ultrapassar 100%")
     
     
