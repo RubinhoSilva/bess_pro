@@ -13,7 +13,7 @@ frontend:
 
         # Install frontend dependencies
         - cd ../../apps/frontend
-        - npm ci
+        - npm install
 
     build:
       commands:
