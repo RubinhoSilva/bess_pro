@@ -31,6 +31,14 @@ interface PVGISIntegrationProps {
     fonteDados?: string;
     inclinacao?: number;
     orientacao?: number;
+    location?: {
+      latitude?: number;
+      longitude?: number;
+      cidade?: string;
+      address?: string;
+      endereco?: string;
+      estado?: string;
+    };
     aguasTelhado?: Array<{
       id: string;
       nome: string;
@@ -56,62 +64,70 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
     return (formData?.fonteDados as 'pvgis' | 'nasa') || 'pvgis';
   });
 
-  // Sync dataSource when formData changes (when navigating back to this step)
+  // CORREÇÃO: Sync dataSource when formData changes (when navigating back to this step)
   useEffect(() => {
     if (formData?.fonteDados) {
       const normalizedValue = formData.fonteDados.toLowerCase().includes('nasa') ? 'nasa' : 'pvgis';
       setDataSource(normalizedValue);
     }
   }, [formData?.fonteDados]);
-
-  // Sync formData when user changes selection (only when user actually changes it)
+  
+  // CORREÇÃO: Sync formData when user changes selection (only when user actually changes it)
   useEffect(() => {
     if (onFormChange && formData?.fonteDados !== dataSource) {
       onFormChange('fonteDados', dataSource);
     }
-  }, [dataSource]); // Removido formData?.fonteDados das dependências
+  }, [dataSource, onFormChange, formData?.fonteDados]); // Adicionado onFormChange e formData?.fonteDados
 
-  // Initialize state from formData - each useState uses its own validation logic
+  // CORREÇÃO: Initialize state from formData - cada useState usa sua própria lógica de validação
   const [selectedLocation, setSelectedLocation] = useState<PVGISLocation | null>(() => {
-    // Verificar se há dados válidos e completos para restaurar o estado
-    const hasValidSavedData = formData?.latitude &&
-                             formData?.longitude &&
-                             formData?.irradiacaoMensal &&
-                             formData?.irradiacaoMensal.length === 12 &&
-                             formData?.irradiacaoMensal.some(value => value > 0);
+    // CORREÇÃO: Verificar dados na estrutura correta (location aninhado para coordenadas)
+    const lat = formData?.location?.latitude || formData?.latitude;
+    const lng = formData?.location?.longitude || formData?.longitude;
+    const irradiacao = formData?.irradiacaoMensal;
+    
+    const hasValidSavedData = lat && lng && irradiacao &&
+                             irradiacao.length === 12 &&
+                             irradiacao.some(value => value > 0);
 
-    if (hasValidSavedData && formData.latitude !== undefined && formData.longitude !== undefined) {
-      return { latitude: formData.latitude, longitude: formData.longitude };
+    if (hasValidSavedData) {
+      return { latitude: lat, longitude: lng };
     }
     return null;
   });
-
+  
   const [manualLat, setManualLat] = useState(() => {
-    const hasValidSavedData = formData?.latitude &&
-                             formData?.longitude &&
-                             formData?.irradiacaoMensal &&
-                             formData?.irradiacaoMensal.length === 12 &&
-                             formData?.irradiacaoMensal.some(value => value > 0);
+    // CORREÇÃO: Verificar dados na estrutura correta (location aninhado para coordenadas)
+    const lat = formData?.location?.latitude || formData?.latitude;
+    const lng = formData?.location?.longitude || formData?.longitude;
+    const irradiacao = formData?.irradiacaoMensal;
+    
+    const hasValidSavedData = lat && lng && irradiacao &&
+                             irradiacao.length === 12 &&
+                             irradiacao.some(value => value > 0);
 
-    if (hasValidSavedData && formData.latitude !== undefined) {
-      return formData.latitude.toString();
+    if (hasValidSavedData) {
+      return lat.toString();
     }
     return '';
   });
-
+  
   const [manualLng, setManualLng] = useState(() => {
-    const hasValidSavedData = formData?.latitude &&
-                             formData?.longitude &&
-                             formData?.irradiacaoMensal &&
-                             formData?.irradiacaoMensal.length === 12 &&
-                             formData?.irradiacaoMensal.some(value => value > 0);
+    // CORREÇÃO: Verificar dados na estrutura correta (location aninhado para coordenadas)
+    const lat = formData?.location?.latitude || formData?.latitude;
+    const lng = formData?.location?.longitude || formData?.longitude;
+    const irradiacao = formData?.irradiacaoMensal;
+    
+    const hasValidSavedData = lat && lng && irradiacao &&
+                             irradiacao.length === 12 &&
+                             irradiacao.some(value => value > 0);
 
-    if (hasValidSavedData && formData.longitude !== undefined) {
-      return formData.longitude.toString();
+    if (hasValidSavedData) {
+      return lng.toString();
     }
     return '';
   });
-
+  
   const [irradiationData, setIrradiationData] = useState<{
     irradiacaoMensal: number[];
     latitude: number;
@@ -124,24 +140,65 @@ const PVGISIntegration: React.FC<PVGISIntegrationProps> = ({
     configuracao?: any;
     fonteDados?: string; // Fonte de dados utilizada
   } | null>(() => {
-    const hasValidSavedData = formData?.latitude &&
-                             formData?.longitude &&
-                             formData?.irradiacaoMensal &&
-                             formData?.irradiacaoMensal.length === 12 &&
-                             formData?.irradiacaoMensal.some(value => value > 0);
+    // CORREÇÃO: Verificar dados na estrutura correta (location aninhado para coordenadas e cidade)
+    const lat = formData?.location?.latitude || formData?.latitude;
+    const lng = formData?.location?.longitude || formData?.longitude;
+    const irradiacao = formData?.irradiacaoMensal;
+    const cidade = formData?.location?.cidade || formData?.cidade;
+    
+    const hasValidSavedData = lat && lng && irradiacao &&
+                             irradiacao.length === 12 &&
+                             irradiacao.some(value => value > 0);
 
-    if (hasValidSavedData && formData.latitude !== undefined && formData.longitude !== undefined) {
+    if (hasValidSavedData) {
       return {
-        irradiacaoMensal: formData.irradiacaoMensal,
-        latitude: formData.latitude,
-        longitude: formData.longitude,
-        cidade: formData.cidade || `Lat: ${formData.latitude.toFixed(4)}, Lon: ${formData.longitude.toFixed(4)}`,
-        fonteDados: formData.fonteDados,
-        ...formData.pvgisResponseData
+        irradiacaoMensal: irradiacao,
+        latitude: lat,
+        longitude: lng,
+        cidade: cidade || `Lat: ${lat.toFixed(4)}, Lon: ${lng.toFixed(4)}`,
+        fonteDados: formData?.fonteDados,
+        ...formData?.pvgisResponseData
       };
     }
     return null;
   });
+
+  // CORREÇÃO: Sincronizar estados locais quando formData muda (navegação entre etapas)
+  useEffect(() => {
+    // CORREÇÃO: Verificar dados na estrutura correta (location aninhado para coordenadas)
+    const lat = formData?.location?.latitude || formData?.latitude;
+    const lng = formData?.location?.longitude || formData?.longitude;
+    
+    if (lat !== undefined && lng !== undefined) {
+      const newLocation = { latitude: lat, longitude: lng };
+      setSelectedLocation(newLocation);
+      setManualLat(lat.toString());
+      setManualLng(lng.toString());
+    }
+  }, [formData?.location?.latitude, formData?.location?.longitude, formData?.latitude, formData?.longitude]);
+
+  // CORREÇÃO: Sincronizar dados de irradiação quando formData muda
+  useEffect(() => {
+    const irradiacao = formData?.irradiacaoMensal;
+    const lat = formData?.location?.latitude || formData?.latitude;
+    const lng = formData?.location?.longitude || formData?.longitude;
+    const cidade = formData?.location?.cidade || formData?.cidade;
+    
+    if (irradiacao && irradiacao.length === 12) {
+      const hasValidData = irradiacao.some(value => value > 0);
+      if (hasValidData && lat !== undefined && lng !== undefined) {
+        const newData = {
+          irradiacaoMensal: irradiacao,
+          latitude: lat,
+          longitude: lng,
+          cidade: cidade || `Lat: ${lat.toFixed(4)}, Lon: ${lng.toFixed(4)}`,
+          fonteDados: formData?.fonteDados,
+          ...formData?.pvgisResponseData
+        };
+        setIrradiationData(newData);
+      }
+    }
+  }, [formData?.irradiacaoMensal, formData?.location?.latitude, formData?.location?.longitude, formData?.location?.cidade, formData?.latitude, formData?.longitude, formData?.cidade, formData?.fonteDados, formData?.pvgisResponseData]);
   
 
   const handleLocationSelect = (location: { lat: number; lng: number }) => {

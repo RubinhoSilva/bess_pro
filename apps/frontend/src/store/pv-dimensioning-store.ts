@@ -349,23 +349,33 @@ export const usePVDimensioningStore = create<IProjectStore>()(
             return;
           }
           
-          // Validar dependências
-          if (!state.canGoBack && step < state.currentStep) {
-            return;
-          }
+          // CORREÇÃO: Permitir navegação para trás mesmo sem canGoBack
+          // e permitir navegação para passos já completos
+          const isGoingBack = step < state.currentStep;
+          const isStepCompleted = state.completedSteps.has(step);
           
-          // Validar passos anteriores
-          for (let i = 1; i < step; i++) {
-            if (!state.completedSteps.has(i)) {
-              return;
+          if (!isGoingBack && !isStepCompleted) {
+            // Só validar dependências se estiver avançando para passo não completado
+            for (let i = 1; i < step; i++) {
+              if (!state.completedSteps.has(i)) {
+                return;
+              }
             }
           }
           
           set((state) => {
             state.currentStep = step;
-            state.canAdvance = false;
+            // CORREÇÃO: Não resetar canAdvance quando voltando para passos já completos
+            if (!isGoingBack || !isStepCompleted) {
+              state.canAdvance = false;
+            }
             state.canGoBack = step > 1;
           });
+          
+          // CORREÇÃO: Validar passo atual após mudança para atualizar canAdvance
+          setTimeout(() => {
+            get().validateCurrentStep();
+          }, 0);
           
           // Auto-salvar se habilitado
           if (state.autoSaveEnabled && state.isDirty) {
@@ -442,7 +452,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           }
         },
         
-        updateLocationData: (data) => {          
+        updateLocationData: (data) => {
           set((state) => {
             // Se data contém um objeto location, precisamos mesclar corretamente
             if (data.location) {
@@ -592,7 +602,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           const step = state.currentStep;
           const errors: string[] = [];
           
-          
           switch (step) {
             case 1:
               if (!state.customer?.dimensioningName?.trim()) {
@@ -619,7 +628,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                   bill.consumoMensalPonta.some(c => c > 0) ||
                   bill.consumoMensalForaPonta.some(c => c > 0)
                 );
-              
               
               if (!hasGrupoB && !hasGrupoA) {
                 errors.push('É necessário adicionar pelo menos uma conta de energia (Grupo A ou B) com consumo > 0');
@@ -670,12 +678,15 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           set((state) => {
             state.validationErrors[step] = errors;
             state.isValid = errors.length === 0;
-            state.canAdvance = errors.length === 0 && step < 7;
-            state.completedSteps = errors.length === 0
-              ? new Set(Array.from(state.completedSteps).concat([step]))
-              : state.completedSteps;
+            // CORREÇÃO: Manter canAdvance true para passos já completos ao voltar
+            const isStepCompleted = state.completedSteps.has(step);
+            state.canAdvance = (errors.length === 0 && step < 7) || isStepCompleted;
+            
+            // CORREÇÃO: Adicionar passo aos completos se válido
+            if (errors.length === 0 && !state.completedSteps.has(step)) {
+              state.completedSteps = new Set(Array.from(state.completedSteps).concat([step]));
+            }
           });
-          
           
           return errors.length === 0;
         },
@@ -969,7 +980,8 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         
         autoSave: () => {
           const state = get();
-          if (state.autoSaveEnabled && state.isDirty && state.dimensioningId) {
+          // CORREÇÃO: Permitir auto-save para novos dimensionamentos (backup em localStorage)
+          if (state.autoSaveEnabled && state.isDirty) {
             // Cancelar timeout anterior se existir
             if ((state as any)._autoSaveTimeout) {
               clearTimeout((state as any)._autoSaveTimeout);
@@ -980,11 +992,18 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               (state as any)._autoSaveTimeout = setTimeout(async () => {
                 const currentState = get();
                 // Verificar novamente se ainda precisa salvar e se não está salvando
-                if (currentState.isDirty && currentState.dimensioningId && !(currentState as any)._isSaving) {
+                if (currentState.isDirty && !(currentState as any)._isSaving) {
                   try {
                     // Marcar como salvando para evitar concorrência
                     set((state) => { (state as any)._isSaving = true; });
-                    await get().saveDimensioning();
+                    
+                    if (currentState.dimensioningId) {
+                      // Salvar no backend se tiver ID
+                      await get().saveDimensioning();
+                    } else {
+                      // CORREÇÃO: Fazer backup em localStorage para novos dimensionamentos
+                      get().createBackup();
+                    }
                   } catch (error) {
                     // Erro no auto-salvamento tratado silenciosamente
                   } finally {
@@ -992,7 +1011,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                     set((state) => { (state as any)._isSaving = false; });
                   }
                 }
-              }, 2000); // 2 segundos conforme especificado no documento
+              }, 1000); // Reduzido para 1 segundo para melhor UX
             }
           }
         },
@@ -1276,15 +1295,45 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           if (backup) {
             try {
               const backupData = JSON.parse(backup);
-              set((state) => ({
-                ...state,
-                ...backupData,
-                isDirty: true
-              }));
               
-              toast.success("Estado recuperado do backup automático");
+              // CORREÇÃO: Validar estrutura do backup antes de restaurar
+              if (backupData.data && backupData.timestamp) {
+                set((state) => ({
+                  ...state,
+                  ...backupData.data,
+                  isDirty: true,
+                  lastSavedAt: new Date(backupData.timestamp)
+                }));
+                
+                // Restaurar completedSteps como Set
+                if (backupData.data.completedSteps) {
+                  set((state) => ({
+                    ...state,
+                    completedSteps: new Set(backupData.data.completedSteps)
+                  }));
+                }
+                
+                toast.success("Estado recuperado do backup automático");
+              } else {
+                // Tentar recuperação legada (sem timestamp)
+                set((state) => ({
+                  ...state,
+                  ...backupData,
+                  isDirty: true
+                }));
+                
+                if (backupData.completedSteps) {
+                  set((state) => ({
+                    ...state,
+                    completedSteps: new Set(backupData.completedSteps)
+                  }));
+                }
+                
+                toast.success("Estado recuperado do backup");
+              }
             } catch (error) {
-              // Erro ao recuperar do backup tratado silenciosamente
+              console.error('Erro ao recuperar backup:', error);
+              toast.error("Erro ao recuperar backup");
             }
           }
         },
@@ -1292,19 +1341,65 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         createBackup: () => {
           const state = get();
           const backupData = {
-            customer: state.customer,
-            energy: state.energy,
-            location: state.location,
-            system: state.system,
-            roof: state.roof,
-            budget: state.budget,
-            results: state.results,
-            currentStep: state.currentStep,
-            completedSteps: Array.from(state.completedSteps),
-            dimensioningId: state.dimensioningId
+            timestamp: Date.now(),
+            version: '1.0',
+            data: {
+              customer: state.customer,
+              energy: state.energy,
+              location: state.location,
+              system: state.system,
+              roof: state.roof,
+              budget: state.budget,
+              results: state.results,
+              currentStep: state.currentStep,
+              completedSteps: Array.from(state.completedSteps),
+              dimensioningId: state.dimensioningId,
+              canAdvance: state.canAdvance,
+              canGoBack: state.canGoBack,
+              validationErrors: state.validationErrors,
+              isValid: state.isValid
+            }
           };
           
-          localStorage.setItem('pv-dimensioning-backup', JSON.stringify(backupData));
+          try {
+            localStorage.setItem('pv-dimensioning-backup', JSON.stringify(backupData));
+            
+            // CORREÇÃO: Manter apenas os 3 backups mais recentes
+            const backupKeys = Object.keys(localStorage)
+              .filter(key => key.startsWith('pv-dimensioning-backup-'))
+              .sort();
+            
+            // Remover backups antigos se houver mais de 3
+            if (backupKeys.length > 2) {
+              backupKeys.slice(0, -2).forEach(key => {
+                localStorage.removeItem(key);
+              });
+            }
+            
+            // Criar backup com timestamp
+            const timestampKey = `pv-dimensioning-backup-${new Date().toISOString()}`;
+            localStorage.setItem(timestampKey, JSON.stringify(backupData));
+            
+          } catch (error) {
+            console.error('Erro ao criar backup:', error);
+            // Tentar limpar backups antigos e salvar novamente
+            try {
+              const backupKeys = Object.keys(localStorage)
+                .filter(key => key.startsWith('pv-dimensioning-backup-'))
+                .sort();
+              
+              // Manter apenas o mais recente
+              if (backupKeys.length > 0) {
+                backupKeys.slice(0, -1).forEach(key => {
+                  localStorage.removeItem(key);
+                });
+              }
+              
+              localStorage.setItem('pv-dimensioning-backup', JSON.stringify(backupData));
+            } catch (retryError) {
+              console.error('Erro ao criar backup após limpeza:', retryError);
+            }
+          }
         }
       })),
       {
@@ -1321,13 +1416,31 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           completedSteps: Array.from(state.completedSteps),
           dimensioningId: state.dimensioningId,
           lastSavedAt: state.lastSavedAt,
-          autoSaveEnabled: state.autoSaveEnabled
+          autoSaveEnabled: state.autoSaveEnabled,
+          canAdvance: state.canAdvance,
+          canGoBack: state.canGoBack,
+          validationErrors: state.validationErrors,
+          isValid: state.isValid
           // Propriedades internas não são incluídas na persistência
         }),
         onRehydrateStorage: () => (state) => {
-          // Desserializar completedSteps de volta para Set
-          if (state && state.completedSteps) {
-            state.completedSteps = new Set(state.completedSteps);
+          // CORREÇÃO: Melhorar desserialização e validação
+          if (state) {
+            // Desserializar completedSteps de volta para Set
+            if (state.completedSteps) {
+              state.completedSteps = new Set(state.completedSteps);
+            }
+            
+            // CORREÇÃO: Validar passo atual após reidratação
+            setTimeout(() => {
+              if (state.currentStep) {
+                // Usar a store já reidratada para validar
+                const store = usePVDimensioningStore.getState();
+                if (store && store.validateCurrentStep) {
+                  store.validateCurrentStep();
+                }
+              }
+            }, 100);
           }
         }
       }
