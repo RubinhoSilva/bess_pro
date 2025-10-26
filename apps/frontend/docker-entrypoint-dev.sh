@@ -37,6 +37,13 @@ fi
 # Return to app directory
 cd /app
 
+# Check if node_modules is populated, install if needed
+if [ ! -d "node_modules/rollup-plugin-visualizer" ]; then
+  echo "📦 Installing frontend dependencies..."
+  npm install
+  echo "✅ Dependencies installed"
+fi
+
 # Fix permissions only for specific directories (not entire node_modules)
 echo "🔧 Fixing permissions..."
 if [ -d "/app/shared/dist" ]; then

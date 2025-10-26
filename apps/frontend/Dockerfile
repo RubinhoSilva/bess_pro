@@ -7,10 +7,17 @@ RUN apk add --no-cache su-exec
 # Set working directory (aligns with volume mount)
 WORKDIR /app
 
-# Copy ONLY package files (code comes from volumes)
+# Copy package files from frontend and shared
 COPY apps/frontend/package*.json ./
+COPY packages/shared ./packages/shared/
+COPY tsconfig.base.json ./
 
-# Install dependencies (as root, no chown needed)
+# Build shared package first
+WORKDIR /app/packages/shared
+RUN npm install && npm run build:dev
+
+# Return to frontend directory and install dependencies
+WORKDIR /app
 RUN npm install
 
 # Copy entrypoint script and make executable
