@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Backend Node.js
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile.prod
+      target: production
+    container_name: bess-pro-backend
+    restart: unless-stopped
+    ports:
+      - "8010:8010"
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - uploads:/app/uploads
+      - logs:/app/logs
+    networks:
+      - bess-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Node.js
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile.prod
+      target: production
+    container_name: bess-pro-frontend
+    restart: unless-stopped
+    ports:
+      - "3003:80"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - bess-network
+    depends_on:
+      - backend
+
+  # Python Energy Calculation Service
+  energy-calculation-service:
+    build:
+      context: ./apps/energy-calculation-service
+      dockerfile: Dockerfile
+    container_name: bess-pro-energy-calculation-prod
+    restart: unless-stopped
+    ports:
+      - "8110:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - CACHE_TTL_HOURS=168
+      - MAX_CACHE_SIZE_MB=1000
+    volumes:
+      - energy_calculation_cache:/app/cache_pvgis
+    networks:
+      - bess-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  energy_calculation_cache:
+  uploads:
+  logs:
+
+networks:
+  bess-network:
+    name: bess-network
+    driver: bridge
