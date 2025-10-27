@@ -742,16 +742,42 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           set((state) => ({ ...state, isLoading: true }));
           
           try {
+            // DEBUG: Log para depurar o que está sendo salvo
+            console.log('=== DEBUG: saveDimensioning ===');
+            console.log('Estado completo do customer:', state.customer);
+            console.log('Dados do cliente a serem salvos:', state.customer.customer);
+            console.log('Nome do dimensionamento:', state.customer.dimensioningName);
+            console.log('=== FIM DEBUG SAVE ===');
+            
             const payload = {
               projectName: state.customer.dimensioningName,
               projectType: 'pv',
               leadId: state.customer.customer.id || '',
               projectData: {
-                // Dados do cliente
+                // Step 1: Dados completos do cliente (CORREÇÃO: Salvar objeto completo)
+                customerData: state.customer,
+                
+                // Step 2: Dados de energia
+                energyData: state.energy,
+                
+                // Step 3: Dados de localização
+                locationData: state.location,
+                
+                // Step 4: Dados do sistema
+                systemData: state.system,
+                
+                // Step 5: Dados do telhado
+                roofData: state.roof,
+                
+                // Step 6: Dados do orçamento
+                budgetData: state.budget,
+                
+                // Step 7: Dados dos resultados
+                resultsData: state.results,
+                
+                // Manter compatibilidade com dados existentes (campos planos)
                 customer: state.customer.customer,
                 dimensioningName: state.customer.dimensioningName,
-                
-                // Dados de energia
                 energyBills: state.energy?.energyBills,
                 energyBillsA: state.energy?.energyBillsA,
                 consumoRemotoB: state.energy?.consumoRemotoB,
@@ -759,8 +785,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 percCreditosRemotoB: state.energy?.percCreditosRemotoB,
                 percCreditosRemotoAVerde: state.energy?.percCreditosRemotoAVerde,
                 percCreditosRemotoAAzul: state.energy?.percCreditosRemotoAAzul,
-                
-                // Dados de localização
                 endereco: state.location?.location?.address,
                 cidade: state.location?.location?.cidade,
                 estado: state.location?.location?.estado,
@@ -771,8 +795,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 azimute: state.location?.azimute,
                 considerarSombreamento: state.location?.considerarSombreamento,
                 sombreamento: state.location?.sombreamento,
-                
-                // Dados do sistema
                 selectedModuleId: state.system?.selectedModuleId,
                 selectedInverters: state.system?.selectedInverters,
                 potenciaModulo: state.system?.potenciaModulo,
@@ -784,11 +806,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 perdaSujeira: state.system?.perdaSujeira,
                 perdaInversor: state.system?.perdaInversor,
                 perdaOutras: state.system?.perdaOutras,
-                
-                // Dados do telhado
                 aguasTelhado: state.roof?.aguasTelhado,
-                
-                // Dados do orçamento
                 custoEquipamento: state.budget?.custoEquipamento,
                 custoMateriais: state.budget?.custoMateriais,
                 custoMaoDeObra: state.budget?.custoMaoDeObra,
@@ -798,8 +816,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 cardInterest: state.budget?.cardInterest,
                 financingInstallments: state.budget?.financingInstallments,
                 financingInterest: state.budget?.financingInterest,
-                
-                // Dados dos resultados
                 calculationResults: state.results?.calculationResults,
               }
             };
@@ -828,8 +844,13 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         },
         
         loadDimensioning: async (id) => {
+          // FIX 2: Limpar localStorage ANTES de carregar para evitar race condition
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('pv-dimensioning-storage');
+          }
+
           set((state) => ({ ...state, isLoading: true }));
-          
+
           try {
             const response = await apiClient.projects.get(id);
             const projectData = response.data.data.projectData;
@@ -843,64 +864,66 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               // Etapa 1: Dados do cliente
               customer: {
                 dimensioningName: response.data.data.projectName,
-                customer: projectData.customer,
-                grupoTarifario: projectData.grupoTarifario || 'B',
-                subgrupoTarifario: projectData.subgrupoTarifario || '',
-                concessionaria: projectData.concessionaria || '',
-                tipoRede: projectData.tipoRede || '',
-                tensaoRede: projectData.tensaoRede || '',
-                tipoTelhado: projectData.tipoTelhado || '',
-                fatorSimultaneidade: projectData.fatorSimultaneidade || 100,
-                tarifaEnergiaB: projectData.tarifaEnergiaB || 0,
-                custoFioB: projectData.custoFioB || 0,
-                tarifaEnergiaPontaA: projectData.tarifaEnergiaPontaA || 0,
-                tarifaEnergiaForaPontaA: projectData.tarifaEnergiaForaPontaA || 0,
-                tePontaA: projectData.tePontaA || 0,
-                teForaPontaA: projectData.teForaPontaA || 0,
-                tusdPontaA: projectData.tusdPontaA || 0,
-                tusdForaPontaA: projectData.tusdForaPontaA || 0
+                customer: projectData.customerData?.customer,
+                grupoTarifario: projectData.customerData?.grupoTarifario || 'B',
+                subgrupoTarifario: projectData.customerData?.subgrupoTarifario || '',
+                concessionaria: projectData.customerData?.concessionaria || '',
+                tipoRede: projectData.customerData?.tipoRede || '',
+                tensaoRede: projectData.customerData?.tensaoRede || '',
+                tipoTelhado: projectData.customerData?.tipoTelhado || '',
+                fatorSimultaneidade: projectData.customerData?.fatorSimultaneidade || 100,
+                tarifaEnergiaB: projectData.customerData?.tarifaEnergiaB || 0,
+                custoFioB: projectData.customerData?.custoFioB || 0,
+                tarifaEnergiaPontaA: projectData.customerData?.tarifaEnergiaPontaA || 0,
+                tarifaEnergiaForaPontaA: projectData.customerData?.tarifaEnergiaForaPontaA || 0,
+                tePontaA: projectData.customerData?.tePontaA || 0,
+                teForaPontaA: projectData.customerData?.teForaPontaA || 0,
+                tusdPontaA: projectData.customerData?.tusdPontaA || 0,
+                tusdForaPontaA: projectData.customerData?.tusdForaPontaA || 0
               },
               
               // Etapa 2: Dados de energia
               energy: {
-                energyBills: projectData.energyBills,
-                energyBillsA: projectData.energyBillsA,
-                consumoRemotoB: projectData.consumoRemotoB || [],
-                hasRemotoB: projectData.hasRemotoB || false,
-                percCreditosRemotoB: projectData.percCreditosRemotoB || 0.40,
-                percCreditosRemotoAVerde: projectData.percCreditosRemotoAVerde || 0.50,
-                percCreditosRemotoAAzul: projectData.percCreditosRemotoAAzul || 0.50
+                energyBills: projectData.energyData?.energyBills || projectData.energyBills,
+                energyBillsA: projectData.energyData?.energyBillsA || projectData.energyBillsA,
+                consumoRemotoB: projectData.energyData?.consumoRemotoB || projectData.consumoRemotoB || [],
+                hasRemotoB: projectData.energyData?.hasRemotoB ?? projectData.hasRemotoB ?? false,
+                percCreditosRemotoB: projectData.energyData?.percCreditosRemotoB ?? projectData.percCreditosRemotoB ?? 0.40,
+                percCreditosRemotoAVerde: projectData.energyData?.percCreditosRemotoAVerde ?? projectData.percCreditosRemotoAVerde ?? 0.50,
+                percCreditosRemotoAAzul: projectData.energyData?.percCreditosRemotoAAzul ?? projectData.percCreditosRemotoAAzul ?? 0.50
               },
               
               // Etapa 3: Dados de localização
               location: {
-                address: projectData.endereco || projectData.address,
-                cidade: projectData.cidade,
-                estado: projectData.estado,
-                latitude: projectData.latitude,
-                longitude: projectData.longitude,
-                irradiacaoMensal: projectData.irradiacaoMensal,
-                fonteDados: projectData.fonteDados,
-                inclinacao: projectData.inclinacao,
-                azimute: projectData.azimute,
-                considerarSombreamento: projectData.considerarSombreamento,
-                sombreamento: projectData.sombreamento
+                location: {  // IMPORTANTE: Criar objeto aninhado correto para compatibilidade com ILocationData
+                  latitude: projectData.locationData?.location?.latitude ?? projectData.latitude,
+                  longitude: projectData.locationData?.location?.longitude ?? projectData.longitude,
+                  address: projectData.locationData?.location?.address ?? projectData.endereco ?? projectData.address,
+                  estado: projectData.locationData?.location?.estado ?? projectData.estado,
+                  cidade: projectData.locationData?.location?.cidade ?? projectData.cidade
+                },
+                irradiacaoMensal: projectData.locationData?.irradiacaoMensal ?? projectData.irradiacaoMensal,
+                fonteDados: projectData.locationData?.fonteDados ?? projectData.fonteDados,
+                inclinacao: projectData.locationData?.inclinacao ?? projectData.inclinacao,
+                azimute: projectData.locationData?.azimute ?? projectData.azimute,
+                considerarSombreamento: projectData.locationData?.considerarSombreamento ?? projectData.considerarSombreamento,
+                sombreamento: projectData.locationData?.sombreamento ?? projectData.sombreamento
               },
               
               // Etapa 4: Dados do sistema
               system: {
                 // Valores padrão
-                selectedModuleId: projectData.selectedModuleId || '',
-                selectedInverters: projectData.selectedInverters || [],
-                potenciaModulo: projectData.potenciaModulo || 550,
-                numeroModulos: projectData.numeroModulos || 0,
-                eficienciaSistema: projectData.eficienciaSistema || 85,
-                perdaSombreamento: projectData.perdaSombreamento || 3,
-                perdaMismatch: projectData.perdaMismatch || 2,
-                perdaCabeamento: projectData.perdaCabeamento || 2,
-                perdaSujeira: projectData.perdaSujeira || 5,
-                perdaInversor: projectData.perdaInversor || 3,
-                perdaOutras: projectData.perdaOutras || 0,
+                selectedModuleId: projectData.systemData?.selectedModuleId ?? projectData.selectedModuleId ?? '',
+                selectedInverters: projectData.systemData?.selectedInverters ?? projectData.selectedInverters ?? [],
+                potenciaModulo: projectData.systemData?.potenciaModulo ?? projectData.potenciaModulo ?? 550,
+                numeroModulos: projectData.systemData?.numeroModulos ?? projectData.numeroModulos ?? 0,
+                eficienciaSistema: projectData.systemData?.eficienciaSistema ?? projectData.eficienciaSistema ?? 85,
+                perdaSombreamento: projectData.systemData?.perdaSombreamento ?? projectData.perdaSombreamento ?? 3,
+                perdaMismatch: projectData.systemData?.perdaMismatch ?? projectData.perdaMismatch ?? 2,
+                perdaCabeamento: projectData.systemData?.perdaCabeamento ?? projectData.perdaCabeamento ?? 2,
+                perdaSujeira: projectData.systemData?.perdaSujeira ?? projectData.perdaSujeira ?? 5,
+                perdaInversor: projectData.systemData?.perdaInversor ?? projectData.perdaInversor ?? 3,
+                perdaOutras: projectData.systemData?.perdaOutras ?? projectData.perdaOutras ?? 0,
                 fabricanteModulo: '',
                 moduloSelecionado: '',
                 vidaUtil: 25,
@@ -916,25 +939,32 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               
               // Etapa 5: Dados do telhado
               roof: {
-                aguasTelhado: projectData.aguasTelhado
+                aguasTelhado: projectData.roofData?.aguasTelhado ?? projectData.aguasTelhado
               },
               
               // Etapa 6: Dados do orçamento
               budget: {
-                custoEquipamento: projectData.custoEquipamento,
-                custoMateriais: projectData.custoMateriais,
-                custoMaoDeObra: projectData.custoMaoDeObra,
-                bdi: projectData.bdi,
-                paymentMethod: projectData.paymentMethod,
-                cardInstallments: projectData.cardInstallments,
-                cardInterest: projectData.cardInterest,
-                financingInstallments: projectData.financingInstallments,
-                financingInterest: projectData.financingInterest
+                custoEquipamento: projectData.budgetData?.custoEquipamento ?? projectData.custoEquipamento,
+                custoMateriais: projectData.budgetData?.custoMateriais ?? projectData.custoMateriais,
+                custoMaoDeObra: projectData.budgetData?.custoMaoDeObra ?? projectData.custoMaoDeObra,
+                bdi: projectData.budgetData?.bdi ?? projectData.bdi,
+                paymentMethod: projectData.budgetData?.paymentMethod ?? projectData.paymentMethod,
+                cardInstallments: projectData.budgetData?.cardInstallments ?? projectData.cardInstallments,
+                cardInterest: projectData.budgetData?.cardInterest ?? projectData.cardInterest,
+                financingInstallments: projectData.budgetData?.financingInstallments ?? projectData.financingInstallments,
+                financingInterest: projectData.budgetData?.financingInterest ?? projectData.financingInterest,
+                inflacaoEnergia: projectData.budgetData?.inflacaoEnergia ?? 5.0,
+                taxaDesconto: projectData.budgetData?.taxaDesconto ?? 8.0,
+                custoOperacao: projectData.budgetData?.custoOperacao ?? 1.0,
+                valorResidual: projectData.budgetData?.valorResidual ?? 10.0,
+                percentualFinanciado: projectData.budgetData?.percentualFinanciado ?? 0,
+                taxaJuros: projectData.budgetData?.taxaJuros ?? 12.0,
+                prazoFinanciamento: projectData.budgetData?.prazoFinanciamento ?? 5
               },
               
               // Etapa 7: Dados dos resultados
               results: {
-                calculationResults: projectData.calculationResults
+                calculationResults: projectData.resultsData?.calculationResults ?? projectData.calculationResults
               },
               
               lastSavedAt: new Date(),

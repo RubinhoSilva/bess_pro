@@ -426,7 +426,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     const step = steps[navigationState.currentStep - 1];
 
     switch (step.component) {
-      case 'customer':
+      case 'customer':        
         return (
           <CustomerDataForm
             customerData={customerData}

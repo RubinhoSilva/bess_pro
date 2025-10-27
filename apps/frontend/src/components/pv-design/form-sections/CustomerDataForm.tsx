@@ -17,7 +17,7 @@ interface CustomerDataFormProps {
   isLeadLocked?: boolean; // Nova prop para bloquear edição do lead
 }
 
-const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ customerData, onFormChange, isLeadLocked = false }) => {  
+const CustomerDataForm: React.FC<CustomerDataFormProps> = ({ customerData, onFormChange, isLeadLocked = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
