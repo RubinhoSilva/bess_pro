@@ -743,11 +743,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           
           try {
             // DEBUG: Log para depurar o que está sendo salvo
-            console.log('=== DEBUG: saveDimensioning ===');
-            console.log('Estado completo do customer:', state.customer);
-            console.log('Dados do cliente a serem salvos:', state.customer.customer);
-            console.log('Nome do dimensionamento:', state.customer.dimensioningName);
-            console.log('=== FIM DEBUG SAVE ===');
             
             const payload = {
               projectName: state.customer.dimensioningName,
