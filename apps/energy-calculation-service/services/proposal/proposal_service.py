@@ -13,6 +13,7 @@ from models.proposal.requests import ProposalRequest
 from models.proposal.responses import ProposalResponse
 from .pdf_generator import ProposalPDF
 from core.config import settings
+from services.storage import s3_service
 
 logger = logging.getLogger(__name__)
 
@@ -37,15 +38,20 @@ class ProposalGenerationService:
             # 3. Gerar PDF
             pdf_path = ProposalGenerationService._generate_pdf(request, graph_files, logo_path)
             
-            # 4. Mover para storage permanente
+            # 4. Mover para storage permanente (S3 ou local)
             final_url = ProposalGenerationService._move_to_storage(pdf_path, request.nome_arquivo)
             
             # 5. Limpar arquivos temporários
             ProposalGenerationService._cleanup_temp_files(graph_files, logo_path)
             
             # 6. Obter tamanho do arquivo
-            storage_path = final_url.replace('/api/v1/proposal/download/', './storage/proposals/')
-            file_size = os.path.getsize(storage_path) / 1024 if os.path.exists(storage_path) else 0
+            if s3_service.is_available() and final_url.startswith('http'):
+                # Se for URL do S3, obter tamanho do arquivo local
+                file_size = os.path.getsize(pdf_path) / 1024 if os.path.exists(pdf_path) else 0
+            else:
+                # Se for armazenamento local
+                storage_path = final_url.replace('/api/v1/proposal/download/', './storage/proposals/')
+                file_size = os.path.getsize(storage_path) / 1024 if os.path.exists(storage_path) else 0
             
             return ProposalResponse(
                 success=True,
@@ -229,8 +235,36 @@ class ProposalGenerationService:
     
     @staticmethod
     def _move_to_storage(temp_path: str, filename: Optional[str]) -> str:
-        """Move arquivo para storage permanente"""
+        """Move arquivo para storage permanente (S3 ou local)"""
         try:
+            # Gerar nome único se não fornecido
+            if not filename:
+                filename = f"proposta_{uuid.uuid4().hex[:8]}_{date.today().strftime('%Y%m%d')}.pdf"
+            
+            # Verificar se o arquivo temporário existe
+            if not os.path.exists(temp_path):
+                raise Exception(f"Arquivo temporário não encontrado: {temp_path}")
+            
+            # Tentar upload para S3 primeiro se estiver disponível
+            if s3_service.is_available():
+                logger.info("Enviando arquivo para S3...")
+                s3_url = s3_service.upload_file(temp_path, filename)
+                
+                if s3_url:
+                    logger.info(f"Arquivo enviado com sucesso para S3: {s3_url}")
+                    # Remover arquivo temporário após upload bem-sucedido
+                    try:
+                        os.unlink(temp_path)
+                    except Exception as e:
+                        logger.warning(f"Não foi possível remover arquivo temporário: {str(e)}")
+                    
+                    return s3_url
+                else:
+                    logger.warning("Falha no upload para S3, usando armazenamento local")
+            
+            # Fallback para armazenamento local
+            logger.info("Usando armazenamento local...")
+            
             # Criar diretório de propostas se não existir
             proposals_dir = getattr(settings, 'PROPOSALS_STORAGE_DIR', "./storage/proposals")
             os.makedirs(proposals_dir, exist_ok=True)
@@ -241,15 +275,7 @@ class ProposalGenerationService:
             except Exception as chmod_error:
                 pass
             
-            # Gerar nome único
-            if not filename:
-                filename = f"proposta_{uuid.uuid4().hex[:8]}_{date.today().strftime('%Y%m%d')}.pdf"
-            
             final_path = os.path.join(proposals_dir, filename)
-            
-            # Verificar se o arquivo temporário existe
-            if not os.path.exists(temp_path):
-                raise Exception(f"Arquivo temporário não encontrado: {temp_path}")
             
             # Mover arquivo (usando shutil para funcionar entre diferentes dispositivos)
             shutil.move(temp_path, final_path)
@@ -263,7 +289,6 @@ class ProposalGenerationService:
                 os.chmod(final_path, 0o644)
             except Exception as chmod_error:
                 pass
-            
             
             # Retornar URL relativa
             return f"/api/v1/proposal/download/{filename}"

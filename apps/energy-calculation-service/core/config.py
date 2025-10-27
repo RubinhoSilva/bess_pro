@@ -132,6 +132,36 @@ class Settings(BaseSettings):
         description="Tamanho máximo do arquivo de proposta em MB"
     )
     
+    # Configurações de S3
+    USE_S3_STORAGE: bool = Field(
+        default=False,
+        description="Usar S3 para armazenamento de propostas (produção)"
+    )
+    AWS_ACCESS_KEY_ID: str = Field(
+        default="",
+        description="AWS Access Key ID para S3"
+    )
+    AWS_SECRET_ACCESS_KEY: str = Field(
+        default="",
+        description="AWS Secret Access Key para S3"
+    )
+    AWS_REGION: str = Field(
+        default="us-east-1",
+        description="Região AWS"
+    )
+    S3_BUCKET_NAME: str = Field(
+        default="",
+        description="Nome do bucket S3 para armazenar propostas"
+    )
+    S3_PROPOSALS_PREFIX: str = Field(
+        default="proposals/",
+        description="Prefixo para arquivos de propostas no S3"
+    )
+    S3_PRESIGNED_URL_EXPIRATION: int = Field(
+        default=3600,
+        description="Validade da URL pré-assinada em segundos (padrão: 1 hora)"
+    )
+    
     # Configurações de fontes
     FONTS_DIR: str = Field(
         default="/usr/share/fonts/truetype/dejavu",
