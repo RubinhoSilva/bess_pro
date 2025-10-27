@@ -189,6 +189,7 @@ import { LeadInteractionController } from '../../presentation/controllers/LeadIn
 import { ClientController } from '../../presentation/controllers/ClientController';
 import { EnergyCompanyController } from '../../presentation/controllers/EnergyCompanyController';
 import { ReportController } from '../../presentation/controllers/ReportController';
+import { ProposalController } from '../../presentation/controllers/ProposalController';
 
 import { IrradiationController } from '../../presentation/controllers/IrradiationController';
 import { TeamController } from '../../presentation/controllers/TeamController';
@@ -1033,6 +1034,11 @@ export class ContainerSetup {
       return new FinancialCalculationController(
         container.resolve(ServiceTokens.CalculateProjectFinancialsUseCase)
       );
+    });
+
+    // Controllers - Proposal
+    container.registerFactory(ServiceTokens.ProposalController, () => {
+      return new ProposalController();
     });
 
     // Middlewares

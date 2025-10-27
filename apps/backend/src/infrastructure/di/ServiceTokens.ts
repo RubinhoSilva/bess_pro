@@ -154,6 +154,7 @@ export const ServiceTokens = {
   ManufacturerController: 'ManufacturerController',
   ProposalTemplateController: 'ProposalTemplateController',
   ProposalSettingsController: 'ProposalSettingsController',
+  ProposalController: 'ProposalController',
   SolarAnalysisController: 'SolarAnalysisController',
 
   AdvancedProposalTemplateController: 'AdvancedProposalTemplateController',

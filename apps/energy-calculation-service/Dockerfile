@@ -8,6 +8,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
+    fonts-dejavu-core \
+    fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better Docker layer caching
@@ -19,9 +21,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create cache directory with proper permissions
+# Create cache and storage directories with proper permissions
 RUN mkdir -p /app/cache_pvgis && \
-    chmod 777 /app/cache_pvgis
+    mkdir -p /app/storage/proposals && \
+    chmod 777 /app/cache_pvgis && \
+    chmod 755 /app/storage && \
+    chmod 755 /app/storage/proposals
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash pvlib && \

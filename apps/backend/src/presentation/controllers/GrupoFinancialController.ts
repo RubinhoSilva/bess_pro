@@ -26,7 +26,6 @@ export class GrupoFinancialController extends BaseController {
    */
   async calculateGrupoBFinancials(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
-      console.log('[GrupoFinancialController] Iniciando cálculo financeiro Grupo B');
 
       // Validar entrada básica
       if (!req.body || Object.keys(req.body).length === 0) {
@@ -74,7 +73,6 @@ export class GrupoFinancialController extends BaseController {
       });
 
     } catch (error: any) {
-      console.error('[GrupoFinancialController] Erro no cálculo Grupo B:', error);
 
       // Tratamento específico de erros
       if (error.message.includes('não autenticado')) {
@@ -116,7 +114,6 @@ export class GrupoFinancialController extends BaseController {
    */
   async calculateGrupoAFinancials(req: AuthenticatedRequest, res: Response): Promise<Response> {
     try {
-      console.log('[GrupoFinancialController] Iniciando cálculo financeiro Grupo A');
 
       // Validar entrada básica
       if (!req.body || Object.keys(req.body).length === 0) {
@@ -145,26 +142,10 @@ export class GrupoFinancialController extends BaseController {
       const consumoPonta = Object.values(financialInput.consumoLocal?.ponta || {}).reduce((a: number, b: number) => a + b, 0);
       const consumoTotal = consumoForaPonta + consumoPonta;
       
-      console.log('[GrupoFinancialController DEBUG] Payload completo recebido Grupo A:', JSON.stringify(financialInput, null, 2));
-      
-      console.log('[GrupoFinancialController] Dados recebidos Grupo A:', {
-        investimento: financialInput.financeiros?.capex,
-        geracao_anual: geracaoAnual,
-        consumo_fora_ponta: consumoForaPonta,
-        consumo_ponta: consumoPonta,
-        consumo_total: consumoTotal,
-        tarifa_ponta: financialInput.tarifas?.ponta,
-        tarifa_fora_ponta: financialInput.tarifas?.foraPonta
-      });
 
       // Executar cálculo no serviço Python
       const result = await this.pvlibClient.calculateGrupoAFinancials(financialInput);
 
-      console.log('[GrupoFinancialController] Cálculo Grupo A concluído:', {
-        vpl: result.financeiro?.vpl,
-        tir: result.financeiro?.tir,
-        payback: result.financeiro?.paybackSimples
-      });
 
       // Retornar resultado
       return this.ok(res, {
@@ -175,7 +156,6 @@ export class GrupoFinancialController extends BaseController {
       });
 
     } catch (error: any) {
-      console.error('[GrupoFinancialController] Erro no cálculo Grupo A:', error);
 
       // Tratamento específico de erros
       if (error.message.includes('não autenticado')) {
@@ -228,7 +208,6 @@ export class GrupoFinancialController extends BaseController {
       });
 
     } catch (error: any) {
-      console.error('[GrupoFinancialController] Erro no health check:', error);
       
       return res.status(503).json({
         success: false,

@@ -51,8 +51,7 @@ class FinancialGrupoAService:
         Use try/except robusto com logs.
         """
         try:
-            # 1. Log início
-            self.logger.info(f"INÍCIO CÁLCULO GRUPO A - CAPEX: R$ {request.financeiros.capex:,.2f}")
+            # 1. Início do cálculo
             
             # 2. Converter dados mensais para arrays
             geracao = request.geracao.to_list()
@@ -124,7 +123,7 @@ class FinancialGrupoAService:
                 indicadores, sensibilidade, economia_remotos
             )
             
-            self.logger.info(f"FIM CÁLCULO GRUPO A - VPL: R$ {indicadores['vpl']:,.2f}")
+            # Fim do cálculo
             return response
             
         except Exception as e:
@@ -194,7 +193,7 @@ class FinancialGrupoAService:
         
         economia_total = sum(economia_fp) + sum(economia_p)
         
-        self.logger.debug(f"Autoconsumo simultâneo - Economia total: R$ {economia_total:.2f}")
+        # Cálculo de autoconsumo simultâneo concluído
         
         return {
             'kwh_consumidos_fp': kwh_consumidos_fp,
@@ -225,7 +224,7 @@ class FinancialGrupoAService:
         
         fator = te_ponta / te_fora_ponta
         
-        self.logger.debug(f"Fator de equivalência: {fator:.4f} (TE ponta: {te_ponta}, TE FP: {te_fora_ponta})")
+        # Cálculo do fator de equivalência concluído
         
         return fator
     
@@ -311,7 +310,7 @@ class FinancialGrupoAService:
         economia_total_fp = sum(economia_fp)
         economia_total_p = sum(economia_p)
         
-        self.logger.debug(f"Abatimento Grupo A - Economia FP: R$ {economia_total_fp:.2f}, P: R$ {economia_total_p:.2f}")
+        # Cálculo de abatimento Grupo A concluído
         
         return {
             'kwh_abatido_fp': kwh_abatido_fp,
@@ -514,7 +513,7 @@ class FinancialGrupoAService:
             vpl_estimado = base_vpl * mult
             vpl_matrix.append(vpl_estimado)
         
-        self.logger.debug(f"Análise de sensibilidade - {len(multiplicadores)} pontos calculados")
+        # Análise de sensibilidade concluída
         
         return {
             'multiplicadores_tarifa': multiplicadores,
