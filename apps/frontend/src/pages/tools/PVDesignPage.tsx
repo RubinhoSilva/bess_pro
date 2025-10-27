@@ -41,11 +41,13 @@ function PVDesignPageContent() {
   // Carregar dados do projeto quando houver projectId na URL
   useEffect(() => {
     const projectId = searchParams.get('projectId');
-    
+
     if (projectId) {
       loadProjectData(projectId);
     } else {
-      // Limpa o dimensionamento quando acessar diretamente sem parâmetros
+      // FIX 3: Limpar TUDO quando iniciar novo projeto sem projectId
+      localStorage.removeItem('pv-dimensioning-storage');
+      localStorage.removeItem('pv-dimensioning-backup');
       resetWizard();
     }
   }, [searchParams, resetWizard]);
@@ -129,12 +131,14 @@ function PVDesignPageContent() {
   const loadProjectData = async (projectId: string) => {
     setIsLoading(true);
     try {
+      // FIX 1: Limpar localStorage ANTES de carregar para evitar race condition
+      localStorage.removeItem('pv-dimensioning-storage');
+      localStorage.removeItem('pv-dimensioning-backup');
+
       const response = await apiClient.projects.get(projectId);
       const project = response.data?.data || response.data;
-      
+
       if (project.projectData?.dimensioningName) {
-        // CORREÇÃO: Limpar backup local antes de carregar novo projeto
-        localStorage.removeItem('pv-dimensioning-backup');
         
         // Atualiza a store com os dados carregados
         await usePVDimensioningStore.getState().loadDimensioning(projectId);
