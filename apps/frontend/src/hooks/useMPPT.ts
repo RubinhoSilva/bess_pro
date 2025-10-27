@@ -71,10 +71,8 @@ export function useMPPTCalculation(params: MPPTCalculationParams) {
 
 export interface MPPTLimitsByInverter {
   [inverterId: string]: {
-    modulosPorMppt: number; // Mantido para compatibilidade, mas usar modulosPorString
-    modulosPorString: number; // ✅ Valor recomendado de configuracao_recomendada
-    modulosTotal: number;
-    limitacaoPrincipal: string;
+    modulosPorMppt: number;
+    modulosPorString: number;
     isLoading: boolean;
     error: string | null;
   };
@@ -152,9 +150,7 @@ export function useMultipleMPPTCalculations(
     const query = queries[index];
     results[inverter.id] = {
       modulosPorMppt: query.data?.modulos_por_mppt || 0,
-      modulosPorString: query.data?.configuracao_recomendada?.modulos_por_string || 0,
-      modulosTotal: query.data?.modulos_total_sistema || 0,
-      limitacaoPrincipal: query.data?.limitacao_principal || '',
+      modulosPorString: query.data?.modulos_por_string || 0,
       isLoading: query.isLoading,
       error: query.error ? String(query.error) : null
     };
