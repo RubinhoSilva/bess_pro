@@ -14,6 +14,12 @@ async function seedAdmin() {
 
     // Criar team para o admin
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@gmail.com';
+    
+    // Verificar se a conexão está estabelecida
+    if (!mongoose.connection.db) {
+      throw new Error('Database connection not established');
+    }
+    
     const User = mongoose.connection.db.collection('users');
     const Team = mongoose.connection.db.collection('teams');
     
@@ -76,3 +82,4 @@ if (require.main === module) {
 }
 
 export { seedAdmin };
+
