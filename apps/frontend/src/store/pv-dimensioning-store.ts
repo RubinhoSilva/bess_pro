@@ -349,23 +349,33 @@ export const usePVDimensioningStore = create<IProjectStore>()(
             return;
           }
           
-          // Validar dependências
-          if (!state.canGoBack && step < state.currentStep) {
-            return;
-          }
+          // CORREÇÃO: Permitir navegação para trás mesmo sem canGoBack
+          // e permitir navegação para passos já completos
+          const isGoingBack = step < state.currentStep;
+          const isStepCompleted = state.completedSteps.has(step);
           
-          // Validar passos anteriores
-          for (let i = 1; i < step; i++) {
-            if (!state.completedSteps.has(i)) {
-              return;
+          if (!isGoingBack && !isStepCompleted) {
+            // Só validar dependências se estiver avançando para passo não completado
+            for (let i = 1; i < step; i++) {
+              if (!state.completedSteps.has(i)) {
+                return;
+              }
             }
           }
           
           set((state) => {
             state.currentStep = step;
-            state.canAdvance = false;
+            // CORREÇÃO: Não resetar canAdvance quando voltando para passos já completos
+            if (!isGoingBack || !isStepCompleted) {
+              state.canAdvance = false;
+            }
             state.canGoBack = step > 1;
           });
+          
+          // CORREÇÃO: Validar passo atual após mudança para atualizar canAdvance
+          setTimeout(() => {
+            get().validateCurrentStep();
+          }, 0);
           
           // Auto-salvar se habilitado
           if (state.autoSaveEnabled && state.isDirty) {
@@ -442,7 +452,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           }
         },
         
-        updateLocationData: (data) => {          
+        updateLocationData: (data) => {
           set((state) => {
             // Se data contém um objeto location, precisamos mesclar corretamente
             if (data.location) {
@@ -592,7 +602,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           const step = state.currentStep;
           const errors: string[] = [];
           
-          
           switch (step) {
             case 1:
               if (!state.customer?.dimensioningName?.trim()) {
@@ -619,7 +628,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                   bill.consumoMensalPonta.some(c => c > 0) ||
                   bill.consumoMensalForaPonta.some(c => c > 0)
                 );
-              
               
               if (!hasGrupoB && !hasGrupoA) {
                 errors.push('É necessário adicionar pelo menos uma conta de energia (Grupo A ou B) com consumo > 0');
@@ -670,12 +678,15 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           set((state) => {
             state.validationErrors[step] = errors;
             state.isValid = errors.length === 0;
-            state.canAdvance = errors.length === 0 && step < 7;
-            state.completedSteps = errors.length === 0
-              ? new Set(Array.from(state.completedSteps).concat([step]))
-              : state.completedSteps;
+            // CORREÇÃO: Manter canAdvance true para passos já completos ao voltar
+            const isStepCompleted = state.completedSteps.has(step);
+            state.canAdvance = (errors.length === 0 && step < 7) || isStepCompleted;
+            
+            // CORREÇÃO: Adicionar passo aos completos se válido
+            if (errors.length === 0 && !state.completedSteps.has(step)) {
+              state.completedSteps = new Set(Array.from(state.completedSteps).concat([step]));
+            }
           });
-          
           
           return errors.length === 0;
         },
@@ -731,16 +742,37 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           set((state) => ({ ...state, isLoading: true }));
           
           try {
+            // DEBUG: Log para depurar o que está sendo salvo
+            
             const payload = {
               projectName: state.customer.dimensioningName,
               projectType: 'pv',
               leadId: state.customer.customer.id || '',
               projectData: {
-                // Dados do cliente
+                // Step 1: Dados completos do cliente (CORREÇÃO: Salvar objeto completo)
+                customerData: state.customer,
+                
+                // Step 2: Dados de energia
+                energyData: state.energy,
+                
+                // Step 3: Dados de localização
+                locationData: state.location,
+                
+                // Step 4: Dados do sistema
+                systemData: state.system,
+                
+                // Step 5: Dados do telhado
+                roofData: state.roof,
+                
+                // Step 6: Dados do orçamento
+                budgetData: state.budget,
+                
+                // Step 7: Dados dos resultados
+                resultsData: state.results,
+                
+                // Manter compatibilidade com dados existentes (campos planos)
                 customer: state.customer.customer,
                 dimensioningName: state.customer.dimensioningName,
-                
-                // Dados de energia
                 energyBills: state.energy?.energyBills,
                 energyBillsA: state.energy?.energyBillsA,
                 consumoRemotoB: state.energy?.consumoRemotoB,
@@ -748,8 +780,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 percCreditosRemotoB: state.energy?.percCreditosRemotoB,
                 percCreditosRemotoAVerde: state.energy?.percCreditosRemotoAVerde,
                 percCreditosRemotoAAzul: state.energy?.percCreditosRemotoAAzul,
-                
-                // Dados de localização
                 endereco: state.location?.location?.address,
                 cidade: state.location?.location?.cidade,
                 estado: state.location?.location?.estado,
@@ -760,8 +790,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 azimute: state.location?.azimute,
                 considerarSombreamento: state.location?.considerarSombreamento,
                 sombreamento: state.location?.sombreamento,
-                
-                // Dados do sistema
                 selectedModuleId: state.system?.selectedModuleId,
                 selectedInverters: state.system?.selectedInverters,
                 potenciaModulo: state.system?.potenciaModulo,
@@ -773,11 +801,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 perdaSujeira: state.system?.perdaSujeira,
                 perdaInversor: state.system?.perdaInversor,
                 perdaOutras: state.system?.perdaOutras,
-                
-                // Dados do telhado
                 aguasTelhado: state.roof?.aguasTelhado,
-                
-                // Dados do orçamento
                 custoEquipamento: state.budget?.custoEquipamento,
                 custoMateriais: state.budget?.custoMateriais,
                 custoMaoDeObra: state.budget?.custoMaoDeObra,
@@ -787,8 +811,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 cardInterest: state.budget?.cardInterest,
                 financingInstallments: state.budget?.financingInstallments,
                 financingInterest: state.budget?.financingInterest,
-                
-                // Dados dos resultados
                 calculationResults: state.results?.calculationResults,
               }
             };
@@ -817,8 +839,13 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         },
         
         loadDimensioning: async (id) => {
+          // FIX 2: Limpar localStorage ANTES de carregar para evitar race condition
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('pv-dimensioning-storage');
+          }
+
           set((state) => ({ ...state, isLoading: true }));
-          
+
           try {
             const response = await apiClient.projects.get(id);
             const projectData = response.data.data.projectData;
@@ -832,64 +859,66 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               // Etapa 1: Dados do cliente
               customer: {
                 dimensioningName: response.data.data.projectName,
-                customer: projectData.customer,
-                grupoTarifario: projectData.grupoTarifario || 'B',
-                subgrupoTarifario: projectData.subgrupoTarifario || '',
-                concessionaria: projectData.concessionaria || '',
-                tipoRede: projectData.tipoRede || '',
-                tensaoRede: projectData.tensaoRede || '',
-                tipoTelhado: projectData.tipoTelhado || '',
-                fatorSimultaneidade: projectData.fatorSimultaneidade || 100,
-                tarifaEnergiaB: projectData.tarifaEnergiaB || 0,
-                custoFioB: projectData.custoFioB || 0,
-                tarifaEnergiaPontaA: projectData.tarifaEnergiaPontaA || 0,
-                tarifaEnergiaForaPontaA: projectData.tarifaEnergiaForaPontaA || 0,
-                tePontaA: projectData.tePontaA || 0,
-                teForaPontaA: projectData.teForaPontaA || 0,
-                tusdPontaA: projectData.tusdPontaA || 0,
-                tusdForaPontaA: projectData.tusdForaPontaA || 0
+                customer: projectData.customerData?.customer,
+                grupoTarifario: projectData.customerData?.grupoTarifario || 'B',
+                subgrupoTarifario: projectData.customerData?.subgrupoTarifario || '',
+                concessionaria: projectData.customerData?.concessionaria || '',
+                tipoRede: projectData.customerData?.tipoRede || '',
+                tensaoRede: projectData.customerData?.tensaoRede || '',
+                tipoTelhado: projectData.customerData?.tipoTelhado || '',
+                fatorSimultaneidade: projectData.customerData?.fatorSimultaneidade || 100,
+                tarifaEnergiaB: projectData.customerData?.tarifaEnergiaB || 0,
+                custoFioB: projectData.customerData?.custoFioB || 0,
+                tarifaEnergiaPontaA: projectData.customerData?.tarifaEnergiaPontaA || 0,
+                tarifaEnergiaForaPontaA: projectData.customerData?.tarifaEnergiaForaPontaA || 0,
+                tePontaA: projectData.customerData?.tePontaA || 0,
+                teForaPontaA: projectData.customerData?.teForaPontaA || 0,
+                tusdPontaA: projectData.customerData?.tusdPontaA || 0,
+                tusdForaPontaA: projectData.customerData?.tusdForaPontaA || 0
               },
               
               // Etapa 2: Dados de energia
               energy: {
-                energyBills: projectData.energyBills,
-                energyBillsA: projectData.energyBillsA,
-                consumoRemotoB: projectData.consumoRemotoB || [],
-                hasRemotoB: projectData.hasRemotoB || false,
-                percCreditosRemotoB: projectData.percCreditosRemotoB || 0.40,
-                percCreditosRemotoAVerde: projectData.percCreditosRemotoAVerde || 0.50,
-                percCreditosRemotoAAzul: projectData.percCreditosRemotoAAzul || 0.50
+                energyBills: projectData.energyData?.energyBills || projectData.energyBills,
+                energyBillsA: projectData.energyData?.energyBillsA || projectData.energyBillsA,
+                consumoRemotoB: projectData.energyData?.consumoRemotoB || projectData.consumoRemotoB || [],
+                hasRemotoB: projectData.energyData?.hasRemotoB ?? projectData.hasRemotoB ?? false,
+                percCreditosRemotoB: projectData.energyData?.percCreditosRemotoB ?? projectData.percCreditosRemotoB ?? 0.40,
+                percCreditosRemotoAVerde: projectData.energyData?.percCreditosRemotoAVerde ?? projectData.percCreditosRemotoAVerde ?? 0.50,
+                percCreditosRemotoAAzul: projectData.energyData?.percCreditosRemotoAAzul ?? projectData.percCreditosRemotoAAzul ?? 0.50
               },
               
               // Etapa 3: Dados de localização
               location: {
-                address: projectData.endereco || projectData.address,
-                cidade: projectData.cidade,
-                estado: projectData.estado,
-                latitude: projectData.latitude,
-                longitude: projectData.longitude,
-                irradiacaoMensal: projectData.irradiacaoMensal,
-                fonteDados: projectData.fonteDados,
-                inclinacao: projectData.inclinacao,
-                azimute: projectData.azimute,
-                considerarSombreamento: projectData.considerarSombreamento,
-                sombreamento: projectData.sombreamento
+                location: {  // IMPORTANTE: Criar objeto aninhado correto para compatibilidade com ILocationData
+                  latitude: projectData.locationData?.location?.latitude ?? projectData.latitude,
+                  longitude: projectData.locationData?.location?.longitude ?? projectData.longitude,
+                  address: projectData.locationData?.location?.address ?? projectData.endereco ?? projectData.address,
+                  estado: projectData.locationData?.location?.estado ?? projectData.estado,
+                  cidade: projectData.locationData?.location?.cidade ?? projectData.cidade
+                },
+                irradiacaoMensal: projectData.locationData?.irradiacaoMensal ?? projectData.irradiacaoMensal,
+                fonteDados: projectData.locationData?.fonteDados ?? projectData.fonteDados,
+                inclinacao: projectData.locationData?.inclinacao ?? projectData.inclinacao,
+                azimute: projectData.locationData?.azimute ?? projectData.azimute,
+                considerarSombreamento: projectData.locationData?.considerarSombreamento ?? projectData.considerarSombreamento,
+                sombreamento: projectData.locationData?.sombreamento ?? projectData.sombreamento
               },
               
               // Etapa 4: Dados do sistema
               system: {
                 // Valores padrão
-                selectedModuleId: projectData.selectedModuleId || '',
-                selectedInverters: projectData.selectedInverters || [],
-                potenciaModulo: projectData.potenciaModulo || 550,
-                numeroModulos: projectData.numeroModulos || 0,
-                eficienciaSistema: projectData.eficienciaSistema || 85,
-                perdaSombreamento: projectData.perdaSombreamento || 3,
-                perdaMismatch: projectData.perdaMismatch || 2,
-                perdaCabeamento: projectData.perdaCabeamento || 2,
-                perdaSujeira: projectData.perdaSujeira || 5,
-                perdaInversor: projectData.perdaInversor || 3,
-                perdaOutras: projectData.perdaOutras || 0,
+                selectedModuleId: projectData.systemData?.selectedModuleId ?? projectData.selectedModuleId ?? '',
+                selectedInverters: projectData.systemData?.selectedInverters ?? projectData.selectedInverters ?? [],
+                potenciaModulo: projectData.systemData?.potenciaModulo ?? projectData.potenciaModulo ?? 550,
+                numeroModulos: projectData.systemData?.numeroModulos ?? projectData.numeroModulos ?? 0,
+                eficienciaSistema: projectData.systemData?.eficienciaSistema ?? projectData.eficienciaSistema ?? 85,
+                perdaSombreamento: projectData.systemData?.perdaSombreamento ?? projectData.perdaSombreamento ?? 3,
+                perdaMismatch: projectData.systemData?.perdaMismatch ?? projectData.perdaMismatch ?? 2,
+                perdaCabeamento: projectData.systemData?.perdaCabeamento ?? projectData.perdaCabeamento ?? 2,
+                perdaSujeira: projectData.systemData?.perdaSujeira ?? projectData.perdaSujeira ?? 5,
+                perdaInversor: projectData.systemData?.perdaInversor ?? projectData.perdaInversor ?? 3,
+                perdaOutras: projectData.systemData?.perdaOutras ?? projectData.perdaOutras ?? 0,
                 fabricanteModulo: '',
                 moduloSelecionado: '',
                 vidaUtil: 25,
@@ -905,25 +934,32 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               
               // Etapa 5: Dados do telhado
               roof: {
-                aguasTelhado: projectData.aguasTelhado
+                aguasTelhado: projectData.roofData?.aguasTelhado ?? projectData.aguasTelhado
               },
               
               // Etapa 6: Dados do orçamento
               budget: {
-                custoEquipamento: projectData.custoEquipamento,
-                custoMateriais: projectData.custoMateriais,
-                custoMaoDeObra: projectData.custoMaoDeObra,
-                bdi: projectData.bdi,
-                paymentMethod: projectData.paymentMethod,
-                cardInstallments: projectData.cardInstallments,
-                cardInterest: projectData.cardInterest,
-                financingInstallments: projectData.financingInstallments,
-                financingInterest: projectData.financingInterest
+                custoEquipamento: projectData.budgetData?.custoEquipamento ?? projectData.custoEquipamento,
+                custoMateriais: projectData.budgetData?.custoMateriais ?? projectData.custoMateriais,
+                custoMaoDeObra: projectData.budgetData?.custoMaoDeObra ?? projectData.custoMaoDeObra,
+                bdi: projectData.budgetData?.bdi ?? projectData.bdi,
+                paymentMethod: projectData.budgetData?.paymentMethod ?? projectData.paymentMethod,
+                cardInstallments: projectData.budgetData?.cardInstallments ?? projectData.cardInstallments,
+                cardInterest: projectData.budgetData?.cardInterest ?? projectData.cardInterest,
+                financingInstallments: projectData.budgetData?.financingInstallments ?? projectData.financingInstallments,
+                financingInterest: projectData.budgetData?.financingInterest ?? projectData.financingInterest,
+                inflacaoEnergia: projectData.budgetData?.inflacaoEnergia ?? 5.0,
+                taxaDesconto: projectData.budgetData?.taxaDesconto ?? 8.0,
+                custoOperacao: projectData.budgetData?.custoOperacao ?? 1.0,
+                valorResidual: projectData.budgetData?.valorResidual ?? 10.0,
+                percentualFinanciado: projectData.budgetData?.percentualFinanciado ?? 0,
+                taxaJuros: projectData.budgetData?.taxaJuros ?? 12.0,
+                prazoFinanciamento: projectData.budgetData?.prazoFinanciamento ?? 5
               },
               
               // Etapa 7: Dados dos resultados
               results: {
-                calculationResults: projectData.calculationResults
+                calculationResults: projectData.resultsData?.calculationResults ?? projectData.calculationResults
               },
               
               lastSavedAt: new Date(),
@@ -969,7 +1005,8 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         
         autoSave: () => {
           const state = get();
-          if (state.autoSaveEnabled && state.isDirty && state.dimensioningId) {
+          // CORREÇÃO: Permitir auto-save para novos dimensionamentos (backup em localStorage)
+          if (state.autoSaveEnabled && state.isDirty) {
             // Cancelar timeout anterior se existir
             if ((state as any)._autoSaveTimeout) {
               clearTimeout((state as any)._autoSaveTimeout);
@@ -980,11 +1017,18 @@ export const usePVDimensioningStore = create<IProjectStore>()(
               (state as any)._autoSaveTimeout = setTimeout(async () => {
                 const currentState = get();
                 // Verificar novamente se ainda precisa salvar e se não está salvando
-                if (currentState.isDirty && currentState.dimensioningId && !(currentState as any)._isSaving) {
+                if (currentState.isDirty && !(currentState as any)._isSaving) {
                   try {
                     // Marcar como salvando para evitar concorrência
                     set((state) => { (state as any)._isSaving = true; });
-                    await get().saveDimensioning();
+                    
+                    if (currentState.dimensioningId) {
+                      // Salvar no backend se tiver ID
+                      await get().saveDimensioning();
+                    } else {
+                      // CORREÇÃO: Fazer backup em localStorage para novos dimensionamentos
+                      get().createBackup();
+                    }
                   } catch (error) {
                     // Erro no auto-salvamento tratado silenciosamente
                   } finally {
@@ -992,7 +1036,7 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                     set((state) => { (state as any)._isSaving = false; });
                   }
                 }
-              }, 2000); // 2 segundos conforme especificado no documento
+              }, 1000); // Reduzido para 1 segundo para melhor UX
             }
           }
         },
@@ -1035,7 +1079,6 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                   consumoRemoto[i] += bill.consumoMensal[i] || 0;
                 }
               });
-              
               
               // Armazenar dados remotos para uso no cálculo financeiro
               set((state) => ({
@@ -1277,15 +1320,45 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           if (backup) {
             try {
               const backupData = JSON.parse(backup);
-              set((state) => ({
-                ...state,
-                ...backupData,
-                isDirty: true
-              }));
               
-              toast.success("Estado recuperado do backup automático");
+              // CORREÇÃO: Validar estrutura do backup antes de restaurar
+              if (backupData.data && backupData.timestamp) {
+                set((state) => ({
+                  ...state,
+                  ...backupData.data,
+                  isDirty: true,
+                  lastSavedAt: new Date(backupData.timestamp)
+                }));
+                
+                // Restaurar completedSteps como Set
+                if (backupData.data.completedSteps) {
+                  set((state) => ({
+                    ...state,
+                    completedSteps: new Set(backupData.data.completedSteps)
+                  }));
+                }
+                
+                toast.success("Estado recuperado do backup automático");
+              } else {
+                // Tentar recuperação legada (sem timestamp)
+                set((state) => ({
+                  ...state,
+                  ...backupData,
+                  isDirty: true
+                }));
+                
+                if (backupData.completedSteps) {
+                  set((state) => ({
+                    ...state,
+                    completedSteps: new Set(backupData.completedSteps)
+                  }));
+                }
+                
+                toast.success("Estado recuperado do backup");
+              }
             } catch (error) {
-              // Erro ao recuperar do backup tratado silenciosamente
+              console.error('Erro ao recuperar backup:', error);
+              toast.error("Erro ao recuperar backup");
             }
           }
         },
@@ -1293,19 +1366,65 @@ export const usePVDimensioningStore = create<IProjectStore>()(
         createBackup: () => {
           const state = get();
           const backupData = {
-            customer: state.customer,
-            energy: state.energy,
-            location: state.location,
-            system: state.system,
-            roof: state.roof,
-            budget: state.budget,
-            results: state.results,
-            currentStep: state.currentStep,
-            completedSteps: Array.from(state.completedSteps),
-            dimensioningId: state.dimensioningId
+            timestamp: Date.now(),
+            version: '1.0',
+            data: {
+              customer: state.customer,
+              energy: state.energy,
+              location: state.location,
+              system: state.system,
+              roof: state.roof,
+              budget: state.budget,
+              results: state.results,
+              currentStep: state.currentStep,
+              completedSteps: Array.from(state.completedSteps),
+              dimensioningId: state.dimensioningId,
+              canAdvance: state.canAdvance,
+              canGoBack: state.canGoBack,
+              validationErrors: state.validationErrors,
+              isValid: state.isValid
+            }
           };
           
-          localStorage.setItem('pv-dimensioning-backup', JSON.stringify(backupData));
+          try {
+            localStorage.setItem('pv-dimensioning-backup', JSON.stringify(backupData));
+            
+            // CORREÇÃO: Manter apenas os 3 backups mais recentes
+            const backupKeys = Object.keys(localStorage)
+              .filter(key => key.startsWith('pv-dimensioning-backup-'))
+              .sort();
+            
+            // Remover backups antigos se houver mais de 3
+            if (backupKeys.length > 2) {
+              backupKeys.slice(0, -2).forEach(key => {
+                localStorage.removeItem(key);
+              });
+            }
+            
+            // Criar backup com timestamp
+            const timestampKey = `pv-dimensioning-backup-${new Date().toISOString()}`;
+            localStorage.setItem(timestampKey, JSON.stringify(backupData));
+            
+          } catch (error) {
+            console.error('Erro ao criar backup:', error);
+            // Tentar limpar backups antigos e salvar novamente
+            try {
+              const backupKeys = Object.keys(localStorage)
+                .filter(key => key.startsWith('pv-dimensioning-backup-'))
+                .sort();
+              
+              // Manter apenas o mais recente
+              if (backupKeys.length > 0) {
+                backupKeys.slice(0, -1).forEach(key => {
+                  localStorage.removeItem(key);
+                });
+              }
+              
+              localStorage.setItem('pv-dimensioning-backup', JSON.stringify(backupData));
+            } catch (retryError) {
+              console.error('Erro ao criar backup após limpeza:', retryError);
+            }
+          }
         }
       })),
       {
@@ -1322,13 +1441,31 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           completedSteps: Array.from(state.completedSteps),
           dimensioningId: state.dimensioningId,
           lastSavedAt: state.lastSavedAt,
-          autoSaveEnabled: state.autoSaveEnabled
+          autoSaveEnabled: state.autoSaveEnabled,
+          canAdvance: state.canAdvance,
+          canGoBack: state.canGoBack,
+          validationErrors: state.validationErrors,
+          isValid: state.isValid
           // Propriedades internas não são incluídas na persistência
         }),
         onRehydrateStorage: () => (state) => {
-          // Desserializar completedSteps de volta para Set
-          if (state && state.completedSteps) {
-            state.completedSteps = new Set(state.completedSteps);
+          // CORREÇÃO: Melhorar desserialização e validação
+          if (state) {
+            // Desserializar completedSteps de volta para Set
+            if (state.completedSteps) {
+              state.completedSteps = new Set(state.completedSteps);
+            }
+            
+            // CORREÇÃO: Validar passo atual após reidratação
+            setTimeout(() => {
+              if (state.currentStep) {
+                // Usar a store já reidratada para validar
+                const store = usePVDimensioningStore.getState();
+                if (store && store.validateCurrentStep) {
+                  store.validateCurrentStep();
+                }
+              }
+            }, 100);
           }
         }
       }

@@ -9,8 +9,20 @@ interface SystemSummaryProps {
     numeroModulos: number;
     areaEstimada: number;
     geracaoEstimadaAnual: number;
-    selectedInverters?: any[];
-    selectedModule?: any;
+    selectedInverters?: Array<{
+      fabricante: string;
+      modelo: string;
+      potenciaNominal: number;
+      quantity: number;
+    }>;
+    selectedModule?: {
+      id: string;
+      model: string;
+      manufacturer: {
+        name: string;
+      };
+      nominalPower: number;
+    };
     consumoTotalAnual?: number;
     cobertura?: number;
   };
@@ -77,9 +89,9 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ results }) => {
                     Módulo Fotovoltaico
                   </h4>
                   <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                    <p><span className="font-medium">Fabricante:</span> {selectedModule.fabricante}</p>
-                    <p><span className="font-medium">Modelo:</span> {selectedModule.modelo}</p>
-                    <p><span className="font-medium">Potência:</span> {selectedModule.potenciaNominal}W</p>
+                    <p><span className="font-medium">Fabricante:</span> {selectedModule?.manufacturer?.name || 'N/A'}</p>
+                    <p><span className="font-medium">Modelo:</span> {selectedModule?.model || 'N/A'}</p>
+                    <p><span className="font-medium">Potência:</span> {selectedModule?.nominalPower || 0}W</p>
                     <p><span className="font-medium">Quantidade:</span> {numeroModulos} unidades</p>
                   </div>
                 </div>
@@ -93,11 +105,11 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ results }) => {
                     Inversores ({selectedInverters.length})
                   </h4>
                   <div className="space-y-3">
-                    {selectedInverters.map((inverter, index) => (
+                    {selectedInverters?.map((inverter, index) => (
                       <div key={index} className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                        <p><span className="font-medium">Fabricante:</span> {inverter.fabricante}</p>
-                        <p><span className="font-medium">Modelo:</span> {inverter.modelo}</p>
-                        <p><span className="font-medium">Potência:</span> {inverter.potenciaNominal}W</p>
+                        <p><span className="font-medium">Fabricante:</span> {inverter.fabricante || 'N/A'}</p>
+                        <p><span className="font-medium">Modelo:</span> {inverter.modelo || 'N/A'}</p>
+                        <p><span className="font-medium">Potência:</span> {inverter.potenciaNominal || 0}W</p>
                         <p><span className="font-medium">Quantidade:</span> {inverter.quantity || 1} unidade(s)</p>
                         {index < selectedInverters.length - 1 && (
                           <div className="border-t border-gray-300 dark:border-gray-600 pt-2 mt-2"></div>

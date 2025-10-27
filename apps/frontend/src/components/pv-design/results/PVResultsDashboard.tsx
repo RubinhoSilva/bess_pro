@@ -9,6 +9,7 @@ import SystemSummary from './SystemSummary';
 import { GenerationChart } from './GenerationChart';
 import { PaybackChart } from './PaybackChart';
 import { EconomyProjectionChart } from './EconomyProjectionChart';
+import { useQuery } from '@tanstack/react-query';
 
 import { AnnualSavingsChart } from './AnnualSavingsChart';
 import { AdvancedSolarAnalysis } from './AdvancedSolarAnalysis';
@@ -20,6 +21,7 @@ import { GrupoConfigAdapter } from '@/types/adapters/grupo-config-adapter';
 import { GrupoBAdapter, IGrupoBData } from '@/types/adapters/grupo-b-adapter';
 import { GrupoAAdapter, IGrupoAData } from '@/types/adapters/grupo-a-adapter';
 import { GrupoTarifarioDetector, GrupoTarifarioRender } from '@/utils/grupo-tarifario-detector';
+import { moduleService } from '@/services/ModuleService';
 import ProposalGenerator from './ProposalGenerator';
 
 // Store imports
@@ -202,8 +204,16 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
   const roofData = usePVDimensioningStore(selectRoofData);
   const budgetData = usePVDimensioningStore(selectBudgetData);
   
+  // Obter dados dos módulos solares
+  const { data: solarModulesData } = useQuery({
+    queryKey: ['modules'],
+    queryFn: () => moduleService.getModules(),
+    staleTime: 10 * 60 * 1000,
+  });
+  const solarModules = solarModulesData?.modules || [];
+  
   // Obter dados agregados das águas do telhado
-  const systemSummaryData = usePVDimensioningStore(selectSystemSummaryData);
+  const systemSummaryData = usePVDimensioningStore(selectSystemSummaryData(solarModules));
   const aggregatedRoofData = usePVDimensioningStore(selectAggregatedRoofData);
   
   const [currentDimensioning] = useState<any>({});

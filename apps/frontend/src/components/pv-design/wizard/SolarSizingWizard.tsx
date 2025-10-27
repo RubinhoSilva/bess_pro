@@ -138,80 +138,87 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     isSaving
   } = useDimensioningOperations(metadataState.dimensioningId || undefined);
   
-  // Combinar dados para compatibilidade com código existente
-  const currentDimensioning = useMemo(() => ({
-    dimensioningName: customerData?.dimensioningName || '',
-    customer: customerData?.customer,
-    // Campos do CustomerDataForm que agora estão no customerData
-    grupoTarifario: customerData?.grupoTarifario || 'B',
-    subgrupoTarifario: customerData?.subgrupoTarifario || '',
-    concessionaria: customerData?.concessionaria || '',
-    tipoRede: customerData?.tipoRede || '',
-    tensaoRede: customerData?.tensaoRede || '',
-    tipoTelhado: customerData?.tipoTelhado || '',
-    fatorSimultaneidade: customerData?.fatorSimultaneidade || 100,
-    tarifaEnergiaB: customerData?.tarifaEnergiaB || 0,
-    custoFioB: customerData?.custoFioB || 0,
-    tarifaEnergiaPontaA: customerData?.tarifaEnergiaPontaA || 0,
-    tarifaEnergiaForaPontaA: customerData?.tarifaEnergiaForaPontaA || 0,
-    tePontaA: customerData?.tePontaA || 0,
-    teForaPontaA: customerData?.teForaPontaA || 0,
-    // Dados de localização
-    irradiacaoMensal: locationData?.irradiacaoMensal || Array(12).fill(5.0),
-    latitude: locationData?.location?.latitude,
-    longitude: locationData?.location?.longitude,
-    endereco: locationData?.location?.address,
-    cidade: locationData?.location?.cidade,
-    estado: locationData?.location?.estado,
-    fonteDados: locationData?.fonteDados,
-    inclinacao: locationData?.inclinacao,
-    orientacao: locationData?.azimute,
-    considerarSombreamento: locationData?.considerarSombreamento,
-    sombreamento: locationData?.sombreamento,
-    // Dados do sistema
-    potenciaModulo: systemData?.potenciaModulo || 550,
-    eficienciaSistema: systemData?.eficienciaSistema || 85,
-    numeroModulos: systemData?.numeroModulos || 0,
-    selectedModuleId: systemData?.selectedModuleId,
-    selectedInverters: systemData?.selectedInverters || [],
-    perdaSombreamento: systemData?.perdaSombreamento,
-    perdaMismatch: systemData?.perdaMismatch,
-    perdaCabeamento: systemData?.perdaCabeamento,
-    perdaSujeira: systemData?.perdaSujeira,
-    perdaInversor: systemData?.perdaInversor,
-    perdaOutras: systemData?.perdaOutras,
-    // Campos do SystemParametersForm
-    fabricanteModulo: systemData?.fabricanteModulo || '',
-    moduloSelecionado: systemData?.moduloSelecionado || '',
-    vidaUtil: systemData?.vidaUtil || 25,
-    degradacaoAnual: systemData?.degradacaoAnual || 0.5,
-    // Dados do telhado
-    aguasTelhado: roofData?.aguasTelhado || [],
-    // Dados de energia
-    energyBills: energyData?.energyBills || [{
-      id: crypto.randomUUID(),
-      name: 'Unidade Geradora',
-      consumoMensal: Array(12).fill(500)
-    }],
-    // Dados do orçamento
-    custoEquipamento: budgetData?.custoEquipamento || 0,
-    custoMateriais: budgetData?.custoMateriais || 0,
-    custoMaoDeObra: budgetData?.custoMaoDeObra || 0,
-    bdi: budgetData?.bdi || 25,
-    paymentMethod: budgetData?.paymentMethod,
-    cardInstallments: budgetData?.cardInstallments,
-    cardInterest: budgetData?.cardInterest,
-    financingInstallments: budgetData?.financingInstallments,
-    financingInterest: budgetData?.financingInterest,
-    // Campos do FinancialForm
-    inflacaoEnergia: budgetData?.inflacaoEnergia || 5.0,
-    taxaDesconto: budgetData?.taxaDesconto || 8.0,
-    custoOperacao: budgetData?.custoOperacao || 1.0,
-    valorResidual: budgetData?.valorResidual || 10.0,
-    percentualFinanciado: budgetData?.percentualFinanciado || 0,
-    taxaJuros: budgetData?.taxaJuros || 12.0,
-    prazoFinanciamento: budgetData?.prazoFinanciamento || 5,
-  }), [customerData, locationData, systemData, roofData, energyData, budgetData]);
+  // CORREÇÃO: Combinar dados para compatibilidade com código existente de forma otimizada
+  // Gerar ID único estático para evitar re-renders
+  const defaultEnergyBillId = useMemo(() => crypto.randomUUID(), []);
+  
+  const currentDimensioning = useMemo(() => {
+    return {
+      dimensioningName: customerData?.dimensioningName || '',
+      customer: customerData?.customer,
+      // Campos do CustomerDataForm que agora estão no customerData
+      grupoTarifario: customerData?.grupoTarifario || 'B',
+      subgrupoTarifario: customerData?.subgrupoTarifario || '',
+      concessionaria: customerData?.concessionaria || '',
+      tipoRede: customerData?.tipoRede || '',
+      tensaoRede: customerData?.tensaoRede || '',
+      tipoTelhado: customerData?.tipoTelhado || '',
+      fatorSimultaneidade: customerData?.fatorSimultaneidade || 100,
+      tarifaEnergiaB: customerData?.tarifaEnergiaB || 0,
+      custoFioB: customerData?.custoFioB || 0,
+      tarifaEnergiaPontaA: customerData?.tarifaEnergiaPontaA || 0,
+      tarifaEnergiaForaPontaA: customerData?.tarifaEnergiaForaPontaA || 0,
+      tePontaA: customerData?.tePontaA || 0,
+      teForaPontaA: customerData?.teForaPontaA || 0,
+      // CORREÇÃO: Dados de localização - garantir consistência na extração
+      irradiacaoMensal: locationData?.irradiacaoMensal || Array(12).fill(5.0),
+      latitude: locationData?.location?.latitude,
+      longitude: locationData?.location?.longitude,
+      endereco: locationData?.location?.address,
+      cidade: locationData?.location?.cidade,
+      estado: locationData?.location?.estado,
+      fonteDados: locationData?.fonteDados,
+      inclinacao: locationData?.inclinacao,
+      orientacao: locationData?.azimute,
+      considerarSombreamento: locationData?.considerarSombreamento,
+      sombreamento: locationData?.sombreamento,
+      // Dados do sistema
+      potenciaModulo: systemData?.potenciaModulo || 550,
+      eficienciaSistema: systemData?.eficienciaSistema || 85,
+      numeroModulos: systemData?.numeroModulos || 0,
+      selectedModuleId: systemData?.selectedModuleId,
+      selectedInverters: systemData?.selectedInverters || [],
+      perdaSombreamento: systemData?.perdaSombreamento,
+      perdaMismatch: systemData?.perdaMismatch,
+      perdaCabeamento: systemData?.perdaCabeamento,
+      perdaSujeira: systemData?.perdaSujeira,
+      perdaInversor: systemData?.perdaInversor,
+      perdaOutras: systemData?.perdaOutras,
+      // Campos do SystemParametersForm
+      fabricanteModulo: systemData?.fabricanteModulo || '',
+      moduloSelecionado: systemData?.moduloSelecionado || '',
+      vidaUtil: systemData?.vidaUtil || 25,
+      degradacaoAnual: systemData?.degradacaoAnual || 0.5,
+      // Dados do telhado
+      aguasTelhado: roofData?.aguasTelhado || [],
+      // Dados de energia - CORREÇÃO: Verificar se energyBills existe e tem length
+      energyBills: (energyData?.energyBills && Array.isArray(energyData.energyBills))
+        ? energyData.energyBills
+        : [{
+            id: defaultEnergyBillId,
+            name: 'Unidade Geradora',
+            consumoMensal: Array(12).fill(500)
+          }],
+      // Dados do orçamento
+      custoEquipamento: budgetData?.custoEquipamento || 0,
+      custoMateriais: budgetData?.custoMateriais || 0,
+      custoMaoDeObra: budgetData?.custoMaoDeObra || 0,
+      bdi: budgetData?.bdi || 25,
+      paymentMethod: budgetData?.paymentMethod,
+      cardInstallments: budgetData?.cardInstallments,
+      cardInterest: budgetData?.cardInterest,
+      financingInstallments: budgetData?.financingInstallments,
+      financingInterest: budgetData?.financingInterest,
+      // Campos do FinancialForm
+      inflacaoEnergia: budgetData?.inflacaoEnergia || 5.0,
+      taxaDesconto: budgetData?.taxaDesconto || 8.0,
+      custoOperacao: budgetData?.custoOperacao || 1.0,
+      valorResidual: budgetData?.valorResidual || 10.0,
+      percentualFinanciado: budgetData?.percentualFinanciado || 0,
+      taxaJuros: budgetData?.taxaJuros || 12.0,
+      prazoFinanciamento: budgetData?.prazoFinanciamento || 5,
+    };
+  }, [customerData, locationData, systemData, roofData, energyData, budgetData, defaultEnergyBillId]);
 
   // Buscar módulos solares para obter dados completos
   const { data: solarModulesData } = useQuery({
@@ -251,19 +258,20 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     } else if (field === 'energyBills' || field === 'energyBillsA' ||
                field === 'percCreditosRemotoB' || field === 'percCreditosRemotoAVerde' || field === 'percCreditosRemotoAAzul') {
       updateEnergyData({ [field]: value });
-    } else if (field.includes('latitude') || field.includes('longitude') ||
-               field.includes('endereco') || field.includes('cidade') || field.includes('estado')) {
+    } else if (field === 'latitude' || field === 'longitude' ||
+               field === 'address' || field === 'endereco' || field === 'cidade' || field === 'estado') {
       
-      // Para campos de localização aninhados, criar estrutura correta
-      updateLocationData({
-        location: { [field]: value } as any
-      });
+      // CORREÇÃO: Para campos de localização aninhados, criar estrutura correta
+      const locationUpdate = { location: { [field]: value } as any };
+      updateLocationData(locationUpdate);
       
     } else if (field.includes('irradiacao') || field.includes('fonteDados') ||
-               field.includes('inclinacao') || field.includes('azimute')) {
+               field.includes('inclinacao') || field.includes('azimute') ||
+               field === 'pvgisResponseData') {
       
       // Para outros campos de localização, passar diretamente
-      updateLocationData({ [field]: value });
+      const locationUpdate = { [field]: value };
+      updateLocationData(locationUpdate);
     } else if (field === 'aguasTelhado') {
       updateRoofData({ [field]: value });
     } else if (field.includes('custo') || field.includes('bdi') || field.includes('payment') ||
@@ -273,16 +281,20 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
                field === 'percentualFinanciado' || field === 'taxaJuros' ||
                field === 'prazoFinanciamento') {
       updateBudgetData({ [field]: value });
+    } else {
     }
   };
 
 
   const handleNext = async () => {
-    
-    // VALIDAÇÃO CENTRALIZADA: Usar apenas validateCurrentStep da store
+    // CORREÇÃO: VALIDAÇÃO MELHORADA - Verificar estado atual de navegação
     const isValid = validateCurrentStep();
+    const currentState = usePVDimensioningStore.getState();
     
-    if (!isValid) {
+    // CORREÇÃO: Permitir avanço se passo já foi completado anteriormente
+    const isStepCompleted = currentState.completedSteps.has(navigationState.currentStep);
+    
+    if (!isValid && !isStepCompleted) {
       let description = "Por favor, preencha todos os campos obrigatórios antes de continuar.";
 
       if (navigationState.currentStep === 3) {
@@ -299,7 +311,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
       return;
     }
 
-    // Auto-save progress - bloquear avanço se falhar
+    // CORREÇÃO: Auto-save progress - não bloquear avanço se falhar para novos dimensionamentos
     if (customerData?.customer && customerData?.dimensioningName?.trim()) {
       try {
         await saveDimensioning();
@@ -314,14 +326,14 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
           errorMessage = "Erro no servidor. Tente novamente.";
         }
 
+        // CORREÇÃO: Apenas avisar sobre erro de salvamento, mas permitir continuação
         toast({
           variant: "destructive",
           title: "Erro ao salvar",
-          description: `${errorMessage} Não é possível avançar sem salvar o progresso.`
+          description: `${errorMessage} Seu progresso está sendo salvo localmente.`
         });
 
-        // Bloquear navegação - não continuar
-        return;
+        // CORREÇÃO: Não bloquear navegação - continuar mesmo com erro de salvamento
       }
     }
     
@@ -338,7 +350,22 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
   };
 
   const handleStepClick = (stepNumber: number) => {
-    goToStep(stepNumber);
+    const currentState = usePVDimensioningStore.getState();
+    
+    // CORREÇÃO: Permitir navegação para passos já completos ou o próximo passo
+    const isStepCompleted = currentState.completedSteps.has(stepNumber);
+    const isNextStep = stepNumber === navigationState.currentStep + 1;
+    
+    if (isStepCompleted || isNextStep) {
+      goToStep(stepNumber);
+    } else {
+      // Mostrar mensagem informativa
+      toast({
+        title: "Navegação restrita",
+        description: "Complete os passos anteriores primeiro para acessar esta etapa.",
+        variant: "default"
+      });
+    }
   };
 
   // Memoizar handleSystemFormChange para evitar recriação a cada render
@@ -399,7 +426,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
     const step = steps[navigationState.currentStep - 1];
 
     switch (step.component) {
-      case 'customer':
+      case 'customer':        
         return (
           <CustomerDataForm
             customerData={customerData}
@@ -553,6 +580,7 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
           <p className="text-lg text-gray-600 dark:text-slate-300 max-w-2xl mx-auto">
             {currentDimensioning.dimensioningName || currentDimensioning.customer?.name || 'Complete o dimensionamento em 6 passos'}
           </p>
+          
         </motion.div>
 
         {/* Progress Steps */}
@@ -560,8 +588,8 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
           <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-6">
             {steps.map((step, index) => {
               const isActive = step.id === navigationState.currentStep;
-              const isCompleted = step.id < navigationState.currentStep;
-              const isAccessible = step.id <= navigationState.currentStep || step.id === navigationState.currentStep + 1;
+              const isCompleted = navigationState.completedSteps.has(step.id);
+              const isAccessible = isCompleted || step.id === navigationState.currentStep + 1;
 
               return (
                 <button
@@ -636,7 +664,12 @@ const SolarSizingWizard: React.FC<SolarSizingWizardProps> = ({ onComplete, onBac
 
             <Button
               onClick={handleNext}
-              disabled={!navigationState.canAdvance || isSaving || loadingState.isCalculating}
+              // CORREÇÃO: Melhorar lógica de habilitação do botão
+              disabled={
+                (!navigationState.canAdvance && !navigationState.completedSteps.has(navigationState.currentStep)) ||
+                isSaving ||
+                loadingState.isCalculating
+              }
               className="w-full sm:w-auto order-3 bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600"
             >
               {isSaving ? (

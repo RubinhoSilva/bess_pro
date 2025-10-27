@@ -1,0 +1,91 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        # Install root dependencies
+        - npm install
+
+        # Build shared package
+        - cd packages/shared
+        - npm install
+        - npm run build
+
+        # Install frontend dependencies
+        - cd ../../apps/frontend
+        - npm install
+
+    build:
+      commands:
+        - npm run build:production
+
+    postBuild:
+      commands:
+        - find dist -name "*.js" -exec gzip -k {} \;
+        - find dist -name "*.css" -exec gzip -k {} \;
+        - find dist -name "*.svg" -exec gzip -k {} \;
+
+  artifacts:
+    baseDirectory: apps/frontend/dist
+    files:
+      - '**/*'
+
+  cache:
+    paths:
+      - node_modules/**/*
+      - apps/frontend/node_modules/**/*
+      - packages/shared/node_modules/**/*
+
+  customHeaders:
+    - pattern: '**/*'
+      headers:
+        - key: 'X-Frame-Options'
+          value: 'DENY'
+        - key: 'X-XSS-Protection'
+          value: '1; mode=block'
+        - key: 'X-Content-Type-Options'
+          value: 'nosniff'
+        - key: 'Referrer-Policy'
+          value: 'strict-origin-when-cross-origin'
+        - key: 'Permissions-Policy'
+          value: 'geolocation=(), microphone=(), camera=()'
+
+    - pattern: 'static/**/*'
+      headers:
+        - key: 'Cache-Control'
+          value: 'public, max-age=31536000, immutable'
+
+    - pattern: '*.js'
+      headers:
+        - key: 'Cache-Control'
+          value: 'public, max-age=31536000, immutable'
+
+    - pattern: '*.css'
+      headers:
+        - key: 'Cache-Control'
+          value: 'public, max-age=31536000, immutable'
+
+    - pattern: '*.png'
+      headers:
+        - key: 'Cache-Control'
+          value: 'public, max-age=31536000, immutable'
+
+    - pattern: '*.jpg'
+      headers:
+        - key: 'Cache-Control'
+          value: 'public, max-age=31536000, immutable'
+
+    - pattern: '*.svg'
+      headers:
+        - key: 'Cache-Control'
+          value: 'public, max-age=31536000, immutable'
+
+    - pattern: '*.woff'
+      headers:
+        - key: 'Cache-Control'
+          value: 'public, max-age=31536000, immutable'
+
+    - pattern: '*.woff2'
+      headers:
+        - key: 'Cache-Control'
+          value: 'public, max-age=31536000, immutable'

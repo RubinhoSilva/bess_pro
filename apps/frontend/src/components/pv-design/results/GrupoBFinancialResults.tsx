@@ -255,8 +255,19 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
               <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Consumo Anual</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {financialResults?.somasIniciais?.consumoAnual ||
-                    `${(calculationData?.consumoMensal?.reduce((total: number, val: number) => total + val, 0) || 0).toLocaleString('pt-BR')} kWh`}
+                  {(() => {
+                    // Priorizar dados do backend se disponíveis
+                    if (financialResults?.somasIniciais?.consumoAnual) {
+                      return financialResults.somasIniciais.consumoAnual;
+                    }
+                    
+                    // Calcular consumo total (local + remoto)
+                    const consumoLocal = calculationData?.consumoMensal?.reduce((total: number, val: number) => total + val, 0) || 0;
+                    const consumoRemoto = calculationData?.consumoRemotoB?.reduce((total: number, val: number) => total + val, 0) || 0;
+                    const consumoTotal = consumoLocal + consumoRemoto;
+                    
+                    return `${consumoTotal.toLocaleString('pt-BR')} kWh`;
+                  })()}
                 </p>
               </div>
               <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
@@ -351,6 +362,12 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
                     calculationData?.consumoMensal?.reduce((total: number, val: number) => total + val, 0) || 0).toLocaleString('pt-BR')} kWh
                 </p>
               </div>
+              <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Consumo Remoto</p>
+                <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                  {(calculationData?.consumoRemotoB?.reduce((total: number, val: number) => total + val, 0) || 0).toLocaleString('pt-BR')} kWh
+                </p>
+              </div>
               <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Geração</p>
                 <p className="text-xl font-bold text-green-600 dark:text-green-400">
@@ -367,7 +384,25 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
               <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Percentual Abatido</p>
                 <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                  {((financialResults?.consumoAno1?.percentualAbatido || 0)).toFixed(2)}%
+                  {(() => {
+                    // Se já tiver o percentual calculado do backend, usar
+                    if (financialResults?.consumoAno1?.percentualAbatido !== undefined) {
+                      return financialResults.consumoAno1.percentualAbatido.toFixed(2);
+                    }
+                    
+                    // Caso contrário, calcular com base nos dados disponíveis
+                    const consumoLocal = calculationData?.consumoMensal?.reduce((total: number, val: number) => total + val, 0) || 0;
+                    const consumoRemoto = calculationData?.consumoRemotoB?.reduce((total: number, val: number) => total + val, 0) || 0;
+                    const consumoTotal = consumoLocal + consumoRemoto;
+                    
+                    if (consumoTotal === 0) return "0.00";
+                    
+                    // Calcular percentual abatido com base na geração e consumo total
+                    const geracaoAnual = calculationData?.geracaoMensal?.reduce((total: number, val: number) => total + val, 0) || 0;
+                    const percentualAbatido = Math.min((geracaoAnual / consumoTotal) * 100, 100);
+                    
+                    return percentualAbatido.toFixed(2);
+                  })()}%
                 </p>
               </div>
             </div>
