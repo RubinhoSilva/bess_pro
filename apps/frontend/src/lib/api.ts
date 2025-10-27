@@ -5,16 +5,22 @@ import { ErrorHandler } from '../errors/ErrorHandler';
 
 // Configuração base da API
 const getApiBaseUrl = () => {
-  // Verifica múltiplas condições para detectar produção
-  const isProduction = import.meta.env.PROD || 
-                      import.meta.env.MODE === 'production' || 
+  // Usa a variável de ambiente VITE_API_URL configurada nos arquivos .env
+  const baseUrl = import.meta.env.VITE_API_URL;
+  
+  if (baseUrl) {
+    return `${baseUrl}/api/v1`;
+  }
+  
+  // Fallback para valores padrão caso a variável não esteja definida
+  const isProduction = import.meta.env.PROD ||
+                      import.meta.env.MODE === 'production' ||
                       window.location.hostname !== 'localhost';
   
   if (isProduction) {
-    return 'https://api.besspro.vizad.com.br/api/v1';
+    return 'https://api.besspro.com/api/v1';
   }
   
-  // Em desenvolvimento, usa localhost
   return 'http://localhost:8010/api/v1';
 };
 
