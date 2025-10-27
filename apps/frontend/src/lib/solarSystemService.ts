@@ -297,37 +297,7 @@ export interface MPPTCalculationRequest {
 
 export interface MPPTCalculationResponse {
   modulos_por_mppt: number;
-  modulos_total_sistema: number;
-  limitacao_principal: string;
-  analise_detalhada: {
-    limite_tensao: string;
-    limite_corrente: string;
-    limite_potencia: string;
-    limite_strings: string;
-    configuracao_otima: string;
-  };
-  configuracao_recomendada: {
-    strings_por_mppt: number;
-    modulos_por_string: number;
-    total_mppt_utilizados: number;
-    total_strings_sistema: number;
-    distribuicao: string;
-  };
-  parametros_entrada: {
-    fabricante: string;
-    modelo: string;
-    potencia_modulo_w: number;
-    voc_stc: number;
-    temp_coef_voc: number;
-    potencia_saida_ca_w: number;
-    numero_mppt: number;
-    strings_por_mppt: number;
-    tensao_cc_max_v: number;
-    temperatura_minima: number;
-    voc_cold_calculado: number;
-    limitacao_potencia: number;
-    limitacao_tensao: number;
-  };
+  modulos_por_string: number;
 }
 
 // Complete System Calculation Interfaces

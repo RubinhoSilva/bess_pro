@@ -84,7 +84,7 @@ services:
     ports:
       - "3003:3003"
     environment:
-      VITE_API_URL: http://localhost:8010/api/v1
+      VITE_API_URL: http://localhost:8010
       DOCKER_ENV: "true"
     volumes:
       - ./apps/frontend:/app

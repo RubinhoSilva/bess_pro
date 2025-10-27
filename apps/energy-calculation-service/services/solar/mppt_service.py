@@ -80,48 +80,10 @@ class MPPTService:
                             "fator_seguranca": 1.25
                         }
                     )
-
-            # Definir variáveis de limitação para resposta
-            limitacao_potencia = {
-                "modulos_maximos_total": num_modulos_por_potencia,
-                "modulos_por_mppt": nummodulosporstring,
-                "descricao": f"Limitação por potência: {potencia_limitante}W ({potencia_tipo}) ÷ {request.potencia_modulo_w}W = {num_modulos_por_potencia} módulos no total"
-            }
-
-            limitacao_tensao = {
-                "voc_cold": round(voc_cold, 2),
-                "tensao_mppt_max": tensao_cc_max_v,
-                "modulos_por_mppt": nummodulosporstring,
-                "descricao": f"Limitação por tensão: {tensao_cc_max_v}V ÷ {voc_cold:.2f}V = {nummodulosporstring} módulos por MPPT"
-            }
-
-    
-
-            # Ajustar total baseado na distribuição real
-            modulos_total = nummodulosporstring * request.numero_mppt
-
-            # Análise básica (será expandida com regras de negócio)
-            analise_detalhada = self._analyze_system_limits(request, nummodulosporstring)
-
-            # Configuração recomendada
-            configuracao = self._generate_recommended_configuration(request, nummodulosporstring)
-
-            # Calcular total real baseado na limitação mais restritiva
-            total_modulos_sistema = nummodulosporstring * request.numero_mppt
             
             return MPPTCalculationResponse(
-                modulos_por_mppt=nummodulosporstring * request.strings_por_mppt,
-                modulos_total_sistema=total_modulos_sistema,
-                limitacao_principal=str(nummodulosporstring),
-                analise_detalhada=analise_detalhada,
-                configuracao_recomendada=configuracao,
-                parametros_entrada={
-                    "fabricante": request.fabricante,
-                    "modelo": request.modelo,
-                    "potencia_saida_ca_w": request.potencia_saida_ca_w,
-                    "numero_mppt": request.numero_mppt,
-                    "total_modulos": total_modulos_sistema
-                }
+                modulos_por_mppt=num_modulos_por_tensao_mppt,
+                modulos_por_string=nummodulosporstring
             )
             
         except Exception as e:
@@ -196,37 +158,6 @@ class MPPTService:
             logger.warning("Usando temperatura mínima padrão: 0°C")
             return 0.0
     
-    def _analyze_system_limits(self, request: MPPTCalculationRequest, modulos_por_mppt: int) -> Dict[str, Any]:
-        """Analisa limitações técnicas do sistema"""
-        
-        # Análise básica - será expandida com regras reais
-        analise = {
-            "limite_tensao": "A ser calculado",
-            "limite_corrente": "A ser calculado", 
-            "limite_potencia": "A ser calculado",
-            "limite_strings": "A ser calculado",
-            "configuracao_otima": f"{modulos_por_mppt} módulos por MPPT é a configuração recomendada"
-        }
-        
-        logger.debug(f"Análise de limites concluída: {analise}")
-        return analise
-    
-    def _generate_recommended_configuration(self, request: MPPTCalculationRequest, modulos_por_mppt: int) -> Dict[str, Any]:
-        """Gera configuração recomendada do sistema"""
-        
-        strings_por_mppt = request.strings_por_mppt or 2
-        modulos_por_string = max(1, modulos_por_mppt // strings_por_mppt)
-        
-        configuracao = {
-            "strings_por_mppt": strings_por_mppt,
-            "modulos_por_string": modulos_por_string,
-            "total_mppt_utilizados": request.numero_mppt,
-            "total_strings_sistema": strings_por_mppt * request.numero_mppt,
-            "distribuicao": f"{strings_por_mppt} strings × {modulos_por_string} módulos por MPPT"
-        }
-        
-        logger.debug(f"Configuração recomendada: {configuracao}")
-        return configuracao
 
 
 # Instância singleton
