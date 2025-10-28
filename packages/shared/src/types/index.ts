@@ -55,6 +55,9 @@ export { isResultadosCodigoB, isResultadosCodigoA } from './financial-results';
 // Exportar tipo união explicitamente
 export type { GrupoConfig } from './grupo-configs';
 
+// Company Profile types
+export * from './company-profile';
+
 // =================================================================================
 // EXPORTS DE CONFIGURAÇÕES
 // =================================================================================

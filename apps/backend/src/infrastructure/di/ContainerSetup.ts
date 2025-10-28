@@ -23,6 +23,7 @@ import { MongoAreaMontagemRepository } from '../database/mongodb/repositories/Mo
 import { MongoModel3DRepository } from '../database/mongodb/repositories/MongoModel3DRepository';
 import { MongoClientAlertRepository } from '../database/mongodb/repositories/MongoClientAlertRepository';
 import { MongoEnergyCompanyRepository } from '../database/mongodb/repositories/MongoEnergyCompanyRepository';
+import { MongoCompanyProfileRepository } from '../database/mongodb/repositories/MongoCompanyProfileRepository';
 import { ProposalSettingsModel } from '../database/mongodb/schemas/ProposalSettingsSchema';
 
 // Infrastructure - External Services
@@ -31,6 +32,7 @@ import { JwtTokenService } from '../security/JwtTokenService';
 import { NodemailerEmailService } from '../email/NodemailerEmailService';
 import { LocalFileStorageService } from '../storage/LocalFileStorageService';
 import { S3FileStorageService } from '../storage/S3FileStorageService';
+import { CompanyLogoService } from '../storage/CompanyLogoService';
 import { PvgisApiService } from '../external-apis/PvgisApiService';
 import { PaymentGatewayService } from '../external-apis/PaymentGatewayService';
 import { SimplePvlibServiceClient } from '../external-apis/SimplePvlibServiceClient';
@@ -130,6 +132,15 @@ import { DeleteClientUseCase } from '../../application/use-cases/client/DeleteCl
 import { ConvertLeadToClientUseCase } from '../../application/use-cases/client/ConvertLeadToClientUseCase';
 import { RevertClientToLeadUseCase } from '../../application/use-cases/client/RevertClientToLeadUseCase';
 
+// Company Profile Use Cases
+import { CreateCompanyProfileUseCase } from '../../application/use-cases/company-profile/CreateCompanyProfileUseCase';
+import { GetCompanyProfileUseCase } from '../../application/use-cases/company-profile/GetCompanyProfileUseCase';
+import { GetCompanyProfilesUseCase } from '../../application/use-cases/company-profile/GetCompanyProfilesUseCase';
+import { UpdateCompanyProfileUseCase } from '../../application/use-cases/company-profile/UpdateCompanyProfileUseCase';
+import { DeleteCompanyProfileUseCase } from '../../application/use-cases/company-profile/DeleteCompanyProfileUseCase';
+import { UploadCompanyLogoUseCase } from '../../application/use-cases/company-profile/UploadCompanyLogoUseCase';
+import { DeleteCompanyLogoUseCase } from '../../application/use-cases/company-profile/DeleteCompanyLogoUseCase';
+
 // Use Cases - Team
 import { CreateTeamUseCase } from '../../application/use-cases/team/CreateTeamUseCase';
 import { GetTeamsUseCase } from '../../application/use-cases/team/GetTeamsUseCase';
@@ -190,6 +201,7 @@ import { ClientController } from '../../presentation/controllers/ClientControlle
 import { EnergyCompanyController } from '../../presentation/controllers/EnergyCompanyController';
 import { ReportController } from '../../presentation/controllers/ReportController';
 import { ProposalController } from '../../presentation/controllers/ProposalController';
+import { CompanyProfileController } from '../../presentation/controllers/CompanyProfileController';
 
 import { IrradiationController } from '../../presentation/controllers/IrradiationController';
 import { TeamController } from '../../presentation/controllers/TeamController';
@@ -208,6 +220,7 @@ import { FinancialCalculationController } from '../../presentation/controllers/F
 // Middlewares
 import { AuthMiddleware } from '../../presentation/middleware/AuthMiddleware';
 import { ValidationMiddleware } from '../../presentation/middleware/ValidationMiddleware';
+import { FileUploadMiddleware } from '../../presentation/middleware/FileUploadMiddleware';
 
 export class ContainerSetup {
   public static configure(container: Container, config: AppConfig): void {
@@ -241,6 +254,7 @@ export class ContainerSetup {
     container.register(ServiceTokens.PASSWORD_RESET_TOKEN_REPOSITORY, MongoPasswordResetTokenRepository, true);
     container.register('ClientAlertRepository', MongoClientAlertRepository, true);
     container.register(ServiceTokens.EnergyCompanyRepository, MongoEnergyCompanyRepository, true);
+    container.register(ServiceTokens.CompanyProfileRepository, MongoCompanyProfileRepository, true);
 
     // Register Infrastructure Services (Singletons)
     container.register(ServiceTokens.PASSWORD_HASH_SERVICE, BcryptPasswordHashService, true);
@@ -268,6 +282,18 @@ export class ContainerSetup {
     } else {
       container.register(ServiceTokens.FILE_STORAGE_SERVICE, LocalFileStorageService, true);
     }
+
+    // Company Logo Service
+    container.registerFactory(ServiceTokens.COMPANY_LOGO_SERVICE, () => {
+      const s3Config = {
+        accessKeyId: config.storage.s3?.accessKeyId || process.env.AWS_ACCESS_KEY_ID || '',
+        secretAccessKey: config.storage.s3?.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY || '',
+        region: config.storage.s3?.region || process.env.AWS_REGION || 'us-east-1',
+        bucket: config.storage.s3?.bucket || process.env.AWS_S3_BUCKET || '',
+        cloudFrontUrl: config.storage.s3?.cloudFrontUrl || process.env.AWS_CLOUDFRONT_URL
+      };
+      return new CompanyLogoService(s3Config);
+    }, true);
 
     // External API Services (Singletons)
     container.registerFactory(ServiceTokens.PVGIS_API_SERVICE, () => {
@@ -1044,6 +1070,66 @@ export class ContainerSetup {
     // Middlewares
     container.registerFactory('AuthMiddleware', () => {
       return new AuthMiddleware(container);
+    });
+
+    container.register(ServiceTokens.FileUploadMiddleware, FileUploadMiddleware, true);
+
+    // Company Profile Use Cases
+    container.registerFactory(ServiceTokens.CreateCompanyProfileUseCase, () => {
+      return new CreateCompanyProfileUseCase(
+        container.resolve(ServiceTokens.CompanyProfileRepository)
+      );
+    });
+
+    container.registerFactory(ServiceTokens.GetCompanyProfileUseCase, () => {
+      return new GetCompanyProfileUseCase(
+        container.resolve(ServiceTokens.CompanyProfileRepository)
+      );
+    });
+
+    container.registerFactory(ServiceTokens.GetCompanyProfilesUseCase, () => {
+      return new GetCompanyProfilesUseCase(
+        container.resolve(ServiceTokens.CompanyProfileRepository)
+      );
+    });
+
+    container.registerFactory(ServiceTokens.UpdateCompanyProfileUseCase, () => {
+      return new UpdateCompanyProfileUseCase(
+        container.resolve(ServiceTokens.CompanyProfileRepository)
+      );
+    });
+
+    container.registerFactory(ServiceTokens.DeleteCompanyProfileUseCase, () => {
+      return new DeleteCompanyProfileUseCase(
+        container.resolve(ServiceTokens.CompanyProfileRepository)
+      );
+    });
+
+    container.registerFactory(ServiceTokens.UploadCompanyLogoUseCase, () => {
+      return new UploadCompanyLogoUseCase(
+        container.resolve(ServiceTokens.CompanyProfileRepository),
+        container.resolve(ServiceTokens.COMPANY_LOGO_SERVICE)
+      );
+    });
+
+    container.registerFactory(ServiceTokens.DeleteCompanyLogoUseCase, () => {
+      return new DeleteCompanyLogoUseCase(
+        container.resolve(ServiceTokens.CompanyProfileRepository),
+        container.resolve(ServiceTokens.COMPANY_LOGO_SERVICE)
+      );
+    });
+
+    // Controllers - Company Profile
+    container.registerFactory(ServiceTokens.CompanyProfileController, () => {
+      return new CompanyProfileController(
+        container.resolve(ServiceTokens.CreateCompanyProfileUseCase),
+        container.resolve(ServiceTokens.GetCompanyProfileUseCase),
+        container.resolve(ServiceTokens.GetCompanyProfilesUseCase),
+        container.resolve(ServiceTokens.UpdateCompanyProfileUseCase),
+        container.resolve(ServiceTokens.DeleteCompanyProfileUseCase),
+        container.resolve(ServiceTokens.UploadCompanyLogoUseCase),
+        container.resolve(ServiceTokens.DeleteCompanyLogoUseCase)
+      );
     });
     
     container.register('ValidationMiddleware', ValidationMiddleware, true);
