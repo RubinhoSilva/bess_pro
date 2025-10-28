@@ -67,7 +67,24 @@ async def download_proposal(filename: str):
     Baixa arquivo PDF da proposta gerada
     """
     from core.config import settings
+    from services.storage import s3_service
     
+    # Tentar buscar do S3 primeiro se estiver disponível
+    if s3_service.is_available():
+        s3_key = f"{settings.S3_PROPOSALS_PREFIX}{filename}"
+        
+        # Verificar se arquivo existe no S3
+        if s3_service.check_file_exists(s3_key):
+            # Gerar URL pré-assinada e redirecionar
+            presigned_url = s3_service.generate_presigned_url(s3_key)
+            if presigned_url:
+                from fastapi.responses import RedirectResponse
+                return RedirectResponse(url=presigned_url)
+        
+        # Se não encontrar no S3, tentar no storage local (fallback)
+        logger.warning(f"Arquivo não encontrado no S3, tentando storage local: {filename}")
+    
+    # Fallback para armazenamento local
     proposals_dir = getattr(settings, 'PROPOSALS_STORAGE_DIR', "./storage/proposals")
     file_path = os.path.join(proposals_dir, filename)
     

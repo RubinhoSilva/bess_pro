@@ -18,6 +18,7 @@ export const ServiceTokens = {
   ProposalSettingsRepository: 'ProposalSettingsRepository',
   AdvancedProposalTemplateRepository: 'AdvancedProposalTemplateRepository',
   EnergyCompanyRepository: 'EnergyCompanyRepository',
+  CompanyProfileRepository: 'CompanyProfileRepository',
 
   // Services
   PASSWORD_HASH_SERVICE: 'PasswordHashService',
@@ -25,6 +26,7 @@ export const ServiceTokens = {
   EMAIL_SERVICE: 'EmailService',
   EMAIL_INVITATION_SERVICE: 'EmailInvitationService',
   FILE_STORAGE_SERVICE: 'FileStorageService',
+  COMPANY_LOGO_SERVICE: 'CompanyLogoService',
   CACHE_SERVICE: 'CacheService',
   KANBAN_COLUMN_SEEDER_SERVICE: 'KanbanColumnSeederService',
 
@@ -142,6 +144,15 @@ export const ServiceTokens = {
   DeleteEnergyCompanyUseCase: 'DeleteEnergyCompanyUseCase',
   GetEnergyCompaniesByStateUseCase: 'GetEnergyCompaniesByStateUseCase',
 
+  // Company Profile Use Cases
+  CreateCompanyProfileUseCase: 'CreateCompanyProfileUseCase',
+  GetCompanyProfileUseCase: 'GetCompanyProfileUseCase',
+  GetCompanyProfilesUseCase: 'GetCompanyProfilesUseCase',
+  UpdateCompanyProfileUseCase: 'UpdateCompanyProfileUseCase',
+  DeleteCompanyProfileUseCase: 'DeleteCompanyProfileUseCase',
+  UploadCompanyLogoUseCase: 'UploadCompanyLogoUseCase',
+  DeleteCompanyLogoUseCase: 'DeleteCompanyLogoUseCase',
+
   // Equipment Catalog (DDD Aggregate)
   EquipmentCatalogRepository: 'EquipmentCatalogRepository',
   DeleteManufacturerUseCaseV2: 'DeleteManufacturerUseCaseV2',
@@ -160,9 +171,11 @@ export const ServiceTokens = {
   AdvancedProposalTemplateController: 'AdvancedProposalTemplateController',
   EnergyCompanyController: 'EnergyCompanyController',
   FinancialCalculationController: 'FinancialCalculationController',
+  CompanyProfileController: 'CompanyProfileController',
 
   // Middlewares
   AuthMiddleware: 'AuthMiddleware',
+  FileUploadMiddleware: 'FileUploadMiddleware',
 } as const;
 
 export const TYPES = ServiceTokens;

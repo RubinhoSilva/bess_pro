@@ -159,4 +159,6 @@ export type {
 export * from './adapters/solar-analysis';
 // Energy Bill Adapters
 export * from './adapters/energy-bill-adapter';
+// Company Profile types
+export * from './types/company-profile';
 // Export outros tipos conforme criados
