@@ -103,9 +103,28 @@ export interface ProposalResponse {
 }
 
 // Configuração da API
-const API_BASE_URL = process.env.NODE_ENV === 'production'
-  ? '/api/v1'
-  : 'http://localhost:8010/api/v1';
+// Configuração da API - usando a mesma lógica do api.ts
+const getApiBaseUrl = () => {
+  // Usa a variável de ambiente VITE_API_URL configurada nos arquivos .env
+  const baseUrl = import.meta.env.VITE_API_URL;
+  
+  if (baseUrl) {
+    return `${baseUrl}/api/v1`;
+  }
+  
+  // Fallback para valores padrão caso a variável não esteja definida
+  const isProduction = import.meta.env.PROD ||
+                      import.meta.env.MODE === 'production' ||
+                      window.location.hostname !== 'localhost';
+  
+  if (isProduction) {
+    return 'https://api.besspro.com/api/v1';
+  }
+  
+  return 'http://localhost:8010/api/v1';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Timeout padrão de 60 segundos para geração de PDF
 const DEFAULT_TIMEOUT = 60000;
