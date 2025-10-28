@@ -362,7 +362,7 @@ export const MultipleInvertersSelector: React.FC<MultipleInvertersSelectorProps>
                                 ) : mpptLimits[inverter.id].error ? (
                                   <span className="text-red-500">Erro MPPT</span>
                                 ) : (
-                                  <span>Máx: {mpptLimits[inverter.id].modulosTotal} módulos</span>
+                                  <span>Máx: {mpptLimits[inverter.id].modulosPorMppt * (inverter.mppt.numberOfMppts || 1)} módulos</span>
                                 )}
                               </span>
                             )}

@@ -40,6 +40,7 @@ export interface ICustomerData {
 export interface IEnergyData {
   energyBills?: EnergyBillB[];
   energyBillsA?: EnergyBillA[];
+  energyBillsARemoto?: EnergyBillA[];
   consumoRemotoB?: number[];
   hasRemotoB?: boolean;
   // Novo campo para percentual de créditos remotos
@@ -270,6 +271,7 @@ const initialState: IProjectState = {
   energy: {
     energyBills: [],
     energyBillsA: [],
+    energyBillsARemoto: [],
     consumoRemotoB: [],
     hasRemotoB: false,
     percCreditosRemotoB: 0.40,  // Valor padrão de 40%
@@ -1046,32 +1048,37 @@ export const usePVDimensioningStore = create<IProjectStore>()(
           const state = get();
           const grupoTarifario = state.customer?.grupoTarifario || 'B';
           
+          // Calcular consumo total considerando ambos os grupos
+          const consumoMensal = Array(12).fill(0);
           
-          if (grupoTarifario === 'A' && state.energy?.energyBillsA?.length) {
-            // Grupo A: somar ponta + fora ponta para cada mês
-            const consumoMensal = Array(12).fill(0);
-            
+          // Grupo A: somar ponta + fora ponta para cada mês (local + remoto)
+          if (state.energy?.energyBillsA?.length) {
             state.energy.energyBillsA.forEach(bill => {
               for (let i = 0; i < 12; i++) {
                 consumoMensal[i] += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
               }
             });
-            
-            return consumoMensal;
-          } else if (state.energy?.energyBills?.length) {
-            // Grupo B: separar primeira conta (local) das demais (remotas)
-            const primeiraConta = state.energy.energyBills[0];
-            const contasRemotas = state.energy.energyBills.slice(1);
-            
-            // Usar apenas a primeira conta como consumo local
-            const consumoLocal = Array(12).fill(0);
-            if (primeiraConta) {
+          }
+          
+          // Grupo A remoto
+          if (state.energy?.energyBillsARemoto?.length) {
+            state.energy.energyBillsARemoto.forEach((bill: EnergyBillA) => {
               for (let i = 0; i < 12; i++) {
-                consumoLocal[i] = primeiraConta.consumoMensal[i] || 0;
+                consumoMensal[i] += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
               }
-            }
+            });
+          }
+          
+          // Grupo B: somar todas as contas (local + remotas)
+          if (state.energy?.energyBills?.length) {
+            state.energy.energyBills.forEach(bill => {
+              for (let i = 0; i < 12; i++) {
+                consumoMensal[i] += bill.consumoMensal[i] || 0;
+              }
+            });
             
-            // Processar contas remotas se existirem
+            // Separar contas remotas para uso no cálculo financeiro
+            const contasRemotas = state.energy.energyBills.slice(1);
             if (contasRemotas.length > 0) {
               const consumoRemoto = Array(12).fill(0);
               contasRemotas.forEach(bill => {
@@ -1090,12 +1097,9 @@ export const usePVDimensioningStore = create<IProjectStore>()(
                 }
               }));
             }
-            
-            return consumoLocal;
           }
           
-          // Fallback: array zerado
-          return Array(12).fill(0);
+          return consumoMensal;
         },
 
         // Ações de cálculo
