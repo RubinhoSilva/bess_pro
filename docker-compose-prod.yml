@@ -36,11 +36,8 @@ services:
     restart: unless-stopped
     ports:
       - "8110:8100"
-    environment:
-      - ENVIRONMENT=production
-      - LOG_LEVEL=INFO
-      - CACHE_TTL_HOURS=168
-      - MAX_CACHE_SIZE_MB=1000
+    env_file:
+      - .env.production
     volumes:
       - energy_calculation_cache:/app/cache_pvgis
     networks:
