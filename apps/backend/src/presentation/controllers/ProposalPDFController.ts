@@ -112,10 +112,7 @@ export class ProposalPDFController extends BaseController {
       
       
       // Constrói a URL completa para o frontend
-      const protocol = req.protocol;
-      const host = req.get('host');
-      const filename = proposalData.pdf_filename;
-      const pdfUrl = `${this.pythonServiceURL}${proposalData.pdf_url}`;
+      const pdfUrl = `${proposalData.pdf_url}`;
       
       
       return this.ok(res, {
