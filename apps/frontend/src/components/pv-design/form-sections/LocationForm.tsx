@@ -34,13 +34,14 @@ const LocationForm: React.FC<LocationFormProps> = ({ locationData, onFormChange 
     if (data.fonteDados) {
       onFormChange('fonteDados', data.fonteDados);
     }
+    
   };
 
   return (
     <Card className="bg-card/50 border-border backdrop-blur-sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-foreground">
-          <MapPin className="w-5 h-5 text-green-400" /> 
+          <MapPin className="w-5 h-5 text-green-400" />
           Localização e Irradiação
         </CardTitle>
       </CardHeader>

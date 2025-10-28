@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from api.v1.endpoints import irradiation, admin, mppt, solar, bess
+from api.v1.endpoints import irradiation, admin, mppt, solar, bess, proposal
 from api.financial_router import router as financial_router
 from api.financial_grupo_router import router as financial_grupo_router
 
@@ -15,6 +15,7 @@ api_router.include_router(bess.router, prefix="/bess", tags=["BESS - Battery Ene
 api_router.include_router(admin.router)
 api_router.include_router(financial_router)
 api_router.include_router(financial_grupo_router)
+api_router.include_router(proposal.router, tags=["Propostas"])
 
 # Endpoint de informações da API
 @api_router.get(
@@ -50,6 +51,10 @@ async def api_info():
                 "POST /financial/calculate-simple": "Análise financeira simplificada",
                 "POST /financial/calculate-grupo-a": "Análise financeira Grupo A (Verde)",
                 "POST /financial/calculate-grupo-b": "Análise financeira Grupo B"
+            },
+            "proposal": {
+                "POST /proposal/generate": "Geração de proposta comercial em PDF",
+                "GET /proposal/download/{filename}": "Download de proposta gerada"
             },
             "admin": {
                 "GET /admin/health": "Health check",

@@ -136,9 +136,36 @@ export const selectRoofDataComplete = (state: IProjectState) => {
       perdaOutras: state.system?.perdaOutras
     },
     energy: {
-      consumoAnualTotal: state.energy?.energyBills?.reduce((acc: number, bill: any) => {
-        return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
-      }, 0) || 0
+      consumoAnualTotal: (() => {
+        let consumoTotalAnual = 0;
+        
+        // Grupo A: somar ponta + fora ponta para cada mês de todas as contas (local + remoto)
+        if (state.energy?.energyBillsA?.length) {
+          state.energy.energyBillsA.forEach(bill => {
+            for (let i = 0; i < 12; i++) {
+              consumoTotalAnual += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+            }
+          });
+        }
+        
+        // Grupo A remoto
+        if (state.energy?.energyBillsARemoto?.length) {
+          state.energy.energyBillsARemoto.forEach(bill => {
+            for (let i = 0; i < 12; i++) {
+              consumoTotalAnual += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+            }
+          });
+        }
+        
+        // Grupo B: somar todas as contas (local + remotas)
+        if (state.energy?.energyBills?.length) {
+          state.energy.energyBills.forEach(bill => {
+            consumoTotalAnual += bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
+          });
+        }
+        
+        return consumoTotalAnual;
+      })() || 0
     },
     selectedModule: undefined // O selectedModuleFull será injetado no wizard
   };
@@ -178,9 +205,36 @@ export const selectRoofDataCompleteWithModule = (solarModules: any[]) => (state:
       perdaOutras: state.system?.perdaOutras
     },
     energy: {
-      consumoAnualTotal: state.energy?.energyBills?.reduce((acc: number, bill: any) => {
-        return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
-      }, 0) || 0
+      consumoAnualTotal: (() => {
+        let consumoTotalAnual = 0;
+        
+        // Grupo A: somar ponta + fora ponta para cada mês de todas as contas (local + remoto)
+        if (state.energy?.energyBillsA?.length) {
+          state.energy.energyBillsA.forEach(bill => {
+            for (let i = 0; i < 12; i++) {
+              consumoTotalAnual += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+            }
+          });
+        }
+        
+        // Grupo A remoto
+        if (state.energy?.energyBillsARemoto?.length) {
+          state.energy.energyBillsARemoto.forEach(bill => {
+            for (let i = 0; i < 12; i++) {
+              consumoTotalAnual += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+            }
+          });
+        }
+        
+        // Grupo B: somar todas as contas (local + remotas)
+        if (state.energy?.energyBills?.length) {
+          state.energy.energyBills.forEach(bill => {
+            consumoTotalAnual += bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
+          });
+        }
+        
+        return consumoTotalAnual;
+      })() || 0
     },
     selectedModule
   };
@@ -378,9 +432,36 @@ export const selectAggregatedRoofData = (state: IProjectState) => {
   const potenciaPico = (totalModulos * potenciaModulo) / 1000; // kWp
   
   // Calcular consumo total anual
-  const consumoTotalAnual = state.energy?.energyBills?.reduce((acc: number, bill: any) => {
-    return acc + bill.consumoMensal.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0);
-  }, 0) || 0;
+  const consumoTotalAnual = (() => {
+    let consumoTotalAnual = 0;
+    
+    // Grupo A: somar ponta + fora ponta para cada mês de todas as contas (local + remoto)
+    if (state.energy?.energyBillsA?.length) {
+      state.energy.energyBillsA.forEach(bill => {
+        for (let i = 0; i < 12; i++) {
+          consumoTotalAnual += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+        }
+      });
+    }
+    
+    // Grupo A remoto
+    if (state.energy?.energyBillsARemoto?.length) {
+      state.energy.energyBillsARemoto.forEach(bill => {
+        for (let i = 0; i < 12; i++) {
+          consumoTotalAnual += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+        }
+      });
+    }
+    
+    // Grupo B: somar todas as contas (local + remotas)
+    if (state.energy?.energyBills?.length) {
+      state.energy.energyBills.forEach(bill => {
+        consumoTotalAnual += bill.consumoMensal.reduce((sum: number, val: number) => sum + (Number(val) || 0), 0);
+      });
+    }
+    
+    return consumoTotalAnual;
+  })() || 0;
   
   // Calcular cobertura percentual
   const cobertura = consumoTotalAnual > 0 ? (totalGeracao / consumoTotalAnual) * 100 : 0;
@@ -399,16 +480,30 @@ export const selectAggregatedRoofData = (state: IProjectState) => {
 };
 
 // Seletor específico para o SystemSummary
-export const selectSystemSummaryData = (state: IProjectState) => {
+export const selectSystemSummaryData = (solarModules: any[] = []) => (state: IProjectState) => {
   const aggregatedData = selectAggregatedRoofData(state);
+  
+  // Buscar dados completos do módulo selecionado
+  const moduleId = state.system?.selectedModuleId;
+  const selectedModule = moduleId && solarModules.length > 0
+    ? solarModules.find((m: any) => m.id === moduleId)
+    : undefined;
+  
+  // Formatar dados dos inversores para o SystemSummary
+  const selectedInverters = (state.system?.selectedInverters || []).map(inv => ({
+    fabricante: inv.inverter.manufacturer.name,
+    modelo: inv.inverter.model,
+    potenciaNominal: inv.inverter.power.ratedACPower,
+    quantity: inv.quantity || 1
+  }));
   
   return {
     potenciaPico: aggregatedData.potenciaPico,
     numeroModulos: aggregatedData.totalModulos,
     areaEstimada: aggregatedData.totalArea,
     geracaoEstimadaAnual: aggregatedData.totalGeracao,
-    selectedInverters: state.system?.selectedInverters || [],
-    selectedModule: state.system?.selectedModuleId, // Apenas o ID, o componente buscará o objeto completo
+    selectedInverters,
+    selectedModule,
     consumoTotalAnual: aggregatedData.consumoTotalAnual,
     cobertura: aggregatedData.cobertura
   };

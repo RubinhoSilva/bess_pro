@@ -59,41 +59,15 @@ class MPPTCalculationRequest(BaseModel):
 class MPPTCalculationResponse(BaseModel):
     """Response do cálculo de módulos por MPPT"""
     
-    # Resultado principal
+    # Resultado principal - apenas os 2 valores necessários
     modulos_por_mppt: int = Field(..., description="Quantidade de módulos recomendada por MPPT")
-    modulos_total_sistema: int = Field(..., description="Total de módulos no sistema completo")
-    
-    # Detalhamento técnico
-    limitacao_principal: str = Field(..., description="Principal limitação que define a quantidade")
-    analise_detalhada: Dict[str, Any] = Field(..., description="Análise técnica detalhada")
-    
-    # Configuração recomendada
-    configuracao_recomendada: Dict[str, Any] = Field(..., description="Configuração ótima do sistema")
-    
-    # Parâmetros de entrada utilizados
-    parametros_entrada: Dict[str, Any] = Field(..., description="Parâmetros utilizados no cálculo")
+    modulos_por_string: int = Field(..., description="Quantidade de módulos recomendada por string")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "modulos_por_mppt": 5,
-                "modulos_total_sistema": 10,
-                "limitacao_principal": "Configuração padrão - cálculo detalhado será implementado",
-                "analise_detalhada": {
-                    "limite_tensao": "OK",
-                    "limite_corrente": "OK",
-                    "limite_potencia": "OK"
-                },
-                "configuracao_recomendada": {
-                    "strings_por_mppt": 2,
-                    "modulos_por_string": 5,
-                    "total_mppt_utilizados": 2
-                },
-                "parametros_entrada": {
-                    "fabricante": "WEG",
-                    "modelo": "SIW500H-M",
-                    "numero_mppt": 2
-                }
+                "modulos_por_string": 5
             }
         }
 

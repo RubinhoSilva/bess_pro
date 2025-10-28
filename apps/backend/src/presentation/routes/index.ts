@@ -29,6 +29,9 @@ import { EnergyCompanyRoutes } from './EnergyCompanyRoutes';
 import { TestFinancialController } from '../controllers/TestFinancialController';
 import { GrupoFinancialRoutes } from './GrupoFinancialRoutes';
 
+import { ProposalRoutes } from './ProposalRoutes';
+import ProposalPDFRoutes from './ProposalPDFRoutes';
+
 export class ApiRoutes {
   static create(container: Container): Router {
     const router = Router();
@@ -66,7 +69,7 @@ export class ApiRoutes {
     router.use('/project-backups', new ProjectBackupRoutes(container).getRouter());
 
     router.use('/solar-analysis', createSolarAnalysisRoutes(container));
-    
+
     const grupoFinancialRoutes = new GrupoFinancialRoutes(container);
     router.use('/financial', grupoFinancialRoutes.getRouter());
 
@@ -78,6 +81,12 @@ export class ApiRoutes {
     const testController = new TestFinancialController();
     router.get('/test-financial-integration', (req, res) => testController.testIntegration(req, res));
     router.get('/test-financial-health', (req, res) => testController.healthCheck(req, res));
+
+    // Proposal routes
+    router.use('/proposals', ProposalRoutes.create(container));
+    
+    // Proposal PDF generation routes
+    router.use('/proposal', ProposalPDFRoutes);
 
     return router;
   }

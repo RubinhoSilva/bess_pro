@@ -62,28 +62,35 @@ export const usePVDimensioningNavigation = () => {
     };
   }, [navigation.currentStep, navigation.completedSteps]);
   
-  // Navegação segura com validação
+  // Navegação segura com validação melhorada
   const safeGoToStep = useCallback((step: number) => {
     // Validar se pode ir para o passo
     if (step < 1 || step > 7) {
       return false;
     }
     
-    // Validar dependências
-    if (!navigation.canGoBack && step < navigation.currentStep) {
-      return false;
-    }
+    // CORREÇÃO: Permitir navegação para trás mesmo sem canGoBack
+    // e permitir navegação para passos já completos
+    const isGoingBack = step < navigation.currentStep;
+    const isStepCompleted = navigation.completedSteps.has(step);
+    const isNextStep = step === navigation.currentStep + 1;
     
-    // Validar passos anteriores
-    for (let i = 1; i < step; i++) {
-      if (!navigation.completedSteps.has(i)) {
-        return false;
+    // Permitir navegação se:
+    // 1. Estiver voltando para qualquer passo
+    // 2. For para o próximo passo
+    // 3. For para um passo já completado
+    if (!isGoingBack && !isNextStep && !isStepCompleted) {
+      // Só validar dependências se estiver avançando para passo não completado
+      for (let i = 1; i < step; i++) {
+        if (!navigation.completedSteps.has(i)) {
+          return false;
+        }
       }
     }
     
     goToStep(step);
     return true;
-  }, [navigation.canGoBack, navigation.currentStep, navigation.completedSteps, goToStep]);
+  }, [navigation.currentStep, navigation.completedSteps, goToStep]);
   
   // Avançar para próxima etapa com validação
   const safeNextStep = useCallback(() => {
@@ -101,9 +108,25 @@ export const usePVDimensioningNavigation = () => {
     return false;
   }, [canGoToPrevious, navigation.currentStep, safeGoToStep]);
   
-  // Pular para etapa específica com validação de todas as anteriores
+  // CORREÇÃO: Pular para etapa específica com validação melhorada
   const jumpToStep = useCallback((step: number) => {
-    // Validar se todas as etapas anteriores estão completas
+    // Permitir pular para:
+    // 1. Etapa atual (não faz nada)
+    // 2. Próxima etapa (se válida)
+    // 3. Qualquer etapa já completada
+    
+    if (step === navigation.currentStep) {
+      return true; // Já está na etapa
+    }
+    
+    const stepIsCompleted = isStepCompleted(step);
+    const isNextStep = step === navigation.currentStep + 1;
+    
+    if (stepIsCompleted || isNextStep) {
+      return safeGoToStep(step);
+    }
+    
+    // Se não for completada nem a próxima, validar todas as anteriores
     for (let i = 1; i < step; i++) {
       if (!isStepCompleted(i) && !isStepValid(i)) {
         return false;
@@ -111,7 +134,7 @@ export const usePVDimensioningNavigation = () => {
     }
     
     return safeGoToStep(step);
-  }, [isStepCompleted, isStepValid, safeGoToStep]);
+  }, [navigation.currentStep, isStepCompleted, isStepValid, safeGoToStep]);
   
   return {
     // Estado de navegação
