@@ -1,6 +1,7 @@
 import type { IRepositoryEventPublisher, RepositoryEvent } from "./events/RepositoryEvents";
 import type { IAreaMontagemRepository } from "./IAreaMontagemRepository";
 import type { IBaseRepository } from "./IBaseRepository";
+import type { ICompanyProfileRepository } from "./ICompanyProfileRepository";
 import type { IGoogleApiKeyRepository } from "./IGoogleApiKeyRepository";
 import type { ILeadRepository } from "./ILeadRepository";
 import type { IModel3DRepository } from "./IModel3DRepository";
@@ -28,6 +29,7 @@ export type {
   IGoogleApiKeyRepository,
   ISolarProjectRepository,
   IProfileRepository,
+  ICompanyProfileRepository,
   
   // Patterns
   IUnitOfWork,

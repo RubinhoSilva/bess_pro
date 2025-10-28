@@ -31,6 +31,7 @@ import { GrupoFinancialRoutes } from './GrupoFinancialRoutes';
 
 import { ProposalRoutes } from './ProposalRoutes';
 import ProposalPDFRoutes from './ProposalPDFRoutes';
+import { CompanyProfileRoutes } from './CompanyProfileRoutes';
 
 export class ApiRoutes {
   static create(container: Container): Router {
@@ -87,7 +88,10 @@ export class ApiRoutes {
     
     // Proposal PDF generation routes
     router.use('/proposal', ProposalPDFRoutes);
-
+    
+    // Company Profile routes
+    router.use('/company-profiles', CompanyProfileRoutes.create(container));
+    
     return router;
   }
 }
