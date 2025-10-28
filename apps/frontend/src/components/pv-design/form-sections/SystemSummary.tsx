@@ -31,9 +31,26 @@ const SystemSummary: React.FC<SystemSummaryProps> = ({ formData, className = '',
   // Hooks Python removidos - cálculos não são mais chamados automaticamente
 
   // Variables that depend on formData
-  const consumoTotalAnual = formData.energyBills?.reduce((acc: number, bill: any) => {
-    return acc + bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
-  }, 0) || 0;
+  const consumoTotalAnual = (() => {
+    const grupoTarifario = formData.customer?.grupoTarifario || 'B';
+    let consumoTotalAnual = 0;
+    
+    if (grupoTarifario === 'A' && formData.energyBillsA?.length) {
+      // Grupo A: somar ponta + fora ponta para cada mês de todas as contas
+      formData.energyBillsA.forEach((bill: any) => {
+        for (let i = 0; i < 12; i++) {
+          consumoTotalAnual += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+        }
+      });
+    } else if (formData.energyBills?.length) {
+      // Grupo B: somar todas as contas (local + remotas)
+      formData.energyBills.forEach((bill: any) => {
+        consumoTotalAnual += bill.consumoMensal.reduce((sum: number, consumo: number) => sum + consumo, 0);
+      });
+    }
+    
+    return consumoTotalAnual;
+  })() || 0;
 
   // Sincronizar estado local com prop quando ela mudar (de fora)
   useEffect(() => {

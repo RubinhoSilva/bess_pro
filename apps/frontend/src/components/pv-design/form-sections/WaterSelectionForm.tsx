@@ -214,18 +214,18 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
 
   // Calcular limite máximo de módulos baseado nos inversores
   const calculateMaxModules = () => {
-    if (!roofData.selectedInverters?.length) return 50; // Fallback
+    // if (!roofData.selectedInverters?.length) return 50; // Fallback
 
     let totalMaxModules = 0;
     roofData.selectedInverters.forEach(inverter => {
       const inverterId = inverter.inverter.id;
       const limit = mpptLimits[inverterId];
       if (limit && !limit.isLoading && !limit.error) {
-        totalMaxModules += limit.modulosTotal * (inverter.quantity || 1);
+        totalMaxModules += limit.modulosPorMppt * (inverter.quantity || 1);
       }
     });
     
-    return totalMaxModules || 50;
+    return totalMaxModules;
   };
 
   const maxModules = calculateMaxModules();

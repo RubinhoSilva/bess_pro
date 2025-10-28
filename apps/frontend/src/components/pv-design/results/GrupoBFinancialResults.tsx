@@ -7,6 +7,8 @@ import { useGrupoBFinancialCalculation } from '@/hooks/financial-calculation-hoo
 import { convertToGrupoBInput } from '@/lib/financial-utils';
 import { ResultadosCodigoB } from '@bess-pro/shared';
 import { GrupoBAdapter, IGrupoBData } from '@/types/adapters/grupo-b-adapter';
+import { usePVDimensioningStore } from '@/store/pv-dimensioning-store';
+import type { EnergyBillA } from '@/types/energy-bill-types';
 import toast from 'react-hot-toast';
 
 /**
@@ -255,16 +257,37 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
               <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Consumo Anual</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {(() => {
-                    // Priorizar dados do backend se disponíveis
-                    if (financialResults?.somasIniciais?.consumoAnual) {
-                      return financialResults.somasIniciais.consumoAnual;
-                    }
+                  {(() => {                    
+                    // Calcular consumo total considerando Grupo A e Grupo B
+                    let consumoTotal = 0;
                     
-                    // Calcular consumo total (local + remoto)
-                    const consumoLocal = calculationData?.consumoMensal?.reduce((total: number, val: number) => total + val, 0) || 0;
-                    const consumoRemoto = calculationData?.consumoRemotoB?.reduce((total: number, val: number) => total + val, 0) || 0;
-                    const consumoTotal = consumoLocal + consumoRemoto;
+                    // Consumo Grupo B (local + remoto)
+                    const consumoLocalB = calculationData?.consumoMensal?.reduce((total: number, val: number) => total + val, 0) || 0;
+                    const consumoRemotoB = calculationData?.consumoRemotoB?.reduce((total: number, val: number) => total + val, 0) || 0;
+                    consumoTotal += consumoLocalB + consumoRemotoB;
+                    
+                    // Consumo Grupo A (local + remoto)
+                    const store = usePVDimensioningStore.getState();
+                    const energyBillsA = store.energy?.energyBillsA || [];
+                    const energyBillsARemoto = store.energy?.energyBillsARemoto || [];
+                    
+                    // Somar consumo do Grupo A local (ponta + fora ponta)
+                    energyBillsA.forEach((bill: EnergyBillA) => {
+                      if (bill.consumoMensalPonta && bill.consumoMensalForaPonta) {
+                        for (let i = 0; i < 12; i++) {
+                          consumoTotal += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+                        }
+                      }
+                    });
+                    
+                    // Somar consumo do Grupo A remoto (ponta + fora ponta)
+                    energyBillsARemoto.forEach((bill: EnergyBillA) => {
+                      if (bill.consumoMensalPonta && bill.consumoMensalForaPonta) {
+                        for (let i = 0; i < 12; i++) {
+                          consumoTotal += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+                        }
+                      }
+                    });
                     
                     return `${consumoTotal.toLocaleString('pt-BR')} kWh`;
                   })()}

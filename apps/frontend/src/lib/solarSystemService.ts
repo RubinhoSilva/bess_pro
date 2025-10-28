@@ -413,9 +413,26 @@ export class SolarSystemService {
    */
   static async calculateFromDimensioning(dimensioningData: any): Promise<SolarSystemCalculationResult> {
     const params: SolarSystemCalculationParams = {
-      consumoAnual: dimensioningData.energyBills?.reduce((total: number, bill: any) => {
-        return total + bill.consumoMensal?.reduce((sum: number, consumo: number) => sum + consumo, 0) || 0;
-      }, 0),
+      consumoAnual: (() => {
+        const grupoTarifario = dimensioningData.customer?.grupoTarifario || 'B';
+        let consumoTotalAnual = 0;
+        
+        if (grupoTarifario === 'A' && dimensioningData.energyBillsA?.length) {
+          // Grupo A: somar ponta + fora ponta para cada mês de todas as contas
+          dimensioningData.energyBillsA.forEach((bill: any) => {
+            for (let i = 0; i < 12; i++) {
+              consumoTotalAnual += (bill.consumoMensalPonta?.[i] || 0) + (bill.consumoMensalForaPonta?.[i] || 0);
+            }
+          });
+        } else if (dimensioningData.energyBills?.length) {
+          // Grupo B: somar todas as contas (local + remotas)
+          dimensioningData.energyBills.forEach((bill: any) => {
+            consumoTotalAnual += bill.consumoMensal?.reduce((sum: number, consumo: number) => sum + consumo, 0) || 0;
+          });
+        }
+        
+        return consumoTotalAnual;
+      })(),
       latitude: dimensioningData.latitude,
       longitude: dimensioningData.longitude,
       orientacao: dimensioningData.orientacao,
