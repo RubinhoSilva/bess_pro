@@ -23,19 +23,6 @@ export class CreateCompanyProfileUseCase {
         return Result.failure('Já existe uma empresa com este nome');
       }
 
-      // Verificar se já existe uma empresa com o mesmo CNPJ
-      if (command.taxId) {
-        const existingByTaxId = await this.companyProfileRepository.findByTaxId(command.taxId);
-        if (existingByTaxId) {
-          return Result.failure('Já existe uma empresa com este CNPJ');
-        }
-
-        // Validar formato do CNPJ
-        if (!CompanyProfile.validateTaxId(command.taxId)) {
-          return Result.failure('CNPJ inválido');
-        }
-      }
-
       // Validar email se fornecido
       if (command.email && !CompanyProfile.validateEmail(command.email)) {
         return Result.failure('Email inválido');

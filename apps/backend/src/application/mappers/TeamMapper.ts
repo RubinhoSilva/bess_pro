@@ -14,6 +14,7 @@ export class TeamMapper {
       isActive: team.getIsActive(),
       planType: team.getPlanType(),
       maxUsers: team.getMaxUsers(),
+      companyProfileId: team.getCompanyProfileId() || undefined,
       currentUsers,
       createdAt: team.getCreatedAt(),
       updatedAt: team.getUpdatedAt()

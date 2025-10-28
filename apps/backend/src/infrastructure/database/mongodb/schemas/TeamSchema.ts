@@ -9,6 +9,7 @@ export interface TeamDocument {
   isActive: boolean;
   planType: string;
   maxUsers: number;
+  companyProfileId?: string | null;
   isDeleted: boolean;
   deletedAt?: Date;
   createdAt: Date;
@@ -58,6 +59,12 @@ const TeamSchema = new Schema<TeamDocument>({
     min: 1,
     max: 1000
   },
+  companyProfileId: {
+    type: String,
+    required: false,
+    index: true,
+    ref: 'CompanyProfile'
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -86,5 +93,6 @@ TeamSchema.index({ isActive: 1 });
 TeamSchema.index({ planType: 1 });
 TeamSchema.index({ isDeleted: 1 });
 TeamSchema.index({ isDeleted: 1, deletedAt: -1 });
+TeamSchema.index({ companyProfileId: 1 }, { unique: true, sparse: true });
 
 export const TeamModel = model<TeamDocument>('Team', TeamSchema);

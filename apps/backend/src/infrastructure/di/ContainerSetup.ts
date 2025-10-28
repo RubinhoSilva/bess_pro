@@ -396,7 +396,8 @@ export class ContainerSetup {
         container.resolve(ServiceTokens.USER_REPOSITORY),
         container.resolve(ServiceTokens.KANBAN_COLUMN_REPOSITORY),
         container.resolve(ServiceTokens.KANBAN_COLUMN_SEEDER_SERVICE),
-        container.resolve(ServiceTokens.EMAIL_INVITATION_SERVICE)
+        container.resolve(ServiceTokens.EMAIL_INVITATION_SERVICE),
+        container.resolve(ServiceTokens.CompanyProfileRepository)
       );
     });
 
@@ -409,7 +410,8 @@ export class ContainerSetup {
 
     container.registerFactory(ServiceTokens.UPDATE_TEAM_USE_CASE, () => {
       return new UpdateTeamUseCase(
-        container.resolve(ServiceTokens.TEAM_REPOSITORY)
+        container.resolve(ServiceTokens.TEAM_REPOSITORY),
+        container.resolve(ServiceTokens.CompanyProfileRepository)
       );
     });
 
