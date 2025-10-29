@@ -53,7 +53,10 @@ class CompanyProfileService {
   /**
    * Upload company logo for the current team
    */
-  async uploadMyCompanyLogo(file: File): Promise<UploadCompanyLogoResponse> {
+  async uploadMyCompanyLogo(
+    file: File,
+    onProgress?: (progress: number) => void
+  ): Promise<UploadCompanyLogoResponse> {
     const formData = new FormData();
     formData.append('logo', file);
 
@@ -63,6 +66,12 @@ class CompanyProfileService {
       {
         headers: {
           'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            onProgress(progress);
+          }
         },
       }
     );
@@ -75,6 +84,7 @@ class CompanyProfileService {
   async deleteMyCompanyLogo(): Promise<void> {
     await api.delete(`${this.baseUrl}/me/logo`);
   }
+
 }
 
 // Export singleton instance

@@ -133,4 +133,5 @@ export class CompanyProfileController extends BaseController {
       return this.internalServerError(res, error.message);
     }
   }
+
 }

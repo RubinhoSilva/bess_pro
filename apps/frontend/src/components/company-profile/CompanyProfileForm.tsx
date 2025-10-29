@@ -2,10 +2,13 @@
  * Company Profile Form Component
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Loader2, UploadCloud, Image as ImageIcon } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { useDropzone } from 'react-dropzone';
 import {
   Form,
   FormControl,
@@ -22,6 +25,7 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Progress } from '../ui/progress';
 import { Upload, X, Building2, Mail, Phone, Globe, MapPin, Calendar, Briefcase } from 'lucide-react';
 import {
   CompanyProfile,
@@ -30,7 +34,7 @@ import {
   UpdateCompanyProfileRequest,
   CompanyProfileStatus
 } from '@bess-pro/shared';
-import { useCompanyProfileForm } from '../../hooks/company-profile-hooks';
+import { useCompanyProfileForm, useUploadMyCompanyLogo, useMyCompanyProfile, useDeleteMyCompanyLogo, useLogoUpload } from '../../hooks/company-profile-hooks';
 
 // Schema de validação
 const companyProfileSchema = z.object({
@@ -98,6 +102,36 @@ export function CompanyProfileForm({
   mode
 }: CompanyProfileFormProps) {
   const { formData, updateField, updateNestedField, validate, errors } = useCompanyProfileForm(initialData);
+  const uploadLogo = useUploadMyCompanyLogo();
+  const deleteLogo = useDeleteMyCompanyLogo();
+  const { data: currentProfile } = useMyCompanyProfile();
+  
+  // Hook personalizado para gerenciar upload com preview e progresso
+  const {
+    previewUrl,
+    selectedFile,
+    uploadProgress,
+    isUploading,
+    handleFileSelect,
+    handleUpload,
+    clearPreview,
+    hasPreview,
+  } = useLogoUpload();
+
+  // Configuração do dropzone
+  const { getRootProps, getInputProps, isDragActive, isDragAccept, isDragReject } = useDropzone({
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']
+    },
+    maxSize: 2 * 1024 * 1024, // 2MB
+    maxFiles: 1,
+    onDrop: useCallback((acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        handleFileSelect(acceptedFiles[0]);
+      }
+    }, [handleFileSelect]),
+    disabled: isUploading,
+  });
 
   const form = useForm<CompanyProfileFormData>({
     resolver: zodResolver(companyProfileSchema),
@@ -154,10 +188,20 @@ export function CompanyProfileForm({
     }
   };
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // TODO: Implementar upload do logo
+  const handleConfirmUpload = async () => {
+    await handleUpload();
+  };
+
+  const handleCancelUpload = () => {
+    clearPreview();
+  };
+
+  const handleRemoveLogo = async () => {
+    try {
+      await deleteLogo.mutateAsync();
+      toast.success('Logo removido com sucesso!');
+    } catch (error) {
+      console.error('Erro ao remover logo:', error);
     }
   };
 
@@ -181,6 +225,16 @@ export function CompanyProfileForm({
       .replace(/(\d{5})(\d{3})/, '$1-$2')
       .slice(0, 9);
   };
+
+  // Memoizar o src do Avatar para evitar re-renders desnecessários
+  const avatarSrc = useMemo(() => {
+    if (hasPreview) {
+      return previewUrl || undefined;
+    }
+    
+    const logoUrl = currentProfile?.logoUrl || initialData?.logoUrl;
+    return logoUrl?.startsWith('http') ? logoUrl : undefined;
+  }, [hasPreview, previewUrl, currentProfile?.logoUrl, initialData?.logoUrl]);
 
   return (
     <div className="w-full max-w-4xl mx-auto p-6">
@@ -338,37 +392,139 @@ export function CompanyProfileForm({
                     />
                   </div>
 
-                  {/* Logo Upload */}
+                  {/* Logo Upload com Drag & Drop e Preview */}
                   <div className="space-y-2">
                     <FormLabel>Logo da Empresa</FormLabel>
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-20 w-20">
-                        <AvatarImage src={initialData?.logoUrl} alt="Logo" />
-                        <AvatarFallback>
-                          <Building2 className="h-8 w-8" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleLogoUpload}
-                          className="hidden"
-                          id="logo-upload"
-                        />
+                    
+                    {/* Área de Drag & Drop */}
+                    <div
+                      {...getRootProps()}
+                      className={`
+                        relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
+                        ${isDragActive
+                          ? isDragAccept
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                            : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                          : 'border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-500'
+                        }
+                        ${isUploading ? 'cursor-not-allowed opacity-60' : ''}
+                      `}
+                      tabIndex={0}
+                      role="button"
+                      aria-label="Arraste uma imagem aqui ou clique para selecionar"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          document.getElementById('logo-upload-input')?.click();
+                        }
+                      }}
+                    >
+                      <input {...getInputProps()} id="logo-upload-input" />
+                      
+                      <div className="flex flex-col items-center space-y-4">
+                        {/* Avatar com Preview ou Logo Atual */}
+                        <div className="relative">
+                          <Avatar className="h-24 w-24">
+                            <AvatarImage
+                              src={avatarSrc}
+                              alt="Logo da Empresa"
+                            />
+                            <AvatarFallback>
+                              <Building2 className="h-12 w-12" />
+                            </AvatarFallback>
+                          </Avatar>
+                          
+                          {/* Overlay de Loading durante upload */}
+                          {isUploading && (
+                            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                              <Loader2 className="h-8 w-8 text-white animate-spin" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Texto de instrução */}
+                        <div className="space-y-2">
+                          {isDragActive ? (
+                            <p className="text-sm font-medium">
+                              {isDragAccept ? 'Solte a imagem aqui' : 'Arquivo não suportado'}
+                            </p>
+                          ) : (
+                            <>
+                              <div className="flex items-center justify-center space-x-2">
+                                <UploadCloud className="h-5 w-5 text-muted-foreground" />
+                                <p className="text-sm text-muted-foreground">
+                                  Arraste sua imagem ou clique para selecionar
+                                </p>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Formatos: JPG, PNG, GIF, WebP • Tamanho máximo: 2MB
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Barra de Progresso durante Upload */}
+                    {isUploading && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Enviando...</span>
+                          <span>{uploadProgress}%</span>
+                        </div>
+                        <Progress value={uploadProgress} className="h-2" />
+                      </div>
+                    )}
+
+                    {/* Botões de Confirmação/Cancelamento quando há preview */}
+                    {hasPreview && !isUploading && (
+                      <div className="flex items-center gap-2 justify-center">
+                        <Button
+                          type="button"
+                          onClick={handleConfirmUpload}
+                          disabled={isUploading}
+                          size="sm"
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Confirmar Upload
+                        </Button>
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => document.getElementById('logo-upload')?.click()}
+                          onClick={handleCancelUpload}
+                          disabled={isUploading}
+                          size="sm"
                         >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload Logo
+                          <X className="h-4 w-4 mr-2" />
+                          Cancelar
                         </Button>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Formatos: JPG, PNG. Tamanho máximo: 2MB
-                        </p>
                       </div>
-                    </div>
+                    )}
+
+                    {/* Botão para remover logo existente */}
+                    {(currentProfile?.logoUrl || initialData?.logoUrl) && !hasPreview && (
+                      <div className="flex justify-center">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRemoveLogo}
+                          disabled={deleteLogo.isPending || isUploading}
+                        >
+                          {deleteLogo.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Removendo...
+                            </>
+                          ) : (
+                            <>
+                              <X className="h-4 w-4 mr-2" />
+                              Remover Logo Atual
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

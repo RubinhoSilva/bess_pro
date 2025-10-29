@@ -87,8 +87,8 @@ export function useUploadMyCompanyLogo() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (file: File) =>
-      companyProfileService.uploadMyCompanyLogo(file),
+    mutationFn: ({ file, onProgress }: { file: File; onProgress?: (progress: number) => void }) =>
+      companyProfileService.uploadMyCompanyLogo(file, onProgress),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: COMPANY_PROFILE_KEYS.me() });
     },
@@ -114,6 +114,7 @@ export function useDeleteMyCompanyLogo() {
     },
   });
 }
+
 
 // Hook custom para gerenciar formulário de perfil de empresa
 export function useCompanyProfileForm(initialData?: Partial<CompanyProfile>) {
@@ -207,5 +208,88 @@ export function useCompanyProfileForm(initialData?: Partial<CompanyProfile>) {
     validate,
     reset,
     isValid: Object.keys(errors).length === 0,
+  };
+}
+
+// Hook para gerenciar o estado de upload de logo com preview e progresso
+export function useLogoUpload() {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  
+  const uploadLogo = useUploadMyCompanyLogo();
+
+  // Limpar preview quando o componente for desmontado
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const handleFileSelect = useCallback((file: File) => {
+    // Validação do tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      toast.error('Apenas imagens JPG, PNG, GIF ou WebP são permitidas');
+      return false;
+    }
+    
+    // Validação do tamanho (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 2MB');
+      return false;
+    }
+
+    // Criar preview
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    setSelectedFile(file);
+    return true;
+  }, []);
+
+  const handleUpload = useCallback(async () => {
+    if (!selectedFile) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      await uploadLogo.mutateAsync({
+        file: selectedFile,
+        onProgress: (progress) => {
+          setUploadProgress(progress);
+        }
+      });
+      
+      toast.success('Logo atualizado com sucesso!');
+      clearPreview();
+    } catch (error) {
+      console.error('Erro ao fazer upload do logo:', error);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  }, [selectedFile, uploadLogo]);
+
+  const clearPreview = useCallback(() => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setSelectedFile(null);
+    setUploadProgress(0);
+  }, [previewUrl]);
+
+  return {
+    previewUrl,
+    selectedFile,
+    uploadProgress,
+    isUploading,
+    handleFileSelect,
+    handleUpload,
+    clearPreview,
+    hasPreview: !!previewUrl,
   };
 }

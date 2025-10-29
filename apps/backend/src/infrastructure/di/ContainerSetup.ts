@@ -292,7 +292,7 @@ export class ContainerSetup {
         secretAccessKey: config.storage.s3?.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY || '',
         region: config.storage.s3?.region || process.env.AWS_REGION || 'us-east-1',
         bucket: config.storage.s3?.bucket || process.env.AWS_S3_BUCKET || '',
-        cloudFrontUrl: config.storage.s3?.cloudFrontUrl || process.env.AWS_CLOUDFRONT_URL
+        cloudFrontUrl: config.storage.s3?.cloudFrontUrl || process.env.AWS_CLOUDFRONT_URL || process.env.CLOUDFRONT_URL
       };
       return new CompanyLogoService(s3Config);
     }, true);
