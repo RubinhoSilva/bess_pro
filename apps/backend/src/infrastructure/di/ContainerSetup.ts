@@ -50,6 +50,9 @@ import { DefaultEmailInvitationService } from '../../domain/services/EmailInvita
 // Application Services
 import { NotificationService } from '../../application/services/NotificationService';
 
+// Mappers
+import { CompanyProfileMapper } from '../../application/mappers/CompanyProfileMapper';
+
 // Use Cases - User
 import { RegisterUserUseCase } from '../../application/use-cases/user/RegisterUserUseCase';
 import { SetupPasswordUseCase } from '../../application/use-cases/auth/SetupPasswordUseCase';
@@ -135,7 +138,6 @@ import { RevertClientToLeadUseCase } from '../../application/use-cases/client/Re
 // Company Profile Use Cases
 import { CreateCompanyProfileUseCase } from '../../application/use-cases/company-profile/CreateCompanyProfileUseCase';
 import { GetCompanyProfileUseCase } from '../../application/use-cases/company-profile/GetCompanyProfileUseCase';
-import { GetCompanyProfilesUseCase } from '../../application/use-cases/company-profile/GetCompanyProfilesUseCase';
 import { UpdateCompanyProfileUseCase } from '../../application/use-cases/company-profile/UpdateCompanyProfileUseCase';
 import { DeleteCompanyProfileUseCase } from '../../application/use-cases/company-profile/DeleteCompanyProfileUseCase';
 import { UploadCompanyLogoUseCase } from '../../application/use-cases/company-profile/UploadCompanyLogoUseCase';
@@ -343,6 +345,9 @@ export class ContainerSetup {
 
     // Application Services (Singletons)
     container.register('NotificationService', NotificationService, true);
+    
+    // Mappers
+    container.register('CompanyProfileMapper', CompanyProfileMapper, true);
 
     // Use Cases - User
     container.registerFactory(ServiceTokens.REGISTER_USER_USE_CASE, () => {
@@ -396,7 +401,8 @@ export class ContainerSetup {
         container.resolve(ServiceTokens.USER_REPOSITORY),
         container.resolve(ServiceTokens.KANBAN_COLUMN_REPOSITORY),
         container.resolve(ServiceTokens.KANBAN_COLUMN_SEEDER_SERVICE),
-        container.resolve(ServiceTokens.EMAIL_INVITATION_SERVICE)
+        container.resolve(ServiceTokens.EMAIL_INVITATION_SERVICE),
+        container.resolve(ServiceTokens.CompanyProfileRepository)
       );
     });
 
@@ -409,7 +415,8 @@ export class ContainerSetup {
 
     container.registerFactory(ServiceTokens.UPDATE_TEAM_USE_CASE, () => {
       return new UpdateTeamUseCase(
-        container.resolve(ServiceTokens.TEAM_REPOSITORY)
+        container.resolve(ServiceTokens.TEAM_REPOSITORY),
+        container.resolve(ServiceTokens.CompanyProfileRepository)
       );
     });
 
@@ -1077,18 +1084,13 @@ export class ContainerSetup {
     // Company Profile Use Cases
     container.registerFactory(ServiceTokens.CreateCompanyProfileUseCase, () => {
       return new CreateCompanyProfileUseCase(
-        container.resolve(ServiceTokens.CompanyProfileRepository)
+        container.resolve(ServiceTokens.CompanyProfileRepository),
+        container.resolve(ServiceTokens.TEAM_REPOSITORY)
       );
     });
 
     container.registerFactory(ServiceTokens.GetCompanyProfileUseCase, () => {
       return new GetCompanyProfileUseCase(
-        container.resolve(ServiceTokens.CompanyProfileRepository)
-      );
-    });
-
-    container.registerFactory(ServiceTokens.GetCompanyProfilesUseCase, () => {
-      return new GetCompanyProfilesUseCase(
         container.resolve(ServiceTokens.CompanyProfileRepository)
       );
     });
@@ -1101,7 +1103,8 @@ export class ContainerSetup {
 
     container.registerFactory(ServiceTokens.DeleteCompanyProfileUseCase, () => {
       return new DeleteCompanyProfileUseCase(
-        container.resolve(ServiceTokens.CompanyProfileRepository)
+        container.resolve(ServiceTokens.CompanyProfileRepository),
+        container.resolve(ServiceTokens.TEAM_REPOSITORY)
       );
     });
 
@@ -1124,7 +1127,6 @@ export class ContainerSetup {
       return new CompanyProfileController(
         container.resolve(ServiceTokens.CreateCompanyProfileUseCase),
         container.resolve(ServiceTokens.GetCompanyProfileUseCase),
-        container.resolve(ServiceTokens.GetCompanyProfilesUseCase),
         container.resolve(ServiceTokens.UpdateCompanyProfileUseCase),
         container.resolve(ServiceTokens.DeleteCompanyProfileUseCase),
         container.resolve(ServiceTokens.UploadCompanyLogoUseCase),

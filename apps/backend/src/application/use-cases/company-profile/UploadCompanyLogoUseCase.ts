@@ -60,7 +60,7 @@ export class UploadCompanyLogoUseCase {
           await this.s3Service.deleteFile(previousLogoPath);
         } catch (error: any) {
           // Log do erro, mas não falhar a operação
-          console.warn('Erro ao deletar logo anterior do S3:', error.message);
+          // Erro ao deletar logo anterior do S3: error.message
         }
       }
 

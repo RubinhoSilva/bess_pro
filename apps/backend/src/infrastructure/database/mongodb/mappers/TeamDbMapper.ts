@@ -12,6 +12,7 @@ export class TeamDbMapper {
       isActive: doc.isActive,
       planType: doc.planType,
       maxUsers: doc.maxUsers,
+      companyProfileId: doc.companyProfileId || null,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt
     });
@@ -27,6 +28,7 @@ export class TeamDbMapper {
       isActive: team.getIsActive(),
       planType: team.getPlanType(),
       maxUsers: team.getMaxUsers(),
+      companyProfileId: team.getCompanyProfileId(),
       createdAt: team.getCreatedAt(),
       updatedAt: team.getUpdatedAt()
     };

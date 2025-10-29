@@ -10,18 +10,18 @@ export class UpdateCompanyProfileUseCase {
     private companyProfileRepository: ICompanyProfileRepository
   ) {}
 
-  async execute(companyProfileId: string, command: UpdateCompanyProfileCommand): Promise<Result<CompanyProfileResponseDto>> {
+  async execute(teamId: string, command: UpdateCompanyProfileCommand): Promise<Result<CompanyProfileResponseDto>> {
     try {
-      const companyProfile = await this.companyProfileRepository.findById(companyProfileId);
+      const companyProfile = await this.companyProfileRepository.findByTeamId(teamId);
 
       if (!companyProfile) {
-        return Result.failure('Perfil da empresa não encontrado');
+        return Result.failure('Team não possui perfil de empresa cadastrado');
       }
 
       // Verificar se está tentando alterar o nome para um que já existe
       if (command.companyName && command.companyName !== companyProfile.getCompanyName()) {
         const existingByName = await this.companyProfileRepository.findByCompanyName(command.companyName);
-        if (existingByName && existingByName.getId() !== companyProfileId) {
+        if (existingByName && existingByName.getId() !== companyProfile.getId()) {
           return Result.failure('Já existe uma empresa com este nome');
         }
       }
@@ -29,7 +29,7 @@ export class UpdateCompanyProfileUseCase {
       // Verificar se está tentando alterar o CNPJ para um que já existe
       if (command.taxId && command.taxId !== companyProfile.getTaxId()) {
         const existingByTaxId = await this.companyProfileRepository.findByTaxId(command.taxId);
-        if (existingByTaxId && existingByTaxId.getId() !== companyProfileId) {
+        if (existingByTaxId && existingByTaxId.getId() !== companyProfile.getId()) {
           return Result.failure('Já existe uma empresa com este CNPJ');
         }
 

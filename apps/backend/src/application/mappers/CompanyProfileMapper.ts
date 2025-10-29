@@ -1,5 +1,4 @@
 import { CompanyProfile } from "../../domain/entities/CompanyProfile";
-import { CreateCompanyProfileCommand } from "../dtos/input/company-profile/CreateCompanyProfileCommand";
 import { UpdateCompanyProfileCommand } from "../dtos/input/company-profile/UpdateCompanyProfileCommand";
 import { CompanyProfileResponseDto, CompanyProfileListResponseDto } from "../dtos/output/CompanyProfileResponseDto";
 import type {
@@ -10,27 +9,6 @@ import type {
 } from "@bess-pro/shared";
 
 export class CompanyProfileMapper {
-  static createCommandToDomain(command: CreateCompanyProfileCommand): CompanyProfile {
-    return CompanyProfile.create({
-      companyName: command.companyName,
-      tradingName: command.tradingName,
-      taxId: command.taxId,
-      stateRegistration: command.stateRegistration,
-      municipalRegistration: command.municipalRegistration,
-      phone: command.phone,
-      email: command.email,
-      logoUrl: command.logoUrl,
-      logoPath: command.logoPath,
-      website: command.website,
-      address: command.address,
-      city: command.city,
-      state: command.state,
-      zipCode: command.zipCode,
-      country: command.country,
-      isActive: command.isActive
-    });
-  }
-
   // New method to convert domain to shared type
   static domainToShared(companyProfile: CompanyProfile): SharedCompanyProfile {
     return {
@@ -51,6 +29,7 @@ export class CompanyProfileMapper {
       zipCode: companyProfile.getZipCode(),
       country: companyProfile.getCountry(),
       isActive: companyProfile.getIsActive(),
+      teamId: companyProfile.getTeamId(),
       createdAt: companyProfile.getCreatedAt(),
       updatedAt: companyProfile.getUpdatedAt(),
       deletedAt: companyProfile.getDeletedAt(),
@@ -78,6 +57,7 @@ export class CompanyProfileMapper {
       zipCode: shared.zipCode,
       country: shared.country,
       isActive: shared.isActive,
+      teamId: shared.teamId,
       createdAt: shared.createdAt,
       updatedAt: shared.updatedAt,
       deletedAt: shared.deletedAt,

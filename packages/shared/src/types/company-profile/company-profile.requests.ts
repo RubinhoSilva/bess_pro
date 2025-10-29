@@ -19,6 +19,7 @@ export interface CreateCompanyProfileRequest {
   zipCode?: string;
   country?: string;
   isActive?: boolean;
+  // teamId é obtido do token JWT, não do body da requisição
 }
 
 export interface UpdateCompanyProfileRequest {

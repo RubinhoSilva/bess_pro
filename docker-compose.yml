@@ -62,6 +62,10 @@ services:
       EMAIL_USER: ""
       EMAIL_PASS: ""
       EMAIL_FROM: noreply@besspro.dev
+      STORAGE_PROVIDER: s3
+      
+      AWS_REGION: us-west-2
+      S3_BUCKET: besspro-dev
     volumes:
       - ./apps/backend:/app/backend
       - ./packages/shared:/app/shared
@@ -105,13 +109,19 @@ services:
     restart: unless-stopped
     ports:
       - "8110:8100"
+    environment:
+      USE_S3_STORAGE: True
+
+      AWS_REGION: us-west-2
+      S3_BUCKET_NAME: besspro-dev
+      S3_PROPOSALS_PREFIX: proposals/
+      S3_PRESIGNED_URL_EXPIRATION: 3600
+      PYTHONUNBUFFERED: 1
     volumes:
       - ./apps/energy-calculation-service:/app
       - proposal_storage:/app/storage
     networks:
       - bess-network
-    environment:
-      - PYTHONUNBUFFERED=1
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
       interval: 30s

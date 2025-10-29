@@ -8,9 +8,11 @@
 // Core types
 export type {
   CompanyProfile,
-  CompanyProfileProps,
-  CompanyProfileStatus
+  CompanyProfileProps
 } from './company-profile.types';
+
+// Export enum as value (not just type)
+export { CompanyProfileStatus } from './company-profile.types';
 
 // Request types
 export type {

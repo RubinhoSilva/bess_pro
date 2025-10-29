@@ -19,6 +19,7 @@ export interface ICompanyProfileDocument {
   zipCode?: string;
   country?: string;
   isActive: boolean;
+  teamId: string;
   isDeleted: boolean;
   deletedAt: Date | null;
   createdAt: Date;
@@ -43,6 +44,7 @@ const CompanyProfileSchema = new Schema<ICompanyProfileDocument>({
   zipCode: { type: String, trim: true },
   country: { type: String, trim: true, default: 'Brasil' },
   isActive: { type: Boolean, default: true, index: true },
+  teamId: { type: String, required: true, index: true },
   isDeleted: { type: Boolean, default: false, index: true },
   deletedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
@@ -61,6 +63,7 @@ CompanyProfileSchema.index({ isActive: 1 });
 CompanyProfileSchema.index({ isDeleted: 1 });
 CompanyProfileSchema.index({ isDeleted: 1, deletedAt: -1 });
 CompanyProfileSchema.index({ isActive: 1, isDeleted: 1 });
+CompanyProfileSchema.index({ teamId: 1 }, { unique: true });
 
 // Índice de texto para busca
 CompanyProfileSchema.index({
