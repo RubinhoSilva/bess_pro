@@ -24,7 +24,7 @@ export class SolarModuleSeeder {
         isc: 14.55,
         aRef: 1.8, // Fator de idealidade
         iLRef: 14.55, //Corrente de Luz Fotogerada (A)
-        iORef: 3.5e-12, // Corrente de Saturação do Diodo (A)
+        iORef: 2.5e-12, // Corrente de Saturação do Diodo (A)
         rS: 0.25, // Resistência série (Ohms)
         rShRef: 450, // Resistência de shunt (Ohms)
         eficiencia: 22.6,
