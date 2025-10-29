@@ -63,8 +63,7 @@ services:
       EMAIL_PASS: ""
       EMAIL_FROM: noreply@besspro.dev
       STORAGE_PROVIDER: s3
-      AWS_ACCESS_KEY_ID: AKIAW5SOHCZ2LM7YCWNO
-      AWS_SECRET_ACCESS_KEY: 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
+      
       AWS_REGION: us-west-2
       S3_BUCKET: besspro-dev
     volumes:
@@ -112,8 +111,7 @@ services:
       - "8110:8100"
     environment:
       USE_S3_STORAGE: True
-      AWS_ACCESS_KEY_ID: AKIAW5SOHCZ2LM7YCWNO
-      AWS_SECRET_ACCESS_KEY: 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
+
       AWS_REGION: us-west-2
       S3_BUCKET_NAME: besspro-dev
       S3_PROPOSALS_PREFIX: proposals/
