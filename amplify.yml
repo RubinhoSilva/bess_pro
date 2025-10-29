@@ -48,7 +48,7 @@ frontend:
         - key: 'Referrer-Policy'
           value: 'strict-origin-when-cross-origin'
         - key: 'Permissions-Policy'
-          value: 'geolocation=(), microphone=(), camera=()'
+          value: 'geolocation=(self), microphone=(), camera=()'
 
     - pattern: 'static/**/*'
       headers:
