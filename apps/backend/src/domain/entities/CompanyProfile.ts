@@ -28,6 +28,7 @@ export class CompanyProfile extends BaseEntity {
     private zipCode: string,
     private country: string,
     private isActive: boolean,
+    private readonly teamId: string,
     softDeleteProps?: SoftDeleteProps & { createdAt?: Date; updatedAt?: Date }
   ) {
     super(softDeleteProps);
@@ -35,6 +36,10 @@ export class CompanyProfile extends BaseEntity {
 
   static create(props: CompanyProfileProps): CompanyProfile {
     const id = props.id || crypto.randomUUID();
+
+    if (!props.teamId) {
+      throw new Error('TeamId é obrigatório para criar CompanyProfile');
+    }
 
     return new CompanyProfile(
       id,
@@ -54,6 +59,7 @@ export class CompanyProfile extends BaseEntity {
       props.zipCode || '',
       props.country || 'Brasil',
       props.isActive ?? true,
+      props.teamId,
       {
         isDeleted: props.isDeleted,
         deletedAt: props.deletedAt,
@@ -170,6 +176,7 @@ export class CompanyProfile extends BaseEntity {
   getZipCode(): string { return this.zipCode; }
   getCountry(): string { return this.country; }
   getIsActive(): boolean { return this.isActive; }
+  getTeamId(): string { return this.teamId; }
   getCreatedAt(): Date { return this._createdAt; }
   getUpdatedAt(): Date { return this._updatedAt; }
 

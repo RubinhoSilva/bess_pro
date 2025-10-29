@@ -8,12 +8,12 @@ export class GetCompanyProfileUseCase {
     private companyProfileRepository: ICompanyProfileRepository
   ) {}
 
-  async execute(companyProfileId: string): Promise<Result<CompanyProfileResponseDto>> {
+  async execute(teamId: string): Promise<Result<CompanyProfileResponseDto | null>> {
     try {
-      const companyProfile = await this.companyProfileRepository.findById(companyProfileId);
+      const companyProfile = await this.companyProfileRepository.findByTeamId(teamId);
 
       if (!companyProfile) {
-        return Result.failure('Perfil da empresa não encontrado');
+        return Result.success(null);
       }
 
       const responseDto = CompanyProfileMapper.toResponseDto(companyProfile);

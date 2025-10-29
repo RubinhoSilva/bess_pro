@@ -4,7 +4,7 @@ export interface User {
   name: string;
   company: string;
   role: 'super_admin' | 'team_owner' | 'admin' | 'vendedor' | 'viewer';
-  teamId?: string;
+  teamId: string;
   status?: 'active' | 'pending' | 'inactive' | 'removed';
   logoUrl?: string;
   createdAt: string;

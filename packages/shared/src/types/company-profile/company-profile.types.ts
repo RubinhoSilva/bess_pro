@@ -20,6 +20,7 @@ export interface CompanyProfile {
   zipCode?: string;
   country?: string;
   isActive: boolean;
+  teamId: string;
   isDeleted: boolean;
   deletedAt: Date | null;
   createdAt: Date;
@@ -44,6 +45,7 @@ export interface CompanyProfileProps {
   zipCode?: string;
   country?: string;
   isActive?: boolean;
+  teamId: string;
   isDeleted?: boolean;
   deletedAt?: Date | null;
   createdAt?: Date;
@@ -53,5 +55,7 @@ export interface CompanyProfileProps {
 export enum CompanyProfileStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
-  DELETED = 'deleted'
+  DELETED = 'deleted',
+  SUSPENDED = 'suspended',
+  PENDING = 'pending',
 }

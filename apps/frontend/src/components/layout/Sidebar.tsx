@@ -1,9 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
-import { 
+import {
   Home,
-  BarChart3, 
-  Zap, 
-  Users, 
+  BarChart3,
+  Zap,
+  Users,
   Briefcase,
   Settings,
   User,
@@ -19,6 +19,7 @@ import {
   Package,
   MapPin,
   Box,
+  Building2,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../ui/button';
@@ -177,6 +178,12 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
                   Configurações
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard/company-profile" className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Empresa
+                </Link>
+              </DropdownMenuItem>
               {canManageTeam && (
                 <DropdownMenuItem asChild>
                   <Link to="/dashboard/team" className="flex items-center gap-2">
@@ -220,6 +227,12 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
                 <Link to="/dashboard/settings" className="flex items-center gap-2">
                   <Settings className="w-4 h-4" />
                   Configurações
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard/company-profile" className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Empresa
                 </Link>
               </DropdownMenuItem>
               {canManageTeam && (
