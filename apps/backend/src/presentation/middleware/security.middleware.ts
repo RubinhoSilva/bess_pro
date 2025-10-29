@@ -74,8 +74,8 @@ export function customSecurityHeaders(req: Request, res: Response, next: NextFun
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   
   // Feature Policy (Permissions Policy)
-  res.setHeader('Permissions-Policy', 
-    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=()'
+  res.setHeader('Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=()'
   );
   
   next();
