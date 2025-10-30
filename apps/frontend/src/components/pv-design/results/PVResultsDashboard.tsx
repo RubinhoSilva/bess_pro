@@ -218,6 +218,111 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
   
   const [currentDimensioning] = useState<any>({});
   
+  // Hooks MOVIDOS PARA O TOPO - ANTES de qualquer early return
+  // Detectar qual grupo tarifário renderizar
+  const grupoTarifarioInfo = useMemo(() => {
+    return GrupoTarifarioDetector.detectarGrupoTarifario(customerData, energyData);
+  }, [customerData, energyData]);
+
+  // Preparar dados para ambos os grupos (se necessário)
+  const grupoAData = useMemo(() => {
+    if (grupoTarifarioInfo.renderizar === GrupoTarifarioRender.GRUPO_A ||
+        grupoTarifarioInfo.renderizar === GrupoTarifarioRender.AMBOS) {
+      // Validar dados antes de passar para o adapter
+      if (!customerData || !energyData || !budgetData || !resultsData) {
+        return null;
+      }
+      
+      return GrupoAAdapter.extractGrupoAData(customerData, energyData, systemData, budgetData, resultsData);
+    }
+    return null;
+  }, [customerData, energyData, systemData, budgetData, resultsData, grupoTarifarioInfo.renderizar]);
+
+  const grupoBData = useMemo(() => {
+    if (grupoTarifarioInfo.renderizar === GrupoTarifarioRender.GRUPO_B ||
+        grupoTarifarioInfo.renderizar === GrupoTarifarioRender.AMBOS) {
+      // Validar dados antes de passar para o adapter
+      if (!customerData || !energyData || !budgetData || !resultsData) {
+        return null;
+      }
+      
+      return GrupoBAdapter.extractGrupoBData(customerData, energyData, systemData, budgetData, resultsData);
+    }
+    return null;
+  }, [customerData, energyData, systemData, budgetData, resultsData, grupoTarifarioInfo.renderizar]);
+
+  // Memoizar a seção do grupo tarifário para evitar re-renderizações desnecessárias
+  const grupoTarifarioSection = useMemo(() => {
+    // Renderização condicional baseada no detector
+    const mensagemInformativa = GrupoTarifarioDetector.getMensagemInformativa(grupoTarifarioInfo);
+    
+    switch (grupoTarifarioInfo.renderizar) {
+      case GrupoTarifarioRender.GRUPO_A:
+        return (
+          <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={4}>
+            {mensagemInformativa && (
+              <Alert className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{mensagemInformativa}</AlertDescription>
+              </Alert>
+            )}
+            <GrupoAFinancialResults data={grupoAData!} />
+          </Section>
+        );
+        
+      case GrupoTarifarioRender.GRUPO_B:
+        return (
+          <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={4}>
+            {mensagemInformativa && (
+              <Alert className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{mensagemInformativa}</AlertDescription>
+              </Alert>
+            )}
+            <GrupoBFinancialResults data={grupoBData!} />
+          </Section>
+        );
+        
+      case GrupoTarifarioRender.AMBOS:
+        return (
+          <>
+            <Section title="Resultados Financeiros - Grupo A" delay={4}>
+              <GrupoAFinancialResults data={grupoAData!} />
+            </Section>
+            <Section title="Resultados Financeiros - Grupo B" delay={5}>
+              <GrupoBFinancialResults data={grupoBData!} />
+            </Section>
+            {mensagemInformativa && (
+              <Section title="Análise Comparativa" delay={6}>
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{mensagemInformativa}</AlertDescription>
+                </Alert>
+              </Section>
+            )}
+          </>
+        );
+        
+      case GrupoTarifarioRender.NENHUM:
+      default:
+        return (
+          <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={4}>
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
+                  <p className="text-muted-foreground">{grupoTarifarioInfo.motivo}</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {mensagemInformativa}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </Section>
+        );
+    }
+  }, [grupoTarifarioInfo, grupoAData, grupoBData]);
+  
   // Validação inicial dos dados
   if (!resultsData?.calculationResults) {
     return <LoadingFallback />;
@@ -267,7 +372,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
   
   if (!hasFinancialDataCheck && !hasGenerationData) {
     return (
-      <DataErrorFallback 
+      <DataErrorFallback
         message="Dados financeiros e de geração não disponíveis. Verifique os parâmetros de entrada."
         onRetry={onNewCalculation}
       />
@@ -333,109 +438,8 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
             </Section>
           )} */}
 
-          {/* Detectar qual grupo tarifário renderizar */}
-          {(() => {
-            // Detectar qual grupo tarifário renderizar
-            const grupoTarifarioInfo = useMemo(() => {
-              return GrupoTarifarioDetector.detectarGrupoTarifario(customerData, energyData);
-            }, [customerData, energyData]);
-
-            // Preparar dados para ambos os grupos (se necessário)
-            const grupoAData = useMemo(() => {
-              if (grupoTarifarioInfo.renderizar === GrupoTarifarioRender.GRUPO_A ||
-                  grupoTarifarioInfo.renderizar === GrupoTarifarioRender.AMBOS) {
-                // Validar dados antes de passar para o adapter
-                if (!customerData || !energyData || !budgetData) {
-                  return null;
-                }
-                
-                return GrupoAAdapter.extractGrupoAData(customerData, energyData, systemData, budgetData, resultsData);
-              }
-              return null;
-            }, [customerData, energyData, systemData, budgetData, resultsData, grupoTarifarioInfo.renderizar]);
-
-            const grupoBData = useMemo(() => {
-              if (grupoTarifarioInfo.renderizar === GrupoTarifarioRender.GRUPO_B ||
-                  grupoTarifarioInfo.renderizar === GrupoTarifarioRender.AMBOS) {
-                // Validar dados antes de passar para o adapter
-                if (!customerData || !energyData || !budgetData) {
-                  return null;
-                }
-                
-                return GrupoBAdapter.extractGrupoBData(customerData, energyData, systemData, budgetData, resultsData);
-              }
-              return null;
-            }, [customerData, energyData, systemData, budgetData, resultsData, grupoTarifarioInfo.renderizar]);
-
-            // Renderização condicional baseada no detector
-            const mensagemInformativa = GrupoTarifarioDetector.getMensagemInformativa(grupoTarifarioInfo);
-            
-            switch (grupoTarifarioInfo.renderizar) {
-              case GrupoTarifarioRender.GRUPO_A:
-                return (
-                  <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={4}>
-                    {mensagemInformativa && (
-                      <Alert className="mb-4">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription>{mensagemInformativa}</AlertDescription>
-                      </Alert>
-                    )}
-                    <GrupoAFinancialResults data={grupoAData!} />
-                  </Section>
-                );
-                
-              case GrupoTarifarioRender.GRUPO_B:
-                return (
-                  <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={4}>
-                    {mensagemInformativa && (
-                      <Alert className="mb-4">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription>{mensagemInformativa}</AlertDescription>
-                      </Alert>
-                    )}
-                    <GrupoBFinancialResults data={grupoBData!} />
-                  </Section>
-                );
-                
-              case GrupoTarifarioRender.AMBOS:
-                return (
-                  <>
-                    <Section title="Resultados Financeiros - Grupo A" delay={4}>
-                      <GrupoAFinancialResults data={grupoAData!} />
-                    </Section>
-                    <Section title="Resultados Financeiros - Grupo B" delay={5}>
-                      <GrupoBFinancialResults data={grupoBData!} />
-                    </Section>
-                    {mensagemInformativa && (
-                      <Section title="Análise Comparativa" delay={6}>
-                        <Alert>
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertDescription>{mensagemInformativa}</AlertDescription>
-                        </Alert>
-                      </Section>
-                    )}
-                  </>
-                );
-                
-              case GrupoTarifarioRender.NENHUM:
-              default:
-                return (
-                  <Section title={GrupoTarifarioDetector.getTituloSeção(grupoTarifarioInfo.renderizar)} delay={4}>
-                    <Card>
-                      <CardContent className="flex items-center justify-center py-12">
-                        <div className="text-center">
-                          <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
-                          <p className="text-muted-foreground">{grupoTarifarioInfo.motivo}</p>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            {mensagemInformativa}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Section>
-                );
-            }
-          })()}
+          {/* Renderizar seção do grupo tarifário */}
+          {grupoTarifarioSection}
 
           {/* <Section title="Gráficos de Desempenho" delay={5}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -498,7 +502,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
           {/* Seção de Geração de Proposta */}
           <Section title="📄 Gerar Proposta" delay={9}>
             <ProposalGenerator
-              results={validatedResults}
+              results={{ calculationResults: validatedResults }}
               customerData={customerData}
               energyData={energyData}
               systemData={systemData}
