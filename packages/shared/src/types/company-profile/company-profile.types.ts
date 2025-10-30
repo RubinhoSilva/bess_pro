@@ -25,6 +25,12 @@ export interface CompanyProfile {
   deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  mission?: string;
+  foundedYear?: string;
+  completedProjectsCount?: string;
+  totalInstalledPower?: string;
+  satisfiedClientsCount?: string;
+  companyNotes?: string;
 }
 
 export interface CompanyProfileProps {
@@ -50,6 +56,12 @@ export interface CompanyProfileProps {
   deletedAt?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
+  mission?: string;
+  foundedYear?: string;
+  completedProjectsCount?: string;
+  totalInstalledPower?: string;
+  satisfiedClientsCount?: string;
+  companyNotes?: string;
 }
 
 export enum CompanyProfileStatus {

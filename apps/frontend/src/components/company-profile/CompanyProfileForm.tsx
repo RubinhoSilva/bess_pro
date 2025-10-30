@@ -51,12 +51,18 @@ const companyProfileSchema = z.object({
   country: z.string().optional(),
   sector: z.string().optional(),
   companySize: z.string().optional(),
-  foundedYear: z.number().min(1800).max(new Date().getFullYear()).optional(),
+  foundedYear: z.string().regex(/^\d{4}$/, 'Ano deve ter 4 dígitos').optional(),
   description: z.string().optional(),
   linkedin: z.string().url('URL inválida').optional().or(z.literal('')),
   facebook: z.string().url('URL inválida').optional().or(z.literal('')),
   instagram: z.string().url('URL inválida').optional().or(z.literal('')),
   twitter: z.string().url('URL inválida').optional().or(z.literal('')),
+  // Novos campos para proposta
+  mission: z.string().max(500, 'Máximo de 500 caracteres').optional(),
+  completedProjectsCount: z.string().max(50, 'Máximo de 50 caracteres').optional(),
+  totalInstalledPower: z.string().max(50, 'Máximo de 50 caracteres').optional(),
+  satisfiedClientsCount: z.string().max(50, 'Máximo de 50 caracteres').optional(),
+  companyNotes: z.string().max(500, 'Máximo de 500 caracteres').optional(),
 });
 
 type CompanyProfileFormData = z.infer<typeof companyProfileSchema>;
@@ -149,12 +155,18 @@ export function CompanyProfileForm({
       country: initialData?.country || 'Brasil',
       sector: (initialData as any)?.sector || '',
       companySize: (initialData as any)?.companySize || '',
-      foundedYear: (initialData as any)?.foundedYear,
+      foundedYear: (initialData as any)?.foundedYear || '',
       description: (initialData as any)?.description || '',
       linkedin: (initialData as any)?.linkedin || '',
       facebook: (initialData as any)?.facebook || '',
       instagram: (initialData as any)?.instagram || '',
       twitter: (initialData as any)?.twitter || '',
+      // Novos campos para proposta
+      mission: (initialData as any)?.mission || '',
+      completedProjectsCount: (initialData as any)?.completedProjectsCount || '',
+      totalInstalledPower: (initialData as any)?.totalInstalledPower || '',
+      satisfiedClientsCount: (initialData as any)?.satisfiedClientsCount || '',
+      companyNotes: (initialData as any)?.companyNotes || '',
     },
   });
 
@@ -182,6 +194,12 @@ export function CompanyProfileForm({
         facebook: data.facebook || undefined,
         instagram: data.instagram || undefined,
         twitter: data.twitter || undefined,
+        // Novos campos para proposta
+        mission: data.mission || undefined,
+        completedProjectsCount: data.completedProjectsCount || undefined,
+        totalInstalledPower: data.totalInstalledPower || undefined,
+        satisfiedClientsCount: data.satisfiedClientsCount || undefined,
+        companyNotes: data.companyNotes || undefined,
         // REMOVIDO: teamId (vem do token automaticamente)
       };
       onSubmit(mappedData);
@@ -241,10 +259,11 @@ export function CompanyProfileForm({
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="basic">Dados Básicos</TabsTrigger>
               <TabsTrigger value="address">Endereço</TabsTrigger>
               <TabsTrigger value="business">Informações Comerciais</TabsTrigger>
+              <TabsTrigger value="proposal">Informações para Proposta</TabsTrigger>
               <TabsTrigger value="social">Redes Sociais</TabsTrigger>
             </TabsList>
 
@@ -738,30 +757,6 @@ export function CompanyProfileForm({
 
                   <FormField
                     control={form.control}
-                    name="foundedYear"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ano de Fundação</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="YYYY"
-                            min="1800"
-                            max={new Date().getFullYear()}
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(parseInt(e.target.value));
-                              updateField('foundedYear', parseInt(e.target.value));
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
                     name="description"
                     render={({ field }) => (
                       <FormItem>
@@ -781,6 +776,162 @@ export function CompanyProfileForm({
                       </FormItem>
                     )}
                   />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="proposal" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Briefcase className="h-5 w-5" />
+                    Informações para Proposta
+                  </CardTitle>
+                  <p className="text-sm text-gray-500">
+                    Essas informações serão automaticamente incluídas nas propostas comerciais geradas pelo sistema.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="mission"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Missão da Empresa</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Ex: Fornecer soluções sustentáveis em energia solar com excelência técnica..."
+                              rows={3}
+                              maxLength={500}
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                updateField('mission', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="foundedYear"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ano de Fundação</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Ex: 2015"
+                              min="1800"
+                              max={new Date().getFullYear()}
+                              {...field}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '' || /^\d{0,4}$/.test(value)) {
+                                  field.onChange(value);
+                                  updateField('foundedYear', value);
+                                }
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="completedProjectsCount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Projetos Concluídos</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ex: 150 projetos ou Mais de 200"
+                              maxLength={50}
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                updateField('completedProjectsCount', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="totalInstalledPower"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Potência Total Instalada</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ex: 50 MWp ou 5.000 kWp"
+                              maxLength={50}
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                updateField('totalInstalledPower', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="satisfiedClientsCount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Clientes Satisfeitos</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ex: 300 clientes ou Mais de 500"
+                              maxLength={50}
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                updateField('satisfiedClientsCount', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="companyNotes"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Observações Adicionais</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Informações adicionais sobre a empresa que deseja incluir nas propostas..."
+                              rows={3}
+                              maxLength={500}
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                updateField('companyNotes', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

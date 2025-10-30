@@ -19,6 +19,12 @@ export interface CreateCompanyProfileRequest {
   zipCode?: string;
   country?: string;
   isActive?: boolean;
+  mission?: string;
+  foundedYear?: string;
+  completedProjectsCount?: string;
+  totalInstalledPower?: string;
+  satisfiedClientsCount?: string;
+  companyNotes?: string;
   // teamId é obtido do token JWT, não do body da requisição
 }
 
@@ -39,6 +45,12 @@ export interface UpdateCompanyProfileRequest {
   zipCode?: string;
   country?: string;
   isActive?: boolean;
+  mission?: string;
+  foundedYear?: string;
+  completedProjectsCount?: string;
+  totalInstalledPower?: string;
+  satisfiedClientsCount?: string;
+  companyNotes?: string;
 }
 
 export interface UploadCompanyLogoRequest {

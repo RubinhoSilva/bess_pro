@@ -29,6 +29,12 @@ export class CompanyProfile extends BaseEntity {
     private country: string,
     private isActive: boolean,
     private readonly teamId: string,
+    private mission?: string,
+    private foundedYear?: string,
+    private completedProjectsCount?: string,
+    private totalInstalledPower?: string,
+    private satisfiedClientsCount?: string,
+    private companyNotes?: string,
     softDeleteProps?: SoftDeleteProps & { createdAt?: Date; updatedAt?: Date }
   ) {
     super(softDeleteProps);
@@ -60,6 +66,12 @@ export class CompanyProfile extends BaseEntity {
       props.country || 'Brasil',
       props.isActive ?? true,
       props.teamId,
+      props.mission,
+      props.foundedYear,
+      props.completedProjectsCount,
+      props.totalInstalledPower,
+      props.satisfiedClientsCount,
+      props.companyNotes,
       {
         isDeleted: props.isDeleted,
         deletedAt: props.deletedAt,
@@ -154,6 +166,36 @@ export class CompanyProfile extends BaseEntity {
     this.markAsUpdated();
   }
 
+  updateMission(newMission: string): void {
+    this.mission = newMission;
+    this.markAsUpdated();
+  }
+
+  updateFoundedYear(newFoundedYear: string): void {
+    this.foundedYear = newFoundedYear;
+    this.markAsUpdated();
+  }
+
+  updateCompletedProjectsCount(newCompletedProjectsCount: string): void {
+    this.completedProjectsCount = newCompletedProjectsCount;
+    this.markAsUpdated();
+  }
+
+  updateTotalInstalledPower(newTotalInstalledPower: string): void {
+    this.totalInstalledPower = newTotalInstalledPower;
+    this.markAsUpdated();
+  }
+
+  updateSatisfiedClientsCount(newSatisfiedClientsCount: string): void {
+    this.satisfiedClientsCount = newSatisfiedClientsCount;
+    this.markAsUpdated();
+  }
+
+  updateCompanyNotes(newCompanyNotes: string): void {
+    this.companyNotes = newCompanyNotes;
+    this.markAsUpdated();
+  }
+
   protected markAsUpdated(): void {
     this._updatedAt = new Date();
   }
@@ -179,6 +221,45 @@ export class CompanyProfile extends BaseEntity {
   getTeamId(): string { return this.teamId; }
   getCreatedAt(): Date { return this._createdAt; }
   getUpdatedAt(): Date { return this._updatedAt; }
+  getMission(): string | undefined { return this.mission; }
+  getFoundedYear(): string | undefined { return this.foundedYear; }
+  getCompletedProjectsCount(): string | undefined { return this.completedProjectsCount; }
+  getTotalInstalledPower(): string | undefined { return this.totalInstalledPower; }
+  getSatisfiedClientsCount(): string | undefined { return this.satisfiedClientsCount; }
+  getCompanyNotes(): string | undefined { return this.companyNotes; }
+
+  toJSON() {
+    return {
+      id: this.getId(),
+      companyName: this.getCompanyName(),
+      tradingName: this.getTradingName(),
+      taxId: this.getTaxId(),
+      stateRegistration: this.getStateRegistration(),
+      municipalRegistration: this.getMunicipalRegistration(),
+      phone: this.getPhone(),
+      email: this.getEmail(),
+      logoUrl: this.getLogoUrl(),
+      logoPath: this.getLogoPath(),
+      website: this.getWebsite(),
+      address: this.getAddress(),
+      city: this.getCity(),
+      state: this.getState(),
+      zipCode: this.getZipCode(),
+      country: this.getCountry(),
+      isActive: this.getIsActive(),
+      teamId: this.getTeamId(),
+      isDeleted: this.isDeleted(),
+      deletedAt: this.getDeletedAt(),
+      createdAt: this.getCreatedAt(),
+      updatedAt: this.getUpdatedAt(),
+      mission: this.getMission(),
+      foundedYear: this.getFoundedYear(),
+      completedProjectsCount: this.getCompletedProjectsCount(),
+      totalInstalledPower: this.getTotalInstalledPower(),
+      satisfiedClientsCount: this.getSatisfiedClientsCount(),
+      companyNotes: this.getCompanyNotes()
+    };
+  }
 
   // Static method for domain validation
   static validateTaxId(taxId: string): boolean {

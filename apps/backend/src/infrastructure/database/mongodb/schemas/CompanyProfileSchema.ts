@@ -24,6 +24,12 @@ export interface ICompanyProfileDocument {
   deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  mission?: string;
+  foundedYear?: string;
+  completedProjectsCount?: string;
+  totalInstalledPower?: string;
+  satisfiedClientsCount?: string;
+  companyNotes?: string;
 }
 
 const CompanyProfileSchema = new Schema<ICompanyProfileDocument>({
@@ -48,7 +54,13 @@ const CompanyProfileSchema = new Schema<ICompanyProfileDocument>({
   isDeleted: { type: Boolean, default: false, index: true },
   deletedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+  mission: { type: String, trim: true },
+  foundedYear: { type: String, trim: true },
+  completedProjectsCount: { type: String, trim: true },
+  totalInstalledPower: { type: String, trim: true },
+  satisfiedClientsCount: { type: String, trim: true },
+  companyNotes: { type: String, trim: true }
 }, {
   timestamps: true,
   collection: 'companyProfiles'

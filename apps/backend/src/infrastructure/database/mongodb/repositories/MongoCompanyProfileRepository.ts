@@ -192,7 +192,13 @@ export class MongoCompanyProfileRepository implements ICompanyProfileRepository 
       isDeleted: doc.isDeleted,
       deletedAt: doc.deletedAt,
       createdAt: doc.createdAt,
-      updatedAt: doc.updatedAt
+      updatedAt: doc.updatedAt,
+      mission: doc.mission,
+      foundedYear: doc.foundedYear,
+      completedProjectsCount: doc.completedProjectsCount,
+      totalInstalledPower: doc.totalInstalledPower,
+      satisfiedClientsCount: doc.satisfiedClientsCount,
+      companyNotes: doc.companyNotes
     });
   }
 
@@ -219,7 +225,13 @@ export class MongoCompanyProfileRepository implements ICompanyProfileRepository 
       isDeleted: companyProfile.isDeleted(),
       deletedAt: companyProfile.getDeletedAt(),
       createdAt: companyProfile.getCreatedAt(),
-      updatedAt: companyProfile.getUpdatedAt()
+      updatedAt: companyProfile.getUpdatedAt(),
+      mission: companyProfile.getMission(),
+      foundedYear: companyProfile.getFoundedYear(),
+      completedProjectsCount: companyProfile.getCompletedProjectsCount(),
+      totalInstalledPower: companyProfile.getTotalInstalledPower(),
+      satisfiedClientsCount: companyProfile.getSatisfiedClientsCount(),
+      companyNotes: companyProfile.getCompanyNotes()
     };
   }
 
@@ -241,7 +253,13 @@ export class MongoCompanyProfileRepository implements ICompanyProfileRepository 
       zipCode: companyProfile.getZipCode(),
       country: companyProfile.getCountry(),
       isActive: companyProfile.getIsActive(),
-      updatedAt: companyProfile.getUpdatedAt()
+      updatedAt: companyProfile.getUpdatedAt(),
+      mission: companyProfile.getMission(),
+      foundedYear: companyProfile.getFoundedYear(),
+      completedProjectsCount: companyProfile.getCompletedProjectsCount(),
+      totalInstalledPower: companyProfile.getTotalInstalledPower(),
+      satisfiedClientsCount: companyProfile.getSatisfiedClientsCount(),
+      companyNotes: companyProfile.getCompanyNotes()
     };
   }
 }

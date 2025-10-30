@@ -130,6 +130,13 @@ export function useCompanyProfileForm(initialData?: Partial<CompanyProfile>) {
     state: '',
     zipCode: '',
     country: 'Brasil',
+    // Novos campos para proposta
+    mission: '',
+    foundedYear: '',
+    completedProjectsCount: '',
+    totalInstalledPower: '',
+    satisfiedClientsCount: '',
+    companyNotes: '',
     ...(initialData as any),
   });
 
@@ -195,6 +202,13 @@ export function useCompanyProfileForm(initialData?: Partial<CompanyProfile>) {
       state: '',
       zipCode: '',
       country: 'Brasil',
+      // Novos campos para proposta
+      mission: '',
+      foundedYear: '',
+      completedProjectsCount: '',
+      totalInstalledPower: '',
+      satisfiedClientsCount: '',
+      companyNotes: '',
       ...(initialData as any),
     });
     setErrors({});
