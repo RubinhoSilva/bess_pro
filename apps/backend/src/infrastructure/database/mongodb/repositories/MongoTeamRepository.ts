@@ -21,6 +21,12 @@ export class MongoTeamRepository implements ITeamRepository {
     return docs.map(doc => TeamDbMapper.toDomain(doc));
   }
 
+  async findByCompanyProfileId(companyProfileId: string): Promise<Team | null> {
+    const doc = await TeamModel.findOne({ companyProfileId });
+    if (!doc) return null;
+    return TeamDbMapper.toDomain(doc);
+  }
+
   async findAll(filters?: TeamFilters): Promise<Team[]> {
     const query: any = {};
     

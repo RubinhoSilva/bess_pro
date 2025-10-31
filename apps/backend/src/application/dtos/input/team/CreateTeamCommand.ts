@@ -4,4 +4,5 @@ export interface CreateTeamCommand {
   ownerEmail: string;
   planType?: string;
   maxUsers?: number;
+  companyProfileId?: string;
 }

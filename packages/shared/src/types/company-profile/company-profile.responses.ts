@@ -22,6 +22,12 @@ export interface CompanyProfileResponse {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  mission?: string;
+  foundedYear?: string;
+  completedProjectsCount?: string;
+  totalInstalledPower?: string;
+  satisfiedClientsCount?: string;
+  companyNotes?: string;
 }
 
 export interface CompanyProfileListResponse {

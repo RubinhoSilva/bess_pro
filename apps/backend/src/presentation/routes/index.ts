@@ -30,7 +30,6 @@ import { TestFinancialController } from '../controllers/TestFinancialController'
 import { GrupoFinancialRoutes } from './GrupoFinancialRoutes';
 
 import { ProposalRoutes } from './ProposalRoutes';
-import ProposalPDFRoutes from './ProposalPDFRoutes';
 import { CompanyProfileRoutes } from './CompanyProfileRoutes';
 
 export class ApiRoutes {
@@ -85,9 +84,6 @@ export class ApiRoutes {
 
     // Proposal routes
     router.use('/proposals', ProposalRoutes.create(container));
-    
-    // Proposal PDF generation routes
-    router.use('/proposal', ProposalPDFRoutes);
     
     // Company Profile routes
     router.use('/company-profiles', CompanyProfileRoutes.create(container));

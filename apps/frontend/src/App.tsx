@@ -29,6 +29,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import TeamManagementPage from './pages/team/TeamManagementPage'
 import ReportsPage from './pages/reports/ReportsPage'
 import CalendarPage from './pages/calendar/CalendarPage'
+import CompanyProfileManagementPage from './pages/company-profile/CompanyProfileManagementPage'
 
 
 // Components
@@ -101,6 +102,7 @@ function App() {
                     </ProtectedRoute>
                   } />
                   <Route path="calendar" element={<CalendarPage />} />
+                  <Route path="company-profile" element={<CompanyProfileManagementPage />} />
 
                   <Route 
                     path="admin" 

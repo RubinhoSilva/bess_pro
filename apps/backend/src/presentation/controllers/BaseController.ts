@@ -3,15 +3,9 @@ import { Result } from '../../application/common/Result';
 
 export abstract class BaseController {
   protected ok<T>(res: Response, data?: T): Response {
-    if (data) {
-      return res.status(200).json({
-        success: true,
-        data,
-        timestamp: new Date().toISOString(),
-      });
-    }
     return res.status(200).json({
       success: true,
+      data: data !== undefined ? data : null, // Sempre incluir o campo data
       timestamp: new Date().toISOString(),
     });
   }

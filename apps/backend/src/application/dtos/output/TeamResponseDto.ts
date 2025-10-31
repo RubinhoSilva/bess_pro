@@ -9,6 +9,7 @@ export interface TeamResponseDto {
   isActive: boolean;
   planType: string;
   maxUsers: number;
+  companyProfileId?: string;
   currentUsers?: number;
   createdAt: Date;
   updatedAt: Date;

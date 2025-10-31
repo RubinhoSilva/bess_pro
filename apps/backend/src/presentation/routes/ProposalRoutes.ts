@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Container } from '../../infrastructure/di/Container';
-import { AuthMiddleware } from '../middleware/AuthMiddleware';
+import { AuthMiddleware, AuthenticatedRequest } from '../middleware/AuthMiddleware';
 import { ServiceTokens } from '../../infrastructure/di/ServiceTokens';
 import { ProposalController } from '../controllers/ProposalController';
 
@@ -15,16 +15,24 @@ export class ProposalRoutes {
     router.use(authMiddleware.authenticate());
 
     // Proposal generation route
-    router.post('/generate', async (req, res) => {
-      const controller = container.resolve(ServiceTokens.ProposalController) as ProposalController;
-      await controller.generateProposal(req, res);
-    });
+    router.post(
+      '/generate',
+      authMiddleware.authenticate(),
+      (req, res, next) => {
+        const controller = container.resolve(ServiceTokens.ProposalController) as ProposalController;
+        controller.generateProposal(req as AuthenticatedRequest, res).catch(next);
+      }
+    );
 
     // Proposal download route
-    router.get('/download/:filename', async (req, res) => {
-      const controller = container.resolve(ServiceTokens.ProposalController) as ProposalController;
-      await controller.downloadProposal(req, res);
-    });
+    router.get(
+      '/download/:filename',
+      authMiddleware.authenticate(),
+      (req, res, next) => {
+        const controller = container.resolve(ServiceTokens.ProposalController) as ProposalController;
+        controller.downloadProposal(req as AuthenticatedRequest, res).catch(next);
+      }
+    );
 
     return router;
   }

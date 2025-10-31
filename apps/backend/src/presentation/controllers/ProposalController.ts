@@ -1,22 +1,74 @@
 import { Request, Response } from 'express';
 import axios, { AxiosResponse } from 'axios';
-
-interface AuthenticatedRequest extends Request {
-  user?: {
-    userId: string;
-    email: string;
-    role: string;
-  };
-}
+import { GetCompanyProfileUseCase } from '../../application/use-cases/company-profile/GetCompanyProfileUseCase';
+import { AuthenticatedRequest } from '../../presentation/middleware/AuthMiddleware';
 
 export class ProposalController {
+  constructor(
+    private readonly getCompanyProfileUseCase: GetCompanyProfileUseCase
+  ) {}
   async generateProposal(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const userId = req.user?.userId;
-      if (!userId) {
+      const teamId = req.user?.teamId;
+      
+      if (!userId || !teamId) {
         res.status(401).json({ message: 'Unauthorized' });
         return;
       }
+
+      // Buscar CompanyProfile
+      console.log(`Buscando CompanyProfile para teamId: ${teamId}`);
+      
+      try {
+        const companyProfileResult = await this.getCompanyProfileUseCase.execute(teamId);
+        
+        if (companyProfileResult.isSuccess && companyProfileResult.value) {
+          const profile = companyProfileResult.value;
+          console.log(`CompanyProfile encontrado. Empresa: ${profile.companyName}`);
+          
+          // Construir dados da empresa APENAS com CompanyProfile
+          const empresaData = {
+            nome: profile.companyName || '',
+            cnpj: profile.taxId || '',
+            contato: `${profile.phone || ''} | ${profile.email || ''}`.trim() || '',
+            missao: profile.mission || '',
+            fundacao: profile.foundedYear || '',
+            projetos_concluidos: profile.completedProjectsCount || '',
+            potencia_total: profile.totalInstalledPower || '',
+            clientes_satisfeitos: profile.satisfiedClientsCount || '',
+            observacoes: profile.companyNotes || ''
+          };
+
+          // Adicionar logo URL se existir
+          if (profile.logoUrl) {
+            req.body.logoUrl = profile.logoUrl;
+          }
+
+          // Substituir dados da empresa
+          req.body.empresa = empresaData;
+          console.log('Dados da empresa enriquecidos com CompanyProfile');
+          
+        } else {
+          console.log(`CompanyProfile não encontrado para teamId: ${teamId}`);
+          res.status(400).json({
+            message: 'Perfil da empresa não configurado. Configure o perfil antes de gerar propostas.',
+            error: 'COMPANY_PROFILE_NOT_FOUND'
+          });
+          return;
+        }
+      } catch (error) {
+        console.error(`Erro ao buscar CompanyProfile para teamId: ${teamId}`, error);
+        res.status(400).json({
+          message: 'Perfil da empresa não configurado. Configure o perfil antes de gerar propostas.',
+          error: 'COMPANY_PROFILE_NOT_FOUND'
+        });
+        return;
+      }
+
+      // Adicionar metadados
+      req.body.userId = userId;
+      req.body.teamId = teamId;
 
       // Converter camelCase para snake_case
       const snakeCaseData = this.convertToSnakeCase(req.body);
@@ -25,8 +77,9 @@ export class ProposalController {
       snakeCaseData.user_id = userId;
       
       // Chamar serviço Python
+      const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
       const response: AxiosResponse = await axios.post(
-        `${process.env.PYTHON_SERVICE_URL}/api/v1/proposal/generate`,
+        `${pythonServiceUrl}/api/v1/proposal/generate`,
         snakeCaseData
       );
 
@@ -36,9 +89,9 @@ export class ProposalController {
       res.json(camelCaseResponse);
     } catch (error: any) {
       console.error('Erro ao gerar proposta:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: 'Erro ao gerar proposta',
-        error: error.message 
+        error: error.message
       });
     }
   }
@@ -48,7 +101,8 @@ export class ProposalController {
       const { filename } = req.params;
       
       // Redirecionar para o serviço Python
-      const pythonUrl = `${process.env.PYTHON_SERVICE_URL}/api/v1/proposal/download/${filename}`;
+      const pythonServiceUrl = process.env.ENERGY_SERVICE_URL || 'http://localhost:8110';
+      const pythonUrl = `${pythonServiceUrl}/api/v1/proposal/download/${filename}`;
       
       // Fazer proxy do download
       const response = await axios.get(pythonUrl, {

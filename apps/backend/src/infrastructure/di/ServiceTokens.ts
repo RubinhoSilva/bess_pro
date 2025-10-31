@@ -147,7 +147,6 @@ export const ServiceTokens = {
   // Company Profile Use Cases
   CreateCompanyProfileUseCase: 'CreateCompanyProfileUseCase',
   GetCompanyProfileUseCase: 'GetCompanyProfileUseCase',
-  GetCompanyProfilesUseCase: 'GetCompanyProfilesUseCase',
   UpdateCompanyProfileUseCase: 'UpdateCompanyProfileUseCase',
   DeleteCompanyProfileUseCase: 'DeleteCompanyProfileUseCase',
   UploadCompanyLogoUseCase: 'UploadCompanyLogoUseCase',

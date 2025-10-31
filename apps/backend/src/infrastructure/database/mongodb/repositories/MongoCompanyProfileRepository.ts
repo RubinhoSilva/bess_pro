@@ -40,41 +40,21 @@ export class MongoCompanyProfileRepository implements ICompanyProfileRepository 
   }
 
   async findByEmail(email: string): Promise<CompanyProfile | null> {
-    const doc = await CompanyProfileModel.findOne({ 
-      email: email.toLowerCase(), 
-      isDeleted: { $ne: true } 
+    const doc = await CompanyProfileModel.findOne({
+      email: email.toLowerCase(),
+      isDeleted: { $ne: true }
     });
     return doc ? this.toDomain(doc) : null;
   }
 
-  async findAll(activeOnly: boolean = true): Promise<CompanyProfile[]> {
-    const query = activeOnly ? { isActive: true, isDeleted: { $ne: true } } : { isDeleted: { $ne: true } };
-    const docs = await CompanyProfileModel.find(query).sort({ companyName: 1 });
-    return docs.map(doc => this.toDomain(doc));
+  async findByTeamId(teamId: string): Promise<CompanyProfile | null> {
+    const doc = await CompanyProfileModel.findOne({
+      teamId,
+      isDeleted: { $ne: true }
+    });
+    return doc ? this.toDomain(doc) : null;
   }
 
-  async findWithPagination(page: number, pageSize: number, activeOnly: boolean = true): Promise<{
-    companyProfiles: CompanyProfile[];
-    total: number;
-    totalPages: number;
-  }> {
-    const query = activeOnly ? { isActive: true, isDeleted: { $ne: true } } : { isDeleted: { $ne: true } };
-    const skip = (page - 1) * pageSize;
-    
-    const [docs, total] = await Promise.all([
-      CompanyProfileModel.find(query)
-        .sort({ companyName: 1 })
-        .skip(skip)
-        .limit(pageSize),
-      CompanyProfileModel.countDocuments(query)
-    ]);
-
-    return {
-      companyProfiles: docs.map(doc => this.toDomain(doc)),
-      total,
-      totalPages: Math.ceil(total / pageSize)
-    };
-  }
 
   async update(companyProfile: CompanyProfile): Promise<CompanyProfile> {
     const companyProfileId = companyProfile.getId();
@@ -130,57 +110,6 @@ export class MongoCompanyProfileRepository implements ICompanyProfileRepository 
     }
   }
 
-  async search(searchTerm: string, activeOnly: boolean = true): Promise<CompanyProfile[]> {
-    const query = activeOnly 
-      ? { 
-          isActive: true, 
-          isDeleted: { $ne: true },
-          $text: { $search: searchTerm }
-        }
-      : { 
-          isDeleted: { $ne: true },
-          $text: { $search: searchTerm }
-        };
-    
-    const docs = await CompanyProfileModel.find(query)
-      .sort({ score: { $meta: 'textScore' }, companyName: 1 })
-      .limit(50);
-    
-    return docs.map(doc => this.toDomain(doc));
-  }
-
-  async searchWithPagination(searchTerm: string, page: number, pageSize: number, activeOnly: boolean = true): Promise<{
-    companyProfiles: CompanyProfile[];
-    total: number;
-    totalPages: number;
-  }> {
-    const query = activeOnly 
-      ? { 
-          isActive: true, 
-          isDeleted: { $ne: true },
-          $text: { $search: searchTerm }
-        }
-      : { 
-          isDeleted: { $ne: true },
-          $text: { $search: searchTerm }
-        };
-    
-    const skip = (page - 1) * pageSize;
-    
-    const [docs, total] = await Promise.all([
-      CompanyProfileModel.find(query)
-        .sort({ score: { $meta: 'textScore' }, companyName: 1 })
-        .skip(skip)
-        .limit(pageSize),
-      CompanyProfileModel.countDocuments(query)
-    ]);
-
-    return {
-      companyProfiles: docs.map(doc => this.toDomain(doc)),
-      total,
-      totalPages: Math.ceil(total / pageSize)
-    };
-  }
 
   async exists(id: string): Promise<boolean> {
     if (!Types.ObjectId.isValid(id)) {
@@ -203,10 +132,6 @@ export class MongoCompanyProfileRepository implements ICompanyProfileRepository 
     return count > 0;
   }
 
-  async count(activeOnly: boolean = true): Promise<number> {
-    const query = activeOnly ? { isActive: true, isDeleted: { $ne: true } } : { isDeleted: { $ne: true } };
-    return await CompanyProfileModel.countDocuments(query);
-  }
 
   // Soft Delete Operations
   async findByIdIncludingDeleted(id: string): Promise<CompanyProfile | null> {
@@ -263,10 +188,17 @@ export class MongoCompanyProfileRepository implements ICompanyProfileRepository 
       zipCode: doc.zipCode,
       country: doc.country,
       isActive: doc.isActive,
+      teamId: doc.teamId,
       isDeleted: doc.isDeleted,
       deletedAt: doc.deletedAt,
       createdAt: doc.createdAt,
-      updatedAt: doc.updatedAt
+      updatedAt: doc.updatedAt,
+      mission: doc.mission,
+      foundedYear: doc.foundedYear,
+      completedProjectsCount: doc.completedProjectsCount,
+      totalInstalledPower: doc.totalInstalledPower,
+      satisfiedClientsCount: doc.satisfiedClientsCount,
+      companyNotes: doc.companyNotes
     });
   }
 
@@ -289,10 +221,17 @@ export class MongoCompanyProfileRepository implements ICompanyProfileRepository 
       zipCode: companyProfile.getZipCode(),
       country: companyProfile.getCountry(),
       isActive: companyProfile.getIsActive(),
+      teamId: companyProfile.getTeamId(),
       isDeleted: companyProfile.isDeleted(),
       deletedAt: companyProfile.getDeletedAt(),
       createdAt: companyProfile.getCreatedAt(),
-      updatedAt: companyProfile.getUpdatedAt()
+      updatedAt: companyProfile.getUpdatedAt(),
+      mission: companyProfile.getMission(),
+      foundedYear: companyProfile.getFoundedYear(),
+      completedProjectsCount: companyProfile.getCompletedProjectsCount(),
+      totalInstalledPower: companyProfile.getTotalInstalledPower(),
+      satisfiedClientsCount: companyProfile.getSatisfiedClientsCount(),
+      companyNotes: companyProfile.getCompanyNotes()
     };
   }
 
@@ -314,7 +253,13 @@ export class MongoCompanyProfileRepository implements ICompanyProfileRepository 
       zipCode: companyProfile.getZipCode(),
       country: companyProfile.getCountry(),
       isActive: companyProfile.getIsActive(),
-      updatedAt: companyProfile.getUpdatedAt()
+      updatedAt: companyProfile.getUpdatedAt(),
+      mission: companyProfile.getMission(),
+      foundedYear: companyProfile.getFoundedYear(),
+      completedProjectsCount: companyProfile.getCompletedProjectsCount(),
+      totalInstalledPower: companyProfile.getTotalInstalledPower(),
+      satisfiedClientsCount: companyProfile.getSatisfiedClientsCount(),
+      companyNotes: companyProfile.getCompanyNotes()
     };
   }
 }

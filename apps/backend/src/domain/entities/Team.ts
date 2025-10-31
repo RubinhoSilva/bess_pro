@@ -13,6 +13,7 @@ export interface TeamProps extends SoftDeleteProps {
   isActive: boolean;
   planType?: string;
   maxUsers?: number;
+  companyProfileId?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -27,6 +28,7 @@ export class Team extends BaseEntity {
     private isActive: boolean,
     private planType: string,
     private maxUsers: number,
+    private companyProfileId: string | null,
     softDeleteProps?: SoftDeleteProps & { createdAt?: Date; updatedAt?: Date }
   ) {
     super(softDeleteProps);
@@ -46,6 +48,7 @@ export class Team extends BaseEntity {
       props.isActive ?? true,
       props.planType || 'basic',
       props.maxUsers || 10,
+      props.companyProfileId || null,
       {
         isDeleted: props.isDeleted,
         deletedAt: props.deletedAt,
@@ -81,6 +84,20 @@ export class Team extends BaseEntity {
     this._updatedAt = new Date();
   }
 
+  setCompanyProfile(companyProfileId: string): void {
+    this.companyProfileId = companyProfileId;
+    this._updatedAt = new Date();
+  }
+
+  removeCompanyProfile(): void {
+    this.companyProfileId = null;
+    this._updatedAt = new Date();
+  }
+
+  hasCompanyProfile(): boolean {
+    return this.companyProfileId !== null && this.companyProfileId !== undefined;
+  }
+
   canAddUser(currentUserCount: number): boolean {
     return this.isActive && currentUserCount < this.maxUsers;
   }
@@ -95,6 +112,7 @@ export class Team extends BaseEntity {
   getIsActive(): boolean { return this.isActive; }
   getPlanType(): string { return this.planType; }
   getMaxUsers(): number { return this.maxUsers; }
+  getCompanyProfileId(): string | null { return this.companyProfileId; }
   getCreatedAt(): Date { return this._createdAt; }
   getUpdatedAt(): Date { return this._updatedAt; }
 }

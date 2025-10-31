@@ -161,6 +161,10 @@ class Settings(BaseSettings):
         default=3600,
         description="Validade da URL pré-assinada em segundos (padrão: 1 hora)"
     )
+    AWS_CLOUDFRONT_URL: str = Field(
+        default="",
+        description="URL do CloudFront para URLs diretas (sem presigned)"
+    )
     
     # Configurações de fontes
     FONTS_DIR: str = Field(
