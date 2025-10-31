@@ -158,17 +158,46 @@ export class GenerateProposalUseCase {
 
   private calculateTotalInvestment(context: any): number {
     const projectData = context.project.data;
+    
+    // Tentar múltiplas estruturas onde o investimento pode estar
+    if (projectData?.budgetData?.totalInvestment) {
+      return projectData.budgetData.totalInvestment;
+    }
+    
+    if (projectData?.resultsData?.calculationResults?.valorInvestimento) {
+      return projectData.resultsData.calculationResults.valorInvestimento;
+    }
+    
     if (projectData?.financialResults?.totalInvestment) {
       return projectData.financialResults.totalInvestment;
     }
+    
+    if (projectData?.resultsData?.calculationResults?.advancedFinancial?.economiaTotal25Anos) {
+      // Calcular investimento baseado na economia e no payback
+      const economiaAnual = projectData.resultsData.calculationResults.advancedFinancial.economiaTotal25Anos / 25;
+      const payback = projectData.resultsData.calculationResults.advancedFinancial.paybackSimples || 5;
+      return economiaAnual * payback;
+    }
+    
     return context.values.total_investment || 0;
   }
 
   private calculateAnnualSavings(context: any): number {
     const projectData = context.project.data;
+    
+    // Tentar múltiplas estruturas onde a economia pode estar
     if (projectData?.financialResults?.annualSavings) {
       return projectData.financialResults.annualSavings;
     }
+    
+    if (projectData?.resultsData?.calculationResults?.economiaAnualEstimada) {
+      return projectData.resultsData.calculationResults.economiaAnualEstimada;
+    }
+    
+    if (projectData?.resultsData?.calculationResults?.advancedFinancial?.economiaTotal25Anos) {
+      return projectData.resultsData.calculationResults.advancedFinancial.economiaTotal25Anos / 25;
+    }
+    
     return context.values.annual_savings || 0;
   }
 
@@ -185,17 +214,47 @@ export class GenerateProposalUseCase {
 
   private getSystemSize(context: any): number {
     const projectData = context.project.data;
+    
+    // Tentar múltiplas estruturas onde a potência pode estar
     if (projectData?.systemParameters?.totalPower) {
       return projectData.systemParameters.totalPower;
     }
+    
+    if (projectData?.systemData?.potenciaPico) {
+      return projectData.systemData.potenciaPico;
+    }
+    
+    if (projectData?.resultsData?.calculationResults?.potenciaPico) {
+      return projectData.resultsData.calculationResults.potenciaPico;
+    }
+    
+    if (projectData?.resultsData?.calculationResults?.potenciaSistema) {
+      return projectData.resultsData.calculationResults.potenciaSistema;
+    }
+    
     return context.values.system_size || 0;
   }
 
   private calculateGenerationEstimate(context: any): number {
     const projectData = context.project.data;
+    
+    // Tentar múltiplas estruturas onde a geração pode estar
     if (projectData?.results?.annualGeneration) {
       return projectData.results.annualGeneration;
     }
+    
+    if (projectData?.resultsData?.calculationResults?.geracaoAnual) {
+      return projectData.resultsData.calculationResults.geracaoAnual;
+    }
+    
+    if (projectData?.resultsData?.calculationResults?.geracaoEstimadaAnual) {
+      return projectData.resultsData.calculationResults.geracaoEstimadaAnual;
+    }
+    
+    if (projectData?.systemData?.geracaoAnualCalculada) {
+      return projectData.systemData.geracaoAnualCalculada;
+    }
+    
     return context.values.generation_estimate || 0;
   }
 }

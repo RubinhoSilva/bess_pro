@@ -502,7 +502,7 @@ export const PVResultsDashboard: React.FC<PVResultsDashboardProps> = ({
           {/* Seção de Geração de Proposta */}
           <Section title="📄 Gerar Proposta" delay={9}>
             <ProposalGenerator
-              results={{ calculationResults: validatedResults }}
+              results={resultsData}
               customerData={customerData}
               energyData={energyData}
               systemData={systemData}

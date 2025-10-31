@@ -67,6 +67,7 @@ export interface ILocationData {
 }
 
 import { SelectedInverter as SharedSelectedInverter } from '@bess-pro/shared';
+import { Pi } from 'lucide-react';
 
 export interface ISystemData {
   selectedModuleId?: string;
@@ -124,6 +125,31 @@ export interface IResultsData {
     geracaoEstimadaMensal?: number[];
     totalInvestment?: number;
     financialResults?: any;
+    advancedFinancial?: any;
+    fluxoCaixa?: any[];
+    // Campos adicionais para compatibilidade com ProposalGenerator
+    vpl?: number;
+    tir?: number;
+    pi?: number;
+    paybackSimples?: number;
+    paybackDescontado?: number;
+    lcoe?: number;
+    roiSimples?: number;
+    economiaTotal25Anos?: number;
+    economiaTotalPresente?: number;
+    // Novos campos da API de cálculo avançado
+    geracaoAnual?: number;
+    geracaoDcAnual?: number;
+    consumoAnual?: number;
+    potenciaTotalKwp?: number;
+    perdaClippingKwh?: number;
+    perdaClippingPct?: number;
+    yieldEspecifico?: number;
+    fatorCapacidade?: number;
+    prTotal?: number;
+    anosAnalisados?: number;
+    geracaoPorOrientacao?: any;
+    inversores?: any[];
   };
 }
 
@@ -215,6 +241,9 @@ interface IProjectActions {
   // Ações de recuperação
   recoverFromBackup: () => void;
   createBackup: () => void;
+  
+  // Ações de salvamento de resultados financeiros
+  saveFinancialResults: (results: any) => void;
 }
 
 // Estado inicial
@@ -1428,6 +1457,52 @@ export const usePVDimensioningStore = create<IProjectStore>()(
             } catch (retryError) {
               console.error('Erro ao criar backup após limpeza:', retryError);
             }
+          }
+        },
+        
+        // Método para salvar resultados financeiros
+        saveFinancialResults: (results) => {
+          set((state) => {
+            // Garantir que results tenha a estrutura esperada
+            const financialResults = {
+              vpl: results.vpl || 0,
+              tir: results.tir || 0,
+              pi: results.pi || 0,
+              paybackSimples: results.paybackSimples || results.payback || 0,
+              paybackDescontado: results.paybackDescontado || 0,
+              lcoe: results.lcoe || 0,
+              roiSimples: results.roiSimples || results.roi || 0,
+              economiaTotal25Anos: results.economiaTotal25Anos || 0,
+              economiaTotalPresente: results.economiaTotalPresente || 0,
+              cashFlow: results.cashFlow || results.fluxoCaixa || []
+            };
+            
+            // Salvar tanto na estrutura atual quanto em advancedFinancial
+            // e também diretamente em calculationResults para compatibilidade
+            state.results = {
+              ...state.results,
+              calculationResults: {
+                ...state.results?.calculationResults,
+                // Manter compatibilidade com a estrutura esperada pelo ProposalGenerator
+                vpl: results.vpl || 0,
+                tir: results.tir || 0,
+                pi: results.pi || 0,
+                paybackSimples: results.paybackSimples || results.payback || 0,
+                paybackDescontado: results.paybackDescontado || 0,
+                lcoe: results.lcoe || 0,
+                roiSimples: results.roiSimples || results.roi || 0,
+                economiaTotal25Anos: results.economiaTotal25Anos || 0,
+                economiaTotalPresente: results.economiaTotalPresente || 0,
+                fluxoCaixa: results.cashFlow || results.fluxoCaixa || [],
+                advancedFinancial: financialResults
+              }
+            };
+            state.isDirty = true;
+          });
+          
+          // Auto-salvar se habilitado
+          if (get().autoSaveEnabled && get().dimensioningId) {
+            get().autoSave();
           }
         }
       })),

@@ -1071,7 +1071,9 @@ export class ContainerSetup {
 
     // Controllers - Proposal
     container.registerFactory(ServiceTokens.ProposalController, () => {
-      return new ProposalController();
+      return new ProposalController(
+        container.resolve(ServiceTokens.GetCompanyProfileUseCase)
+      );
     });
 
     // Middlewares

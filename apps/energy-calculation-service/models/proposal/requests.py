@@ -30,23 +30,21 @@ class SistemaData(BaseModel):
 
 class FinanceiroData(BaseModel):
     """Dados financeiros principais"""
-    valor_total: str = Field(..., description="Valor total do investimento")
     entrada: Optional[str] = Field(None, description="Valor de entrada")
     parcelas: Optional[str] = Field(None, description="Condições de parcelamento")
     validade: str = Field(..., description="Validade da proposta")
-    economia_anual: str = Field(..., description="Economia anual estimada")
 
 class MetricasFinanceirasData(BaseModel):
     """Métricas financeiras detalhadas"""
-    vpl: str = Field(..., description="Valor Presente Líquido")
-    tir: str = Field(..., description="Taxa Interna de Retorno")
-    indice_lucratividade: str = Field(..., description="Índice de Lucratividade")
-    payback_simples: str = Field(..., description="Payback Simples")
-    payback_descontado: str = Field(..., description="Payback Descontado")
-    lcoe: str = Field(..., description="Custo de Energia (LCOE)")
-    roi_simples: str = Field(..., description="ROI Simples")
-    economia_total_nominal: str = Field(..., description="Economia Total Projetada (Nominal)")
-    economia_total_presente: str = Field(..., description="Economia Total Projetada (Presente)")
+    vpl: float = Field(..., description="Valor Presente Líquido")
+    tir: float = Field(..., description="Taxa Interna de Retorno")
+    indice_lucratividade: float = Field(..., description="Índice de Lucratividade")
+    payback_simples: float = Field(..., description="Payback Simples")
+    payback_descontado: float = Field(..., description="Payback Descontado")
+    lcoe: float = Field(..., description="Custo de Energia (LCOE)")
+    roi_simples: float = Field(..., description="ROI Simples")
+    economia_total_nominal: float = Field(..., description="Economia Total Projetada (Nominal)")
+    economia_total_presente: float = Field(..., description="Economia Total Projetada (Presente)")
 
 class FluxoCaixaData(BaseModel):
     """Dados de fluxo de caixa"""

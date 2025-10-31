@@ -84,8 +84,8 @@ class S3Service:
             
             logger.info(f"Arquivo {filename} enviado para S3: {s3_key}")
             
-            # Gerar URL pré-assinada
-            return self.generate_presigned_url(s3_key)
+            # Gerar URL direta (sem presigned)
+            return self.get_direct_url(s3_key)
             
         except ClientError as e:
             logger.error(f"Erro ao fazer upload para S3: {str(e)}")
@@ -94,9 +94,39 @@ class S3Service:
             logger.error(f"Erro inesperado no upload S3: {str(e)}")
             return None
     
+    def get_direct_url(self, s3_key: str) -> Optional[str]:
+        """
+        Gera URL direta para download (sem presigned)
+        
+        Args:
+            s3_key: Caminho do arquivo no S3
+            
+        Returns:
+            URL direta (CloudFront ou S3) ou None em caso de erro
+        """
+        if not self.is_available():
+            return None
+        
+        try:
+            # Priorizar CloudFront se configurado
+            cloudfront_url = settings.AWS_CLOUDFRONT_URL
+            if cloudfront_url:
+                url = f"{cloudfront_url}/{s3_key}"
+                logger.info(f"URL CloudFront gerada para {s3_key}: {url}")
+                return url
+            
+            # Fallback para S3 direto (sem presigned)
+            url = f"https://{self.bucket_name}.s3.{settings.AWS_REGION}.amazonaws.com/{s3_key}"
+            logger.info(f"URL S3 direta gerada para {s3_key}: {url}")
+            return url
+            
+        except Exception as e:
+            logger.error(f"Erro ao gerar URL direta: {str(e)}")
+            return None
+    
     def generate_presigned_url(self, s3_key: str, expiration: Optional[int] = None) -> Optional[str]:
         """
-        Gera URL pré-assinada para download
+        Gera URL pré-assinada para download (MANTIDO PARA COMPATIBILIDADE)
         
         Args:
             s3_key: Caminho do arquivo no S3

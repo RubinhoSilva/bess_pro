@@ -144,6 +144,21 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
       setFinancialResults(data);
       setIsLoading(false);
       isCalculatingRef.current = false;
+
+      // Salvar resultados financeiros no store global para uso no ProposalGenerator
+      const store = usePVDimensioningStore.getState();
+      store.saveFinancialResults({
+        vpl: data.financeiro?.vpl || 0,
+        tir: data.financeiro?.tir || 0,
+        pi: data.financeiro?.pi || 0,
+        paybackSimples: data.financeiro?.paybackSimples || 0,
+        paybackDescontado: data.financeiro?.paybackDescontado || 0,
+        lcoe: data.financeiro?.lcoe || 0,
+        roiSimples: data.financeiro?.roiSimples || 0,
+        economiaTotal25Anos: data.financeiro?.economiaTotalNominal || 0,
+        economiaTotalPresente: data.financeiro?.economiaTotalValorPresente || 0,
+        cashFlow: data.tabelaFluxoCaixa || []
+      });
     },
     onError: (error) => {
       toast.error('Erro ao calcular análise financeira do Grupo B');
@@ -155,7 +170,8 @@ const GrupoBFinancialResults: React.FC<GrupoBFinancialResultsProps> = ({ data })
   // Fazer chamada API quando os dados de cálculo mudam
   useEffect(() => {
     // Evitar chamadas duplicadas
-    if (isCalculatingRef.current) {
+    // Se já tem resultados financeiros, não calcular novamente
+    if (financialResults || isCalculatingRef.current) {
       return;
     }
     

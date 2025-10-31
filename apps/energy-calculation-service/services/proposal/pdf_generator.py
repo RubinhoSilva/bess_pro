@@ -7,6 +7,25 @@ from models.proposal.requests import ProposalRequest
 
 logger = logging.getLogger(__name__)
 
+def formatar_moeda(valor: float) -> str:
+    """
+    Formata valor numérico para moeda brasileira (R$ 1.234,56)
+    
+    Args:
+        valor: Valor numérico para formatar
+        
+    Returns:
+        String formatada como moeda brasileira
+    """
+    if valor is None:
+        return "R$ 0,00"
+    
+    try:
+        return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except (ValueError, TypeError):
+        logger.warning(f"Erro ao formatar valor monetário: {valor}")
+        return "R$ 0,00"
+
 class ProposalPDF(FPDF):
     """Classe personalizada para geração de PDF de proposta"""
     
@@ -183,13 +202,15 @@ class ProposalPDF(FPDF):
         self.set_fill_color(200, 220, 255)
         self.cell(95, 7, "INVESTIMENTO TOTAL (CAPEX):", 1, 0, 'L', 1)
         self.set_font_safe('DejaVuSans', '', 10)
-        self.cell(95, 7, self.request.financeiro.valor_total, 1, new_x='LMARGIN', new_y='NEXT', align='R')
+        # Usar apenas valor numérico formatado
+        self.cell(95, 7, formatar_moeda(self.request.valor_investimento), 1, new_x='LMARGIN', new_y='NEXT', align='R')
         
         self.set_font_safe('DejaVuSans', 'B', 10)
         self.set_fill_color(200, 255, 200)
         self.cell(95, 7, "ECONOMIA ANUAL ESTIMADA:", 1, 0, 'L', 1)
         self.set_font_safe('DejaVuSans', 'B', 10)
-        self.cell(95, 7, self.request.financeiro.economia_anual, 1, new_x='LMARGIN', new_y='NEXT', align='R')
+        # Usar apenas valor numérico formatado
+        self.cell(95, 7, formatar_moeda(self.request.economia_anual_bruta), 1, new_x='LMARGIN', new_y='NEXT', align='R')
         self.ln(3)
     
     def gerar_analise_financeira(self, graph_files: Dict[str, str]):
@@ -210,7 +231,8 @@ class ProposalPDF(FPDF):
         self.cell(col_width, 8, 'Valor Total (Equip. + Inst.)', 1, 0, 'C')
         self.cell(col_width, 8, 'À Vista ou Financiado', 1, 0, 'C')
         self.set_font_safe('DejaVuSans', 'B', 10)
-        self.cell(col_width, 8, self.request.financeiro.valor_total, 1, new_x='LMARGIN', new_y='NEXT', align='C')
+        # Usar apenas valor numérico formatado
+        self.cell(col_width, 8, formatar_moeda(self.request.valor_investimento), 1, new_x='LMARGIN', new_y='NEXT', align='C')
         
         self.cell(col_width, 8, 'Validade da Proposta', 1, 0, 'C')
         self.cell(col_width, 8, self.request.financeiro.validade, 1, 0, 'C')
@@ -225,17 +247,17 @@ class ProposalPDF(FPDF):
             self.image(graph_files['roi'], x=10, y=None, w=190)
             self.ln(2)
         
+        # Adicionar tabela de métricas financeiras
+        if hasattr(self.request, 'metricas_financeiras') and self.request.metricas_financeiras:
+            self.titulo_secao("3.3. Resumo de Métricas de Viabilidade (25 Anos)", nivel=2)
+            self.tabela_metricas_financeiras(self.request.metricas_financeiras.__dict__)
+            self.ln(2)
+        
         # Gráfico Fluxo de Caixa
         if 'fluxo_caixa' in graph_files:
             self.add_page()
-            self.titulo_secao("3.3. Projeção Completa de Fluxo de Caixa (25 Anos)", nivel=2)
+            self.titulo_secao("3.4. Projeção Completa de Fluxo de Caixa (25 Anos)", nivel=2)
             self.image(graph_files['fluxo_caixa'], x=10, y=None, w=190)
-            self.ln(2)
-        
-        # Adicionar tabela de métricas financeiras
-        if hasattr(self.request, 'metricas_financeiras') and self.request.metricas_financeiras:
-            self.titulo_secao("3.2. Resumo de Métricas de Viabilidade (25 Anos)", nivel=2)
-            self.tabela_metricas_financeiras(self.request.metricas_financeiras.__dict__)
             self.ln(2)
         
         # Adicionar tabela de fluxo de caixa
@@ -271,13 +293,28 @@ class ProposalPDF(FPDF):
             self.cell(LABEL_COL_WIDTH, 7, nome_exibicao + ':', 1, 0, 'L', 1)
             
             self.set_font_safe('DejaVuSans', '', 10)
-            self.cell(VALUE_COL_WIDTH, 7, valor, 1, new_x='LMARGIN', new_y='NEXT', align='R')
+            # Formatar diretamente os números
+            if isinstance(valor, (int, float)):
+                if chave in ['vpl', 'economia_total_nominal', 'economia_total_presente']:
+                    formatted_valor = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                elif chave in ['tir', 'roi_simples']:
+                    formatted_valor = f"{valor:.1f}%"
+                elif chave in ['payback_simples', 'payback_descontado']:
+                    formatted_valor = f"{valor:.1f} anos"
+                elif chave == 'lcoe':
+                    formatted_valor = f"R$ {valor:.2f}/kWh"
+                else:
+                    formatted_valor = f"{valor:.2f}"
+            else:
+                formatted_valor = str(valor)
+            
+            self.cell(VALUE_COL_WIDTH, 7, formatted_valor, 1, new_x='LMARGIN', new_y='NEXT', align='R')
         
         self.ln(2)
     
     def tabela_fluxo_caixa(self, dados_fluxo):
         """Desenha a tabela de Fluxo de Caixa Nominal e Descontado (25 Anos)."""
-        self.titulo_secao("3.4. Tabela de Fluxos de Caixa (25 Anos)", nivel=2)
+        self.titulo_secao("3.5. Tabela de Fluxos de Caixa (25 Anos)", nivel=2)
         
         self.set_font_safe('DejaVuSans', 'B', 8)
         self.set_fill_color(200, 220, 255)
@@ -295,7 +332,7 @@ class ProposalPDF(FPDF):
             # Lógica de quebra de página para o Fluxo de Caixa
             if i > 0 and self.get_y() + 5 > self.page_break_trigger:
                 self.add_page()
-                self.titulo_secao("3.4. Tabela de Fluxos de Caixa (Continuação)", nivel=2)
+                self.titulo_secao("3.5. Tabela de Fluxos de Caixa (Continuação)", nivel=2)
                 self.set_font_safe('DejaVuSans', 'B', 8)
                 self.set_fill_color(200, 220, 255)
                 for j, header in enumerate(headers):
@@ -313,9 +350,13 @@ class ProposalPDF(FPDF):
                 align = 'C'
                 
                 if j > 0:
-                    formatted_item = f"R$ {item:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                    if item < 0:
-                        formatted_item = formatted_item.replace("R$ -", "-R$ ")
+                    # Formatar diretamente os números
+                    if isinstance(item, (int, float)):
+                        formatted_item = f"R$ {item:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                        if item < 0:
+                            formatted_item = formatted_item.replace("R$ -", "-R$ ")
+                    else:
+                        formatted_item = str(item)
                 else:
                     formatted_item = str(item)
                 
@@ -333,33 +374,52 @@ class ProposalPDF(FPDF):
         if hasattr(self.request, 'dados_tecnicos_resumo') and self.request.dados_tecnicos_resumo:
             self.titulo_secao("4.1. Resumo Técnico e Parâmetros de Performance", nivel=2)
             self.set_font_safe('DejaVuSans', '', 10)
-            items = list(self.request.dados_tecnicos_resumo.items())
-            metade = len(items) // 2
-            col1_data = items[:metade]
-            col2_data = items[metade:]
+            
+            # Obter os dados do objeto
+            dados = self.request.dados_tecnicos_resumo
+            
+            # Definir os rótulos fixos e as chaves correspondentes
+            campos = [
+                ("Potência Total DC", "potencia_total_dc"),
+                ("Geração DC (Teórica)", "geracao_dc_teorica"),
+                ("Consumo Anual", "consumo_anual"),
+                ("Yield Específico", "yield_especifico"),
+                ("Performance Ratio (PR)", "performance_ratio"),
+                ("Fator de Capacidade", "fator_capacidade"),
+                ("Geração AC (Final)", "geracao_ac_final"),
+                ("Fonte de Dados", "fonte_dados")
+            ]
+            
+            # Dividir em duas colunas
+            metade = len(campos) // 2
+            col1_campos = campos[:metade]
+            col2_campos = campos[metade:]
             
             LARGURA_ROTULO = 55
             LARGURA_VALOR = 40
             X_COLUNA_2 = 105
             
-            for i in range(max(len(col1_data), len(col2_data))):
+            for i in range(max(len(col1_campos), len(col2_campos))):
                 # COLUNA 1
-                if i < len(col1_data):
+                if i < len(col1_campos):
                     self.set_x(10)
-                    chave1, valor1 = col1_data[i]
+                    rotulo1, chave1 = col1_campos[i]
                     self.set_font_safe('DejaVuSans', 'B', 10)
-                    self.cell(LARGURA_ROTULO, 6, f"{chave1}:", 0, 0, 'L')
+                    self.cell(LARGURA_ROTULO, 6, f"{rotulo1}:", 0, 0, 'L')
                     self.set_font_safe('DejaVuSans', '', 10)
+                    # Obter o valor usando a chave, com fallback para "0"
+                    valor1 = dados.get(chave1, "0")
                     self.cell(LARGURA_VALOR, 6, valor1, 0, 0, 'L')
                 
                 # COLUNA 2
-                if i < len(col2_data):
+                if i < len(col2_campos):
                     self.set_x(X_COLUNA_2)
-                    chave2, valor2 = col2_data[i]
+                    rotulo2, chave2 = col2_campos[i]
                     self.set_font_safe('DejaVuSans', 'B', 10)
-                    chave_formatada = chave2.replace('(PR)7', '(PR)').replace('(PR)9', '(PR)')
-                    self.cell(LARGURA_ROTULO, 6, f"{chave_formatada}:", 0, 0, 'L')
+                    self.cell(LARGURA_ROTULO, 6, f"{rotulo2}:", 0, 0, 'L')
                     self.set_font_safe('DejaVuSans', '', 10)
+                    # Obter o valor usando a chave, com fallback para "0"
+                    valor2 = dados.get(chave2, "0")
                     self.cell(0, 6, valor2, 0, new_x='LMARGIN', new_y='NEXT', align='L')
                 else:
                     self.ln(6)
@@ -469,7 +529,11 @@ class ProposalPDF(FPDF):
             
             for j, item in enumerate(dados_row):
                 if j > 0:
-                    formatted_item = f"{item:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    # Formatar diretamente os números
+                    if isinstance(item, (int, float)):
+                        formatted_item = f"{item:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    else:
+                        formatted_item = str(item)
                 else:
                     formatted_item = str(item)
                 

@@ -30,11 +30,11 @@ export interface SistemaData {
 }
 
 export interface FinanceiroData {
-  valorTotal: string;
-  entrada: string;
-  parcelas: string;
+  valorTotal?: string; // DEPRECIADO - usar valorInvestimento
+  entrada?: string;
+  parcelas?: string;
   validade: string;
-  economiaAnual: string;
+  economiaAnual?: string; // DEPRECIADO - usar economiaAnualBruta
 }
 
 export interface PerformanceData {
@@ -53,15 +53,15 @@ export interface MensalData {
 }
 
 export interface MetricasFinanceirasData {
-  vpl: string;
-  tir: string;
-  indiceLucratividade: string;
-  paybackSimples: string;
-  paybackDescontado: string;
-  lcoe: string;
-  roiSimples: string;
-  economiaTotalNominal: string;
-  economiaTotalPresente: string;
+  vpl: number;
+  tir: number;
+  indiceLucratividade: number;
+  paybackSimples: number;
+  paybackDescontado: number;
+  lcoe: number;
+  roiSimples: number;
+  economiaTotalNominal: number;
+  economiaTotalPresente: number;
 }
 
 export interface FluxoCaixaData {
@@ -73,7 +73,7 @@ export interface FluxoCaixaData {
 }
 
 export interface ProposalRequest {
-  empresa: EmpresaData;
+  empresa?: EmpresaData;
   cliente: ClienteData;
   sistema: SistemaData;
   financeiro: FinanceiroData;
@@ -105,7 +105,7 @@ export interface ProposalResponse {
 
 export class ProposalService {
   private static instance: ProposalService;
-  private readonly baseUrl = '/proposal';
+  private readonly baseUrl = '/proposals';
   private readonly defaultTimeout = 60000;
   private readonly maxRetries = 3;
 

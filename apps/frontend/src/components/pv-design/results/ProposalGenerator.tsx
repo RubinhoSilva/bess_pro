@@ -46,23 +46,41 @@ const ProposalGenerator: React.FC<ProposalGeneratorProps> = ({
     setPdfBase64('');
 
     try {
-      // Prepara os dados para a API
+      // Garantir que os resultados do cálculo estejam disponíveis
+      const calculationResults = results?.resultsData?.calculationResults ||
+                              results?.calculationResults ||
+                              results;
+      
+      if (!calculationResults) {
+        throw new Error('Resultados do dimensionamento não disponíveis. Execute os cálculos primeiro.');
+      }
+
+      // Verificar se há métricas financeiras
+      if (!calculationResults.advancedFinancial && !calculationResults.vpl) {
+        console.warn('Métricas financeiras não disponíveis, usando valores padrão');
+      }
+
+      // Preparar os dados para a API com todas as informações necessárias
       const storeData = {
         customerData,
         energyData,
         systemData,
         budgetData,
-        resultsData: { calculationResults: results },
+        resultsData: { calculationResults: calculationResults },
         systemSummaryData,
         aggregatedRoofData
       };
 
+      // Log para debug
+      console.log('Dados enviados para geração de proposta:', storeData);
+
       const proposalData: ProposalRequest = ProposalDataAdapter.adaptStoreToProposal(storeData);
 
+      // Log para debug dos dados adaptados
+      console.log('Dados adaptados para a API:', proposalData);
 
       // Chama a API
       const response = await proposalService.generateProposal(proposalData);
-
 
       if (response.success) {
         setGenerationState('success');
@@ -92,13 +110,25 @@ const ProposalGenerator: React.FC<ProposalGeneratorProps> = ({
 
     } catch (error: any) {
       setGenerationState('error');
-      setErrorMessage(error.message || 'Erro ao gerar proposta. Tente novamente.');
       
-      toast({
-        title: "Erro ao gerar proposta",
-        description: error.message || 'Ocorreu um erro ao gerar a proposta. Tente novamente.',
-        variant: "destructive",
-      });
+      // Verificar se é erro de CompanyProfile não configurado
+      if (error.response?.data?.error === 'COMPANY_PROFILE_NOT_FOUND') {
+        setErrorMessage('Perfil da empresa não configurado. Configure em Configurações > Perfil da Empresa antes de gerar propostas.');
+        
+        toast({
+          title: "Perfil da empresa não configurado",
+          description: "Configure em Configurações > Perfil da Empresa antes de gerar propostas.",
+          variant: "destructive",
+        });
+      } else {
+        setErrorMessage(error.message || 'Erro ao gerar proposta. Tente novamente.');
+        
+        toast({
+          title: "Erro ao gerar proposta",
+          description: error.message || 'Ocorreu um erro ao gerar a proposta. Tente novamente.',
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -136,7 +166,7 @@ const ProposalGenerator: React.FC<ProposalGeneratorProps> = ({
    */
   const downloadPDF = () => {
     try {
-      const fileName = `proposta-${customerData?.name || 'sistema'}-${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `proposta-${customerData?.customer?.name || customerData?.name || 'sistema'}-${new Date().toISOString().split('T')[0]}.pdf`;
       
       if (pdfUrl) {
         proposalService.downloadPDF(pdfUrl, fileName);
