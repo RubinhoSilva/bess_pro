@@ -75,11 +75,11 @@ async def download_proposal(filename: str):
         
         # Verificar se arquivo existe no S3
         if s3_service.check_file_exists(s3_key):
-            # Gerar URL pré-assinada e redirecionar
-            presigned_url = s3_service.generate_presigned_url(s3_key)
-            if presigned_url:
+            # Gerar URL direta (sem presigned) e redirecionar
+            direct_url = s3_service.get_direct_url(s3_key)
+            if direct_url:
                 from fastapi.responses import RedirectResponse
-                return RedirectResponse(url=presigned_url)
+                return RedirectResponse(url=direct_url)
         
         # Se não encontrar no S3, tentar no storage local (fallback)
         logger.warning(f"Arquivo não encontrado no S3, tentando storage local: {filename}")

@@ -39,25 +39,30 @@ export class ProposalDataAdapter {
 
     const calculationResults = resultsData?.calculationResults || {};
 
-    // Dados da empresa (valores padrão, podem ser configurados)
-    const empresa: EmpresaData = {
-      nome: "Solar Tech Brasil",
-      cnpj: "12.345.678/0001-90",
-      contato: "(11) 99999-9999 | contato@solarbrasil.com.br",
-      missao: "Transformar energia solar em realidade para todos os brasileiros",
-      fundacao: "2019",
-      projetosConcluidos: "500+",
-      potenciaTotal: "10 MWp instalados",
-      clientesSatisfeitos: "99% de aprovação",
-      observacoes: "Equipe especializada com certificação internacional"
-    };
+    // Validação de dados essenciais
+    if (!energyData?.energyBills?.length && !energyData?.energyBillsA?.length) {
+      console.warn('adaptStoreToProposal: Nenhuma conta de energia encontrada. Usando valores padrão.');
+    }
+
+    if (!customerData?.tarifaEnergiaB && !customerData?.tarifaEnergiaPontaA) {
+      console.warn('adaptStoreToProposal: Nenhuma tarifa de energia encontrada. Usando valores padrão.');
+    }
+
+    console.log('adaptStoreToProposal - Estrutura de dados:', {
+      hasEnergyBills: !!(energyData?.energyBills?.length),
+      hasEnergyBillsA: !!(energyData?.energyBillsA?.length),
+      grupoTarifario: customerData?.grupoTarifario,
+      tarifaEnergiaB: customerData?.tarifaEnergiaB,
+      tarifaEnergiaPontaA: customerData?.tarifaEnergiaPontaA,
+      tarifaEnergiaForaPontaA: customerData?.tarifaEnergiaForaPontaA
+    });
 
     // Dados do cliente
     const cliente: ClienteData = {
-      nome: customerData?.name || "Cliente não informado",
+      nome: customerData?.customer?.name || customerData?.name || "Cliente não informado",
       endereco: this.formatEndereco(customerData),
-      consumoMensal: this.formatConsumoMensal(energyData),
-      tarifaMedia: this.formatTarifaMedia(energyData)
+      consumoMensal: this.formatConsumoMensal(energyData, customerData),
+      tarifaMedia: this.formatTarifaMedia(customerData)
     };
 
     // Dados do sistema
@@ -71,11 +76,11 @@ export class ProposalDataAdapter {
 
     // Dados financeiros
     const financeiro: FinanceiroData = {
-      valorTotal: this.formatValorTotal(budgetData),
+      // Removidos campos redundantes: valorTotal e economiaAnual
+      // Agora usando apenas valores numéricos: valorInvestimento e economiaAnualBruta
       entrada: this.formatEntrada(budgetData),
       parcelas: this.formatParcelas(budgetData),
-      validade: "30 dias",
-      economiaAnual: this.formatEconomiaAnual(calculationResults)
+      validade: "30 dias"
     };
 
     // Dados técnicos resumo
@@ -85,7 +90,7 @@ export class ProposalDataAdapter {
     const dadosTecnicosPerformance = this.extractDadosTecnicosPerformance(calculationResults);
 
     // Dados técnicos mensais
-    const dadosTecnicosMensal = this.extractDadosTecnicosMensal(calculationResults);
+    const dadosTecnicosMensal = this.extractDadosTecnicosMensal(calculationResults, energyData);
 
     // Valor do investimento
     const valorInvestimento = this.extractValorInvestimento(budgetData);
@@ -100,7 +105,6 @@ export class ProposalDataAdapter {
     const dadosFluxoCaixa = this.extractDadosFluxoCaixa(calculationResults);
 
     return {
-      empresa,
       cliente,
       sistema,
       financeiro,
@@ -122,13 +126,16 @@ export class ProposalDataAdapter {
   private static formatEndereco(customerData: any): string {
     if (!customerData) return "Endereço não informado";
     
+    // Verificar se os dados estão aninhados em customerData.customer
+    const customer = customerData.customer || customerData;
+    
     const parts = [
-      customerData.address,
-      customerData.number,
-      customerData.complement,
-      customerData.neighborhood,
-      customerData.city,
-      customerData.state
+      customer.address,
+      customer.number,
+      customer.complement,
+      customer.neighborhood || customer.district,
+      customer.city,
+      customer.state
     ].filter(Boolean);
 
     return parts.length > 0 ? parts.join(', ') : "Endereço não informado";
@@ -137,21 +144,100 @@ export class ProposalDataAdapter {
   /**
    * Formata o consumo mensal
    */
-  private static formatConsumoMensal(energyData: any): string {
-    if (!energyData) return "0 kWh/mês";
+  private static formatConsumoMensal(energyData: any, customerData: any): string {
+    if (!energyData) {
+      console.warn('formatConsumoMensal: energyData é nulo ou indefinido');
+      return "0";
+    }
     
-    const consumo = energyData.monthlyConsumption || energyData.consumoMensal || 0;
-    return `${consumo} kWh/mês`;
+    let consumoTotal = 0;
+    const grupoTarifario = customerData?.grupoTarifario || 'B';
+    
+    console.log('formatConsumoMensal - Grupo tarifário:', grupoTarifario);
+    console.log('formatConsumoMensal - energyBills:', energyData?.energyBills);
+    console.log('formatConsumoMensal - energyBillsA:', energyData?.energyBillsA);
+    
+    // Calcular consumo total baseado no grupo tarifário
+    if (grupoTarifario === 'A') {
+      // Grupo A: somar ponta + fora ponta
+      if (energyData?.energyBillsA?.length > 0) {
+        energyData.energyBillsA.forEach((bill: any) => {
+          if (bill.consumoMensalPonta && bill.consumoMensalForaPonta) {
+            const consumoPonta = bill.consumoMensalPonta.reduce((sum: number, val: number) => sum + val, 0);
+            const consumoForaPonta = bill.consumoMensalForaPonta.reduce((sum: number, val: number) => sum + val, 0);
+            consumoTotal += consumoPonta + consumoForaPonta;
+            console.log(`Conta Grupo A - Ponta: ${consumoPonta}, Fora Ponta: ${consumoForaPonta}`);
+          }
+        });
+      } else {
+        console.warn('formatConsumoMensal: Nenhuma conta Grupo A encontrada');
+      }
+    } else {
+      // Grupo B: usar consumoMensal diretamente
+      if (energyData?.energyBills?.length > 0) {
+        energyData.energyBills.forEach((bill: any) => {
+          if (bill.consumoMensal) {
+            const consumo = bill.consumoMensal.reduce((sum: number, val: number) => sum + val, 0);
+            consumoTotal += consumo;
+            console.log(`Conta Grupo B - Consumo: ${consumo}`);
+          }
+        });
+      } else {
+        console.warn('formatConsumoMensal: Nenhuma conta Grupo B encontrada');
+      }
+    }
+    
+    // Calcular média mensal
+    const consumoMensalMedio = consumoTotal / 12;
+    console.log(`formatConsumoMensal - Total anual: ${consumoTotal}, Média mensal: ${consumoMensalMedio}`);
+    
+    // Usar valor padrão se o consumo for zero
+    if (consumoMensalMedio === 0) {
+      console.warn('formatConsumoMensal: Consumo médio é zero, usando valor padrão');
+      return grupoTarifario === 'A' ? "2000" : "500";
+    }
+    
+    return consumoMensalMedio.toFixed(0);
   }
 
   /**
    * Formata a tarifa média
    */
-  private static formatTarifaMedia(energyData: any): string {
-    if (!energyData) return "R$ 0.00 / kWh";
+  private static formatTarifaMedia(customerData: any): string {
+    if (!customerData) {
+      console.warn('formatTarifaMedia: customerData é nulo ou indefinido');
+      return "0.00";
+    }
     
-    const tarifa = energyData.averageTariff || energyData.tarifaMedia || 0;
-    return `R$ ${tarifa.toFixed(2)} / kWh`;
+    let tarifaMedia = 0;
+    const grupoTarifario = customerData?.grupoTarifario || 'B';
+    
+    console.log('formatTarifaMedia - Grupo tarifário:', grupoTarifario);
+    console.log('formatTarifaMedia - tarifaEnergiaB:', customerData?.tarifaEnergiaB);
+    console.log('formatTarifaMedia - tarifaEnergiaPontaA:', customerData?.tarifaEnergiaPontaA);
+    console.log('formatTarifaMedia - tarifaEnergiaForaPontaA:', customerData?.tarifaEnergiaForaPontaA);
+    
+    // Calcular tarifa média baseado no grupo tarifário
+    if (grupoTarifario === 'A') {
+      // Grupo A: média ponderada das tarifas ponta e fora ponta
+      const tarifaPonta = customerData.tarifaEnergiaPontaA || 0;
+      const tarifaForaPonta = customerData.tarifaEnergiaForaPontaA || 0;
+      // Considerando proporção típica de 30% ponta e 70% fora ponta
+      tarifaMedia = (tarifaPonta * 0.3) + (tarifaForaPonta * 0.7);
+      console.log(`formatTarifaMedia - Grupo A - Ponta: ${tarifaPonta}, Fora Ponta: ${tarifaForaPonta}, Média: ${tarifaMedia}`);
+    } else {
+      // Grupo B: usar tarifa de energia diretamente
+      tarifaMedia = customerData.tarifaEnergiaB || 0;
+      console.log(`formatTarifaMedia - Grupo B - Tarifa: ${tarifaMedia}`);
+    }
+    
+    // Usar valor padrão se a tarifa for zero
+    if (tarifaMedia === 0) {
+      console.warn('formatTarifaMedia: Tarifa média é zero, usando valor padrão');
+      return grupoTarifario === 'A' ? "0.85" : "0.75";
+    }
+    
+    return tarifaMedia.toFixed(2);
   }
 
   /**
@@ -208,15 +294,6 @@ export class ProposalDataAdapter {
     return `${geracaoMensal.toFixed(0)} kWh/mês`;
   }
 
-  /**
-   * Formata o valor total
-   */
-  private static formatValorTotal(budgetData: any): string {
-    if (!budgetData) return "R$ 0,00";
-    
-    const valor = budgetData.totalInvestment || budgetData.valorTotal || 0;
-    return `R$ ${valor.toFixed(2).replace('.', ',')}`;
-  }
 
   /**
    * Formata a entrada
@@ -248,19 +325,6 @@ export class ProposalDataAdapter {
     return `${numeroParcelas}x de R$ ${valorParcela.toFixed(2).replace('.', ',')}`;
   }
 
-  /**
-   * Formata a economia anual
-   */
-  private static formatEconomiaAnual(calculationResults: any): string {
-    if (!calculationResults) return "R$ 0,00";
-    
-    const economia = calculationResults.economiaAnualEstimada || 
-                    calculationResults.economiaAnualMedia || 
-                    calculationResults.economiaProjetada || 
-                    0;
-    
-    return `R$ ${economia.toFixed(2).replace('.', ',')}`;
-  }
 
   /**
    * Extrai dados técnicos resumo
@@ -272,31 +336,41 @@ export class ProposalDataAdapter {
     
     // Potência Total DC
     const potenciaDC = calculationResults.potenciaPico || calculationResults.potenciaSistema || 0;
-    dados["Potência Total DC"] = `${potenciaDC.toFixed(2)} kWp`;
+    dados["potencia_total_dc"] = `${potenciaDC.toFixed(2)} kWp`;
     
     // Geração DC (Teórica)
-    const geracaoDC = calculationResults.geracaoAnual || 0;
-    dados["Geração DC (Teórica)"] = `${geracaoDC.toFixed(0)} kWh/ano`;
-    
+    const geracaoDC = calculationResults.geracaoDcAnual ||
+                      calculationResults.energiaDcAnualKwh ||
+                      calculationResults.geracaoAnual ||
+                      calculationResults.energiaAnualKwh ||
+                      (calculationResults.potenciaTotalKwp || 0) * 1500 || 0;
+    dados["geracao_dc_teorica"] = `${geracaoDC.toFixed(0)} kWh/ano`;
+
     // Geração AC (Final)
-    const geracaoAC = calculationResults.geracaoAnual * 0.85; // Estimativa de 85% de eficiência
-    dados["Geração AC (Final)"] = `${geracaoAC.toFixed(0)} kWh/ano`;
-    
+    const geracaoAC = calculationResults.energiaAnualKwh ||
+                     calculationResults.geracaoAnual ||
+                     geracaoDC * 0.85; // Estimativa de 85% de eficiência
+    dados["geracao_ac_final"] = `${geracaoAC.toFixed(0)} kWh/ano`;
+
     // Consumo Anual
-    const consumoAnual = calculationResults.consumoAnual || 0;
-    dados["Consumo Anual"] = `${consumoAnual.toFixed(0)} kWh/ano`;
+    const consumoAnual = calculationResults.consumoAnual ||
+                        calculationResults.consumoAnualKwh || 0;
+    dados["consumo_anual"] = `${consumoAnual.toFixed(0)} kWh/ano`;
     
     // Yield Específico
     const yieldEspecifico = calculationResults.yield || calculationResults.yieldEspecifico || 1500;
-    dados["Yield Específico"] = `${yieldEspecifico.toFixed(1)} kWh/kWp`;
+    dados["yield_especifico"] = `${yieldEspecifico.toFixed(1)} kWh/kWp`;
     
     // Performance Ratio (PR)
     const pr = calculationResults.performanceRatio || calculationResults.pr || 85;
-    dados["Performance Ratio (PR)"] = `${pr.toFixed(1)} %`;
+    dados["performance_ratio"] = `${pr.toFixed(1)} %`;
     
     // Fator de Capacidade
     const fatorCapacidade = calculationResults.fatorCapacidade || 21;
-    dados["Fator de Capacidade"] = `${fatorCapacidade.toFixed(1)} %`;
+    dados["fator_capacidade"] = `${fatorCapacidade.toFixed(1)} %`;
+    
+    // Fonte de Dados (fixo conforme solicitado)
+    dados["fonte_dados"] = "2014-2020 (6 anos)";
     
     return dados;
   }
@@ -344,17 +418,91 @@ export class ProposalDataAdapter {
 
   /**
    * Extrai dados técnicos mensais
+   * CORREÇÃO: Agora extrai dados de consumo do energyData em vez de calculationResults.consumoMensal
+   * que não existe na estrutura de dados. Suporta Grupo B e Grupo A (ponta e fora ponta).
    */
-  private static extractDadosTecnicosMensal(calculationResults: any): MensalData[] {
+  private static extractDadosTecnicosMensal(calculationResults: any, energyData?: any): MensalData[] {
     if (!calculationResults) return [];
     
     const mensalData: MensalData[] = [];
     const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
     
+    // Extrair consumo mensal do energyData (Grupo B)
+    let consumoMensal = Array(12).fill(0);
+    if (energyData?.energyBills?.length > 0 && energyData.energyBills[0]?.consumoMensal) {
+      consumoMensal = energyData.energyBills[0].consumoMensal;
+    }
+    
+    // Se não houver dados do Grupo B, tentar extrair do Grupo A
+    if (consumoMensal.every(v => v === 0) && energyData?.energyBillsA?.length > 0) {
+      consumoMensal = Array(12).fill(0);
+      energyData.energyBillsA.forEach((bill: any) => {
+        if (bill.consumoMensalPonta && bill.consumoMensalForaPonta) {
+          for (let i = 0; i < 12; i++) {
+            consumoMensal[i] += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+          }
+        }
+      });
+    }
+    
+    // Adicionar consumo remoto do Grupo A (se existir)
+    if (energyData?.energyBillsARemoto?.length > 0) {
+      energyData.energyBillsARemoto.forEach((bill: any) => {
+        if (bill.consumoMensalPonta && bill.consumoMensalForaPonta) {
+          for (let i = 0; i < 12; i++) {
+            consumoMensal[i] += (bill.consumoMensalPonta[i] || 0) + (bill.consumoMensalForaPonta[i] || 0);
+          }
+        }
+      });
+    }
+    
+    // Validar estrutura de dados de consumo
+    const validarDadosConsumo = (consumo: number[], fonte: string): boolean => {
+      if (!Array.isArray(consumo) || consumo.length !== 12) {
+        console.error(`Dados de consumo inválidos de ${fonte}: esperado array com 12 valores`);
+        return false;
+      }
+      
+      if (consumo.some((v: any) => typeof v !== 'number' || isNaN(v))) {
+        console.error(`Dados de consumo inválidos de ${fonte}: valores não numéricos encontrados`);
+        return false;
+      }
+      
+      if (consumo.some(v => v < 0)) {
+        console.error(`Dados de consumo inválidos de ${fonte}: valores negativos encontrados`);
+        return false;
+      }
+      
+      return true;
+    };
+    
+    // Validar dados de consumo
+    if (!validarDadosConsumo(consumoMensal, 'energyData')) {
+      console.warn('Dados de consumo inválidos detectados. Usando valores padrão para demonstração.');
+      // Usar valores padrão realistas para demonstração
+      consumoMensal = [400, 380, 420, 390, 410, 380, 400, 420, 390, 410, 380, 400];
+    }
+    
+    // Validar consumo total anual
+    const consumoAnual = consumoMensal.reduce((sum: number, val: number) => sum + val, 0);
+    if (consumoAnual === 0) {
+      console.warn('Consumo anual total é zero. Verifique os dados de consumo.');
+    }
+    
+    // Validar consistência com geração (se disponível)
+    if (calculationResults?.geracaoEstimadaMensal) {
+      const geracaoAnual = calculationResults.geracaoEstimadaMensal.reduce((sum: number, val: number) => sum + val, 0);
+      const razaoGeracaoConsumo = geracaoAnual / consumoAnual;
+      
+      if (consumoAnual > 0 && razaoGeracaoConsumo > 10) {
+        console.warn(`Razão geração/consumo muito alta (${razaoGeracaoConsumo.toFixed(2)}). Verifique os dados.`);
+      } else if (consumoAnual > 0 && razaoGeracaoConsumo < 0.1) {
+        console.warn(`Razão geração/consumo muito baixa (${razaoGeracaoConsumo.toFixed(2)}). Verifique os Dados.`);
+      }
+    }
+    
     // Se houver dados de geração mensal
     if (calculationResults.geracaoEstimadaMensal && calculationResults.geracaoEstimadaMensal.length === 12) {
-      const consumoMensal = calculationResults.consumoMensal || Array(12).fill(0);
-      
       calculationResults.geracaoEstimadaMensal.forEach((geracao: number, index: number) => {
         const consumo = consumoMensal[index] || 0;
         const diferenca = geracao - consumo;
@@ -370,14 +518,13 @@ export class ProposalDataAdapter {
       // Dados padrão se não houver dados mensais
       const geracaoAnual = calculationResults.geracaoAnual || 0;
       const geracaoMensalMedia = geracaoAnual / 12;
-      const consumoMensalMedia = geracaoMensalMedia * 0.9; // 90% da geração
       
       meses.forEach((mes, index) => {
         mensalData.push({
           mes: mes,
-          consumo: consumoMensalMedia,
+          consumo: consumoMensal[index] || 0,
           geracao: geracaoMensalMedia,
-          diferenca: geracaoMensalMedia - consumoMensalMedia
+          diferenca: geracaoMensalMedia - (consumoMensal[index] || 0)
         });
       });
     }
@@ -389,25 +536,41 @@ export class ProposalDataAdapter {
    * Extrai o valor do investimento
    */
   private static extractValorInvestimento(budgetData: any): number {
-    if (!budgetData) return 35000; // valor padrão para teste
+    if (!budgetData) return 0;
     
-    return budgetData.totalInvestment ||
+    // Tentar obter o valor total calculado
+    const subtotal = (budgetData.custoEquipamento || 0) +
+                   (budgetData.custoMateriais || 0) +
+                   (budgetData.custoMaoDeObra || 0);
+    const bdi = budgetData.bdi || 0;
+    const total = subtotal * (1 + bdi / 100);
+    
+    // Verificar múltiplas estruturas possíveis
+    return total ||
+           budgetData.totalInvestment ||
            budgetData.valorTotal ||
            budgetData.custoTotal ||
-           35000; // valor padrão para teste
+           0;
   }
 
   /**
    * Extrai a economia anual bruta
    */
   private static extractEconomiaAnualBruta(calculationResults: any): number {
-    if (!calculationResults) return 12780; // valor padrão para teste
+    if (!calculationResults) return 0;
     
+    // Tentar obter do advancedFinancial primeiro
+    if (calculationResults.advancedFinancial?.economiaTotal25Anos) {
+      return calculationResults.advancedFinancial.economiaTotal25Anos / 25; // Média anual
+    }
+    
+    // Tentar obter de outras estruturas
     return calculationResults.economiaAnualEstimada ||
            calculationResults.economiaAnualMedia ||
            calculationResults.economiaProjetada ||
            calculationResults.economiaAnualBruta ||
-           12780; // valor padrão para teste
+           calculationResults.financialResults?.economiaAnual ||
+           0;
   }
 
   /**
@@ -421,30 +584,73 @@ export class ProposalDataAdapter {
     // Tenta obter do advancedFinancial primeiro
     const advancedFinancial = calculationResults.advancedFinancial;
     if (advancedFinancial) {
+      console.log('extractMetricasFinanceiras - advancedFinancial:', advancedFinancial);
+
       return {
-        vpl: this.formatCurrency(advancedFinancial.vpl),
-        tir: this.formatPercentage(advancedFinancial.tir),
-        indiceLucratividade: this.formatNumber(advancedFinancial.indiceLucratividade),
-        paybackSimples: this.formatYears(advancedFinancial.paybackSimples),
-        paybackDescontado: this.formatYears(advancedFinancial.paybackDescontado),
-        lcoe: this.formatCurrencyPerKWh(advancedFinancial.custoNiveladoEnergia),
-        roiSimples: this.formatPercentage(advancedFinancial.roiSimples),
-        economiaTotalNominal: this.formatCurrency(advancedFinancial.economiaTotalNominal),
-        economiaTotalPresente: this.formatCurrency(advancedFinancial.economiaTotalPresente)
+        vpl: advancedFinancial.vpl || 0,
+        tir: advancedFinancial.tir || 0,
+        indiceLucratividade: advancedFinancial.pi || 0,
+        paybackSimples: advancedFinancial.paybackSimples || 0,
+        paybackDescontado: advancedFinancial.paybackDescontado || 0,
+        lcoe: advancedFinancial.lcoe || 0,
+        roiSimples: advancedFinancial.roiSimples || 0,
+        economiaTotalNominal: advancedFinancial.economiaTotal25Anos || 0,
+        economiaTotalPresente: advancedFinancial.economiaTotalPresente || 0
       };
     }
     
-    // Se não houver advancedFinancial, usa os dados diretos
+    // Se não houver advancedFinancial, tenta obter dos resultados diretos
+    // Verificar múltiplas estruturas possíveis
+    const vpl = calculationResults.vpl ||
+                calculationResults.financialResults?.vpl ||
+                calculationResults.advancedFinancial?.vpl || 0;
+                
+    const tir = calculationResults.tir ||
+                calculationResults.financialResults?.tir ||
+                calculationResults.advancedFinancial?.tir || 0;
+    
+    const indiceLucratividade = calculationResults.pi ||
+                                calculationResults.financialResults?.pi ||
+                                calculationResults.advancedFinancial?.pi;
+
+    const paybackSimples = calculationResults.paybackSimples ||
+                           calculationResults.payback ||
+                           calculationResults.financialResults?.paybackSimples ||
+                           calculationResults.advancedFinancial?.paybackSimples || 0;
+    
+    const paybackDescontado = calculationResults.paybackDescontado ||
+                             calculationResults.financialResults?.paybackDescontado ||
+                             calculationResults.advancedFinancial?.paybackDescontado || 0;
+    
+    const lcoe = calculationResults.lcoe ||
+                calculationResults.custoNiveladoEnergia ||
+                calculationResults.financialResults?.lcoe ||
+                calculationResults.advancedFinancial?.lcoe || 0;
+    
+    const roiSimples = calculationResults.roiSimples ||
+                      calculationResults.roi ||
+                      calculationResults.financialResults?.roiSimples ||
+                      calculationResults.advancedFinancial?.roiSimples || 0;
+    
+    const economiaTotal25Anos = calculationResults.economiaTotal25Anos ||
+                               calculationResults.economiaTotalNominal ||
+                               calculationResults.financialResults?.economiaTotal25Anos ||
+                               calculationResults.advancedFinancial?.economiaTotal25Anos || 0;
+    
+    const economiaTotalPresente = calculationResults.economiaTotalPresente ||
+                                  calculationResults.financialResults?.economiaTotalPresente ||
+                                  calculationResults.advancedFinancial?.economiaTotalPresente || 0;
+    
     return {
-      vpl: this.formatCurrency(calculationResults.vpl),
-      tir: this.formatPercentage(calculationResults.tir),
-      indiceLucratividade: this.formatNumber(calculationResults.indiceLucratividade),
-      paybackSimples: this.formatYears(calculationResults.paybackSimples || calculationResults.payback),
-      paybackDescontado: this.formatYears(calculationResults.paybackDescontado),
-      lcoe: this.formatCurrencyPerKWh(calculationResults.lcoe),
-      roiSimples: this.formatPercentage(calculationResults.roi),
-      economiaTotalNominal: this.formatCurrency(calculationResults.economiaTotal25Anos),
-      economiaTotalPresente: this.formatCurrency(calculationResults.economiaTotalPresente)
+      vpl: vpl || 0,
+      tir: tir || 0,
+      indiceLucratividade: indiceLucratividade || 0,
+      paybackSimples: paybackSimples || 0,
+      paybackDescontado: paybackDescontado || 0,
+      lcoe: lcoe || 0,
+      roiSimples: roiSimples || 0,
+      economiaTotalNominal: economiaTotal25Anos || 0,
+      economiaTotalPresente: economiaTotalPresente || 0
     };
   }
 
@@ -477,6 +683,17 @@ export class ProposalDataAdapter {
       }));
     }
     
+    // Tentar obter de outras estruturas possíveis
+    if (calculationResults.financialResults?.cashFlow && calculationResults.financialResults.cashFlow.length > 0) {
+      return calculationResults.financialResults.cashFlow.map((item: any) => ({
+        ano: item.ano || 0,
+        fcNominal: item.fcNominal || item.fluxoNominal || 0,
+        fcAcumNominal: item.fcAcumNominal || item.fluxoAcumuladoNominal || 0,
+        fcDescontado: item.fcDescontado || item.fluxoDescontado || 0,
+        fcAcumDescontado: item.fcAcumDescontado || item.fluxoAcumuladoDescontado || 0
+      }));
+    }
+    
     // Se não houver dados de fluxo de caixa, retorna array vazio
     return [];
   }
@@ -485,9 +702,10 @@ export class ProposalDataAdapter {
    * Gera nome do arquivo
    */
   private static generateFileName(customerData: any): string {
-    const nomeCliente = customerData?.name || "proposta";
+    const nomeCliente = customerData?.customer?.name || customerData?.name || "proposta";
     const dataAtual = new Date().toISOString().split('T')[0];
-    return `proposta-${nomeCliente.replace(/\s+/g, '-')}-${dataAtual}.pdf`;
+    const timestamp = new Date().getTime();
+    return `proposta-${nomeCliente.replace(/\s+/g, '-')}-${dataAtual}-${timestamp}.pdf`;
   }
 
   /**
@@ -535,15 +753,15 @@ export class ProposalDataAdapter {
    */
   private static getDefaultMetricasFinanceiras(): MetricasFinanceirasData {
     return {
-      vpl: "R$ 0,00",
-      tir: "0.0%",
-      indiceLucratividade: "0.0",
-      paybackSimples: "0.0 anos",
-      paybackDescontado: "0.0 anos",
-      lcoe: "R$ 0.00/kWh",
-      roiSimples: "0.0%",
-      economiaTotalNominal: "R$ 0,00",
-      economiaTotalPresente: "R$ 0,00"
+      vpl: 0,
+      tir: 0,
+      indiceLucratividade: 0,
+      paybackSimples: 0,
+      paybackDescontado: 0,
+      lcoe: 0,
+      roiSimples: 0,
+      economiaTotalNominal: 0,
+      economiaTotalPresente: 0
     };
   }
 }

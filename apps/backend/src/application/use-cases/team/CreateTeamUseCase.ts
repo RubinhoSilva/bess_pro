@@ -1,8 +1,10 @@
 import { ITeamRepository } from '../../../domain/repositories/ITeamRepository';
 import { IUserRepository } from '../../../domain/repositories/IUserRepository';
 import { IKanbanColumnRepository } from '../../../domain/repositories/IKanbanColumnRepository';
+import { ICompanyProfileRepository } from '../../../domain/repositories/ICompanyProfileRepository';
 import { Team } from '../../../domain/entities/Team';
 import { User } from '../../../domain/entities/User';
+import { CompanyProfile } from '../../../domain/entities/CompanyProfile';
 import { UserId } from '../../../domain/value-objects/UserId';
 import { Email } from '../../../domain/value-objects/Email';
 import { CreateTeamCommand } from '../../dtos/input/team/CreateTeamCommand';
@@ -18,10 +20,28 @@ export class CreateTeamUseCase {
     private userRepository: IUserRepository,
     private kanbanColumnRepository: IKanbanColumnRepository,
     private kanbanColumnSeederService: KanbanColumnSeederService,
-    private emailInvitationService: EmailInvitationService
+    private emailInvitationService: EmailInvitationService,
+    private companyProfileRepository: ICompanyProfileRepository
   ) {}
 
   async execute(command: CreateTeamCommand): Promise<TeamResponseDto> {
+    // Validar companyProfileId se fornecido
+    if (command.companyProfileId) {
+      const companyProfile = await this.companyProfileRepository.findById(command.companyProfileId);
+      if (!companyProfile) {
+        throw new Error('CompanyProfile não encontrado');
+      }
+      
+      if (!companyProfile.getIsActive()) {
+        throw new Error('CompanyProfile não está ativo');
+      }
+      
+      const existingTeam = await this.teamRepository.findByCompanyProfileId(command.companyProfileId);
+      if (existingTeam) {
+        throw new Error('Este perfil de empresa já está vinculado a outro time');
+      }
+    }
+
     // Verificar se o owner já existe pelo email
     const ownerEmail = Email.create(command.ownerEmail);
     let owner = await this.userRepository.findByEmail(ownerEmail);
@@ -46,6 +66,7 @@ export class CreateTeamUseCase {
       ownerEmail: command.ownerEmail,
       planType: command.planType || 'basic',
       maxUsers: command.maxUsers || 10,
+      companyProfileId: command.companyProfileId || null,
       isActive: true
     });
 

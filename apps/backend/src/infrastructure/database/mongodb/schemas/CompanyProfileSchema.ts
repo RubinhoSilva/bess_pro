@@ -19,10 +19,17 @@ export interface ICompanyProfileDocument {
   zipCode?: string;
   country?: string;
   isActive: boolean;
+  teamId: string;
   isDeleted: boolean;
   deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  mission?: string;
+  foundedYear?: string;
+  completedProjectsCount?: string;
+  totalInstalledPower?: string;
+  satisfiedClientsCount?: string;
+  companyNotes?: string;
 }
 
 const CompanyProfileSchema = new Schema<ICompanyProfileDocument>({
@@ -43,10 +50,17 @@ const CompanyProfileSchema = new Schema<ICompanyProfileDocument>({
   zipCode: { type: String, trim: true },
   country: { type: String, trim: true, default: 'Brasil' },
   isActive: { type: Boolean, default: true, index: true },
+  teamId: { type: String, required: true, index: true },
   isDeleted: { type: Boolean, default: false, index: true },
   deletedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+  mission: { type: String, trim: true },
+  foundedYear: { type: String, trim: true },
+  completedProjectsCount: { type: String, trim: true },
+  totalInstalledPower: { type: String, trim: true },
+  satisfiedClientsCount: { type: String, trim: true },
+  companyNotes: { type: String, trim: true }
 }, {
   timestamps: true,
   collection: 'companyProfiles'
@@ -61,6 +75,7 @@ CompanyProfileSchema.index({ isActive: 1 });
 CompanyProfileSchema.index({ isDeleted: 1 });
 CompanyProfileSchema.index({ isDeleted: 1, deletedAt: -1 });
 CompanyProfileSchema.index({ isActive: 1, isDeleted: 1 });
+CompanyProfileSchema.index({ teamId: 1 }, { unique: true });
 
 // Índice de texto para busca
 CompanyProfileSchema.index({

@@ -1,4 +1,5 @@
-import axios from 'axios';
+import api from '../lib/api';
+import { ErrorHandler } from '../errors/ErrorHandler';
 
 // Interface para os dados da proposta
 export interface EmpresaData {
@@ -29,11 +30,11 @@ export interface SistemaData {
 }
 
 export interface FinanceiroData {
-  valorTotal: string;
-  entrada: string;
-  parcelas: string;
+  valorTotal?: string; // DEPRECIADO - usar valorInvestimento
+  entrada?: string;
+  parcelas?: string;
   validade: string;
-  economiaAnual: string;
+  economiaAnual?: string; // DEPRECIADO - usar economiaAnualBruta
 }
 
 export interface PerformanceData {
@@ -52,15 +53,15 @@ export interface MensalData {
 }
 
 export interface MetricasFinanceirasData {
-  vpl: string;
-  tir: string;
-  indiceLucratividade: string;
-  paybackSimples: string;
-  paybackDescontado: string;
-  lcoe: string;
-  roiSimples: string;
-  economiaTotalNominal: string;
-  economiaTotalPresente: string;
+  vpl: number;
+  tir: number;
+  indiceLucratividade: number;
+  paybackSimples: number;
+  paybackDescontado: number;
+  lcoe: number;
+  roiSimples: number;
+  economiaTotalNominal: number;
+  economiaTotalPresente: number;
 }
 
 export interface FluxoCaixaData {
@@ -72,7 +73,7 @@ export interface FluxoCaixaData {
 }
 
 export interface ProposalRequest {
-  empresa: EmpresaData;
+  empresa?: EmpresaData;
   cliente: ClienteData;
   sistema: SistemaData;
   financeiro: FinanceiroData;
@@ -102,19 +103,27 @@ export interface ProposalResponse {
   timestamp: string;
 }
 
-// Configuração da API
-const API_BASE_URL = process.env.NODE_ENV === 'production'
-  ? '/api/v1'
-  : 'http://localhost:8010/api/v1';
+export class ProposalService {
+  private static instance: ProposalService;
+  private readonly baseUrl = '/proposals';
+  private readonly defaultTimeout = 60000;
+  private readonly maxRetries = 3;
 
-// Timeout padrão de 60 segundos para geração de PDF
-const DEFAULT_TIMEOUT = 60000;
+  private constructor() {}
 
-// Número máximo de tentativas
-const MAX_RETRIES = 3;
+  static getInstance(): ProposalService {
+    if (!ProposalService.instance) {
+      ProposalService.instance = new ProposalService();
+    }
+    return ProposalService.instance;
+  }
 
-// Serviço de geração de propostas
-export const proposalService = {
+  // Error handling - centralized error processing
+  private handleError(error: unknown, operation: string): never {
+    const appError = ErrorHandler.handle(error, `ProposalService.${operation}`);
+    throw appError;
+  }
+
   /**
    * Gera uma proposta PDF
    * @param data Dados da proposta
@@ -122,26 +131,21 @@ export const proposalService = {
    * @param retries Número de tentativas (opcional)
    */
   async generateProposal(
-    data: ProposalRequest, 
-    timeout: number = DEFAULT_TIMEOUT,
-    retries: number = MAX_RETRIES
+    data: ProposalRequest,
+    timeout: number = this.defaultTimeout,
+    retries: number = this.maxRetries
   ): Promise<ProposalResponse> {
     let lastError: any;
     
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        
-        const response = await axios.post<ProposalResponse>(
-          `${API_BASE_URL}/proposal/generate`,
+        const response = await api.post<ProposalResponse>(
+          `${this.baseUrl}/generate`,
           data,
           {
             timeout,
-            headers: {
-              'Content-Type': 'application/json',
-            },
           }
         );
-
         
         if (response.data.success) {
           return response.data;
@@ -169,7 +173,7 @@ export const proposalService = {
     } else {
       throw new Error(lastError?.message || 'Erro ao gerar proposta. Tente novamente.');
     }
-  },
+  }
 
   /**
    * Faz o download do PDF a partir de uma URL
@@ -178,7 +182,7 @@ export const proposalService = {
    */
   async downloadPDF(url: string, filename: string): Promise<void> {
     try {
-      const response = await axios.get(url, {
+      const response = await api.get(url, {
         responseType: 'blob',
         timeout: 30000,
       });
@@ -194,9 +198,9 @@ export const proposalService = {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error: any) {
-      throw new Error('Erro ao baixar o PDF. Tente novamente.');
+      this.handleError(error, 'downloadPDF');
     }
-  },
+  }
 
   /**
    * Abre o PDF em uma nova aba
@@ -204,7 +208,7 @@ export const proposalService = {
    */
   openPDFInNewTab(url: string): void {
     window.open(url, '_blank');
-  },
+  }
 
   /**
    * Converte base64 para blob e faz download
@@ -235,9 +239,9 @@ export const proposalService = {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error: any) {
-      throw new Error('Erro ao processar o PDF. Tente novamente.');
+      this.handleError(error, 'downloadBase64PDF');
     }
-  },
+  }
 
   /**
    * Converte base64 para blob e abre em nova aba
@@ -266,9 +270,12 @@ export const proposalService = {
         window.URL.revokeObjectURL(url);
       }, 1000);
     } catch (error: any) {
-      throw new Error('Erro ao processar o PDF. Tente novamente.');
+      this.handleError(error, 'openBase64PDFInNewTab');
     }
   }
-};
+}
+
+// Export singleton instance
+export const proposalService = ProposalService.getInstance();
 
 export default proposalService;

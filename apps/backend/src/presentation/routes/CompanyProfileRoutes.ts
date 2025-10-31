@@ -37,7 +37,6 @@ export class CompanyProfileRoutes {
 
       // Validações para atualização de perfil de empresa
       const updateCompanyProfileValidation = [
-        param('id').isUUID().withMessage('ID do perfil da empresa inválido'),
         body('companyName').optional().notEmpty().withMessage('Nome da empresa não pode estar vazio').trim(),
         body('tradingName').optional().trim(),
         body('taxId').optional().trim(),
@@ -65,13 +64,8 @@ export class CompanyProfileRoutes {
         query('all').optional().isBoolean().withMessage('all deve ser booleano')
       ];
 
-      // Validação para parâmetro ID
+      // Validação para parâmetro ID (mantido para compatibilidade)
       const idValidation = [
-        param('id').isUUID().withMessage('ID do perfil da empresa inválido')
-      ];
-
-      // Validação para upload de logo
-      const uploadLogoValidation = [
         param('id').isUUID().withMessage('ID do perfil da empresa inválido')
       ];
 
@@ -84,53 +78,42 @@ export class CompanyProfileRoutes {
         companyProfileController.create.bind(companyProfileController)
       );
 
+      // Rotas baseadas em teamId (padrão multi-tenancy)
       router.get(
-        '/',
+        '/me',
         authMiddleware.authenticate(),
-        listCompanyProfilesValidation,
         ValidationMiddleware.handleValidationErrors(),
-        companyProfileController.list.bind(companyProfileController)
-      );
-
-      router.get(
-        '/:id',
-        authMiddleware.authenticate(),
-        idValidation,
-        ValidationMiddleware.handleValidationErrors(),
-        companyProfileController.getById.bind(companyProfileController)
+        companyProfileController.getMy.bind(companyProfileController)
       );
 
       router.put(
-        '/:id',
+        '/me',
         authMiddleware.authenticate(),
         updateCompanyProfileValidation,
         ValidationMiddleware.handleValidationErrors(),
-        companyProfileController.update.bind(companyProfileController)
+        companyProfileController.updateMy.bind(companyProfileController)
       );
 
       router.delete(
-        '/:id',
+        '/me',
         authMiddleware.authenticate(),
-        idValidation,
         ValidationMiddleware.handleValidationErrors(),
-        companyProfileController.delete.bind(companyProfileController)
+        companyProfileController.deleteMy.bind(companyProfileController)
       );
 
-      // Rota para upload de logo
+      // Rota para upload de logo (baseada em teamId)
       router.post(
-        '/:id/logo',
+        '/me/logo',
         authMiddleware.authenticate(),
-        uploadLogoValidation,
         ValidationMiddleware.handleValidationErrors(),
         FileUploadMiddleware.images().single('logo'),
         companyProfileController.uploadLogo.bind(companyProfileController)
       );
 
-      // Rota para deletar logo
+      // Rota para deletar logo (baseada em teamId)
       router.delete(
-        '/:id/logo',
+        '/me/logo',
         authMiddleware.authenticate(),
-        idValidation,
         ValidationMiddleware.handleValidationErrors(),
         companyProfileController.deleteLogo.bind(companyProfileController)
       );

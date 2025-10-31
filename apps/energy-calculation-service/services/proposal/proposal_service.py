@@ -32,10 +32,13 @@ class ProposalGenerationService:
             # 1. Gerar gráficos
             graph_files = ProposalGenerationService._generate_graphs(request)
             
-            # 2. Baixar logo
+            # 2. Validar dados
+            ProposalGenerationService._validate_proposal_data(request)
+            
+            # 3. Baixar logo
             logo_path = ProposalGenerationService._download_logo(request.logo_url)
             
-            # 3. Gerar PDF
+            # 4. Gerar PDF
             pdf_path = ProposalGenerationService._generate_pdf(request, graph_files, logo_path)
             
             # 4. Mover para storage permanente (S3 ou local)
@@ -128,11 +131,23 @@ class ProposalGenerationService:
     @staticmethod
     def _generate_mensal_graph(dados_mensal: List[Dict]) -> str:
         """Gera gráfico mensal de geração vs consumo"""
-        # Limitar a 12 meses
+        # Limitar a 12 meses e extrair dados no formato do notebook
         dados_12_meses = dados_mensal[:12]
-        meses = [d.get('mes', f"Mês{i+1}") for i, d in enumerate(dados_12_meses)]
-        consumo = [d.get('consumo', 0) for d in dados_12_meses]
-        geracao = [d.get('geracao', 0) for d in dados_12_meses]
+        meses = []
+        consumo = []
+        geracao = []
+        
+        for d in dados_12_meses:
+            if hasattr(d, 'mes'):
+                # Se for objeto com atributos
+                meses.append(d.mes)
+                consumo.append(d.consumo)
+                geracao.append(d.geracao)
+            else:
+                # Se for dicionário
+                meses.append(d.get('mes', f"Mês{len(meses)+1}"))
+                consumo.append(d.get('consumo', 0))
+                geracao.append(d.get('geracao', 0))
         
         x = np.arange(len(meses))
         width = 0.35
@@ -158,15 +173,27 @@ class ProposalGenerationService:
     @staticmethod
     def _generate_fluxo_caixa_graph(dados_fluxo: List[Dict]) -> str:
         """Gera gráfico de fluxo de caixa acumulado"""
-        anos = [d.get('ano', i) for i, d in enumerate(dados_fluxo)]
-        fluxo_nominal_acumulado = [d.get('fc_acum_nominal', 0) for d in dados_fluxo]
+        # Extrair dados do formato do notebook (mais robusto)
+        anos = []
+        fluxo_nominal_acumulado = []
+        
+        for d in dados_fluxo:
+            if hasattr(d, 'ano'):
+                # Se for objeto com atributos
+                anos.append(d.ano)
+                fluxo_nominal_acumulado.append(d.fc_acum_nominal)
+            else:
+                # Se for dicionário
+                anos.append(d.get('ano', 0))
+                fluxo_nominal_acumulado.append(d.get('fc_acum_nominal', 0))
         
         plt.figure(figsize=(10, 5))
         plt.plot(anos, fluxo_nominal_acumulado, marker='o', linestyle='-', color='darkgreen', label='Fluxo de Caixa Acumulado Nominal (R$)')
         plt.axhline(0, color='red', linestyle='--', label='Ponto de Equilíbrio (R$ 0)')
         
-        # Encontrar payback
-        for i in range(len(fluxo_nominal_acumulado)):
+        # Encontrar payback (melhorado do notebook)
+        payback_simples_ano = 0
+        for i in range(1, len(fluxo_nominal_acumulado)):
             if fluxo_nominal_acumulado[i] >= 0 and fluxo_nominal_acumulado[i-1] < 0:
                 payback_simples_ano = anos[i-1] + (0 - fluxo_nominal_acumulado[i-1]) / (fluxo_nominal_acumulado[i] - fluxo_nominal_acumulado[i-1])
                 plt.plot(payback_simples_ano, 0, 'go', markersize=8, label=f'Payback: {payback_simples_ano:.2f} anos')
@@ -311,3 +338,23 @@ class ProposalGenerationService:
                 os.unlink(logo_path)
             except Exception as e:
                 pass
+    
+    @staticmethod
+    def _validate_proposal_data(request: ProposalRequest):
+        """
+        Valida dados essenciais da requisição
+        """
+        # Log de informações básicas
+        logger.info(f"Gerando proposta para cliente: {request.cliente.nome}")
+        logger.info(f"Valor do investimento: R$ {request.valor_investimento:,.2f}")
+        logger.info(f"Economia anual bruta: R$ {request.economia_anual_bruta:,.2f}")
+        
+        # Validação de campos obrigatórios
+        if request.valor_investimento <= 0:
+            raise ValueError("Valor do investimento deve ser positivo")
+        
+        if request.economia_anual_bruta < 0:
+            raise ValueError("Economia anual bruta não pode ser negativa")
+        
+        # Log de sucesso da validação
+        logger.info("Validação da proposta concluída com sucesso")

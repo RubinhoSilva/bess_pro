@@ -8,6 +8,7 @@ import { useTheme, getChartColors } from '@/hooks/use-theme';
 import { useGrupoAFinancialCalculation } from '@/hooks/financial-calculation-hooks';
 import { convertToGrupoAInput } from '@/lib/financial-utils';
 import { GrupoAAdapter, IGrupoAData } from '@/types/adapters/grupo-a-adapter';
+import { usePVDimensioningStore } from '@/store/pv-dimensioning-store';
 import toast from 'react-hot-toast';
 
 /**
@@ -98,6 +99,21 @@ const GrupoAFinancialResults: React.FC<GrupoAFinancialResultsProps> = ({ data })
       setFinancialResults(data);
       setIsLoading(false);
       isCalculatingRef.current = false;
+      
+      // Salvar resultados financeiros no store global para uso no ProposalGenerator
+      const store = usePVDimensioningStore.getState();
+      store.saveFinancialResults({
+        vpl: data.vpl || data.financeiro?.vpl || 0,
+        tir: data.tir || data.financeiro?.tir || 0,
+        pi: data.pi || data.financeiro?.pi || 0,
+        paybackSimples: data.paybackSimples || data.financeiro?.paybackSimples || 0,
+        paybackDescontado: data.paybackDescontado || data.financeiro?.paybackDescontado || 0,
+        lcoe: data.lcoe || data.financeiro?.lcoe || 0,
+        roiSimples: data.roiSimples || data.financeiro?.roiSimples || 0,
+        economiaTotal25Anos: data.economiaTotalNominal || data.financeiro?.economiaTotalNominal || 0,
+        economiaTotalPresente: data.economiaTotalValorPresente || data.financeiro?.economiaTotalValorPresente || 0,
+        cashFlow: data.tabelaFluxoCaixa || data.cashFlow || []
+      });
     },
     onError: (error) => {
       toast.error('Erro ao calcular análise financeira do Grupo A');

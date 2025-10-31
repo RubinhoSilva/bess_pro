@@ -4,4 +4,5 @@ export interface UpdateTeamCommand {
   isActive?: boolean;
   planType?: string;
   maxUsers?: number;
+  companyProfileId?: string;
 }

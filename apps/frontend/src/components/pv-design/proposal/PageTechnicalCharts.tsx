@@ -9,6 +9,13 @@ interface PageTechnicalChartsProps {
       energyBills?: Array<{
         consumoMensal?: number[];
       }>;
+      energyBillsA?: Array<{
+        consumoMensalPonta?: number[];
+        consumoMensalForaPonta?: number[];
+      }>;
+      customer?: {
+        grupoTarifario: string;
+      };
     };
     advancedSolar?: {
       irradiacaoMensal?: number[];
@@ -26,12 +33,28 @@ export const PageTechnicalCharts: React.FC<PageTechnicalChartsProps> = ({ result
   const geracaoMensal = results.geracaoEstimadaMensal || Array(12).fill(0);
 
   // Calculate total monthly consumption
-  const consumoMensal = (results.formData?.energyBills || []).reduce((acc, bill) => {
-    (bill.consumoMensal || []).forEach((consumo, index) => {
-      acc[index] = (acc[index] || 0) + consumo;
-    });
-    return acc;
-  }, Array(12).fill(0));
+  const consumoMensal = (() => {
+    const grupoTarifario = results.formData?.customer?.grupoTarifario || 'B';
+    const consumoMensal = Array(12).fill(0);
+    
+    if (grupoTarifario === 'A' && results.formData?.energyBillsA?.length) {
+      // Grupo A: somar ponta + fora ponta para cada mês de todas as contas
+      results.formData.energyBillsA.forEach((bill: any) => {
+        for (let i = 0; i < 12; i++) {
+          consumoMensal[i] += (bill.consumoMensalPonta?.[i] || 0) + (bill.consumoMensalForaPonta?.[i] || 0);
+        }
+      });
+    } else if (results.formData?.energyBills?.length) {
+      // Grupo B: somar todas as contas (local + remotas)
+      results.formData.energyBills.forEach((bill: any) => {
+        (bill.consumoMensal || []).forEach((consumo: number, index: number) => {
+          consumoMensal[index] = (consumoMensal[index] || 0) + consumo;
+        });
+      });
+    }
+    
+    return consumoMensal;
+  })();
 
   // Monthly Generation vs Consumption Chart Data
   const monthlyComparisonData = months.map((month, index) => ({

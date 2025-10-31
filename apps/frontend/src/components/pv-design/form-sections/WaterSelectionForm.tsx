@@ -290,9 +290,42 @@ export const WaterSelectionForm: React.FC<WaterSelectionFormProps> = ({
         // Obter a store para atualizar os resultados
         const store = usePVDimensioningStore.getState();
         
+        // Extrair dados adicionais da API
+        const energiaAnual = (dados as any).energiaAnualKwh || 0;
+        const energiaDcAnual = (dados as any).energiaDcAnualKwh || 0;
+        const consumoAnual = (dados as any).consumoAnualKwh || 0;
+        const potenciaTotalKwp = (dados as any).potenciaTotalKwp || 0;
+        const perdaClippingKwh = (dados as any).perdaClippingKwh || 0;
+        const perdaClippingPct = (dados as any).perdaClippingPct || 0;
+        const yieldEspecifico = (dados as any).yieldEspecifico || 0;
+        const fatorCapacidade = (dados as any).fatorCapacidade || 0;
+        const prTotal = (dados as any).prTotal || 0;
+        const anosAnalisados = (dados as any).anosAnalisados || 0;
+        
         store.updateResultsData({
           calculationResults: {
-            geracaoEstimadaMensal: geracaoMensalArray
+            // Dados de geração
+            geracaoEstimadaMensal: geracaoMensalArray,
+            geracaoAnual: energiaAnual,
+            geracaoDcAnual: energiaDcAnual,
+            potenciaTotalKwp: potenciaTotalKwp,
+            
+            // Dados de consumo
+            consumoAnual: consumoAnual,
+            
+            // Dados de performance
+            perdaClippingKwh: perdaClippingKwh,
+            perdaClippingPct: perdaClippingPct,
+            yieldEspecifico: yieldEspecifico,
+            fatorCapacidade: fatorCapacidade,
+            prTotal: prTotal,
+            anosAnalisados: anosAnalisados,
+            
+            // Dados por orientação
+            geracaoPorOrientacao: (dados as any).geracaoPorOrientacao || {},
+            
+            // Dados dos inversores
+            inversores: (dados as any).inversores || []
           }
         });
         
