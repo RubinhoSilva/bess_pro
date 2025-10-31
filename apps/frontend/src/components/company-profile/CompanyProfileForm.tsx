@@ -1045,7 +1045,7 @@ export function CompanyProfileForm({
               </Button>
             )}
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Salvando...' : mode === 'create' ? 'Criar' : 'Atualizar'}
+              {isLoading ? 'Salvando...' : 'Salvar'}
             </Button>
           </div>
         </form>

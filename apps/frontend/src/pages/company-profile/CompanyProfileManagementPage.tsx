@@ -149,13 +149,6 @@ function CompanyProfileManagementPage() {
       ) : (
         // Create mode: mostrar formulário vazio
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold">Criar Perfil da Empresa</h1>
-            <p className="text-muted-foreground">
-              Preencha os dados abaixo para criar o perfil da sua empresa
-            </p>
-          </div>
-
           <CompanyProfileForm
             onSubmit={handleSubmit}
             isLoading={isMutationLoading}
