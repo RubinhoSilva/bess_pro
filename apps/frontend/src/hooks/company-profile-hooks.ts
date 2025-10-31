@@ -26,7 +26,17 @@ export const COMPANY_PROFILE_KEYS = {
 export function useMyCompanyProfile() {
   return useQuery({
     queryKey: COMPANY_PROFILE_KEYS.me(),
-    queryFn: () => companyProfileService.getMyCompanyProfile(),
+    queryFn: async () => {
+      try {
+        return await companyProfileService.getMyCompanyProfile();
+      } catch (error: any) {
+        // Se o erro for por falta de dados, retornar null em vez de lançar erro
+        if (error.message?.includes('Cannot read properties of undefined')) {
+          return null;
+        }
+        throw error;
+      }
+    },
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
 }

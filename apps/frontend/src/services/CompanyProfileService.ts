@@ -20,9 +20,10 @@ class CompanyProfileService {
   /**
    * Get company profile of the current team
    */
-  async getMyCompanyProfile(): Promise<CompanyProfile> {
+  async getMyCompanyProfile(): Promise<CompanyProfile | null> {
     const response = await api.get<ApiResponse<CompanyProfile>>(`${this.baseUrl}/me`);
-    return response.data.data;
+    // Verificar se o campo data existe na resposta
+    return response.data.data !== undefined ? response.data.data : null;
   }
 
   /**
